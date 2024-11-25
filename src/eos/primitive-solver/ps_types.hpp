@@ -24,5 +24,6 @@ enum ConsIndex {CDN=0, CSX=1, CSY=2, CSZ=3, CTA=4, CYD=5, NCONS=(NHYDRO)};
 // Note that NPRIM does not include IBY and IBZ because NHYDRO doesn't.
 enum PrimIndex {PRH=0,PVX=1, PVY=2, PVZ=3, PPR=4, PTM=5, PYF=6, NPRIM=((NHYDRO)+1)};
 enum SpatialMetricIndex{S11=0, S12=1, S13=2, S22=3, S23=4, S33=5, NSPMETRIC=6};
+enum TPOIndex {LAPSE=0, BETAX=1, BETAY=2, BETAZ=3, PSI4=4, PSI6=5, NTPO=6};
 
 #endif  // EOS_PRIMITIVE_SOLVER_PS_TYPES_HPP_

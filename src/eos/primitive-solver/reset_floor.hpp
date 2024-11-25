@@ -72,6 +72,22 @@ class ResetFloor : public ErrorPolicyInterface {
     return false;
   }
 
+  KOKKOS_INLINE_FUNCTION bool DensityFloor(Real& D, Real D_floor) const {
+    if (D < D_floor) {
+      D = D_floor;
+      return true;
+    }
+    return false;
+  }
+
+  KOKKOS_INLINE_FUNCTION bool TauFloor(Real& tau, Real tau_floor) const {
+    if (tau < tau_floor) {
+      tau = tau_floor;
+      return true;
+    }
+    return false;
+  }
+
   /// Response to excess magnetization
   KOKKOS_INLINE_FUNCTION Error MagnetizationResponse(Real& bsq, Real b_u[3]) const {
     if (bsq > max_bsq) {
@@ -98,11 +114,19 @@ class ResetFloor : public ErrorPolicyInterface {
   }
 
   /// Policy for resetting species fractions
-  KOKKOS_INLINE_FUNCTION void SpeciesLimits(Real* Y, const Real* Y_min, const Real* Y_max,
+  KOKKOS_INLINE_FUNCTION bool SpeciesLimits(Real* Y, const Real* Y_min, const Real* Y_max,
                                             int n_species) const {
+    bool floored = false;
     for (int i = 0; i < n_species; i++) {
-      Y[i] = fmax(Y_min[i], fmin(Y_max[i], Y[i]));
+      if (Y[i] < Y_min[i]) {
+        Y[i] = Y_min[i];
+        floored = true;
+      } else if (Y[i] > Y_max[i]) {
+        Y[i] = Y_max[i];
+        floored = true;
+      }
     }
+    return floored;
   }
 
   /// Policy for resetting pressure

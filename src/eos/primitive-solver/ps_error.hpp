@@ -14,12 +14,14 @@ enum struct Error {
   RHO_TOO_BIG,
   RHO_TOO_SMALL,
   NANS_IN_CONS,
+  NANS_IN_PRIM,
   MAG_TOO_BIG,
   BRACKETING_FAILED,
   NO_SOLUTION,
   CONS_FLOOR,
   PRIM_FLOOR,
   CONS_ADJUSTED,
+  LAPSE_TOO_SMALL,
 };
 
 struct SolverResult {
@@ -28,6 +30,13 @@ struct SolverResult {
   bool cons_floor;
   bool prim_floor;
   bool cons_adjusted;
+};
+
+struct FloorFlag {
+  bool d_floor;
+  bool s_floor;
+  bool tau_floor;
+  bool ye_floor;
 };
 
 } // namespace Primitive
