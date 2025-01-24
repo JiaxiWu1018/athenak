@@ -25,12 +25,17 @@ class ErrorPolicyInterface {
   Real n_atm;
   Real n_threshold;
   Real T_atm;
+  Real eps_atm;
   Real Y_atm[MAX_SPECIES];
   Real v_max;
+  Real W_max;
   Real max_bsq;
+  Real max_sigma;
   bool fail_conserved_floor;
   bool fail_primitive_floor;
   bool adjust_conserved;
+  bool c2p_entropy;
+  Real lapse_excision;
 };
 
 } // namespace Primitive

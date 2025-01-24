@@ -72,6 +72,22 @@ class ResetFloor : public ErrorPolicyInterface {
     return false;
   }
 
+  KOKKOS_INLINE_FUNCTION bool DensityFloor(Real& D, Real D_floor) const {
+    if (D < D_floor) {
+      D = D_floor;
+      return true;
+    }
+    return false;
+  }
+
+  KOKKOS_INLINE_FUNCTION bool TauFloor(Real& tau, Real tau_floor) const {
+    if (tau < tau_floor) {
+      tau = tau_floor;
+      return true;
+    }
+    return false;
+  }
+
   /// Response to excess magnetization
   KOKKOS_INLINE_FUNCTION Error MagnetizationResponse(Real& bsq, Real b_u[3]) const {
     if (bsq > max_bsq) {
