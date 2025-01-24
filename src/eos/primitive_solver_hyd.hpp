@@ -99,12 +99,20 @@ class PrimitiveSolverHydro {
     ps.GetEOSMutable().SetDensityFloor(pin->GetOrAddReal(block, "dfloor", (FLT_MIN))/mb);
     ps.GetEOSMutable().SetTemperatureFloor(pin->GetOrAddReal(block, "tfloor", (FLT_MIN)));
     ps.GetEOSMutable().SetThreshold(pin->GetOrAddReal(block, "dthreshold", 1.0));
+    // Add more EOS parameters
+    // ps.GetEOSMutable().SetMinimumEnergy(pin->GetReal(block, "min_eps")); // need to be set by user
+    ps.GetEOSMutable().SetEnergyFloor(pin->GetOrAddReal(block, "eps_atm", 1e-15));
+    ps.GetEOSMutable().SetEntropyPolicy(pin->GetOrAddInteger(block, "c2p_entropy", 0));
+    ps.GetEOSMutable().SetLapseExcision(pin->GetOrAddReal(block, "lapse_excision", 0.1));
+    ps.GetEOSMutable().SetSigmaLimit(pin->GetOrAddReal(block, "max_sigma", 50.0));
+
     ps.tol = pin->GetOrAddReal(block, "c2p_tol", 1e-15);
     ps.GetRootSolverMutable().iterations = pin->GetOrAddInteger(block, "c2p_iter", 50);
     errcap = pin->GetOrAddInteger(block, "c2perrs", 1000);
 
     // Calculate maximum allowed velocity
     Real Wmax = pin->GetOrAddReal(block, "gamma_max", 50.0);
+    ps.GetEOSMutable().SetMaximumLorentz(Wmax);
     Real vmax = sqrt(1.0 - 1.0/(Wmax*Wmax));
     ps.GetEOSMutable().SetMaxVelocity(vmax);
 
@@ -344,6 +352,14 @@ class PrimitiveSolverHydro {
       adm::SpatialInv(1.0/detg,
                   g3d[S11], g3d[S12], g3d[S13], g3d[S22], g3d[S23], g3d[S33],
                  &g3u[S11], &g3u[S12], &g3u[S13], &g3u[S22], &g3u[S23], &g3u[S33]);
+      // Extract the lapse, shift and psi4
+      Real metric[NMETRIC];
+      metric[LAPSE] = adm.alpha(m, k, j, i);
+      metric[BETAX] = adm.beta_u(m, 0, k, j, i);
+      metric[BETAY] = adm.beta_u(m, 1, k, j, i);
+      metric[BETAZ] = adm.beta_u(m, 2, k, j, i);
+      metric[PSI4] = adm.psi4(m, k, j, i);
+      metric[PSI6] = sdetg;
 
       // Extract the conserved variables
       Real cons_pt[NCONS], cons_pt_old[NCONS], prim_pt[NPRIM];
@@ -395,10 +411,10 @@ class PrimitiveSolverHydro {
           result.cons_adjusted = true;
           ps_.PrimToCon(prim_pt, cons_pt, b3u, g3d);
         } else {
-          result = ps_.ConToPrim(prim_pt, cons_pt, b3u, g3d, g3u);
+          result = ps_.ConToPrim(prim_pt, cons_pt, b3u, g3d, g3u, metric);
         }
       } else {
-        result = ps_.ConToPrim(prim_pt, cons_pt, b3u, g3d, g3u);
+        result = ps_.ConToPrim(prim_pt, cons_pt, b3u, g3d, g3u, metric);
       }
 
       if (result.error != Primitive::Error::SUCCESS && floors_only) {
@@ -569,6 +585,12 @@ class PrimitiveSolverHydro {
         break;
       case Primitive::Error::NO_SOLUTION:
         return "NO_SOLUTION";
+        break;
+      case Primitive::Error::NANS_IN_PRIM:
+        return "NANS_IN_PRIM";
+        break;
+      case Primitive::Error::LAPSE_TOO_SMALL:
+        return "LAPSE_TOO_SMALL";
         break;
       default:
         return "OTHER";

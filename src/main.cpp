@@ -29,6 +29,8 @@
 #include <string>
 #include <memory>
 #include <cstdio> // sscanf
+#include <fenv.h>
+#include <csignal>
 
 // Athena headers
 #include "athena.hpp"
@@ -52,11 +54,24 @@
 #include <hip/hip_runtime.h>
 #endif
 
+// Signal handler for floating-point exceptions
+void fpeHandler(int signum) {
+  std::cerr << "Floating Point Exception: " << signum << std::endl;
+  exit(signum);
+}
+
+void enable_fpe_traps() {
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+  std::signal(SIGFPE, fpeHandler);
+}
+
 //----------------------------------------------------------------------------------------
 //! \fn int main(int argc, char *argv[])
 //! \brief Athena main program
 
 int main(int argc, char *argv[]) {
+  // Enable floating-point exceptions
+  // enable_fpe_traps();
   std::string input_file, restart_file, run_dir;
   bool iarg_flag = false;  // set to true if -i <file> argument is on cmdline
   bool marg_flag = false;  // set to true if -m        argument is on cmdline

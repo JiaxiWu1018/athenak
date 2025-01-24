@@ -58,6 +58,7 @@
 
 #include "ps_types.hpp"
 #include "unit_system.hpp"
+#include "ps_error.hpp"
 
 namespace Primitive {
 
@@ -98,6 +99,8 @@ class EOS : public EOSPolicy, public ErrorPolicy {
   using EOSPolicy::max_Y;
   // Minimum Y
   using EOSPolicy::min_Y;
+  // Minimum energy
+  using EOSPolicy::min_eps;
   // Code unit system
   using EOSPolicy::code_units;
   // EOS unit system
@@ -106,6 +109,8 @@ class EOS : public EOSPolicy, public ErrorPolicy {
   // ErrorPolicy member functions
   using ErrorPolicy::PrimitiveFloor;
   using ErrorPolicy::ConservedFloor;
+  using ErrorPolicy::DensityFloor;
+  using ErrorPolicy::TauFloor;
   using ErrorPolicy::MagnetizationResponse;
   using ErrorPolicy::DensityLimits;
   using ErrorPolicy::TemperatureLimits;
@@ -119,11 +124,16 @@ class EOS : public EOSPolicy, public ErrorPolicy {
   using ErrorPolicy::n_threshold;
   using ErrorPolicy::T_atm;
   using ErrorPolicy::Y_atm;
+  using ErrorPolicy::eps_atm;
   using ErrorPolicy::v_max;
+  using ErrorPolicy::W_max;
   using ErrorPolicy::fail_conserved_floor;
   using ErrorPolicy::fail_primitive_floor;
   using ErrorPolicy::adjust_conserved;
   using ErrorPolicy::max_bsq;
+  using ErrorPolicy::max_sigma;
+  using ErrorPolicy::c2p_entropy;
+  using ErrorPolicy::lapse_excision;
 
  public:
   //! \fn EOS()
@@ -299,10 +309,25 @@ class EOS : public EOSPolicy, public ErrorPolicy {
   //
   //  \return true if the conserved variables were adjusted, false otherwise.
   KOKKOS_INLINE_FUNCTION bool ApplyConservedFloor(Real& D, Real Sd[3], Real& tau, Real *Y,
-                                                  Real Bsq) const {
-    return ConservedFloor(D, Sd, tau, Y, n_atm*GetBaryonMass(),
-                          GetTauFloor(fmax(D,min_n*GetBaryonMass()), Y, Bsq),
-                          GetTauFloor(n_atm*GetBaryonMass(), Y_atm, Bsq), n_species);
+                                                  Real Bsq, FloorFlag& flag) const {
+    if (!isfinite(D)) {
+      D = GetDensityFloor() * GetBaryonMass();
+      flag.d_floor = true;
+    } else {
+      flag.d_floor = DensityFloor(D, GetDensityFloor() * GetBaryonMass());
+    }
+    if (flag.d_floor) {
+      return true;
+    }
+    flag.ye_floor = ApplySpeciesLimits(Y);
+    if (!isfinite(tau)) {
+      tau = GetTauFloor(D, Y, Bsq);
+      flag.tau_floor = true;
+    } else {
+      flag.tau_floor = TauFloor(tau, GetTauFloor(D, Y, Bsq));
+    }
+    bool floored = flag.ye_floor || flag.tau_floor;
+    return floored;
   }
 
   //! \fn Real GetDensityFloor() const
@@ -339,6 +364,14 @@ class EOS : public EOSPolicy, public ErrorPolicy {
     return GetEnergy(D/GetBaryonMass(), T_atm, Y) - D + 0.5*Bsq;
   }
 
+  KOKKOS_INLINE_FUNCTION Real GetSigmaLimit() const {
+    return max_sigma;
+  }
+
+  KOKKOS_INLINE_FUNCTION Real GetLapseExcision() const {
+    return lapse_excision;
+  }
+
   //! \fn void SetDensityFloor(Real floor)
   //  \brief Set the density floor used by the EOS ErrorPolicy.
   //         Also adjusts the pressure and tau floor to be consistent.
@@ -363,6 +396,34 @@ class EOS : public EOSPolicy, public ErrorPolicy {
   //  \brief Set the threshold factor for the density floor.
   KOKKOS_INLINE_FUNCTION void SetThreshold(Real threshold) {
     n_threshold = (threshold >= 0.0) ? threshold : 0.0;
+  }
+
+  KOKKOS_INLINE_FUNCTION void SetMinimumEnergy(Real energy) {
+    min_eps = energy;
+  }
+
+  KOKKOS_INLINE_FUNCTION void SetEnergyFloor(Real floor) {
+    eps_atm = floor;
+  }
+
+  KOKKOS_INLINE_FUNCTION void SetSigmaLimit(Real sigma) {
+    max_sigma = sigma;
+  }
+
+  KOKKOS_INLINE_FUNCTION void SetMaximumLorentz(Real Lorentz) {
+    W_max = Lorentz;
+  }
+
+  KOKKOS_INLINE_FUNCTION Real GetMaximumLorentz() const {
+    return W_max;
+  }
+
+  KOKKOS_INLINE_FUNCTION void SetEntropyPolicy(int policy) {
+    c2p_entropy = policy == 0 ? false : true;
+  }
+
+  KOKKOS_INLINE_FUNCTION void SetLapseExcision(Real floor) {
+    lapse_excision = floor;
   }
 
   //! \fn Real GetMaxVelocity() const
@@ -466,8 +527,8 @@ class EOS : public EOSPolicy, public ErrorPolicy {
   }
 
   //! \brief Limit Y to a specified range
-  KOKKOS_INLINE_FUNCTION void ApplySpeciesLimits(Real *Y) const {
-    SpeciesLimits(Y, min_Y, max_Y, n_species);
+  KOKKOS_INLINE_FUNCTION bool ApplySpeciesLimits(Real *Y) const {
+    return SpeciesLimits(Y, min_Y, max_Y, n_species);
   }
 
   //! \brief Limit the pressure to a specified range at a given density and composition
@@ -493,6 +554,14 @@ class EOS : public EOSPolicy, public ErrorPolicy {
       prim[PPR] = GetPressure(prim[PRH], prim[PTM], &prim[PYF]);
     }
     return result;
+  }
+
+  KOKKOS_INLINE_FUNCTION bool ReinforceSigmaLimit(Real& n, Real b2) const {
+    if (b2 > max_sigma * n * GetBaryonMass()) {
+      n = b2 / (max_sigma * GetBaryonMass());
+      return true;
+    }
+    return false;
   }
 
   KOKKOS_INLINE_FUNCTION void SetCodeUnitSystem(UnitSystem units) {

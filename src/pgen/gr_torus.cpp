@@ -883,13 +883,19 @@ static Real LogHAux(struct torus_pgen pgen, Real r, Real sin_theta) {
     Real aa = SQR(SQR(r)+SQR(pgen.spin)) - delta*SQR(pgen.spin)*sin_sq_theta;  // A
     Real exp_2nu = sigma * delta / aa;                       // \exp(2\nu) (FM 3.5)
     Real exp_2psi = aa / sigma * sin_sq_theta;               // \exp(2\psi) (FM 3.5)
-    Real exp_neg2chi = exp_2nu / exp_2psi;                   // \exp(-2\chi) (cf. FM 2.15)
-    Real omega = 2.0*pgen.spin*r/aa;                         // \omega (FM 3.5)
-    Real var_a = sqrt(1.0 + 4.0*SQR(pgen.l_peak)*exp_neg2chi);
-    Real var_b = 0.5 * log((1.0+var_a) / (sigma*delta/aa));
-    Real var_c = -0.5 * var_a;
-    Real var_d = -pgen.l_peak * omega;
-    logh = var_b + var_c + var_d;                            // (FM 3.4)
+    if (exp_2psi == 0) {
+      logh = -1.0;
+    }
+    else {
+      Real exp_neg2chi = exp_2nu / exp_2psi;                   // \exp(-2\chi) (cf. FM 2.15)  
+      Real omega = 2.0*pgen.spin*r/aa;                         // \omega (FM 3.5)
+      Real var_a = sqrt(1.0 + 4.0*SQR(pgen.l_peak)*exp_neg2chi);
+      Real var_b = 0.5 * log((1.0+var_a) / (sigma*delta/aa));
+      Real var_c = -0.5 * var_a;
+      Real var_d = -pgen.l_peak * omega;
+      logh = var_b + var_c + var_d;                            // (FM 3.4)
+    }
+    
   } else { // Chakrabarti
     Real l = CalculateL(pgen, r, sin_theta);
     Real u_t = CalculateCovariantUT(pgen, r, sin_theta, l);

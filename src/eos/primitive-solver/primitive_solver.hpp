@@ -224,7 +224,7 @@ class PrimitiveSolver {
   //  \return information about the solve
   KOKKOS_INLINE_FUNCTION
   SolverResult ConToPrim(Real prim[NPRIM], Real cons[NCONS], Real b[NMAG],
-                         Real g3d[NSPMETRIC], Real g3u[NSPMETRIC]) const;
+                         Real g3d[NSPMETRIC], Real g3u[NSPMETRIC], Real metric[NTPO]) const;
 
   //! \brief Get the conserved variables from the primitive variables.
   //
@@ -282,6 +282,18 @@ class PrimitiveSolver {
                      Real bu[NMAG], Real g3d[NSPMETRIC]) const {
     bool result = eos.DoFailureResponse(prim);
     if (result) {
+      Real z_u[3] = {prim[PVX], prim[PVY], prim[PVZ]};
+      Real zsq = SquareVector(z_u, g3d);
+      Real W = sqrt(1 + zsq);
+
+      Real Bsq = SquareVector(bu, g3d);
+      Real z_d[3] = {0.0};
+      LowerVector(z_d, z_u, g3d);
+      Real Bdotv = Contract(bu, z_d) / W;
+
+      Real b2_local = Bsq / (1 + zsq) + Bdotv * Bdotv;
+      bool floor = eos.ReinforceSigmaLimit(prim[PRH], b2_local);
+
       PrimToCon(prim, cons, bu, g3d);
     }
   }
@@ -364,8 +376,10 @@ Error PrimitiveSolver<EOSPolicy, ErrorPolicy>::CheckDensityValid(Real& mul, Real
 template<typename EOSPolicy, typename ErrorPolicy>
 KOKKOS_INLINE_FUNCTION
 SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM],
-      Real cons[NCONS], Real b[NMAG], Real g3d[NSPMETRIC], Real g3u[NSPMETRIC]) const {
+      Real cons[NCONS], Real b[NMAG], Real g3d[NSPMETRIC], Real g3u[NSPMETRIC],
+      Real metric[NTPO]) const {
   SolverResult solver_result{Error::SUCCESS, 0, false, false, false};
+  FloorFlag floor_flag{false, false, false, false};
 
   // Extract the undensitized conserved variables.
   Real D = cons[CDN];
@@ -378,16 +392,14 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
   for (int s = 0; s < n_species; s++) {
     Y[s] = cons[CYD + s]/cons[CDN];
   }
-  // Apply limits to Y to ensure a physical state
-  eos.ApplySpeciesLimits(Y);
 
   // Check the conserved variables for consistency and do whatever
   // the EOSPolicy wants us to.
-  bool floored = eos.ApplyConservedFloor(D, S_d, tau, Y, SquareVector(B_u, g3d));
+  bool floored = eos.ApplyConservedFloor(D, S_d, tau, Y, SquareVector(B_u, g3d), floor_flag);
   solver_result.cons_floor = floored;
-  if (floored && eos.IsConservedFlooringFailure()) {
+  if ((floored && eos.IsConservedFlooringFailure()) || floor_flag.d_floor) {
     HandleFailure(prim, cons, b, g3d);
-    solver_result.error = Error::CONS_FLOOR;
+    // solver_result.error = Error::CONS_FLOOR;
     return solver_result;
   }
 
@@ -408,6 +420,7 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
       !isfinite(rbsqr) || !isfinite(bsqr)) {
     HandleFailure(prim, cons, b, g3d);
     solver_result.error = Error::NANS_IN_CONS;
+    solver_result.cons_adjusted = true;
     return solver_result;
   }
   // We have to check the particle fractions separately.
@@ -415,65 +428,11 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
     if (!isfinite(Y[s])) {
       HandleFailure(prim, cons, b, g3d);
       solver_result.error = Error::NANS_IN_CONS;
+      solver_result.cons_adjusted = true;
       return solver_result;
     }
   }
 
-  // Make sure that the magnetic field is physical.
-  Error error = eos.DoMagnetizationResponse(bsqr, b_u);
-  if (error == Error::MAG_TOO_BIG) {
-    HandleFailure(prim, cons, b, g3d);
-    solver_result.error = Error::MAG_TOO_BIG;
-    return solver_result;
-  } else if (error == Error::CONS_ADJUSTED) {
-    solver_result.cons_adjusted = true;
-    // If b_u is rescaled, we also need to adjust D, which means we'll
-    // have to adjust all our other rescalings, too.
-    Real Bsq = SquareVector(B_u, g3d);
-    D = Bsq/bsqr;
-    r_d[0] = S_d[0]/D; r_d[1] = S_d[1]/D; r_d[2] = S_d[2]/D;
-    RaiseForm(r_u, r_d, g3d);
-    rb = Contract(b_u, r_d);
-    rbsqr = rb*rb;
-    q = tau/D;
-    rsqr = Contract(r_u, r_d);
-  }
-
-  // If rsqr is identically zero, we can solve the problem analytically.
-  /*if (rsqr == 0.0 || rsqr == -0.0) {
-    Real n = D/eos.GetBaryonMass();
-    prim[PRH] = n;
-    prim[PVX] = prim[PVY] = prim[PVZ] = 0.0;
-    Real e = tau + (1.0 - 0.5*bsqr)*D;
-    prim[PTM] = eos.GetTemperatureFromE(n, e, Y);
-    prim[PPR] = eos.GetPressure(n, prim[PTM], Y);
-    for (int s = 0; s < n_species; s++) {
-      prim[PYF + s] = Y[s];
-    }
-    if (solver_result.cons_floor || solver_result.cons_adjusted) {
-      cons[CDN] = D;
-      cons[CSX] = cons[CSY] = cons[CSZ] = 0.0;
-      cons[CTA] = tau;
-      for (int s = 0; s < n_species; s++) {
-        cons[CYD + s] = D*Y[s];
-      }
-    }
-    return solver_result;
-  }*/
-
-  // Ensure that the dominant energy condition is obeyed.
-  // FIXME(JMF): This should become part of the error response!
-  /*Real rsqr_max = (1.0 + q)*(1.0 + q);
-  if (rsqr >= rsqr_max) {
-    solver_result.cons_adjusted = true;
-    // We need to rescale S^2 so that it sits *below* (tau + D)^2.
-    Real factor = sqrt(rsqr_max/rsqr)*(1.0 - 1e-10);
-    r_d[0] = r_d[0]*factor; r_d[1] = r_d[1]*factor; r_d[2] = r_d[2]*factor;
-    RaiseForm(r_u, r_d, g3d);
-    // We also need to rescale rb and rsqr
-    rb *= factor;
-    rsqr *= (factor*factor);
-  }*/
 
   // Bracket the root.
   Real min_h = eos.GetMinimumEnthalpy();
@@ -492,6 +451,7 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
     if (!result) {
       HandleFailure(prim, cons, b, g3d);
       solver_result.error = Error::BRACKETING_FAILED;
+      solver_result.cons_adjusted = true;
       return solver_result;
     } else {
       // To avoid problems with the case where the root and the upper bound collide,
@@ -503,11 +463,12 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
 
   // Check the corner case where the density is outside the permitted
   // bounds according to the ErrorPolicy.
-  error = CheckDensityValid(mul, muh, D, bsqr, rsqr, rbsqr, min_h);
+  Error error = CheckDensityValid(mul, muh, D, bsqr, rsqr, rbsqr, min_h);
   // TODO(JF): This is probably something that should be handled by the ErrorPolicy.
   if (error != Error::SUCCESS) {
     HandleFailure(prim, cons, b, g3d);
     solver_result.error = error;
+    solver_result.cons_adjusted = true;
     return solver_result;
   }
 
@@ -522,6 +483,14 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
   if (!result) {
     HandleFailure(prim, cons, b, g3d);
     solver_result.error = Error::NO_SOLUTION;
+    solver_result.cons_adjusted = true;
+    return solver_result;
+  }
+  // Lapse excision
+  if (metric[LAPSE] < eos.GetLapseExcision()) {
+    HandleFailure(prim, cons, b, g3d);
+    solver_result.error = Error::LAPSE_TOO_SMALL;
+    solver_result.cons_adjusted = true;
     return solver_result;
   }
 
@@ -538,6 +507,14 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
   Wv_u[0] = Wmux*(r_u[0] + rbmu*b_u[0]);
   Wv_u[1] = Wmux*(r_u[1] + rbmu*b_u[1]);
   Wv_u[2] = Wmux*(r_u[2] + rbmu*b_u[2]);
+  // Check NaNs in prim
+  if (!isfinite(rho) || !isfinite(W)) {
+    HandleFailure(prim, cons, b, g3d);
+    solver_result.error = Error::NANS_IN_PRIM;
+    solver_result.prim_floor = true;
+    solver_result.cons_adjusted = true;
+    return solver_result;
+  }
 
   // Apply the flooring policy to the primitive variables.
   floored = eos.ApplyPrimitiveFloor(n, Wv_u, P, T, Y);
@@ -545,11 +522,85 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
   if (floored && eos.IsPrimitiveFlooringFailure()) {
     HandleFailure(prim, cons, b, g3d);
     solver_result.error = Error::PRIM_FLOOR;
+    solver_result.cons_adjusted = true;
     return solver_result;
   }
-  solver_result.cons_adjusted = solver_result.cons_adjusted || floored ||
-                                solver_result.cons_floor;
 
+  // Apply drift floor
+  bool drift_floor = false;
+  if (!floored) {
+    Real Wvsq = SquareVector(Wv_u, g3d);
+    Real W = sqrt(1 + Wvsq);
+    Real Wv_d[3] = {0.0};
+    LowerVector(Wv_d, Wv_u, g3d);
+    Real Bdotv = Contract(B_u, Wv_d) / W;
+    Real Bsq = SquareVector(B_u, g3d);
+    Real b2_local = Bsq / (1 + Wvsq) + Bdotv * Bdotv;
+    Real sigma = b2_local / (n * eos.GetBaryonMass());
+    Real Bnorm = sqrt(Bsq);
+    Real vpar = Bdotv / Bnorm;
+    if (!isfinite(vpar)) {vpar = 0;}
+
+    drift_floor = sigma > eos.GetSigmaLimit();
+    if (drift_floor) { 
+      Real BdotS = Contract(B_u, S_d);
+      Real Bconst = BdotS / Bnorm;
+      Real rhoh = n * eos.GetBaryonMass() * eos.GetEnthalpy(n, T, Y);
+      Real vdrift_u[3] = {0.0};
+      vdrift_u[0] = Wv_u[0] / W - vpar * B_u[0] / Bnorm;
+      vdrift_u[1] = Wv_u[1] / W - vpar * B_u[1] / Bnorm;
+      vdrift_u[2] = Wv_u[2] / W - vpar * B_u[2] / Bnorm;
+      Real vdrift_min = 0.0, vdrift_max = 0.9999999;
+      Real vdriftsqr = fmax(vdrift_min, fmin(SquareVector(vdrift_u, g3d), vdrift_max));
+      Real gamma_drift = sqrt(1. + vdriftsqr / fabs(1. - vdriftsqr));
+      // Inject floors
+      n = b2_local / (eos.GetSigmaLimit() * eos.GetBaryonMass());
+      T = eos.GetTemperatureFloor();
+      P = eos.GetPressure(n, T, Y);
+      rhoh = n * eos.GetBaryonMass() * eos.GetEnthalpy(n, T, Y);
+      Real Gamma_v2 = 2.0 * Bconst / (rhoh * gamma_drift);
+      vpar = Gamma_v2 / ((1.0 + sqrt(fabs(1.0 + Gamma_v2))) * gamma_drift);
+      Real Gamma = 1.0 / sqrt(fabs(1.0 - vdriftsqr - vpar * vpar));
+      if (!isfinite(Gamma)) {Gamma = 1.0;}
+      Wv_u[0] = (vdrift_u[0] + B_u[0] * vpar / Bnorm) * Gamma;
+      Wv_u[1] = (vdrift_u[1] + B_u[1] * vpar / Bnorm) * Gamma;
+      Wv_u[2] = (vdrift_u[2] + B_u[2] * vpar / Bnorm) * Gamma;
+
+      Wvsq = SquareVector(Wv_u, g3d);
+      Gamma = sqrt(1.0 + fabs(Wvsq));
+      if ((!isfinite(Gamma)) || (!isfinite(vpar))) {
+        Wv_u[0] = 0.0;
+        Wv_u[1] = 0.0;
+        Wv_u[2] = 0.0;
+      }
+    }
+  }
+
+  // Reinforce sigma limit regardless of primitive floor or drift floor
+  Real Wvsq = SquareVector(Wv_u, g3d);
+  W = sqrt(1 + Wvsq);
+  Real Wv_d[3] = {0.0};
+  LowerVector(Wv_d, Wv_u, g3d);
+  Real Bdotv = Contract(B_u, Wv_d) / W;
+  Real Bsq = SquareVector(B_u, g3d);
+  Real b2_local = Bsq / (1 + Wvsq) + Bdotv * Bdotv;
+  bool sigma_floor = eos.ReinforceSigmaLimit(n, b2_local);
+
+  // Apply Lorentz capping
+  Real W_max = eos.GetMaximumLorentz();
+  bool W_cap = false;
+  if (W > W_max) {
+    Kokkos::printf("Lorentz capping activated, W is %.5g, while max is %.2g\n", W, W_max);
+    Wv_u[0] *= sqrt((W_max * W_max - 1) / (W * W - 1));
+    Wv_u[1] *= sqrt((W_max * W_max - 1) / (W * W - 1));
+    Wv_u[2] *= sqrt((W_max * W_max - 1) / (W * W - 1));
+    W_cap = true;
+  }
+
+  // Decide whether we need to update conservative variables
+  solver_result.cons_adjusted = solver_result.cons_adjusted || solver_result.cons_floor ||
+                                floored || drift_floor || sigma_floor || W_cap;
+  // Update primitive variables first
   prim[PRH] = n;
   prim[PPR] = P;
   prim[PTM] = T;
@@ -577,7 +628,7 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
 template<typename EOSPolicy, typename ErrorPolicy>
 KOKKOS_INLINE_FUNCTION
 Error PrimitiveSolver<EOSPolicy, ErrorPolicy>::PrimToCon(Real prim[NPRIM],
-      Real cons[NCONS], Real bu[NMAG], Real g3d[NMETRIC]) const {
+      Real cons[NCONS], Real bu[NMAG], Real g3d[NSPMETRIC]) const {
   // Extract the primitive variables
   const Real &n = prim[PRH]; // number density
   const Real Wv_u[3] = {prim[PVX], prim[PVY], prim[PVZ]};

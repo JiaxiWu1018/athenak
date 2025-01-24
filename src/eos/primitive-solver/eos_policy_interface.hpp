@@ -41,6 +41,8 @@ class EOSPolicyInterface {
   UnitSystem code_units;
   /// EOS unit system
   UnitSystem eos_units;
+  /// minimum energy
+  Real min_eps;
 };
 
 } // namespace Primitive
