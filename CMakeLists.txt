@@ -190,13 +190,15 @@ if (${PROBLEM} STREQUAL "lorene_bns")
   find_package(GSL REQUIRED)
   target_include_directories(athena PRIVATE
       ${CMAKE_SOURCE_DIR}/Lorene/Export/C++/Include
-      ${CMAKE_SOURCE_DIR}/Lorene/C++/Include)
+      ${CMAKE_SOURCE_DIR}/Lorene/C++/Include
+      /usr/include)
   target_link_libraries(athena PUBLIC
       ${CMAKE_SOURCE_DIR}/Lorene/Lib/liblorene_export.a
       ${CMAKE_SOURCE_DIR}/Lorene/Lib/liblorene.a
       ${CMAKE_SOURCE_DIR}/Lorene/Lib/liblorenef77.a
       ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES}
-      GSL::gsl ${CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES})
+      GSL::gsl fftw3
+      ${CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES})
 endif()
 
 # enable include of header files created in build directories
