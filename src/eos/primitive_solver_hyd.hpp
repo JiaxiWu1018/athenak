@@ -97,7 +97,8 @@ class PrimitiveSolverHydro {
     SetPolicyParams(block, pin);
     Real mb = ps.GetEOS().GetBaryonMass();
     ps.GetEOSMutable().SetDensityFloor(pin->GetOrAddReal(block, "dfloor", (FLT_MIN))/mb);
-    ps.GetEOSMutable().SetTemperatureFloor(pin->GetOrAddReal(block, "tfloor", (FLT_MIN)));
+    ps.GetEOSMutable().SetTfloorFromP(pin->GetOrAddReal(block, "pfloor", (FLT_MIN)));
+    // ps.GetEOSMutable().SetTemperatureFloor(pin->GetOrAddReal(block, "tfloor", (FLT_MIN)));
     ps.GetEOSMutable().SetThreshold(pin->GetOrAddReal(block, "dthreshold", 1.0));
     // Add more EOS parameters
     // ps.GetEOSMutable().SetMinimumEnergy(pin->GetReal(block, "min_eps")); // need to be set by user
