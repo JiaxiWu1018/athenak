@@ -127,7 +127,7 @@ class PrimitiveSolver {
       // Estimate the energy density.
       Real eoverD = qbar - mu*rbarsq + 1.0;
       Real ehat = D*eoverD;
-      peos->ApplyEnergyLimits(ehat, nhat, Y);
+      // peos->ApplyEnergyLimits(ehat, nhat, Y);
       //eoverD = ehat/D;
 
       // Now we can get an estimate of the temperature, and from that, the pressure and
@@ -378,6 +378,9 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
     // solver_result.error = Error::CONS_FLOOR;
     return solver_result;
   }
+  if (floor_flag.tau_floor) {
+    cons[CTA] = tau; // Keep variables consistent.
+  }
   // If a floor is applied or Y is adjusted, we need to propagate the changes back to DYe.
   if (floored || Y_adjusted) {
     for (int s = 0; s < n_species; s++) {
@@ -499,9 +502,8 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
   }
 
   // Apply the flooring policy to the primitive variables.
-  floored = eos.ApplyPrimitiveFloor(n, Wv_u, P, T, Y);
-  solver_result.prim_floor = floored;
-  if (floored && eos.IsPrimitiveFlooringFailure()) {
+  solver_result.prim_floor = eos.ApplyPrimitiveFloor(n, Wv_u, P, T, Y);
+  if (solver_result.prim_floor && eos.IsPrimitiveFlooringFailure()) {
     HandleFailure(prim, cons, b, g3d);
     solver_result.error = Error::PRIM_FLOOR;
     solver_result.cons_adjusted = true;
@@ -510,7 +512,7 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
 
   // Apply drift floor
   bool drift_floor = false;
-  if (!floored) {
+  if (!solver_result.prim_floor) {
     Real Wvsq = SquareVector(Wv_u, g3d);
     Real W = sqrt(1 + Wvsq);
     Real Wv_d[3] = {0.0};
@@ -572,7 +574,6 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
   Real W_max = eos.GetMaximumLorentz();
   bool W_cap = false;
   if (W > W_max) {
-    Kokkos::printf("Lorentz capping activated, W is %.5g, while max is %.2g\n", W, W_max);
     Wv_u[0] *= sqrt((W_max * W_max - 1) / (W * W - 1));
     Wv_u[1] *= sqrt((W_max * W_max - 1) / (W * W - 1));
     Wv_u[2] *= sqrt((W_max * W_max - 1) / (W * W - 1));

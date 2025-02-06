@@ -426,9 +426,7 @@ class EOS : public EOSPolicy, public ErrorPolicy {
   KOKKOS_INLINE_FUNCTION bool ApplyPrimitiveFloor(Real& n, Real Wvu[3],
                                                   Real& p, Real& T, Real *Y) const {
     bool result = PrimitiveFloor(n, Wvu, T, Y, n_species);
-    if (result) {
-      p = GetPressure(n, T, Y);
-    }
+    p = GetPressure(n, T, Y);
     return result;
   }
 
@@ -517,6 +515,12 @@ class EOS : public EOSPolicy, public ErrorPolicy {
   //  \brief Set the temperature floor (in code units) used by the EOS ErrorPolicy.
   KOKKOS_INLINE_FUNCTION void SetTemperatureFloor(Real floor) {
     T_atm = (floor >= min_T) ? floor : min_T;
+  }
+
+  KOKKOS_INLINE_FUNCTION void SetTfloorFromP(Real pfloor) {
+    T_atm = pfloor * code_units.PressureConversion(eos_units) / n_atm *
+            eos_units.TemperatureConversion(code_units);
+    Kokkos::printf("T floor is %.5g\n", T_atm);
   }
 
   //! \fn void SetSpeciesAtmosphere(Real atmo, int i)
@@ -650,13 +654,13 @@ class EOS : public EOSPolicy, public ErrorPolicy {
 
   //! \brief Limit the density to a physical range
   KOKKOS_INLINE_FUNCTION void ApplyDensityLimits(Real& n) const {
-    DensityLimits(n, min_n, max_n);
+    DensityLimits(n, n_atm, max_n); // change min_n to n_atm
   }
 
   //! \brief Limit the temperature to a physical range
   KOKKOS_INLINE_FUNCTION void ApplyTemperatureLimits(Real& T) const {
     Real T_eos = T*code_units.TemperatureConversion(eos_units);
-    TemperatureLimits(T_eos, min_T, max_T);
+    TemperatureLimits(T_eos, T_atm, max_T); // change min_T to T_atm
     T = T_eos*eos_units.TemperatureConversion(code_units);
   }
 

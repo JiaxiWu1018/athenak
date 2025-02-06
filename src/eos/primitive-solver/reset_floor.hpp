@@ -44,7 +44,7 @@ class ResetFloor : public ErrorPolicyInterface {
         Y[i] = Y_atm[i];
       }
       return true;
-    } else if (T < T_atm) {
+    } else if ((T < T_atm) || !isfinite(T)) {
       T = T_atm;
       return true;
     }

@@ -32,8 +32,8 @@ class IdealGas : public EOSPolicyInterface {
 
     min_n = 0.0;
     max_n = std::numeric_limits<Real>::max();
-    min_T = 0.0;
-    max_T = std::numeric_limits<Real>::max();
+    min_T = 0.0; // artificial number here
+    max_T = 50.0; //std::numeric_limits<Real>::max();
     n_species = 0;
     for (int i = 0; i < MAX_SPECIES; i++) {
       min_Y[i] = 0.0;
