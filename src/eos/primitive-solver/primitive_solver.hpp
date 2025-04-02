@@ -492,7 +492,7 @@ SolverResult PrimitiveSolver<EOSPolicy, ErrorPolicy>::ConToPrim(Real prim[NPRIM]
   // Lapse excision
   if (metric[LAPSE] < eos.GetLapseExcision()) {
     HandleFailure(prim, cons, b, g3d);
-    solver_result.error = Error::LAPSE_TOO_SMALL;
+    // solver_result.error = Error::LAPSE_TOO_SMALL;
     solver_result.cons_adjusted = true;
     return solver_result;
   }
