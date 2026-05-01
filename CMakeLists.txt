@@ -135,7 +135,8 @@ else()
 	set(TWO_PUNCTURES 0)
 endif()
 
-if (${PROBLEM} STREQUAL "z4c_spectre_bbh")
+if (${PROBLEM} STREQUAL "z4c_spectre_bbh"
+    OR ${PROBLEM} STREQUAL "z4c_spectre_mbh")
   # Load binary black hole initial data from the SpECTRE code:
   # https://spectre-code.org
   #
@@ -252,4 +253,3 @@ target_include_directories(athena PUBLIC
 configure_file(config.hpp.in config.hpp)
 
 install( TARGETS athena DESTINATION bin )
-
