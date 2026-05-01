@@ -176,6 +176,7 @@ class Z4c {
     int extrap_order;
     // Value of chi to specify the excision region for constraint evaluation
     Real excise_chi;
+    Real d_merge;          // black-hole tracker merger distance threshold
   };
   Options opt;
   Real diss;              // Dissipation parameter
@@ -230,6 +231,7 @@ class Z4c {
   TaskStatus RestrictWeyl(Driver *d, int stage);
   TaskStatus CCEDump(Driver *pdrive, int stage);
   TaskStatus TrackCompactObjects(Driver *d, int stage);
+  void BHMergeDetector();
   TaskStatus CalcWeylScalar(Driver *d, int stage);
   TaskStatus CalcWaveForm(Driver *d, int stage);
   TaskStatus DumpHorizons(Driver *d, int stage);

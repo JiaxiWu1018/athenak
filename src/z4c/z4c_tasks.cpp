@@ -290,6 +290,7 @@ TaskStatus Z4c::TrackCompactObjects(Driver *pdrive, int stage) {
       pt->EvolveTracker(pmy_pack);
       pt->WriteTracker();
     }
+    BHMergeDetector();
   }
   return TaskStatus::complete;
 }
