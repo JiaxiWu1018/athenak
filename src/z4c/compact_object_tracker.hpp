@@ -12,6 +12,7 @@
 #include <string>
 
 #include "athena.hpp"
+#include "globals.hpp"
 #include "mesh/mesh.hpp"
 #include "z4c_macros.hpp"
 
@@ -48,6 +49,14 @@ class CompactObjectTracker {
   inline void SetPos(Real npos[NDIM]) {
     std::memcpy(pos, npos, NDIM*sizeof(Real));
   }
+  //! Get mass
+  inline Real GetMass() const {
+    return mass;
+  }
+  //! Set mass
+  inline void SetMass(Real m) {
+    mass = m;
+  }
   //! Get wanted refinement level
   inline int GetReflevel() const {
     return reflevel;
@@ -56,23 +65,39 @@ class CompactObjectTracker {
   inline Real GetRadius() const {
     return radius;
   }
-  //! Get initial mass
-  inline Real GetMass() {
-    return mass;
-  }
   //! Get CO type
-  inline CompactObjectType GetType() {
+  inline CompactObjectType GetType() const {
     return type;
+  }
+  //! Get whether compact object is active
+  inline bool is_active() const {
+    return active_tracker;
+  }
+  //! Set activation status
+  inline void SetActive(bool status) {
+    active_tracker = status;
+  }
+  //! Whether compact object is a BH
+  inline bool is_BH() const {
+    return type == BlackHole;
+  }
+  //! Output merger information
+  inline void WriteMergedInto(int survivor_id, int iter, Real time, Real sep) {
+    if (global_variable::my_rank == 0) {
+      ofile << "# merged into " << survivor_id << " iter " << iter
+            << " time " << time << " sep " << sep << std::endl;
+    }
   }
 
  private:
   bool owns_compact_object;
+  bool active_tracker;
   CompactObjectType type;
   TrackerMode mode;
   Real vel[NDIM];
   int reflevel;         // requested minimum refinement level (-1 for infinity)
   Real radius;          // nominal radius of the object (for the AMR driver)
-  Real mass;            // mass needed for FastFlow
+  Real mass;            // mass for FastFlow and spatially-dependent eta
   Mesh const *pmesh;
   int out_every;
   std::ofstream ofile;

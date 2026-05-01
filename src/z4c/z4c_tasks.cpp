@@ -285,6 +285,7 @@ TaskStatus Z4c::ApplyPhysicalBCs(Driver *pdrive, int stage) {
 TaskStatus Z4c::TrackCompactObjects(Driver *pdrive, int stage) {
   if (stage == pdrive->nexp_stages) {
     for (auto & pt : ptracker) {
+      if (!pt->is_active()) continue;
       pt->InterpolateVelocity(pmy_pack);
       pt->EvolveTracker(pmy_pack);
       pt->WriteTracker();
