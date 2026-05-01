@@ -152,6 +152,8 @@ ProblemGenerator::ProblemGenerator(ParameterInput *pin, Mesh *pm, IOWrapper resf
 
     for (auto &pt : pz4c->ptracker) {
       Real pos[3];
+      Real mass = 0.0;
+      int active =1;
       if (global_variable::my_rank == 0 || single_file_per_rank) {
         if (resfile.Read_Reals(&pos[0], 3, single_file_per_rank) != 3) {
           std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
@@ -159,13 +161,31 @@ ProblemGenerator::ProblemGenerator(ParameterInput *pin, Mesh *pm, IOWrapper resf
                     << "file is incorrect, restart file is broken." << std::endl;
           exit(EXIT_FAILURE);
         }
+        if (resfile.Read_Reals(&mass, 1, single_file_per_rank) != 1) {
+          std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                    << std::endl << "compact object tracker mass size read from restart "
+                    << "file is incorrect, restart file is broken." << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        // read active flag (stored as int bytes)
+        if (resfile.Read_bytes(&active, 1, sizeof(int),
+                               single_file_per_rank) != sizeof(int)) {
+          std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                    << std::endl << "compact object tracker active flag size read from restart "
+                    << "file is incorrect, restart file is broken." << std::endl;
+          exit(EXIT_FAILURE);
+        }
       }
 #if MPI_PARALLEL_ENABLED
       if (!single_file_per_rank) {
         MPI_Bcast(&pos[0], 3*sizeof(Real), MPI_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&mass, sizeof(Real), MPI_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&active, sizeof(int), MPI_CHAR, 0, MPI_COMM_WORLD);
       }
 #endif
       pt->SetPos(&pos[0]);
+      pt->SetMass(mass);
+      pt->SetActive(active != 0);
     }
   }
 

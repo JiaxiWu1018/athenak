@@ -255,6 +255,13 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
       for (auto & pt : pz4c->ptracker) {
         resfile.Write_any_type(pt->GetPos(), 3*sizeof(Real), "byte",
                                single_file_per_rank);
+        Real mass = pt->GetMass();
+        resfile.Write_any_type(&mass, sizeof(Real), "byte",
+                               single_file_per_rank);
+        // active flag (store as int for portability)
+        int active = pt->is_active() ? 1 : 0;
+        resfile.Write_any_type(&active, sizeof(int), "byte",
+                               single_file_per_rank);
       }
     }
     // turbulence driver internal RNG
@@ -300,7 +307,7 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
                              sizeof(RegionSize) + 2*sizeof(RegionIndcs);
   IOWrapperSizeT step2size = (pm->nmb_total)*(sizeof(LogicalLocation) + sizeof(float));
 
-  IOWrapperSizeT step3size = 3*nco*sizeof(Real);
+  IOWrapperSizeT step3size = 4*nco*sizeof(Real) + nco*sizeof(int);
   if (pz4c != nullptr) step3size += sizeof(Real);
   if (pturb != nullptr) step3size += sizeof(RNG_State);
 
