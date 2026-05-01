@@ -149,6 +149,7 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
   opt.user_Sbc = pin->GetOrAddBoolean("z4c", "user_Sbc", false);
 
   opt.excise_chi = pin->GetOrAddReal("z4c", "excise_chi", 0.0625);
+  opt.d_merge = pin->GetOrAddReal("z4c", "d_merge", 1e-4);
 
   opt.extrap_order = fmax(2,fmin(indcs.ng,fmin(4,
       pin->GetOrAddInteger("z4c", "extrap_order", 2))));

@@ -142,6 +142,9 @@ void CompactObjectTracker::InterpolateVelocity(MeshBlockPack *pmbp) {
 void CompactObjectTracker::EvolveTracker(MeshBlockPack *pmbp) {
   if (owns_compact_object) {
     if (mode == ODE) {
+      // Debugging output only (per-step tracker pos/vel); commented out for production.
+      // Kokkos::printf("co on rank %d has position %.5g %.5g %.5g and velocity %.5g %.5g %.5g\n",
+      //                global_variable::my_rank, pos[0], pos[1], pos[2], vel[0], vel[1], vel[2]);
       for (int a = 0; a < NDIM; ++a) {
         pos[a] += pmesh->dt * vel[a];
       }
@@ -258,3 +261,87 @@ void CompactObjectTracker::WriteTracker() {
           << vel[2] << std::endl << std::flush;
   }
 }
+
+namespace z4c
+{
+//----------------------------------------------------------------------------------------
+void Z4c::BHMergeDetector() {
+  while (true) {
+    // Get all activate black hole trackers
+    std::vector<int> bh_ids;
+    bh_ids.reserve(ptracker.size());
+    for (int i = 0; i < static_cast<int>(ptracker.size()); ++i) {
+      auto &pt = ptracker[i];
+      if (! (pt->is_active() && pt->is_BH())) continue;
+      bh_ids.push_back(i);
+    }
+    if (bh_ids.size() < 2) return;
+
+    // Find the nearest pair of black holes that are within merger threshold
+    bool found = false;
+    int best_i = -1, best_j = -1;
+    Real best_d2 = std::numeric_limits<Real>::max();
+    const Real d2_merge = opt.d_merge * opt.d_merge;
+    for (int a = 0; a < static_cast<int>(bh_ids.size()); ++a) {
+      const int i = bh_ids[a];
+      const Real xi = ptracker[i]->GetPos(0);
+      const Real yi = ptracker[i]->GetPos(1);
+      const Real zi = ptracker[i]->GetPos(2);
+      for (int b = a + 1; b < static_cast<int>(bh_ids.size()); ++b) {
+	const int j = bh_ids[b];
+	const Real xj = ptracker[j]->GetPos(0);
+	const Real yj = ptracker[j]->GetPos(1);
+	const Real zj = ptracker[j]->GetPos(2);
+	const Real dx = xi - xj;
+	const Real dy = yi - yj;
+	const Real dz = zi - zj;
+	const Real d2 = dx * dx + dy * dy + dz * dz;
+	if (d2 < d2_merge) {
+	  if (d2 < best_d2) {
+	    best_d2 = d2;
+	    best_i = i;
+	    best_j = j;
+	    found = true;
+	  }
+	}
+      }
+    }
+
+    if (!found) return;
+
+    // Deactivate one of them and modify the mass of the other
+    const Real mi = ptracker[best_i]->GetMass();
+    const Real mj = ptracker[best_j]->GetMass();
+    int survivor = -1; int victim = -1;
+    if (std::abs(mi - mj) < 1e-6) {
+      survivor = (best_i < best_j) ? best_i : best_j;
+      victim = (best_i < best_j) ? best_j : best_i;
+    } else {
+      survivor = (mi > mj) ? best_i : best_j;
+      victim = (mi > mj) ? best_j : best_i;
+    }
+    // std::cout << "two masses " << mi << " " << mj << std::endl;  // debug, off for production
+    ptracker[survivor]->SetMass(mi + mj);
+    // std::cout << "After set mass " << ptracker[survivor]->GetMass() << std::endl;  // debug
+    ptracker[victim]->SetActive(false);
+    // Debugging output only (stdout); commented out for production. The merger is
+    // still recorded to the tracker file via WriteMergedInto() below.
+    /* if (global_variable::my_rank == 0) {
+      std::cout << "BHMergeDetector: merged tracker " << victim
+		<< " into " << survivor
+		<< " at iter=" << pmy_pack->pmesh->ncycle
+		<< " time=" << pmy_pack->pmesh->time
+                << " survivor location=" << ptracker[survivor]->GetPos(0)
+                << " " << ptracker[survivor]->GetPos(1)
+                << " " << ptracker[survivor]->GetPos(2)
+                << " victim location=" << ptracker[victim]->GetPos(0)
+                << " " << ptracker[victim]->GetPos(1)
+                << " " << ptracker[victim]->GetPos(2)
+		<< std::endl;
+    } */
+    // Record merger info into tracker file
+    const Real sep = std::sqrt(best_d2);
+    ptracker[victim]->WriteMergedInto(survivor, pmy_pack->pmesh->ncycle, pmy_pack->pmesh->time, sep);
+  }
+}
+} // end namespace z4c
