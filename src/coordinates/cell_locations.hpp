@@ -49,4 +49,13 @@ static int CellCenterIndex(Real x, int n, Real xmin, Real xmax) {
   return static_cast<int>(((x-xmin)/(xmax-xmin))*static_cast<Real>(n));
 }
 
+//----------------------------------------------------------------------------------------
+//! \fn void LeftEdgeIndex()
+// returns i-index of first cell center left to the x position
+
+KOKKOS_INLINE_FUNCTION
+static int LeftEdgeIndex(Real x, int n, Real xmin, Real xmax) {
+  return static_cast<int>(((x-xmin)/(xmax-xmin))*static_cast<Real>(n) - 0.5);
+}
+
 #endif // COORDINATES_CELL_LOCATIONS_HPP_

@@ -233,6 +233,9 @@ void MeshBlockPack::AddPhysics(ParameterInput *pin) {
   // Create particles module.  Create tasklist.
   if (pin->DoesBlockExist("particles")) {
     ppart = new particles::Particles(this, pin);
+    if (pz4c != nullptr && ptmunu == nullptr) {
+      ptmunu = new Tmunu(this, pin);
+    }
     ppart->AssembleTasks(tl_map);
     nphysics++;
   } else {
