@@ -1,0 +1,162 @@
+<comment>
+problem   = import binary neutron star remnant data from FIL
+
+<job>
+basename  = bns_remnant
+
+<mesh>
+nghost = 4        # Number of ghost cells
+nx1    = 32       # number of cells in x1-direction
+x1min  = -1024.0  # minimum x1
+x1max  = 1024.0   # maximum x1
+ix1_bc = outflow     # inner boundary
+ox1_bc = outflow     # outer boundary
+
+nx2    = 32       # number of cells in x2-direction
+x2min  = -1024.0  # minimum x2
+x2max  = 1024.0   # maximum x2
+ix2_bc = outflow     # inner boundary
+ox2_bc = outflow     # outer boundary
+
+nx3    = 32       # number of cells in x3-direction
+x3min  = -1024.0  # minimum x3
+x3max  = 1024.0   # maximum x3
+ix3_bc = outflow     # inner boundary
+ox3_bc = outflow     # outer boundary
+
+<meshblock>
+nx1  = 8          # Number of cells in each MeshBlock, X1-dir
+nx2  = 8          # Number of cells in each MeshBlock, X2-dir
+nx3  = 8          # Number of cells in each MeshBlock, X3-dir
+
+<mesh_refinement>
+refinement = static    # type of refinement
+
+<refined_region1>
+level = 1
+x1min = -512.0
+x1max = 512.0
+x2min = -512.0
+x2max = 512.0
+x3min = -512.0
+x3max = 512.0
+
+<refined_region2>
+level = 2
+x1min = -256.0
+x1max = 256.0
+x2min = -256.0
+x2max = 256.0
+x3min = -256.0
+x3max = 256.0
+
+<refined_region3>
+level = 3
+x1min = -128.0
+x1max = 128.0
+x2min = -128.0
+x2max = 128.0
+x3min = -128.0
+x3max = 128.0
+
+<refined_region4>
+level = 4
+x1min = -64.0
+x1max = 64.0
+x2min = -64.0
+x2max = 64.0
+x3min = -64.0
+x3max = 64.0
+
+<refined_region5>
+level = 5
+x1min = -64.0
+x1max = 64.0
+x2min = -64.0
+x2max = 64.0
+x3min = -64.0
+x3max = 64.0
+
+<refined_region6>
+level = 6
+x1min = -32.0
+x1max = 32.0
+x2min = -32.0
+x2max = 32.0
+x3min = -32.0
+x3max = 32.0
+
+<refined_region7>
+level = 7
+x1min = -16.0
+x1max = 16.0
+x2min = -16.0
+x2max = 16.0
+x3min = -16.0
+x3max = 16.0
+
+<refined_region8>
+level = 8
+x1min = -8.0
+x1max = 8.0
+x2min = -8.0
+x2max = 8.0
+x3min = -8.0
+x3max = 8.0
+
+<refined_region9>
+level = 9
+x1min = -4.0
+x1max = 4.0
+x2min = -4.0
+x2max = 4.0
+x3min = -4.0
+x3max = 4.0
+
+<time>
+evolution  = dynamic     # dynamic/kinematic/static
+integrator = rk2         # time integration algorithm
+cfl_number = 0.3         # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim       = -1          # cycle limit
+tlim       = 100     # time limit
+ndiag      = 1           # cycles between diagostic output
+
+<coord>
+excise = false
+a      = 0.0
+
+<mhd>
+eos         = ideal      # EOS type
+gamma       = 1.333      # ratio of specific heats Gamma
+nscalar     = 1
+fixed       = true
+dyn_eos     = ideal      # PrimitiveSolver EOSPolicy
+dyn_error   = reset_floor# PrimitiveSOlver ErrorPolicy
+reconstruct = ppm4       # spatial reconstruction method
+rsolver     = hlle       # Riemann-solver to be used
+dfloor      = 1.0e-10    # floor on density rho
+pfloor      = 0.333e-12  # floor on gas pressure p_gasi
+fofc        = true       # Enable first order flux correction
+gamma_max   = 20.0       # Enable ceiling on Lorentz factor
+
+<particles>
+init = file
+prtcl_init_file = particles_single.h5
+particle_type = cosmic_ray
+pusher = gr_boris
+charge_mass_ratio = 1
+
+<adm>
+
+<problem>
+init_file = athenak_init.h5
+
+<output1>
+file_type = pvtk
+variable = prtcl_all
+dt = 0.1
+
+<output2>
+file_type  = bin        # Binary data dump
+variable   = mhd_w_bcc  # variables to be output
+dt         = 10.0      # time increment between outputs
