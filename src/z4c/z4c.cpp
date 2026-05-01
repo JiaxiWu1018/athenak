@@ -134,6 +134,10 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
   opt.eps_floor = pin->GetOrAddReal("z4c", "eps_floor", 1e-12);
   opt.damp_kappa1 = pin->GetOrAddReal("z4c", "damp_kappa1", 0.0);
   opt.damp_kappa2 = pin->GetOrAddReal("z4c", "damp_kappa2", 0.0);
+  opt.const_damp = pin->GetOrAddBoolean("z4c", "const_damp", true);
+  if (!opt.const_damp) {
+    Kokkos::realloc(spatial_damp, nmb, ncells3, ncells2, ncells1);
+  }
   // Gauge conditions (default to moving puncture gauge)
   opt.lapse_harmonicf = pin->GetOrAddReal("z4c", "lapse_harmonicf", 1.0);
   opt.lapse_harmonic = pin->GetOrAddReal("z4c", "lapse_harmonic", 0.0);
@@ -228,6 +232,14 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
     } else {
       break;
     }
+  }
+  // Calculate minimum initial puncture mass for spatially-dependent damping
+  if (n > 0 && !opt.const_damp) {
+    Real m_min = ptracker[0]->GetMass();
+    for (int i = 1; i < n; ++i) {
+      m_min = fmin(m_min, ptracker[i]->GetMass());
+    }
+    opt.m_min = m_min;
   }
   // Construct the Cartesian data grid for dumping horizon data
   n = 0;

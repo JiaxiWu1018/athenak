@@ -87,6 +87,7 @@ class Z4c {
   DvceArray5D<Real> coarse_u0; // coarse representation of z4c solution
   DvceArray5D<Real> u_weyl; // weyl scalars
   DvceArray5D<Real> coarse_u_weyl; // coarse representation of weyl scalars
+  DvceArray4D<Real> spatial_damp;  // spatially-dependent damping if activated
 
   struct ADM_vars {
     AthenaTensor<Real, TensorSymm::NONE, 3, 0> psi4;
@@ -151,6 +152,8 @@ class Z4c {
     // Constraint damping parameters
     Real damp_kappa1;
     Real damp_kappa2;
+    bool const_damp; // whether damping eta and kappa1 are constant or spatially-dependent
+    Real m_min; // minimum initial puncture mass
     // Gauge conditions for the lapse
     Real lapse_oplog;
     Real lapse_harmonicf;
@@ -179,7 +182,8 @@ class Z4c {
     int extrap_order;
     // Value of chi to specify the excision region for constraint evaluation
     Real excise_chi;
-    Real d_merge;          // black-hole tracker merger distance threshold
+    // Separation threshold for BH tracker merging
+    Real d_merge;
   };
   Options opt;
   Real diss;              // Dissipation parameter
@@ -234,7 +238,6 @@ class Z4c {
   TaskStatus RestrictWeyl(Driver *d, int stage);
   TaskStatus CCEDump(Driver *pdrive, int stage);
   TaskStatus TrackCompactObjects(Driver *d, int stage);
-  void BHMergeDetector();
   TaskStatus CalcWeylScalar(Driver *d, int stage);
   TaskStatus CalcWaveForm(Driver *d, int stage);
   TaskStatus DumpHorizons(Driver *d, int stage);
@@ -251,6 +254,7 @@ class Z4c {
   void Z4cWeyl(MeshBlockPack *pmbp);
   void WaveExtr(MeshBlockPack *pmbp);
   void AlgConstr(MeshBlockPack *pmbp);
+  void BHMergeDetector();
 
   Z4c_AMR *pamr;
   std::vector<std::unique_ptr<CompactObjectTracker>> ptracker;
