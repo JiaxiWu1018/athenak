@@ -36,6 +36,18 @@ Z4c_AMR::Z4c_AMR(ParameterInput *pin) {
   } else if (ref_method == "dchi") {
     method = dChi;
     dchi_thresh = pin->GetOrAddReal("z4c_amr", "dchi_max", 0.01);
+  } else if (ref_method == "loehner") {
+    method = Loehner;
+    loehner_threshold = pin->GetOrAddReal("z4c_amr", "loehner_threshold", 0.2);
+    std::string ref_var = pin->GetOrAddString("z4c_amr", "loehner_variable", "alp_psi7");
+    if (ref_var == "alp_psi7") {
+      loehner_var = alp_psi7;
+    } else {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line "
+                << __LINE__ << std::endl;
+      std::cout << "Unknown Loehner refinement variable: " << ref_var << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
   } else {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line "
               << __LINE__ << std::endl;
@@ -63,6 +75,8 @@ void Z4c_AMR::Refine(MeshBlockPack *pmy_pack) {
     RefineChiMin(pmy_pack);
   } else if (method == dChi) {
     RefineDchiMax(pmy_pack);
+  } else if (method == Loehner) {
+    RefineLoehner(pmy_pack);
   }
   RefineRadii(pmy_pack);
 }
@@ -218,6 +232,111 @@ void Z4c_AMR::RefineDchiMax(MeshBlockPack *pmbp) {
         refine_flag.d_view(m + mbs) = -1;
       }
     });
+
+  // sync host and device
+  refine_flag.template modify<DevExeSpace>();
+  refine_flag.template sync<HostMemSpace>();
+}
+
+void Z4c_AMR::RefineLoehner(MeshBlockPack *pmbp) {
+  Mesh *pmesh       = pmbp->pmesh;
+  int nmb           = pmbp->nmb_thispack;
+  int mbs           = pmesh->gids_eachrank[global_variable::my_rank];
+  auto &refine_flag = pmesh->pmr->refine_flag;
+  auto &indcs       = pmesh->mb_indcs;
+  int &is = indcs.is; int &ie = indcs.ie;
+  int &js = indcs.js; int &je = indcs.je;
+  int &ks = indcs.ks; int &ke = indcs.ke;
+  int nx1 = indcs.nx1; int nx2 = indcs.nx2; int nx3 = indcs.nx3;
+  int ng = indcs.ng;
+  int ncell1 = nx1 + 2 * ng; int ncell2 = nx2 + 2 * ng; int ncell3 = nx3 + 2 * ng;
+  const int nkji = nx3 * nx2 * nx1;
+  const int nji  = nx2 * nx1;
+  auto &u0       = pmbp->pz4c->u0;
+
+  auto &loehner_threshold = this->loehner_threshold;
+  Real eps = 0.01;
+
+  // compute refinement variable
+  DvceArray4D<Real> var;
+  Kokkos::realloc(var, nmb, ncell3, ncell2, ncell1);
+  if (loehner_var == alp_psi7) {
+    par_for("Calc_refine_var", DevExeSpace(), 0,nmb-1,ks-2,ke+2,js-2,je+2,is-2,ie+2,
+    KOKKOS_LAMBDA(const int m, const int k, const int j, const int i){
+      Real alp = u0(m, pmbp->pz4c->I_Z4C_ALPHA, k, j, i);
+      Real chi = u0(m, pmbp->pz4c->I_Z4C_CHI, k, j, i);
+      var(m,k,j,i) = alp * std::pow(chi, -1.75);
+    });
+  }
+
+  // compute first derivatives
+  DvceArray5D<Real> dvar, abs_dvar;
+  Kokkos::realloc(dvar, nmb, 3, ncell3, ncell2, ncell1);
+  Kokkos::realloc(abs_dvar, nmb, 3, ncell3, ncell2, ncell1);
+  par_for("Calc_dvar", DevExeSpace(), 0,nmb-1,ks-1,ke+1,js-1,je+1,is-1,ie+1,
+  KOKKOS_LAMBDA(const int m, const int k, const int j, const int i){
+    // dvar/dx1
+    dvar(m,0,k,j,i) = var(m,k,j,i+1) - var(m,k,j,i-1);
+    abs_dvar(m,0,k,j,i) = fabs(var(m,k,j,i+1)) + fabs(var(m,k,j,i-1));
+    // dvar/dx2
+    dvar(m,1,k,j,i) = var(m,k,j+1,i) - var(m,k,j-1,i);
+    abs_dvar(m,1,k,j,i) = fabs(var(m,k,j+1,i)) + fabs(var(m,k,j-1,i));
+    // dvar/dx3
+    dvar(m,2,k,j,i) = var(m,k+1,j,i) - var(m,k-1,j,i);
+    abs_dvar(m,2,k,j,i) = fabs(var(m,k+1,j,i)) + fabs(var(m,k-1,j,i));
+  });
+
+  par_for_outer(
+  "Z4c_AMR::Loehner", DevExeSpace(), 0, 0, 0, (nmb - 1),
+  KOKKOS_LAMBDA(TeamMember_t tmember, const int m) {
+    Real team_dmax;
+    Kokkos::parallel_reduce(
+      Kokkos::TeamThreadRange(tmember, nkji),
+      [=](const int idx, Real &dmax) {
+        int k = (idx) / nji;
+        int j = (idx - k * nji) / nx1;
+        int i = (idx - k * nji - j * nx1) + is;
+        j += js;
+        k += ks;
+
+        Real ddvar1[3][3], ddvar2[3][3], ddvar3[3][3];
+        for (int d = 0; d < 3; ++d) {
+          // second derivatives
+          ddvar1[0][d] = dvar(m,d,k,j,i+1) - dvar(m,d,k,j,i-1);
+          ddvar1[1][d] = dvar(m,d,k,j+1,i) - dvar(m,d,k,j-1,i);
+          ddvar1[2][d] = dvar(m,d,k+1,j,i) - dvar(m,d,k-1,j,i);
+
+          ddvar2[0][d] = fabs(dvar(m,d,k,j,i+1)) + fabs(dvar(m,d,k,j,i-1));
+          ddvar2[1][d] = fabs(dvar(m,d,k,j+1,i)) + fabs(dvar(m,d,k,j-1,i));
+          ddvar2[2][d] = fabs(dvar(m,d,k+1,j,i)) + fabs(dvar(m,d,k-1,j,i));
+
+          ddvar3[0][d] = abs_dvar(m,d,k,j,i+1) + abs_dvar(m,d,k,j,i-1);
+          ddvar3[1][d] = abs_dvar(m,d,k,j+1,i) + abs_dvar(m,d,k,j-1,i);
+          ddvar3[2][d] = abs_dvar(m,d,k+1,j,i) + abs_dvar(m,d,k-1,j,i);
+        }
+
+        Real num = 0.0;
+        Real den = 0.0;
+        for (int d = 0; d < 3; ++d) {
+          for (int dd = 0; dd < 3; ++dd) {
+            num += ddvar1[dd][d] * ddvar1[dd][d];
+            Real tmp = ddvar2[dd][d] + (eps * ddvar3[dd][d] + 1e-99);
+            den += tmp * tmp;
+          }
+        }
+        Real loehner_error = sqrt(num / den);
+        dmax = fmax(loehner_error, dmax);
+      },
+      Kokkos::Max<Real>(team_dmax));
+
+    if (team_dmax > loehner_threshold) {
+      refine_flag.d_view(m + mbs) = 1;
+    }
+    // What is derefinement criterion?
+    if (team_dmax < 0.1 * loehner_threshold) {
+      refine_flag.d_view(m + mbs) = -1;
+    }
+  });
 
   // sync host and device
   refine_flag.template modify<DevExeSpace>();
