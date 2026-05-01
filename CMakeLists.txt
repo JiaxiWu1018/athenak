@@ -112,6 +112,19 @@ endif()
 
 # add subdirectories for source code and include files
 add_subdirectory(src)
+
+# ---- HDF5 (optional but recommended) -----------------------------------------
+option(Athena_ENABLE_HDF5 "Compile with HDF5 support" ON)
+if (Athena_ENABLE_HDF5)
+  # Ask for the C API and High-Level API
+  find_package(HDF5 REQUIRED COMPONENTS C HL)
+  # Headers and Libraries
+  target_include_directories(athena PRIVATE ${HDF5_INCLUDE_DIRS})
+  target_link_libraries(athena PRIVATE ${HDF5_LIBRARIES})
+  # Optional: define a macro so code can #ifdef around HDF5
+  target_compile_definitions(athena PRIVATE ATHENA_HAVE_HDF5=1)
+endif()
+
 add_subdirectory(kokkos)
 include_directories(${Kokkos_INCLUDE_DIRS_RET})
 
