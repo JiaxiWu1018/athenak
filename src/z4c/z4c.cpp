@@ -13,6 +13,7 @@
 #include <string>
 #include <algorithm>
 #include <memory>    // make_unique, unique_ptr
+#include <cstdlib>
 #include <vector>    // vector
 #include <Kokkos_Core.hpp>
 
@@ -38,6 +39,7 @@ char const * const Z4c::Z4c_names[Z4c::nz4c] = {
   "z4c_Theta",
   "z4c_alpha",
   "z4c_betax", "z4c_betay", "z4c_betaz",
+  "z4c_Bx", "z4c_By", "z4c_Bz",
 };
 
 char const * const Z4c::Constraint_names[Z4c::ncon] = {
@@ -87,6 +89,9 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
   Kokkos::realloc(u1,    nmb, (nz4c), ncells3, ncells2, ncells1);
   Kokkos::realloc(u_rhs, nmb, (nz4c), ncells3, ncells2, ncells1);
   Kokkos::realloc(u_weyl,    nmb, (2), ncells3, ncells2, ncells1);
+  Kokkos::deep_copy(DevExeSpace(), u0, 0.0);
+  Kokkos::deep_copy(DevExeSpace(), u1, 0.0);
+  Kokkos::deep_copy(DevExeSpace(), u_rhs, 0.0);
 
   con.C.InitWithShallowSlice(u_con, I_CON_C);
   con.H.InitWithShallowSlice(u_con, I_CON_H);
@@ -101,6 +106,7 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
 
   z4c.alpha.InitWithShallowSlice (u0, I_Z4C_ALPHA);
   z4c.beta_u.InitWithShallowSlice(u0, I_Z4C_BETAX, I_Z4C_BETAZ);
+  z4c.b_u.InitWithShallowSlice   (u0, I_Z4C_BX, I_Z4C_BZ);
   z4c.chi.InitWithShallowSlice   (u0, I_Z4C_CHI);
   z4c.vKhat.InitWithShallowSlice  (u0, I_Z4C_KHAT);
   z4c.vTheta.InitWithShallowSlice (u0, I_Z4C_THETA);
@@ -110,6 +116,7 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
 
   rhs.alpha.InitWithShallowSlice (u_rhs, I_Z4C_ALPHA);
   rhs.beta_u.InitWithShallowSlice(u_rhs, I_Z4C_BETAX, I_Z4C_BETAZ);
+  rhs.b_u.InitWithShallowSlice   (u_rhs, I_Z4C_BX, I_Z4C_BZ);
   rhs.chi.InitWithShallowSlice   (u_rhs, I_Z4C_CHI);
   rhs.vKhat.InitWithShallowSlice  (u_rhs, I_Z4C_KHAT);
   rhs.vTheta.InitWithShallowSlice (u_rhs, I_Z4C_THETA);
@@ -143,6 +150,17 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
   opt.shift_hh = pin->GetOrAddReal("z4c", "shift_H", 0.0);
 
   opt.shift_eta = pin->GetOrAddReal("z4c", "shift_eta", 2.0);
+  std::string shift_driver = pin->GetOrAddString("z4c", "shift_driver", "legacy");
+  if (shift_driver == "legacy") {
+    opt.shift_use_B = false;
+  } else if (shift_driver == "gamma_driver_B") {
+    opt.shift_use_B = true;
+  } else {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+              << "z4c/shift_driver='" << shift_driver
+              << "' is invalid. Use 'legacy' or 'gamma_driver_B'." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
 
   opt.use_z4c = pin->GetOrAddBoolean("z4c", "use_z4c", true);
 
