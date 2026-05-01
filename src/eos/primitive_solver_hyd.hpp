@@ -134,7 +134,12 @@ class PrimitiveSolverHydro {
     SetPolicyParams(block, pin);
     Real mb = ps.GetEOS().GetBaryonMass();
     ps.GetEOSMutable().SetDensityFloor(pin->GetOrAddReal(block, "dfloor", (FLT_MIN))/mb);
-    ps.GetEOSMutable().SetTemperatureFloor(pin->GetOrAddReal(block, "tfloor", (FLT_MIN)));
+    if (pin->DoesParameterExist(block, "tfloor")) {
+      ps.GetEOSMutable().SetTemperatureFloor(pin->GetReal(block, "tfloor"));
+    } else {
+      Real p_atm = pin->GetReal(block, "pfloor");
+      ps.GetEOSMutable().SetTemperatureFloorFromP(p_atm);
+    }
     ps.GetEOSMutable().SetThreshold(pin->GetOrAddReal(block, "dthreshold", 1.0));
     ps.tol = pin->GetOrAddReal(block, "c2p_tol", 1e-15);
     ps.GetRootSolverMutable().iterations = pin->GetOrAddInteger(block, "c2p_iter", 50);

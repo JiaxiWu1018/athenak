@@ -454,12 +454,8 @@ void Mesh::WriteMeshStructure() {
           Real &x1max = block.mb_size.h_view(0).x1max;
           Real &x2min = block.mb_size.h_view(0).x2min;
           Real &x2max = block.mb_size.h_view(0).x2max;
-          std::fprintf(fp,"%g %g\n", x1min, x2min);
-          std::fprintf(fp,"%g %g\n", x1max, x2min);
-          std::fprintf(fp,"%g %g\n", x1max, x2max);
-          std::fprintf(fp,"%g %g\n", x1min, x2max);
-          std::fprintf(fp,"%g %g\n", x1min, x2min);
-          std::fprintf(fp,"\n\n");
+          std::fprintf(fp, "%g %g %g %g\n", x1min, x1max, x2min, x2max);
+          std::fprintf(fp, "\n\n");
         }
         if (three_d) { // 3D
           Real &x1min = block.mb_size.h_view(0).x1min;
@@ -468,23 +464,7 @@ void Mesh::WriteMeshStructure() {
           Real &x2max = block.mb_size.h_view(0).x2max;
           Real &x3min = block.mb_size.h_view(0).x3min;
           Real &x3max = block.mb_size.h_view(0).x3max;
-          std::fprintf(fp,"%g %g %g\n", x1min, x2min, x3min);
-          std::fprintf(fp,"%g %g %g\n", x1max, x2min, x3min);
-          std::fprintf(fp,"%g %g %g\n", x1max, x2max, x3min);
-          std::fprintf(fp,"%g %g %g\n", x1min, x2max, x3min);
-          std::fprintf(fp,"%g %g %g\n", x1min, x2min, x3min);
-          std::fprintf(fp,"%g %g %g\n", x1min, x2min, x3max);
-          std::fprintf(fp,"%g %g %g\n", x1max, x2min, x3max);
-          std::fprintf(fp,"%g %g %g\n", x1max, x2min, x3min);
-          std::fprintf(fp,"%g %g %g\n", x1max, x2min, x3max);
-          std::fprintf(fp,"%g %g %g\n", x1max, x2max, x3max);
-          std::fprintf(fp,"%g %g %g\n", x1max, x2max, x3min);
-          std::fprintf(fp,"%g %g %g\n", x1max, x2max, x3max);
-          std::fprintf(fp,"%g %g %g\n", x1min, x2max, x3max);
-          std::fprintf(fp,"%g %g %g\n", x1min, x2max, x3min);
-          std::fprintf(fp,"%g %g %g\n", x1min, x2max, x3max);
-          std::fprintf(fp,"%g %g %g\n", x1min, x2min, x3max);
-          std::fprintf(fp,"%g %g %g\n", x1min, x2min, x3min);
+          std::fprintf(fp, "%g %g %g %g %g %g\n", x1min, x1max, x2min, x2max, x3min, x3max);
           std::fprintf(fp, "\n\n");
         }
       }

@@ -486,6 +486,10 @@ class EOS : public EOSPolicy, public ErrorPolicy {
     T_atm = (floor >= min_T) ? floor : min_T;
   }
 
+  KOKKOS_INLINE_FUNCTION void SetTemperatureFloorFromP(Real p_atm) {
+    T_atm = GetTemperatureFromP(n_atm, p_atm, Y_atm);
+  }
+
   //! \fn void SetSpeciesAtmosphere(Real atmo, int i)
   //  \brief Set the atmosphere abundance used by the EOS ErrorPolicy for species i.
   KOKKOS_INLINE_FUNCTION void SetSpeciesAtmosphere(Real atmo, int i) {
