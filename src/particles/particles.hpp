@@ -20,10 +20,11 @@
 // forward declarations
 
 // constants that enumerate ParticlesPusher options
-enum class ParticlesPusher {drift, leap_frog, lagrangian_tracer, lagrangian_mc};
+enum class ParticlesPusher {drift, leap_frog, lagrangian_tracer, lagrangian_mc,
+                            boris, gr_boris, geo_boris};
 
 // constants that enumerate ParticleTypes
-enum class ParticleType {cosmic_ray};
+enum class ParticleType {cosmic_ray, dust};
 
 //----------------------------------------------------------------------------------------
 //! \struct ParticlesTaskIDs
@@ -36,8 +37,11 @@ struct ParticlesTaskIDs {
   TaskID irecv;
   TaskID sendp;
   TaskID recvp;
+  TaskID newdt;
   TaskID csend;
   TaskID crecv;
+  TaskID energy;
+  TaskID tmunu;
 };
 
 namespace particles {
@@ -53,6 +57,7 @@ class Particles {
 
   // data
   ParticleType particle_type;
+  Real q_over_m;
   int nprtcl_thispack;             // number of particles this MeshBlockPack
   int nrdata, nidata;
 //  DvceArray1D<int>  prtcl_gid;     // GID of MeshBlock containing each par
@@ -60,7 +65,14 @@ class Particles {
 //  DvceArray2D<Real> prtcl_vel;     // velocities
   DvceArray2D<Real> prtcl_rdata;   // real number properties each particle (x,v,etc.)
   DvceArray2D<int>  prtcl_idata;   // integer properties each particle (gid, tag, etc.)
+  Real mass;                // particle mass, later might turn into an array
   Real dtnew;
+
+  // field data
+  DvceArray5D<Real> w0_last; // primitive variables of last timestep
+  DvceArray5D<Real> bcc0_last; // magnetic fields of last timestep
+  DvceArray5D<Real> adm_last; // metric of last timestep
+  DvceArray5D<Real> z4c_last; // z4c variables of last timestep
 
   ParticlesPusher pusher;
 
@@ -73,6 +85,13 @@ class Particles {
   // functions...
   void CreateParticleTags(ParameterInput *pin);
   void AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> tl);
+  void BorisPush();
+  void GR_BorisPush();
+  void Geo_BorisPush();
+  void Geo_BorisInitPush();
+  void read_prtcl_table(const char *fname);
+  template <int NGHOST>
+  void calc_prtcl_energy();
   TaskStatus Push(Driver *pdriver, int stage);
   TaskStatus NewGID(Driver *pdriver, int stage);
   TaskStatus SendCnt(Driver *pdriver, int stage);
@@ -81,6 +100,9 @@ class Particles {
   TaskStatus RecvP(Driver *pdriver, int stage);
   TaskStatus ClearSend(Driver *pdriver, int stage);
   TaskStatus ClearRecv(Driver *pdriver, int stage);
+  TaskStatus NewTimeStep(Driver *pdriver, int stage);
+  TaskStatus EnergyCalculation(Driver *pdriver, int stage);
+  TaskStatus SetPrtclTmunu(Driver *pdriver, int stage);
 
  private:
   MeshBlockPack* pmy_pack;  // ptr to MeshBlockPack containing this Particles

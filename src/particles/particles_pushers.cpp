@@ -17,20 +17,19 @@ namespace particles {
 //  \brief
 
 TaskStatus Particles::Push(Driver *pdriver, int stage) {
-  auto &indcs = pmy_pack->pmesh->mb_indcs;
-  int is = indcs.is;
-  int js = indcs.js;
-  int ks = indcs.ks;
-  bool &multi_d = pmy_pack->pmesh->multi_d;
-  bool &three_d = pmy_pack->pmesh->three_d;
-  auto &mbsize = pmy_pack->pmb->mb_size;
-  auto &pi = prtcl_idata;
-  auto &pr = prtcl_rdata;
-  auto dt_ = (pmy_pack->pmesh->dt);
-  auto gids = pmy_pack->gids;
-
   switch (pusher) {
-    case ParticlesPusher::drift:
+    case ParticlesPusher::drift: {
+      auto &indcs = pmy_pack->pmesh->mb_indcs;
+      int is = indcs.is;
+      int js = indcs.js;
+      int ks = indcs.ks;
+      bool &multi_d = pmy_pack->pmesh->multi_d;
+      bool &three_d = pmy_pack->pmesh->three_d;
+      auto &mbsize = pmy_pack->pmb->mb_size;
+      auto &pi = prtcl_idata;
+      auto &pr = prtcl_rdata;
+      auto dt_ = pmy_pack->pmesh->dt;
+      auto gids = pmy_pack->gids;
 
       par_for("part_update",DevExeSpace(),0,(nprtcl_thispack-1),
       KOKKOS_LAMBDA(const int p) {
@@ -48,10 +47,22 @@ TaskStatus Particles::Push(Driver *pdriver, int stage) {
           pr(IPZ,p) += 0.5*dt_*pr(IPVZ,p);
         }
       });
-
-    break;
-  default:
-    break;
+      break;
+    }
+    case ParticlesPusher::boris: {
+      BorisPush();
+      break;
+    }
+    case ParticlesPusher::gr_boris: {
+      GR_BorisPush();
+      break;
+    }
+    case ParticlesPusher::geo_boris: {
+      Geo_BorisPush();
+      break;
+    }
+    default:
+      break;
   }
 
   return TaskStatus::complete;
