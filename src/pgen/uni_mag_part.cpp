@@ -30,13 +30,6 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     std::exit(EXIT_FAILURE);
   }
 
-  if (pmbp->ppart->pusher == ParticlesPusher::geo_boris) {
-    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "uniform magnetic field particle test does not support geo_boris; "
-              << "use boris or gr_boris" << std::endl;
-    std::exit(EXIT_FAILURE);
-  }
-
   // capture variables for the kernel
   auto &indcs = pmy_mesh_->mb_indcs;
   int &is = indcs.is; int &ie = indcs.ie;
@@ -79,7 +72,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     pmbp->padm->SetADMVariables(pmbp);
   }
 
-  if (pmbp->ppart->pusher == ParticlesPusher::gr_boris) {
+  if (pmbp->ppart->pusher == ParticlesPusher::gr_boris ||
+      pmbp->ppart->pusher == ParticlesPusher::geo_boris) {
     Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->w0_last, w0_);
     Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->bcc0_last, bcc_);
     Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->adm_last, pmbp->padm->u_adm);
