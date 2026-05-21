@@ -12,6 +12,7 @@
 #include "athena.hpp"
 #include "mesh/mesh.hpp"
 #include "particles.hpp"
+#include "boris_utils.hpp"
 #include "lagrange_interp.hpp"
 #include "mhd/mhd.hpp"
 #include "coordinates/cell_locations.hpp"
@@ -52,9 +53,7 @@ void Particles::BorisPush() {
                             size.d_view(mb).x2min, size.d_view(mb).x2max, size.d_view(mb).dx2,
                             size.d_view(mb).x3min, size.d_view(mb).x3max, size.d_view(mb).dx3};
     int interp_indcs[4] = {mb, -1, -1, -1};
-    interp_indcs[1] = static_cast<int>(std::floor((x_nplushalf[0] - (mb_par[0] + mb_par[2] / 2.0)) / mb_par[2]));
-    interp_indcs[2] = static_cast<int>(std::floor((x_nplushalf[1] - (mb_par[3] + mb_par[5] / 2.0)) / mb_par[5]));
-    interp_indcs[3] = static_cast<int>(std::floor((x_nplushalf[2] - (mb_par[6] + mb_par[8] / 2.0)) / mb_par[8]));
+    SetInterpIndices(x_nplushalf, mb_par, ncell, interp_indcs);
     Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
 
     // Perform interpolation to the B field and fluid velocity
@@ -89,35 +88,8 @@ void Particles::BorisPush() {
     E_interp[1] = B_interp[2] * v_interp[0] - B_interp[0] * v_interp[2];
     E_interp[2] = B_interp[0] * v_interp[1] - B_interp[1] * v_interp[0];
 
-    // First half electric field acceleration
-    Real u_minus[3] = {0.0};
-    for (int i = 0; i < 3; ++i) {
-      u_minus[i] = u_n[i] + 0.5 * qom * dt_ * E_interp[i];
-    }
-
-    // Rotation step
-    Real gamma_minus = std::sqrt(1.0 + u_minus[0] * u_minus[0] + u_minus[1] * u_minus[1] + u_minus[2] * u_minus[2]);
-    Real t[3] = {0.0};
-    for (int i = 0; i < 3; ++i) {
-      t[i] = 0.5 * qom * dt_ / gamma_minus * B_interp[i];
-    }
-    Real tsqr = t[0] * t[0] + t[1] * t[1] * t[2] * t[2];
-    Real s[3] = {0.0};
-    for (int i = 0; i < 3; ++i) {
-      s[i] = 2. / (1. + tsqr) * t[i];
-    }
-    Real u_plus[3] = {0.0};
-    for (int i = 0; i < 3; ++i) {
-      u_plus[i] = u_minus[i] + u_minus[(i + 1) % 3] * s[(i + 2) % 3] - u_minus[(i + 2) % 3] * s[(i + 1) % 3] -
-                  (s[0] * t[0] + s[1] * t[1] + s[2] * t[2]) * u_minus[i] +
-                  (s[0] * u_minus[0] + s[1] * u_minus[1] + s[2] * u_minus[2]) * t[i];
-    }
-
-    // Second half electric field acceleration
     Real u_nplus1[3] = {0.0};
-    for (int i = 0; i < 3; ++i) {
-      u_nplus1[i] = u_plus[i] + 0.5 * dt_ * qom * E_interp[i];
-    }
+    FlatBorisPush(u_nplus1, u_n, E_interp, B_interp, qom, dt_);
 
     // Second flat Boris push
     Real gamma_nplus1 = std::sqrt(1.0 + u_nplus1[0] * u_nplus1[0] + u_nplus1[1] * u_nplus1[1] + u_nplus1[2] * u_nplus1[2]);

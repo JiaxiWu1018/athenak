@@ -392,21 +392,23 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
         }
       }
 
-      // reset x,y,z positions if particle crosses Mesh boundary using periodic BCs
-      if (x1 < meshsize.x1min) {
-        pr_(IPX,p) += (meshsize.x1max - meshsize.x1min);
-      } else if (x1 > meshsize.x1max) {
-        pr_(IPX,p) -= (meshsize.x1max - meshsize.x1min);
-      }
-      if (x2 < meshsize.x2min) {
-        pr_(IPY,p) += (meshsize.x2max - meshsize.x2min);
-      } else if (x2 > meshsize.x2max) {
-        pr_(IPY,p) -= (meshsize.x2max - meshsize.x2min);
-      }
-      if (x3 < meshsize.x3min) {
-        pr_(IPZ,p) += (meshsize.x3max - meshsize.x3min);
-      } else if (x3 > meshsize.x3max) {
-        pr_(IPZ,p) -= (meshsize.x3max - meshsize.x3min);
+      // Keep positions inside the global mesh after periodic neighbor reassignment.
+      if (periodic) {
+        if (x1 < meshsize.x1min) {
+          pr_(IPX,p) += (meshsize.x1max - meshsize.x1min);
+        } else if (x1 >= meshsize.x1max) {
+          pr_(IPX,p) -= (meshsize.x1max - meshsize.x1min);
+        }
+        if (x2 < meshsize.x2min) {
+          pr_(IPY,p) += (meshsize.x2max - meshsize.x2min);
+        } else if (x2 >= meshsize.x2max) {
+          pr_(IPY,p) -= (meshsize.x2max - meshsize.x2min);
+        }
+        if (x3 < meshsize.x3min) {
+          pr_(IPZ,p) += (meshsize.x3max - meshsize.x3min);
+        } else if (x3 >= meshsize.x3max) {
+          pr_(IPZ,p) -= (meshsize.x3max - meshsize.x3min);
+        }
       }
     }
   });

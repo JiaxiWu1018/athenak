@@ -12,6 +12,7 @@
 #include "athena.hpp"
 #include "mesh/mesh.hpp"
 #include "particles.hpp"
+#include "boris_utils.hpp"
 #include "lagrange_interp.hpp"
 #include "calc_tetrad.hpp"
 #include "mhd/mhd.hpp"
@@ -22,37 +23,6 @@
 #include "eos/primitive-solver/geom_math.hpp"
 
 namespace particles {
-
-KOKKOS_INLINE_FUNCTION
-void FlatPush(Real uhat_pushed[3], const Real uhat[3], const Real Ehat[3],
-              const Real Bhat[3], const Real qom, const Real dt) {
-  // First half electric field acceleration
-  Real u_minus[3] = {0.0};
-  for (int i = 0; i < 3; ++i) {
-    u_minus[i] = uhat[i] + 0.5 * qom * dt * Ehat[i];
-  }
-  // Rotation step
-  Real gamma_minus = std::sqrt(1.0 + u_minus[0] * u_minus[0] + u_minus[1] * u_minus[1] + u_minus[2] * u_minus[2]);
-  Real t[3] = {0.0};
-  for (int i = 0; i < 3; ++i) {
-    t[i] = 0.5 * qom * dt / gamma_minus * Bhat[i];
-  }
-  Real tsqr = t[0] * t[0] + t[1] * t[1] + t[2] * t[2];
-  Real s[3] = {0.0};
-  for (int i = 0; i < 3; ++i) {
-    s[i] = 2. / (1. + tsqr) * t[i];
-  }
-  Real s_dot_t = s[0] * t[0] + s[1] * t[1] + s[2] * t[2];
-  Real s_dot_u_minus = s[0] * u_minus[0] + s[1] * u_minus[1] + s[2] * u_minus[2];
-  Real u_plus[3] = {0.0};
-  u_plus[0] = u_minus[0] + u_minus[1] * s[2] - u_minus[2] * s[1] - s_dot_t * u_minus[0] + s_dot_u_minus * t[0];
-  u_plus[1] = u_minus[1] + u_minus[2] * s[0] - u_minus[0] * s[2] - s_dot_t * u_minus[1] + s_dot_u_minus * t[1];
-  u_plus[2] = u_minus[2] + u_minus[0] * s[1] - u_minus[1] * s[0] - s_dot_t * u_minus[2] + s_dot_u_minus * t[2];
-  // Second half electric field acceleration
-  for (int i = 0; i < 3; ++i) {
-    uhat_pushed[i] = u_plus[i] + 0.5 * dt * qom * Ehat[i];
-  }
-}
 
 template <int NG>
 struct GeodesicPush {
@@ -81,9 +51,7 @@ struct GeodesicPush {
       u_mid[i] = 0.5 * (uin[i] + u_old[i]); // u_mid = u_old for Euler step
     }
     int interp_indcs[4] = {mb, -1, -1, -1};
-    interp_indcs[1] = static_cast<int>(std::floor((x_mid[0] - (mb_par[0] + mb_par[2] / 2.0)) / mb_par[2]));
-    interp_indcs[2] = static_cast<int>(std::floor((x_mid[1] - (mb_par[3] + mb_par[5] / 2.0)) / mb_par[5]));
-    interp_indcs[3] = static_cast<int>(std::floor((x_mid[2] - (mb_par[6] + mb_par[8] / 2.0)) / mb_par[8]));
+    SetInterpIndices(x_mid, mb_par, ncell, interp_indcs);
     Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
     Real dLx[8] = {0.0}, dLy[8] = {0.0}, dLz[8] = {0.0};
     CalcInterpWghtAndDrv<NG>(x_mid, mb_par, ncell, interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
@@ -321,9 +289,7 @@ void Particles::GR_BorisPush() {
     if (use_mhd) {
       // (i) Interpolate B field and fluid velocity
       int interp_indcs[4] = {mb, -1, -1, -1};
-      interp_indcs[1] = static_cast<int>(std::floor((x_n[0] - (mb_par[0] + mb_par[2] / 2.0)) / mb_par[2]));
-      interp_indcs[2] = static_cast<int>(std::floor((x_n[1] - (mb_par[3] + mb_par[5] / 2.0)) / mb_par[5]));
-      interp_indcs[3] = static_cast<int>(std::floor((x_n[2] - (mb_par[6] + mb_par[8] / 2.0)) / mb_par[8]));
+      SetInterpIndices(x_n, mb_par, ncell, interp_indcs);
       Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
       switch (ng) {
       case 2: {
@@ -411,7 +377,7 @@ void Particles::GR_BorisPush() {
       TetradCvrtU(Bhat_interp_n, B_interp_n, tetrad);
       // (ii) Push the particle
       Real uhat_p[3] = {0.0};
-      FlatPush(uhat_p, uhat_n, Ehat_interp_n, Bhat_interp_n, qom, 0.5 * dt_);
+      FlatBorisPush(uhat_p, uhat_n, Ehat_interp_n, Bhat_interp_n, qom, 0.5 * dt_);
       // (iii) Convert back to coordinate basis at x=x^n
       TetradCvrtL(u_p, uhat_p, tetrad);
     } else {
@@ -452,9 +418,7 @@ void Particles::GR_BorisPush() {
     if (use_mhd) {
       int interp_indcs[4] = {mb, -1, -1, -1};
       // (i) Interpolate B field and fluid velocity
-      interp_indcs[1] = static_cast<int>(std::floor((x_np1[0] - (mb_par[0] + mb_par[2] / 2.0)) / mb_par[2]));
-      interp_indcs[2] = static_cast<int>(std::floor((x_np1[1] - (mb_par[3] + mb_par[5] / 2.0)) / mb_par[5]));
-      interp_indcs[3] = static_cast<int>(std::floor((x_np1[2] - (mb_par[6] + mb_par[8] / 2.0)) / mb_par[8]));
+      SetInterpIndices(x_np1, mb_par, ncell, interp_indcs);
       // Initialize interpolation array
       Real B_interp_np1[3] = {0.0}, v_interp_np1[3] = {0.0};
       Real alp_np1 = 0.0, beta_np1[3] = {0.0}, g3d_np1[6] = {0.0};
@@ -545,7 +509,7 @@ void Particles::GR_BorisPush() {
       TetradCvrtU(Bhat_interp_np1, B_interp_np1, tetrad);
       // (ii) Push the particle
       Real uhat_np1[3] = {0.0};
-      FlatPush(uhat_np1, uhat_pp, Ehat_interp_np1, Bhat_interp_np1, qom, 0.5 * dt_);
+      FlatBorisPush(uhat_np1, uhat_pp, Ehat_interp_np1, Bhat_interp_np1, qom, 0.5 * dt_);
       // (iii) Convert back to coordinate basis at x=x^{n+1}
       TetradCvrtL(u_np1, uhat_np1, tetrad);
     } else {
