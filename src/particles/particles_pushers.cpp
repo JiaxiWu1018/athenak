@@ -61,6 +61,10 @@ TaskStatus Particles::Push(Driver *pdriver, int stage) {
       Geo_BorisPush();
       break;
     }
+    case ParticlesPusher::geo_boris_fw: {
+      Geo_BorisFWPush();
+      break;
+    }
     default:
       break;
   }

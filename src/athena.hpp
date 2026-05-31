@@ -64,7 +64,7 @@ enum MetricIndex {I00=0, I01=1, I02=2, I03=3, I11=4, I12=5, I13=6, I22=7, I23=8,
                   NMETRIC=10};
 // array indices for particle arrays
 enum ParticlesIndex {PGID=0, PTAG=1, IPX=0, IPY=1, IPZ=2, IPVX=3, IPVY=4, IPVZ=5,
-                     IPEN=6, IPLX=7, IPLY=8, IPLZ=9};
+                     IPEN=6, IPLX=7, IPLY=8, IPLZ=9, IPFW=10};
 
 // integer constants to specify spatial reconstruction methods
 enum ReconstructionMethod {dc, plm, ppm4, ppmx, wenoz};

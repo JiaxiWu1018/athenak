@@ -12,6 +12,7 @@
 #include <iostream>
 
 #include "athena.hpp"
+#include "globals.hpp"
 #include "mesh/mesh.hpp"
 #include "particles.hpp"
 #include "boris_utils.hpp"
@@ -538,6 +539,494 @@ void GetADMVariables(Real &alp, Real *beta, Real *g3d, const Real *x_mid,
   }
 }
 
+KOKKOS_INLINE_FUNCTION
+int Sym3Index(const int i, const int j) {
+  const int a = (i < j) ? i : j;
+  const int b = (i < j) ? j : i;
+  if (a == 0 && b == 0) return 0;
+  if (a == 0 && b == 1) return 1;
+  if (a == 0 && b == 2) return 2;
+  if (a == 1 && b == 1) return 3;
+  if (a == 1 && b == 2) return 4;
+  return 5;
+}
+
+KOKKOS_INLINE_FUNCTION
+Real Sym3Value(const Real g[6], const int i, const int j) {
+  return g[Sym3Index(i, j)];
+}
+
+KOKKOS_INLINE_FUNCTION
+void FourVelocityFromCovMomentum(const Real alp, const Real beta[3], const Real g3d[6],
+                                 const Real u_l[3], Real U[4]) {
+  Real g3u[6] = {0.0};
+  Primitive::InvertMatrix(g3u, g3d, Primitive::GetDeterminant(g3d));
+  Real u_u[3] = {0.0};
+  Primitive::RaiseForm(u_u, u_l, g3u);
+  const Real W = std::sqrt(1.0 + Primitive::Contract(u_u, u_l));
+  U[0] = W / alp;
+  for (int i = 0; i < 3; ++i) {
+    U[i + 1] = u_u[i] - beta[i] * U[0];
+  }
+}
+
+KOKKOS_INLINE_FUNCTION
+void BuildMetricAndChristoffel(const Real alp, const Real beta[3], const Real g3d[6],
+                               const Real dalp[4], const Real dbeta[4][3],
+                               const Real dg3d[4][6],
+                               Real gcov[4][4], Real gcon[4][4],
+                               Real Gamma[4][4][4]) {
+  Real g3u[6] = {0.0};
+  Primitive::InvertMatrix(g3u, g3d, Primitive::GetDeterminant(g3d));
+
+  Real beta_l[3] = {0.0};
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      beta_l[i] += Sym3Value(g3d, i, j) * beta[j];
+    }
+  }
+
+  for (int mu = 0; mu < 4; ++mu) {
+    for (int nu = 0; nu < 4; ++nu) {
+      gcov[mu][nu] = 0.0;
+      gcon[mu][nu] = 0.0;
+    }
+  }
+
+  gcov[0][0] = -alp * alp;
+  for (int i = 0; i < 3; ++i) {
+    gcov[0][0] += beta_l[i] * beta[i];
+    gcov[0][i + 1] = beta_l[i];
+    gcov[i + 1][0] = beta_l[i];
+  }
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      gcov[i + 1][j + 1] = Sym3Value(g3d, i, j);
+    }
+  }
+
+  const Real ialp2 = 1.0 / (alp * alp);
+  gcon[0][0] = -ialp2;
+  for (int i = 0; i < 3; ++i) {
+    gcon[0][i + 1] = beta[i] * ialp2;
+    gcon[i + 1][0] = beta[i] * ialp2;
+  }
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      gcon[i + 1][j + 1] = Sym3Value(g3u, i, j) - beta[i] * beta[j] * ialp2;
+    }
+  }
+
+  Real dgcov[4][4][4] = {0.0};
+  for (int d = 1; d < 4; ++d) {
+    Real dbeta_l[3] = {0.0};
+    for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        dbeta_l[i] += Sym3Value(dg3d[d], i, j) * beta[j]
+                    + Sym3Value(g3d, i, j) * dbeta[d][j];
+      }
+    }
+
+    Real dshift2 = 0.0;
+    for (int i = 0; i < 3; ++i) {
+      dshift2 += dbeta_l[i] * beta[i] + beta_l[i] * dbeta[d][i];
+    }
+    dgcov[d][0][0] = -2.0 * alp * dalp[d] + dshift2;
+    for (int i = 0; i < 3; ++i) {
+      dgcov[d][0][i + 1] = dbeta_l[i];
+      dgcov[d][i + 1][0] = dbeta_l[i];
+    }
+    for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        dgcov[d][i + 1][j + 1] = Sym3Value(dg3d[d], i, j);
+      }
+    }
+  }
+
+  for (int mu = 0; mu < 4; ++mu) {
+    for (int nu = 0; nu < 4; ++nu) {
+      for (int lam = 0; lam < 4; ++lam) {
+        Real sum = 0.0;
+        for (int sig = 0; sig < 4; ++sig) {
+          sum += gcon[mu][sig] * (dgcov[nu][sig][lam] + dgcov[lam][sig][nu]
+                                - dgcov[sig][nu][lam]);
+        }
+        Gamma[mu][nu][lam] = 0.5 * sum;
+      }
+    }
+  }
+}
+
+template<int NG>
+KOKKOS_INLINE_FUNCTION
+void GetStationaryADMAndChristoffel(Real &alp, Real beta[3], Real g3d[6],
+                                    Real gcov[4][4], Real gcon[4][4],
+                                    Real Gamma[4][4][4], const Real x[3],
+                                    const int mb, const Real mb_par[9],
+                                    const int ncell[3],
+                                    const DvceArray5D<Real> &adm_n) {
+  int interp_indcs[4] = {mb, -1, -1, -1};
+  SetInterpIndices(x, mb_par, ncell, interp_indcs);
+  constexpr int N = 2 * NG;
+  Real Lx[N] = {0.0}, Ly[N] = {0.0}, Lz[N] = {0.0};
+  Real dLx[N] = {0.0}, dLy[N] = {0.0}, dLz[N] = {0.0};
+  CalcInterpWghtAndDrv<NG>(x, mb_par, ncell, interp_indcs,
+                           Lx, Ly, Lz, dLx, dLy, dLz);
+
+  Real dalp[4] = {0.0}, dbeta[4][3] = {0.0}, dg3d[4][6] = {0.0};
+  alp = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_ALPHA, interp_indcs,
+                                 Lx, Ly, Lz);
+  dalp[1] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_ALPHA, interp_indcs,
+                                     dLx, Ly, Lz);
+  dalp[2] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_ALPHA, interp_indcs,
+                                     Lx, dLy, Lz);
+  dalp[3] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_ALPHA, interp_indcs,
+                                     Lx, Ly, dLz);
+  for (int i = 0; i < 3; ++i) {
+    beta[i] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_BETAX + i,
+                                       interp_indcs, Lx, Ly, Lz);
+    dbeta[1][i] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_BETAX + i,
+                                           interp_indcs, dLx, Ly, Lz);
+    dbeta[2][i] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_BETAX + i,
+                                           interp_indcs, Lx, dLy, Lz);
+    dbeta[3][i] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_BETAX + i,
+                                           interp_indcs, Lx, Ly, dLz);
+  }
+  for (int i = 0; i < 6; ++i) {
+    g3d[i] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_GXX + i,
+                                      interp_indcs, Lx, Ly, Lz);
+    dg3d[1][i] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_GXX + i,
+                                          interp_indcs, dLx, Ly, Lz);
+    dg3d[2][i] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_GXX + i,
+                                          interp_indcs, Lx, dLy, Lz);
+    dg3d[3][i] = LagrangeInterpolator<NG>(adm_n, adm::ADM::I_ADM_GXX + i,
+                                          interp_indcs, Lx, Ly, dLz);
+  }
+
+  BuildMetricAndChristoffel(alp, beta, g3d, dalp, dbeta, dg3d, gcov, gcon, Gamma);
+}
+
+KOKKOS_INLINE_FUNCTION
+void LowerFourVelocity(const Real gcov[4][4], const Real U[4], Real U_l[4]) {
+  for (int mu = 0; mu < 4; ++mu) {
+    U_l[mu] = 0.0;
+    for (int nu = 0; nu < 4; ++nu) {
+      U_l[mu] += gcov[mu][nu] * U[nu];
+    }
+  }
+}
+
+KOKKOS_INLINE_FUNCTION
+void FrameComponentsFromFourVelocity(const Real e[4][4], const Real gcov[4][4],
+                                     const Real U[4], Real Uhat[4]) {
+  Real U_l[4] = {0.0};
+  LowerFourVelocity(gcov, U, U_l);
+  for (int a = 0; a < 4; ++a) {
+    Real comp = 0.0;
+    for (int mu = 0; mu < 4; ++mu) {
+      comp += e[a][mu] * U_l[mu];
+    }
+    Uhat[a] = (a == 0) ? -comp : comp;
+  }
+  Uhat[0] = std::sqrt(1.0 + Uhat[1] * Uhat[1]
+                          + Uhat[2] * Uhat[2]
+                          + Uhat[3] * Uhat[3]);
+}
+
+KOKKOS_INLINE_FUNCTION
+void FourVelocityFromFrameComponents(const Real e[4][4], const Real Uhat[4], Real U[4]) {
+  for (int mu = 0; mu < 4; ++mu) {
+    U[mu] = 0.0;
+    for (int a = 0; a < 4; ++a) {
+      U[mu] += e[a][mu] * Uhat[a];
+    }
+  }
+}
+
+template<int NG>
+KOKKOS_INLINE_FUNCTION
+void GeoBorisFWDeriv(const Real x[3], const Real e[4][4], const Real Uhat[4],
+                     const int mb, const Real mb_par[9], const int ncell[3],
+                     const DvceArray5D<Real> &adm_n,
+                     Real dxdt[3], Real dedt[4][4]) {
+  Real alp = 0.0, beta[3] = {0.0}, g3d[6] = {0.0};
+  Real gcov[4][4] = {0.0}, gcon[4][4] = {0.0}, Gamma[4][4][4] = {0.0};
+  GetStationaryADMAndChristoffel<NG>(alp, beta, g3d, gcov, gcon, Gamma,
+                                     x, mb, mb_par, ncell, adm_n);
+  Real U[4] = {0.0};
+  FourVelocityFromFrameComponents(e, Uhat, U);
+  const Real iUt = 1.0 / U[0];
+  for (int i = 0; i < 3; ++i) {
+    dxdt[i] = U[i + 1] * iUt;
+  }
+  for (int a = 0; a < 4; ++a) {
+    for (int mu = 0; mu < 4; ++mu) {
+      dedt[a][mu] = 0.0;
+      for (int nu = 0; nu < 4; ++nu) {
+        for (int lam = 0; lam < 4; ++lam) {
+          dedt[a][mu] -= Gamma[mu][nu][lam] * e[a][nu] * U[lam] * iUt;
+        }
+      }
+    }
+  }
+}
+
+template<int NG>
+KOKKOS_INLINE_FUNCTION
+void GeoBorisFWAdvance(const Real x0[3], const Real e0[4][4], const Real Uhat[4],
+                       const int mb, const Real mb_par[9], const int ncell[3],
+                       const Real dt, const DvceArray5D<Real> &adm_n,
+                       Real x1[3], Real e1[4][4]) {
+  Real k1x[3] = {0.0}, k2x[3] = {0.0}, k3x[3] = {0.0}, k4x[3] = {0.0};
+  Real k1e[4][4] = {0.0}, k2e[4][4] = {0.0};
+  Real k3e[4][4] = {0.0}, k4e[4][4] = {0.0};
+  Real xt[3] = {0.0}, et[4][4] = {0.0};
+
+  GeoBorisFWDeriv<NG>(x0, e0, Uhat, mb, mb_par, ncell, adm_n, k1x, k1e);
+  for (int i = 0; i < 3; ++i) {
+    xt[i] = x0[i] + 0.5 * dt * k1x[i];
+  }
+  for (int a = 0; a < 4; ++a) {
+    for (int mu = 0; mu < 4; ++mu) {
+      et[a][mu] = e0[a][mu] + 0.5 * dt * k1e[a][mu];
+    }
+  }
+
+  GeoBorisFWDeriv<NG>(xt, et, Uhat, mb, mb_par, ncell, adm_n, k2x, k2e);
+  for (int i = 0; i < 3; ++i) {
+    xt[i] = x0[i] + 0.5 * dt * k2x[i];
+  }
+  for (int a = 0; a < 4; ++a) {
+    for (int mu = 0; mu < 4; ++mu) {
+      et[a][mu] = e0[a][mu] + 0.5 * dt * k2e[a][mu];
+    }
+  }
+
+  GeoBorisFWDeriv<NG>(xt, et, Uhat, mb, mb_par, ncell, adm_n, k3x, k3e);
+  for (int i = 0; i < 3; ++i) {
+    xt[i] = x0[i] + dt * k3x[i];
+  }
+  for (int a = 0; a < 4; ++a) {
+    for (int mu = 0; mu < 4; ++mu) {
+      et[a][mu] = e0[a][mu] + dt * k3e[a][mu];
+    }
+  }
+
+  GeoBorisFWDeriv<NG>(xt, et, Uhat, mb, mb_par, ncell, adm_n, k4x, k4e);
+  for (int i = 0; i < 3; ++i) {
+    x1[i] = x0[i] + dt * (k1x[i] + 2.0 * k2x[i] + 2.0 * k3x[i] + k4x[i]) / 6.0;
+  }
+  for (int a = 0; a < 4; ++a) {
+    for (int mu = 0; mu < 4; ++mu) {
+      e1[a][mu] = e0[a][mu]
+                + dt * (k1e[a][mu] + 2.0 * k2e[a][mu]
+                      + 2.0 * k3e[a][mu] + k4e[a][mu]) / 6.0;
+    }
+  }
+}
+
+KOKKOS_INLINE_FUNCTION
+void StoreCovMomentumAndHalfPosition(const Real x[3], const Real e[4][4],
+                                     const Real Uhat[4], const Real gcov[4][4],
+                                     const Real dt, Real u_l[3],
+                                     Real x_half[3]) {
+  Real U[4] = {0.0}, U_cov[4] = {0.0};
+  FourVelocityFromFrameComponents(e, Uhat, U);
+  LowerFourVelocity(gcov, U, U_cov);
+  const Real iUt = 1.0 / U[0];
+  for (int i = 0; i < 3; ++i) {
+    u_l[i] = U_cov[i + 1];
+    x_half[i] = x[i] + 0.5 * dt * U[i + 1] * iUt;
+  }
+}
+
+KOKKOS_INLINE_FUNCTION
+Real TetradOrthonormalityError(const Real e[4][4], const Real gcov[4][4]) {
+  Real err = 0.0;
+  for (int a = 0; a < 4; ++a) {
+    for (int b = 0; b < 4; ++b) {
+      Real dot = 0.0;
+      for (int mu = 0; mu < 4; ++mu) {
+        for (int nu = 0; nu < 4; ++nu) {
+          dot += gcov[mu][nu] * e[a][mu] * e[b][nu];
+        }
+      }
+      const Real target = (a == b) ? ((a == 0) ? -1.0 : 1.0) : 0.0;
+      err = fmax(err, fabs(dot - target));
+    }
+  }
+  return err;
+}
+
+void Particles::Geo_BorisFWPush() {
+  auto &indcs = pmy_pack->pmesh->mb_indcs;
+  int &ng = indcs.ng;
+  auto &size = pmy_pack->pmb->mb_size;
+  int gids = pmy_pack->gids;
+  Real dt_ = pmy_pack->pmesh->dt;
+  auto &pi = prtcl_idata;
+  auto &pr = prtcl_rdata;
+  auto &adm_n = pmy_pack->padm->u_adm;
+
+  if (std::abs(q_over_m) > 0.0) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "geo_boris_fw is geodesic-only in this experimental version"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (pmy_pack->pz4c != nullptr) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "geo_boris_fw currently supports stationary ADM metrics only"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+
+  par_for("geo_boris_fw_push", DevExeSpace(), 0, nprtcl_thispack - 1,
+  KOKKOS_LAMBDA(const int p) {
+    Real x0[3] = {pr(IPLX, p), pr(IPLY, p), pr(IPLZ, p)};
+    Real u0_l[3] = {pr(IPVX, p), pr(IPVY, p), pr(IPVZ, p)};
+    Real e0[4][4] = {0.0};
+    for (int a = 0; a < 4; ++a) {
+      for (int mu = 0; mu < 4; ++mu) {
+        e0[a][mu] = pr(IPFW + 4 * a + mu, p);
+      }
+    }
+
+    int mb = pi(PGID, p) - gids;
+    const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max, size.d_view(mb).dx1,
+                            size.d_view(mb).x2min, size.d_view(mb).x2max, size.d_view(mb).dx2,
+                            size.d_view(mb).x3min, size.d_view(mb).x3max, size.d_view(mb).dx3};
+    int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+
+    Real alp0 = 0.0, beta0[3] = {0.0}, g3d0[6] = {0.0};
+    Real gcov0[4][4] = {0.0}, gcon0[4][4] = {0.0}, Gamma0[4][4][4] = {0.0};
+    switch (ng) {
+    case 2:
+      GetStationaryADMAndChristoffel<2>(alp0, beta0, g3d0, gcov0, gcon0, Gamma0,
+                                        x0, mb, mb_par, ncell, adm_n);
+      break;
+    case 3:
+      GetStationaryADMAndChristoffel<3>(alp0, beta0, g3d0, gcov0, gcon0, Gamma0,
+                                        x0, mb, mb_par, ncell, adm_n);
+      break;
+    case 4:
+      GetStationaryADMAndChristoffel<4>(alp0, beta0, g3d0, gcov0, gcon0, Gamma0,
+                                        x0, mb, mb_par, ncell, adm_n);
+      break;
+    }
+
+    Real U0[4] = {0.0}, Uhat[4] = {0.0};
+    FourVelocityFromCovMomentum(alp0, beta0, g3d0, u0_l, U0);
+    FrameComponentsFromFourVelocity(e0, gcov0, U0, Uhat);
+
+    Real x1[3] = {0.0}, e1[4][4] = {0.0};
+    switch (ng) {
+    case 2:
+      GeoBorisFWAdvance<2>(x0, e0, Uhat, mb, mb_par, ncell, dt_, adm_n, x1, e1);
+      break;
+    case 3:
+      GeoBorisFWAdvance<3>(x0, e0, Uhat, mb, mb_par, ncell, dt_, adm_n, x1, e1);
+      break;
+    case 4:
+      GeoBorisFWAdvance<4>(x0, e0, Uhat, mb, mb_par, ncell, dt_, adm_n, x1, e1);
+      break;
+    }
+
+    Real alp1 = 0.0, beta1[3] = {0.0}, g3d1[6] = {0.0};
+    Real gcov1[4][4] = {0.0}, gcon1[4][4] = {0.0}, Gamma1[4][4][4] = {0.0};
+    switch (ng) {
+    case 2:
+      GetStationaryADMAndChristoffel<2>(alp1, beta1, g3d1, gcov1, gcon1, Gamma1,
+                                        x1, mb, mb_par, ncell, adm_n);
+      break;
+    case 3:
+      GetStationaryADMAndChristoffel<3>(alp1, beta1, g3d1, gcov1, gcon1, Gamma1,
+                                        x1, mb, mb_par, ncell, adm_n);
+      break;
+    case 4:
+      GetStationaryADMAndChristoffel<4>(alp1, beta1, g3d1, gcov1, gcon1, Gamma1,
+                                        x1, mb, mb_par, ncell, adm_n);
+      break;
+    }
+
+    Real u1_l[3] = {0.0}, x_half[3] = {0.0};
+    StoreCovMomentumAndHalfPosition(x1, e1, Uhat, gcov1, dt_, u1_l, x_half);
+
+    bool bad = false;
+    for (int i = 0; i < 3; ++i) {
+      if (!isfinite(x1[i]) || !isfinite(x_half[i]) || !isfinite(u1_l[i])) {
+        bad = true;
+      }
+    }
+    for (int a = 0; a < 4; ++a) {
+      for (int mu = 0; mu < 4; ++mu) {
+        if (!isfinite(e1[a][mu])) {
+          bad = true;
+        }
+      }
+    }
+    if (bad) {
+      Kokkos::printf("geo_boris_fw transported-tetrad step failed; leaving particle unchanged.\n");
+      return;
+    }
+
+    pr(IPLX, p) = x1[0];
+    pr(IPLY, p) = x1[1];
+    pr(IPLZ, p) = x1[2];
+    pr(IPX, p) = x_half[0];
+    pr(IPY, p) = x_half[1];
+    pr(IPZ, p) = x_half[2];
+    pr(IPVX, p) = u1_l[0];
+    pr(IPVY, p) = u1_l[1];
+    pr(IPVZ, p) = u1_l[2];
+    for (int a = 0; a < 4; ++a) {
+      for (int mu = 0; mu < 4; ++mu) {
+        pr(IPFW + 4 * a + mu, p) = e1[a][mu];
+      }
+    }
+  });
+
+  Real max_ortho_err = 0.0;
+  Kokkos::parallel_reduce("geo_boris_fw_ortho_error",
+  Kokkos::RangePolicy<>(DevExeSpace(), 0, nprtcl_thispack),
+  KOKKOS_LAMBDA(const int p, Real &lmax) {
+    Real x[3] = {pr(IPLX, p), pr(IPLY, p), pr(IPLZ, p)};
+    Real e[4][4] = {0.0};
+    for (int a = 0; a < 4; ++a) {
+      for (int mu = 0; mu < 4; ++mu) {
+        e[a][mu] = pr(IPFW + 4 * a + mu, p);
+      }
+    }
+    int mb = pi(PGID, p) - gids;
+    const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max, size.d_view(mb).dx1,
+                            size.d_view(mb).x2min, size.d_view(mb).x2max, size.d_view(mb).dx2,
+                            size.d_view(mb).x3min, size.d_view(mb).x3max, size.d_view(mb).dx3};
+    int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+    Real alp = 0.0, beta[3] = {0.0}, g3d[6] = {0.0};
+    Real gcov[4][4] = {0.0}, gcon[4][4] = {0.0}, Gamma[4][4][4] = {0.0};
+    switch (ng) {
+    case 2:
+      GetStationaryADMAndChristoffel<2>(alp, beta, g3d, gcov, gcon, Gamma,
+                                        x, mb, mb_par, ncell, adm_n);
+      break;
+    case 3:
+      GetStationaryADMAndChristoffel<3>(alp, beta, g3d, gcov, gcon, Gamma,
+                                        x, mb, mb_par, ncell, adm_n);
+      break;
+    case 4:
+      GetStationaryADMAndChristoffel<4>(alp, beta, g3d, gcov, gcon, Gamma,
+                                        x, mb, mb_par, ncell, adm_n);
+      break;
+    }
+    lmax = fmax(lmax, TetradOrthonormalityError(e, gcov));
+  }, Kokkos::Max<Real>(max_ortho_err));
+
+  if (global_variable::my_rank == 0 && max_ortho_err > 1.0e-6) {
+    std::cout << "geo_boris_fw max tetrad orthonormality error = "
+              << max_ortho_err << std::endl;
+  }
+}
+
 void Particles::Geo_BorisInitPush() {
   // Stagger the particle position and velocity if using geo_boris pusher
   auto &pi_ = prtcl_idata;
@@ -598,5 +1087,69 @@ void Particles::Geo_BorisInitPush() {
     }
   });
 
+}
+
+void Particles::Geo_BorisFWInitPush() {
+  auto &pi_ = prtcl_idata;
+  auto &pr_ = prtcl_rdata;
+  int &npart = nprtcl_thispack;
+  int &pgid = pmy_pack->gids;
+  auto &indcs = pmy_pack->pmesh->mb_indcs;
+  int &ng = indcs.ng;
+  auto &size = pmy_pack->pmb->mb_size;
+  int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+  auto &adm_n = pmy_pack->padm->u_adm;
+  Real dt_ = pmy_pack->pmesh->dt;
+
+  if (std::abs(q_over_m) > 0.0) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "geo_boris_fw is geodesic-only in this experimental version"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (pmy_pack->pz4c != nullptr) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "geo_boris_fw currently supports stationary ADM metrics only"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+
+  par_for("geo_boris_fw_init_push", DevExeSpace(), 0, npart-1, KOKKOS_LAMBDA(int n) {
+    int mb = pi_(PGID, n) - pgid;
+    Real x_int[3] = {pr_(IPX, n), pr_(IPY, n), pr_(IPZ, n)};
+    Real u_l[3] = {pr_(IPVX, n), pr_(IPVY, n), pr_(IPVZ, n)};
+    const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max, size.d_view(mb).dx1,
+                            size.d_view(mb).x2min, size.d_view(mb).x2max, size.d_view(mb).dx2,
+                            size.d_view(mb).x3min, size.d_view(mb).x3max, size.d_view(mb).dx3};
+
+    Real alp = 0.0, beta[3] = {0.0}, g3d[6] = {0.0};
+    switch (ng) {
+    case 2:
+      GetADMVariables<2>(alp, beta, g3d, x_int, mb, mb_par, ncell, adm_n, false, adm_n);
+      break;
+    case 3:
+      GetADMVariables<3>(alp, beta, g3d, x_int, mb, mb_par, ncell, adm_n, false, adm_n);
+      break;
+    case 4:
+      GetADMVariables<4>(alp, beta, g3d, x_int, mb, mb_par, ncell, adm_n, false, adm_n);
+      break;
+    }
+
+    Real tetrad[4][4] = {0.0}, inv_tetrad[4][4] = {0.0};
+    CalcTetrad(alp, beta, g3d, tetrad, inv_tetrad);
+    for (int a = 0; a < 4; ++a) {
+      for (int mu = 0; mu < 4; ++mu) {
+        pr_(IPFW + 4 * a + mu, n) = inv_tetrad[mu][a];
+      }
+    }
+
+    Real U[4] = {0.0};
+    FourVelocityFromCovMomentum(alp, beta, g3d, u_l, U);
+    const Real iUt = 1.0 / U[0];
+    for (int i = 0; i < 3; ++i) {
+      pr_(IPLX + i, n) = x_int[i];
+      pr_(IPX + i, n) = x_int[i] + 0.5 * dt_ * U[i + 1] * iUt;
+    }
+  });
 }
 } // end namespace particles

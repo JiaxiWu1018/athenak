@@ -21,7 +21,7 @@
 
 // constants that enumerate ParticlesPusher options
 enum class ParticlesPusher {drift, leap_frog, lagrangian_tracer, lagrangian_mc,
-                            boris, gr_boris, geo_boris};
+                            boris, gr_boris, geo_boris, geo_boris_fw};
 
 // constants that enumerate ParticleTypes
 enum class ParticleType {cosmic_ray, dust};
@@ -88,7 +88,9 @@ class Particles {
   void BorisPush();
   void GR_BorisPush();
   void Geo_BorisPush();
+  void Geo_BorisFWPush();
   void Geo_BorisInitPush();
+  void Geo_BorisFWInitPush();
   void read_prtcl_table(const char *fname);
   template <int NGHOST>
   void calc_prtcl_energy();

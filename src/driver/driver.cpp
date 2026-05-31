@@ -343,6 +343,11 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
       // Perform particle stagger and communication if using geo_boris pusher
       if (ppart->pusher == ParticlesPusher::geo_boris) {
         (void) ppart->Geo_BorisInitPush();
+      } else if (ppart->pusher == ParticlesPusher::geo_boris_fw) {
+        (void) ppart->Geo_BorisFWInitPush();
+      }
+      if (ppart->pusher == ParticlesPusher::geo_boris ||
+          ppart->pusher == ParticlesPusher::geo_boris_fw) {
         (void) ppart->NewGID(this, 1);
         (void) ppart->SendCnt(this, 1);
         (void) ppart->InitRecv(this , 1);

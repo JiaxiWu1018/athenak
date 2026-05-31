@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <cmath>
 
 #include "athena.hpp"
 #include "globals.hpp"
@@ -72,6 +73,26 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
         std::exit(EXIT_FAILURE);
       }
       pusher = ParticlesPusher::geo_boris;
+    } else if (ppush.compare("geo_boris_fw") == 0) {
+      if (pmy_pack->padm == nullptr) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "Transported-tetrad geo_boris_fw pusher needs ADM variables"
+                  << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      if (std::abs(q_over_m) > 0.0) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "geo_boris_fw is geodesic-only in this experimental version"
+                  << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      if (pmy_pack->pz4c != nullptr) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "geo_boris_fw currently supports stationary ADM metrics only"
+                  << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      pusher = ParticlesPusher::geo_boris_fw;
     } else {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
                 << std::endl << "Particle pusher must be specified in <particles> block"
@@ -95,6 +116,9 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     nrdata = ndim * 3;
   }
   nrdata += 1; // conserved energy u_t
+  if (pusher == ParticlesPusher::geo_boris_fw) {
+    nrdata = IPFW + 16; // transported tetrad e_hat_a^mu lives in IPFW..IPFW+15
+  }
   nidata = 2;
   // switch (particle_type) {
   //   case ParticleType::cosmic_ray:
@@ -126,7 +150,8 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
 
   // Allocate memory for field variables in previous step
   if (pusher == ParticlesPusher::gr_boris ||
-      pusher == ParticlesPusher::geo_boris) {
+      pusher == ParticlesPusher::geo_boris ||
+      pusher == ParticlesPusher::geo_boris_fw) {
     int ncells1 = indcs.nx1 + 2*(indcs.ng);
     int ncells2 = (indcs.nx2 > 1)? (indcs.nx2 + 2*(indcs.ng)) : 1;
     int ncells3 = (indcs.nx3 > 1)? (indcs.nx3 + 2*(indcs.ng)) : 1;

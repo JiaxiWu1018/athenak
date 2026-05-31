@@ -130,7 +130,8 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
   float *data = new float[3*npout_thisrank];
   // Loop over particles, load positions into data[]
   int idx = IPX, idy = IPY, idz = IPZ;
-  if (pm->pmb_pack->ppart->pusher == ParticlesPusher::geo_boris) {
+  if (pm->pmb_pack->ppart->pusher == ParticlesPusher::geo_boris ||
+      pm->pmb_pack->ppart->pusher == ParticlesPusher::geo_boris_fw) {
     idx = IPLX, idy = IPLY, idz = IPLZ;
   }
   for (int p=0; p<npout_thisrank; ++p) {
