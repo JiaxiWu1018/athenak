@@ -743,6 +743,47 @@ void FourVelocityFromFrameComponents(const Real e[4][4], const Real Uhat[4], Rea
   }
 }
 
+KOKKOS_INLINE_FUNCTION
+Real FourDot(const Real gcov[4][4], const Real a[4], const Real b[4]) {
+  Real dot = 0.0;
+  for (int mu = 0; mu < 4; ++mu) {
+    for (int nu = 0; nu < 4; ++nu) {
+      dot += gcov[mu][nu] * a[mu] * b[nu];
+    }
+  }
+  return dot;
+}
+
+KOKKOS_INLINE_FUNCTION
+void OrthonormalizeTetrad(Real e[4][4], const Real gcov[4][4]) {
+  for (int a = 0; a < 4; ++a) {
+    for (int b = 0; b < a; ++b) {
+      Real eb[4] = {e[b][0], e[b][1], e[b][2], e[b][3]};
+      const Real eta_b = (b == 0) ? -1.0 : 1.0;
+      const Real proj = FourDot(gcov, e[a], eb) / eta_b;
+      for (int mu = 0; mu < 4; ++mu) {
+        e[a][mu] -= proj * e[b][mu];
+      }
+    }
+    const Real eta_a = (a == 0) ? -1.0 : 1.0;
+    const Real norm = FourDot(gcov, e[a], e[a]);
+    const Real scale = 1.0 / std::sqrt(fabs(norm));
+    for (int mu = 0; mu < 4; ++mu) {
+      e[a][mu] *= scale;
+    }
+    if (eta_a * FourDot(gcov, e[a], e[a]) < 0.0) {
+      for (int mu = 0; mu < 4; ++mu) {
+        e[a][mu] *= -1.0;
+      }
+    }
+  }
+  if (e[0][0] < 0.0) {
+    for (int mu = 0; mu < 4; ++mu) {
+      e[0][mu] *= -1.0;
+    }
+  }
+}
+
 template<int NG>
 KOKKOS_INLINE_FUNCTION
 void GeoBorisFWDeriv(const Real x[3], const Real e[4][4], const Real Uhat[4],
@@ -823,6 +864,135 @@ void GeoBorisFWAdvance(const Real x0[3], const Real e0[4][4], const Real Uhat[4]
                       + 2.0 * k3e[a][mu] + k4e[a][mu]) / 6.0;
     }
   }
+}
+
+template<int NG>
+KOKKOS_INLINE_FUNCTION
+void GeoBorisFWBorisMap(const Real x0[3], const Real e0[4][4],
+                        const Real Uhat0[4], const Real x_guess[3],
+                        const Real e_guess[4][4], const int mb,
+                        const Real mb_par[9], const int ncell[3],
+                        const Real dt, const DvceArray5D<Real> &adm_n,
+                        Real x1[3], Real e1[4][4], Real Uhat1[4]) {
+  Real x_mid[3] = {0.0}, e_mid[4][4] = {0.0};
+  for (int i = 0; i < 3; ++i) {
+    x_mid[i] = 0.5 * (x0[i] + x_guess[i]);
+  }
+  for (int a = 0; a < 4; ++a) {
+    for (int mu = 0; mu < 4; ++mu) {
+      e_mid[a][mu] = 0.5 * (e0[a][mu] + e_guess[a][mu]);
+    }
+  }
+
+  Real alp = 0.0, beta[3] = {0.0}, g3d[6] = {0.0};
+  Real gcov[4][4] = {0.0}, gcon[4][4] = {0.0}, Gamma[4][4][4] = {0.0};
+  GetStationaryADMAndChristoffel<NG>(alp, beta, g3d, gcov, gcon, Gamma,
+                                     x_mid, mb, mb_par, ncell, adm_n);
+  OrthonormalizeTetrad(e_mid, gcov);
+
+  Real Uhat_in[3] = {Uhat0[1], Uhat0[2], Uhat0[3]};
+  Real Ehat[3] = {0.0}, Bhat[3] = {0.0}, Uhat_out[3] = {0.0};
+  Real U_mid_pre[4] = {0.0};
+  FourVelocityFromFrameComponents(e_mid, Uhat0, U_mid_pre);
+  const Real dt_hat = dt * Uhat0[0] / U_mid_pre[0];
+  FlatBorisPush(Uhat_out, Uhat_in, Ehat, Bhat, 1.0, dt_hat);
+
+  Uhat1[0] = std::sqrt(1.0 + Uhat_out[0] * Uhat_out[0]
+                            + Uhat_out[1] * Uhat_out[1]
+                            + Uhat_out[2] * Uhat_out[2]);
+  for (int i = 0; i < 3; ++i) {
+    Uhat1[i + 1] = Uhat_out[i];
+  }
+
+  Real Uhat_mid[4] = {0.0};
+  for (int a = 0; a < 4; ++a) {
+    Uhat_mid[a] = 0.5 * (Uhat0[a] + Uhat1[a]);
+  }
+  Real U_mid[4] = {0.0};
+  FourVelocityFromFrameComponents(e_mid, Uhat_mid, U_mid);
+  const Real iUt = 1.0 / U_mid[0];
+
+  for (int i = 0; i < 3; ++i) {
+    x1[i] = x0[i] + dt * U_mid[i + 1] * iUt;
+  }
+
+  for (int a = 0; a < 4; ++a) {
+    for (int mu = 0; mu < 4; ++mu) {
+      Real dedt = 0.0;
+      for (int nu = 0; nu < 4; ++nu) {
+        for (int lam = 0; lam < 4; ++lam) {
+          dedt -= Gamma[mu][nu][lam] * e_mid[a][nu] * U_mid[lam] * iUt;
+        }
+      }
+      e1[a][mu] = e0[a][mu] + dt * dedt;
+    }
+  }
+}
+
+template<int NG>
+KOKKOS_INLINE_FUNCTION
+bool GeoBorisFWBorisFixedPoint(const Real x0[3], const Real e0[4][4],
+                               const Real Uhat0[4], const int mb,
+                               const Real mb_par[9], const int ncell[3],
+                               const Real dt, const DvceArray5D<Real> &adm_n,
+                               Real x1[3], Real e1[4][4], Real Uhat1[4],
+                               Real tol=1e-10, int maxIter=40) {
+  Real x_guess[3] = {0.0}, e_guess[4][4] = {0.0};
+  GeoBorisFWAdvance<NG>(x0, e0, Uhat0, mb, mb_par, ncell, dt, adm_n,
+                        x_guess, e_guess);
+
+  Real x_next[3] = {0.0}, e_next[4][4] = {0.0}, Uhat_next[4] = {0.0};
+  for (int iter = 0; iter < maxIter; ++iter) {
+    GeoBorisFWBorisMap<NG>(x0, e0, Uhat0, x_guess, e_guess, mb, mb_par, ncell,
+                           dt, adm_n, x_next, e_next, Uhat_next);
+
+    bool bad = false;
+    Real err = 0.0;
+    for (int i = 0; i < 3; ++i) {
+      if (!isfinite(x_next[i])) {
+        bad = true;
+      }
+      err = fmax(err, fabs(x_next[i] - x_guess[i]));
+    }
+    for (int a = 0; a < 4; ++a) {
+      if (!isfinite(Uhat_next[a])) {
+        bad = true;
+      }
+      for (int mu = 0; mu < 4; ++mu) {
+        if (!isfinite(e_next[a][mu])) {
+          bad = true;
+        }
+        err = fmax(err, fabs(e_next[a][mu] - e_guess[a][mu]));
+      }
+    }
+    if (bad) {
+      break;
+    }
+    if (err < tol) {
+      for (int i = 0; i < 3; ++i) {
+        x1[i] = x_next[i];
+      }
+      for (int a = 0; a < 4; ++a) {
+        Uhat1[a] = Uhat_next[a];
+        for (int mu = 0; mu < 4; ++mu) {
+          e1[a][mu] = e_next[a][mu];
+        }
+      }
+      return true;
+    }
+    for (int i = 0; i < 3; ++i) {
+      x_guess[i] = x_next[i];
+    }
+    for (int a = 0; a < 4; ++a) {
+      for (int mu = 0; mu < 4; ++mu) {
+        e_guess[a][mu] = e_next[a][mu];
+      }
+    }
+  }
+
+  GeoBorisFWBorisMap<NG>(x0, e0, Uhat0, x0, e0, mb, mb_par, ncell,
+                         dt, adm_n, x1, e1, Uhat1);
+  return false;
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -1023,6 +1193,237 @@ void Particles::Geo_BorisFWPush() {
 
   if (global_variable::my_rank == 0 && max_ortho_err > 1.0e-6) {
     std::cout << "geo_boris_fw max tetrad orthonormality error = "
+              << max_ortho_err << std::endl;
+  }
+}
+
+void Particles::Geo_BorisFWBorisPush() {
+  auto &indcs = pmy_pack->pmesh->mb_indcs;
+  int &ng = indcs.ng;
+  auto &size = pmy_pack->pmb->mb_size;
+  int gids = pmy_pack->gids;
+  Real dt_ = pmy_pack->pmesh->dt;
+  auto &pi = prtcl_idata;
+  auto &pr = prtcl_rdata;
+  auto &adm_n = pmy_pack->padm->u_adm;
+
+  if (std::abs(q_over_m) > 0.0) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl
+              << "geo_boris_fw_boris is geodesic-only in this experimental version"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (pmy_pack->pz4c != nullptr) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl
+              << "geo_boris_fw_boris currently supports stationary ADM metrics only"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+
+  par_for("geo_boris_fw_boris_push", DevExeSpace(), 0, nprtcl_thispack - 1,
+  KOKKOS_LAMBDA(const int p) {
+    Real x0[3] = {pr(IPLX, p), pr(IPLY, p), pr(IPLZ, p)};
+    Real u0_l[3] = {pr(IPVX, p), pr(IPVY, p), pr(IPVZ, p)};
+    Real e0[4][4] = {0.0};
+    for (int a = 0; a < 4; ++a) {
+      for (int mu = 0; mu < 4; ++mu) {
+        e0[a][mu] = pr(IPFW + 4 * a + mu, p);
+      }
+    }
+
+    int mb = pi(PGID, p) - gids;
+    const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max, size.d_view(mb).dx1,
+                            size.d_view(mb).x2min, size.d_view(mb).x2max, size.d_view(mb).dx2,
+                            size.d_view(mb).x3min, size.d_view(mb).x3max, size.d_view(mb).dx3};
+    int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+
+    Real alp0 = 0.0, beta0[3] = {0.0}, g3d0[6] = {0.0};
+    Real gcov0[4][4] = {0.0}, gcon0[4][4] = {0.0}, Gamma0[4][4][4] = {0.0};
+    switch (ng) {
+    case 2:
+      GetStationaryADMAndChristoffel<2>(alp0, beta0, g3d0, gcov0, gcon0, Gamma0,
+                                        x0, mb, mb_par, ncell, adm_n);
+      break;
+    case 3:
+      GetStationaryADMAndChristoffel<3>(alp0, beta0, g3d0, gcov0, gcon0, Gamma0,
+                                        x0, mb, mb_par, ncell, adm_n);
+      break;
+    case 4:
+      GetStationaryADMAndChristoffel<4>(alp0, beta0, g3d0, gcov0, gcon0, Gamma0,
+                                        x0, mb, mb_par, ncell, adm_n);
+      break;
+    }
+
+    Real U0[4] = {0.0}, Uhat0[4] = {0.0};
+    FourVelocityFromCovMomentum(alp0, beta0, g3d0, u0_l, U0);
+    FrameComponentsFromFourVelocity(e0, gcov0, U0, Uhat0);
+
+    Real x_start[3] = {x0[0], x0[1], x0[2]};
+    Real e_start[4][4] = {0.0}, Uhat_start[4] = {0.0};
+    for (int a = 0; a < 4; ++a) {
+      Uhat_start[a] = Uhat0[a];
+      for (int mu = 0; mu < 4; ++mu) {
+        e_start[a][mu] = e0[a][mu];
+      }
+    }
+
+    Real x1[3] = {0.0}, e1[4][4] = {0.0}, Uhat1[4] = {0.0};
+    bool find_root = true;
+    const Real sub_dt = 0.25 * dt_;
+    for (int sub = 0; sub < 4; ++sub) {
+      bool sub_root = false;
+      switch (ng) {
+      case 2:
+        sub_root = GeoBorisFWBorisFixedPoint<2>(x_start, e_start, Uhat_start,
+                                                mb, mb_par, ncell, sub_dt,
+                                                adm_n, x1, e1, Uhat1);
+        break;
+      case 3:
+        sub_root = GeoBorisFWBorisFixedPoint<3>(x_start, e_start, Uhat_start,
+                                                mb, mb_par, ncell, sub_dt,
+                                                adm_n, x1, e1, Uhat1);
+        break;
+      case 4:
+        sub_root = GeoBorisFWBorisFixedPoint<4>(x_start, e_start, Uhat_start,
+                                                mb, mb_par, ncell, sub_dt,
+                                                adm_n, x1, e1, Uhat1);
+        break;
+      }
+      find_root = find_root && sub_root;
+
+      Real alp_sub = 0.0, beta_sub[3] = {0.0}, g3d_sub[6] = {0.0};
+      Real gcov_sub[4][4] = {0.0}, gcon_sub[4][4] = {0.0};
+      Real Gamma_sub[4][4][4] = {0.0};
+      switch (ng) {
+      case 2:
+        GetStationaryADMAndChristoffel<2>(alp_sub, beta_sub, g3d_sub, gcov_sub,
+                                          gcon_sub, Gamma_sub, x1, mb, mb_par,
+                                          ncell, adm_n);
+        break;
+      case 3:
+        GetStationaryADMAndChristoffel<3>(alp_sub, beta_sub, g3d_sub, gcov_sub,
+                                          gcon_sub, Gamma_sub, x1, mb, mb_par,
+                                          ncell, adm_n);
+        break;
+      case 4:
+        GetStationaryADMAndChristoffel<4>(alp_sub, beta_sub, g3d_sub, gcov_sub,
+                                          gcon_sub, Gamma_sub, x1, mb, mb_par,
+                                          ncell, adm_n);
+        break;
+      }
+      OrthonormalizeTetrad(e1, gcov_sub);
+
+      for (int i = 0; i < 3; ++i) {
+        x_start[i] = x1[i];
+      }
+      for (int a = 0; a < 4; ++a) {
+        Uhat_start[a] = Uhat1[a];
+        for (int mu = 0; mu < 4; ++mu) {
+          e_start[a][mu] = e1[a][mu];
+        }
+      }
+    }
+    if (!find_root) {
+      Kokkos::printf("Root finding of geo_boris_fw_boris pusher failed; using explicit centered substep fallback.\n");
+    }
+
+    Real alp1 = 0.0, beta1[3] = {0.0}, g3d1[6] = {0.0};
+    Real gcov1[4][4] = {0.0}, gcon1[4][4] = {0.0}, Gamma1[4][4][4] = {0.0};
+    switch (ng) {
+    case 2:
+      GetStationaryADMAndChristoffel<2>(alp1, beta1, g3d1, gcov1, gcon1, Gamma1,
+                                        x1, mb, mb_par, ncell, adm_n);
+      break;
+    case 3:
+      GetStationaryADMAndChristoffel<3>(alp1, beta1, g3d1, gcov1, gcon1, Gamma1,
+                                        x1, mb, mb_par, ncell, adm_n);
+      break;
+    case 4:
+      GetStationaryADMAndChristoffel<4>(alp1, beta1, g3d1, gcov1, gcon1, Gamma1,
+                                        x1, mb, mb_par, ncell, adm_n);
+      break;
+    }
+
+    Real u1_l[3] = {0.0}, x_half[3] = {0.0};
+    OrthonormalizeTetrad(e1, gcov1);
+    StoreCovMomentumAndHalfPosition(x1, e1, Uhat1, gcov1, dt_, u1_l, x_half);
+
+    bool bad = false;
+    for (int i = 0; i < 3; ++i) {
+      if (!isfinite(x1[i]) || !isfinite(x_half[i]) || !isfinite(u1_l[i])) {
+        bad = true;
+      }
+    }
+    for (int a = 0; a < 4; ++a) {
+      if (!isfinite(Uhat1[a])) {
+        bad = true;
+      }
+      for (int mu = 0; mu < 4; ++mu) {
+        if (!isfinite(e1[a][mu])) {
+          bad = true;
+        }
+      }
+    }
+    if (bad) {
+      Kokkos::printf("geo_boris_fw_boris transported-frame step failed; leaving particle unchanged.\n");
+      return;
+    }
+
+    pr(IPLX, p) = x1[0];
+    pr(IPLY, p) = x1[1];
+    pr(IPLZ, p) = x1[2];
+    pr(IPX, p) = x_half[0];
+    pr(IPY, p) = x_half[1];
+    pr(IPZ, p) = x_half[2];
+    pr(IPVX, p) = u1_l[0];
+    pr(IPVY, p) = u1_l[1];
+    pr(IPVZ, p) = u1_l[2];
+    for (int a = 0; a < 4; ++a) {
+      for (int mu = 0; mu < 4; ++mu) {
+        pr(IPFW + 4 * a + mu, p) = e1[a][mu];
+      }
+    }
+  });
+
+  Real max_ortho_err = 0.0;
+  Kokkos::parallel_reduce("geo_boris_fw_boris_ortho_error",
+  Kokkos::RangePolicy<>(DevExeSpace(), 0, nprtcl_thispack),
+  KOKKOS_LAMBDA(const int p, Real &lmax) {
+    Real x[3] = {pr(IPLX, p), pr(IPLY, p), pr(IPLZ, p)};
+    Real e[4][4] = {0.0};
+    for (int a = 0; a < 4; ++a) {
+      for (int mu = 0; mu < 4; ++mu) {
+        e[a][mu] = pr(IPFW + 4 * a + mu, p);
+      }
+    }
+    int mb = pi(PGID, p) - gids;
+    const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max, size.d_view(mb).dx1,
+                            size.d_view(mb).x2min, size.d_view(mb).x2max, size.d_view(mb).dx2,
+                            size.d_view(mb).x3min, size.d_view(mb).x3max, size.d_view(mb).dx3};
+    int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+    Real alp = 0.0, beta[3] = {0.0}, g3d[6] = {0.0};
+    Real gcov[4][4] = {0.0}, gcon[4][4] = {0.0}, Gamma[4][4][4] = {0.0};
+    switch (ng) {
+    case 2:
+      GetStationaryADMAndChristoffel<2>(alp, beta, g3d, gcov, gcon, Gamma,
+                                        x, mb, mb_par, ncell, adm_n);
+      break;
+    case 3:
+      GetStationaryADMAndChristoffel<3>(alp, beta, g3d, gcov, gcon, Gamma,
+                                        x, mb, mb_par, ncell, adm_n);
+      break;
+    case 4:
+      GetStationaryADMAndChristoffel<4>(alp, beta, g3d, gcov, gcon, Gamma,
+                                        x, mb, mb_par, ncell, adm_n);
+      break;
+    }
+    lmax = fmax(lmax, TetradOrthonormalityError(e, gcov));
+  }, Kokkos::Max<Real>(max_ortho_err));
+
+  if (global_variable::my_rank == 0 && max_ortho_err > 1.0e-6) {
+    std::cout << "geo_boris_fw_boris max tetrad orthonormality error = "
               << max_ortho_err << std::endl;
   }
 }

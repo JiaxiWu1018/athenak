@@ -26,7 +26,8 @@ void Particles::calc_prtcl_energy() {
   auto &size = pmy_pack->pmb->mb_size;
   int gids = pmy_pack->gids;
   bool is_geo_boris = (pusher == ParticlesPusher::geo_boris ||
-                       pusher == ParticlesPusher::geo_boris_fw);
+                       pusher == ParticlesPusher::geo_boris_fw ||
+                       pusher == ParticlesPusher::geo_boris_fw_boris);
   bool use_z4c = pmy_pack->pz4c != nullptr;
 
   auto &pi = prtcl_idata;

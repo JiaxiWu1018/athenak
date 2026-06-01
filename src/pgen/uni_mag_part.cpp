@@ -74,7 +74,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
 
   if (pmbp->ppart->pusher == ParticlesPusher::gr_boris ||
       pmbp->ppart->pusher == ParticlesPusher::geo_boris ||
-      pmbp->ppart->pusher == ParticlesPusher::geo_boris_fw) {
+      pmbp->ppart->pusher == ParticlesPusher::geo_boris_fw ||
+      pmbp->ppart->pusher == ParticlesPusher::geo_boris_fw_boris) {
     Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->w0_last, w0_);
     Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->bcc0_last, bcc_);
     Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->adm_last, pmbp->padm->u_adm);

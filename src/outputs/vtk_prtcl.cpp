@@ -131,7 +131,8 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
   // Loop over particles, load positions into data[]
   int idx = IPX, idy = IPY, idz = IPZ;
   if (pm->pmb_pack->ppart->pusher == ParticlesPusher::geo_boris ||
-      pm->pmb_pack->ppart->pusher == ParticlesPusher::geo_boris_fw) {
+      pm->pmb_pack->ppart->pusher == ParticlesPusher::geo_boris_fw ||
+      pm->pmb_pack->ppart->pusher == ParticlesPusher::geo_boris_fw_boris) {
     idx = IPLX, idy = IPLY, idz = IPLZ;
   }
   for (int p=0; p<npout_thisrank; ++p) {
