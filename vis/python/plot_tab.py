@@ -215,12 +215,26 @@ def main(**kwargs):
             ax.set_title('Time=%f'%data[i]['time'])  # noqa
             ax.set_xlabel(xvar)
             ax.set_ylabel(yvar)
-        Player(fig, update_func, maxi=(nfiles-1))
-        plt.show()
+            # below are set specifically for plotting lapse; left commented out
+            # because they force lapse ranges on every variable and break
+            # general plots. Uncomment when plotting lapse.
+            # ax.set_xlim(-100, 100)
+            # ax.set_ylim(0, 1)
+
+        if output_file != 'show':
+            for i in range(nfiles):
+                update_func(i)
+                fname = f"{output_file}{str(i).zfill(5)}.png"
+                print(f"Saving {fname} ...")
+                plt.savefig(fname)
+            print("All frames have been saved.")
+        else:
+            Player(fig, update_func, maxi=(nfiles-1))
+            plt.show()
         # to save movie as mp4 use following instead of 'Player'
         # anim=FuncAnimation(fig, update_func)
         # plt.show()
-        # FFwriter = animation.FFMpegWriter(fps=20)
+        # FFwriter = anim.FFMpegWriter(fps=20)
         # anim.save('./animation.mp4', writer = FFwriter)
 
 

@@ -119,6 +119,7 @@ void ParameterInput::CheckBlockNames() {
     if (!(found)) {
       if (global_variable::my_rank == 0) {
         std::cout<<"### FATAL ERROR in "<<__FILE__<<" at line "<<__LINE__<< std::endl;
+        std::cout << "blockname: " << it1->block_name << " not found" << std::endl;
         std::cout<<"Allowed <input_block> names in input file are:" << std::endl;
         for (auto it2 = valid_name.begin(); it2 != valid_name.end(); ++it2) {
           std::cout<< (*it2) << std::endl;
