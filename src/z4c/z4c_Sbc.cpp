@@ -23,6 +23,7 @@ namespace z4c {
 //! \brief apply Sommerfeld BCs to the given set of points
 KOKKOS_INLINE_FUNCTION
 static void Z4cSommerfeld(const Z4c::Z4c_vars& z4c, const Z4c::Z4c_vars& rhs,
+    const Z4c::Options &opt, const DvceArray4D<Real> &spatial_damp,
     const RegionIndcs &indcs, const DualArray1D<RegionSize> &size,
     const int m, const int k, const int j, const int i) {
   // -------------------------------------------------------------------------------------
@@ -35,6 +36,7 @@ static void Z4cSommerfeld(const Z4c::Z4c_vars& z4c, const Z4c::Z4c_vars& rhs,
   AthenaPointTensor<Real, TensorSymm::NONE, 3, 1> dTheta_d;
 
   // Vectors
+  AthenaPointTensor<Real, TensorSymm::NONE, 3, 2> dB_du;
   AthenaPointTensor<Real, TensorSymm::NONE, 3, 2> dGam_du;
 
   // Tensors
@@ -57,6 +59,7 @@ static void Z4cSommerfeld(const Z4c::Z4c_vars& z4c, const Z4c::Z4c_vars& rhs,
   }
   for (int a = 0; a < 3; a++) {
     for (int b = 0; b < 3; b++) {
+      dB_du(b,a) = Dx<2>(b, idx, z4c.b_u, m, a, k, j, i);
       dGam_du(b,a) = Dx<2>(b, idx, z4c.vGam_u, m, a, k, j, i);
     }
   }
@@ -105,6 +108,20 @@ static void Z4cSommerfeld(const Z4c::Z4c_vars& z4c, const Z4c::Z4c_vars& rhs,
     for (int b = 0; b < 3; b++) {
       rhs.vGam_u(m,a,k,j,i) -= s_u(b) * dGam_du(b,a);
     }
+    if (opt.shift_use_B) {
+      Real adv_b = 0.0;
+      Real adv_gam = 0.0;
+      for (int b = 0; b < 3; ++b) {
+        adv_b += z4c.beta_u(m,b,k,j,i) * dB_du(b,a);
+        adv_gam += z4c.beta_u(m,b,k,j,i) * dGam_du(b,a);
+      }
+      Real shift_eta = opt.const_damp ? opt.shift_eta : opt.shift_eta * spatial_damp(m,k,j,i);
+      rhs.b_u(m,a,k,j,i) = opt.shift_advect * (adv_b - adv_gam)
+                         + rhs.vGam_u(m,a,k,j,i)
+                         - shift_eta * z4c.b_u(m,a,k,j,i);
+    } else {
+      rhs.b_u(m,a,k,j,i) = 0.0;
+    }
   }
 
   // -------------------------------------------------------------------------------------
@@ -140,6 +157,8 @@ TaskStatus Z4c::Z4cBoundaryRHS(Driver *pdriver, int stage) {
 
   auto &z4c_ = z4c;
   auto &rhs_ = rhs;
+  auto &opt_ = opt;
+  auto spatial_damp_ = spatial_damp;
   bool &user_Sbc = opt.user_Sbc;
 
   // We only need to apply this condition for outflow boundaries
@@ -158,11 +177,11 @@ TaskStatus Z4c::Z4cBoundaryRHS(Driver *pdriver, int stage) {
         case BoundaryFlag::diode:
         case BoundaryFlag::vacuum:
         case BoundaryFlag::outflow:
-            Z4cSommerfeld(z4c_, rhs_, indcs, size, m, k, j, is);
+            Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, k, j, is);
           break;
         case BoundaryFlag::user:
             if (user_Sbc) {
-              Z4cSommerfeld(z4c_, rhs_, indcs, size, m, k, j, is);
+              Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, k, j, is);
             }
           break;
         default:
@@ -173,11 +192,11 @@ TaskStatus Z4c::Z4cBoundaryRHS(Driver *pdriver, int stage) {
         case BoundaryFlag::diode:
         case BoundaryFlag::vacuum:
         case BoundaryFlag::outflow:
-            Z4cSommerfeld(z4c_, rhs_, indcs, size, m, k, j, ie);
+            Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, k, j, ie);
           break;
         case BoundaryFlag::user:
             if (user_Sbc) {
-              Z4cSommerfeld(z4c_, rhs_, indcs, size, m, k, j, ie);
+              Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, k, j, ie);
             }
           break;
         default:
@@ -200,11 +219,11 @@ TaskStatus Z4c::Z4cBoundaryRHS(Driver *pdriver, int stage) {
         case BoundaryFlag::diode:
         case BoundaryFlag::vacuum:
         case BoundaryFlag::outflow:
-            Z4cSommerfeld(z4c_, rhs_, indcs, size, m, k, js, i);
+            Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, k, js, i);
           break;
         case BoundaryFlag::user:
             if (user_Sbc) {
-              Z4cSommerfeld(z4c_, rhs_, indcs, size, m, k, js, i);
+              Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, k, js, i);
             }
           break;
         default:
@@ -215,11 +234,11 @@ TaskStatus Z4c::Z4cBoundaryRHS(Driver *pdriver, int stage) {
         case BoundaryFlag::diode:
         case BoundaryFlag::vacuum:
         case BoundaryFlag::outflow:
-            Z4cSommerfeld(z4c_, rhs_, indcs, size, m, k, je, i);
+            Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, k, je, i);
           break;
         case BoundaryFlag::user:
             if (user_Sbc) {
-              Z4cSommerfeld(z4c_, rhs_, indcs, size, m, k, je, i);
+              Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, k, je, i);
             }
           break;
         default:
@@ -242,11 +261,11 @@ TaskStatus Z4c::Z4cBoundaryRHS(Driver *pdriver, int stage) {
         case BoundaryFlag::diode:
         case BoundaryFlag::vacuum:
         case BoundaryFlag::outflow:
-            Z4cSommerfeld(z4c_, rhs_, indcs, size, m, ks, j, i);
+            Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, ks, j, i);
           break;
         case BoundaryFlag::user:
             if (user_Sbc) {
-              Z4cSommerfeld(z4c_, rhs_, indcs, size, m, ks, j, i);
+              Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, ks, j, i);
             }
           break;
         default:
@@ -257,11 +276,11 @@ TaskStatus Z4c::Z4cBoundaryRHS(Driver *pdriver, int stage) {
         case BoundaryFlag::diode:
         case BoundaryFlag::vacuum:
         case BoundaryFlag::outflow:
-            Z4cSommerfeld(z4c_, rhs_, indcs, size, m, ke, j, i);
+            Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, ke, j, i);
           break;
         case BoundaryFlag::user:
             if (user_Sbc) {
-              Z4cSommerfeld(z4c_, rhs_, indcs, size, m, ke, j, i);
+              Z4cSommerfeld(z4c_, rhs_, opt_, spatial_damp_, indcs, size, m, ke, j, i);
             }
           break;
         default:
