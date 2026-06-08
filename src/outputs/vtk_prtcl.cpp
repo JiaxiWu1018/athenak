@@ -242,9 +242,90 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
     header_offset += pm->nprtcl_total*datasize;
   }
 
-  // Add output of vectors here with header:
-  // VECTORS vectors float
-  // [then binary vx,vy,vz data .... ]
+  // Write Part 7: velocity VECTORS (the covariant spatial 4-velocity u_i, in IPVX/IPVY/IPVZ)
+  {
+    std::stringstream msg;
+    msg << std::endl << "VECTORS prtcl_vel float" << std::endl;
+    if (global_variable::my_rank == 0) {
+      partfile.Write_any_type_at(msg.str().c_str(),msg.str().size(),header_offset,"byte");
+    }
+    header_offset += msg.str().size();
+
+    // load velocity components into data[] (0 for unused directions in <3D)
+    for (int p=0; p<npout_thisrank; ++p) {
+      data[3*p]     = static_cast<float>(outpart_rdata(IPVX,p));
+      data[(3*p)+1] = (pm->multi_d) ? static_cast<float>(outpart_rdata(IPVY,p)) : 0.0f;
+      data[(3*p)+2] = (pm->three_d) ? static_cast<float>(outpart_rdata(IPVZ,p)) : 0.0f;
+    }
+    if (!big_end) {
+      for (int i=0; i<(3*npout_thisrank); ++i) { Swap4Bytes(&data[i]); }
+    }
+    std::size_t datasize = sizeof(float);
+    std::size_t myoffset=header_offset + 3*rank_offset[global_variable::my_rank]*datasize;
+    if (partfile.Write_any_type_at_all(&(data[0]),3*npout_min,myoffset,"float")
+          != 3*npout_min) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+          << std::endl << "particle data not written correctly to vtk particle file, "
+          << "vtk file is broken." << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    myoffset += datasize*3*npout_min;
+    int nremain = pm->nprtcl_thisrank - npout_min;
+    if (nremain > 0) {
+      if (partfile.Write_any_type_at(&(data[3*npout_min]),3*nremain,myoffset,"float")
+            != 3*nremain) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+            << std::endl << "particle data not written correctly to vtk particle file, "
+            << "vtk file is broken." << std::endl;
+        exit(EXIT_FAILURE);
+      }
+    }
+    header_offset += 3*pm->nprtcl_total*datasize;
+  }
+
+  // Write Part 6 (cont.): additional real SCALARS — conserved specific energy (-u_t) and
+  // per-particle rest mass. POINT_DATA header already emitted by the integer-scalar loop.
+  {
+    const int rvars[2] = {static_cast<int>(IPEN), static_cast<int>(IPM)};
+    const char *rnames[2] = {"prtcl_energy", "prtcl_mass"};
+    for (int v=0; v<2; ++v) {
+      std::stringstream msg;
+      msg << std::endl << "SCALARS " << rnames[v] << " float" << std::endl
+          << "LOOKUP_TABLE default" << std::endl;
+      if (global_variable::my_rank == 0) {
+        partfile.Write_any_type_at(msg.str().c_str(),msg.str().size(),header_offset,"byte");
+      }
+      header_offset += msg.str().size();
+
+      for (int p=0; p<npout_thisrank; ++p) {
+        data[p] = static_cast<float>(outpart_rdata(rvars[v],p));
+      }
+      if (!big_end) {
+        for (int i=0; i<npout_thisrank; ++i) { Swap4Bytes(&data[i]); }
+      }
+      std::size_t datasize = sizeof(float);
+      std::size_t myoffset=header_offset + rank_offset[global_variable::my_rank]*datasize;
+      if (partfile.Write_any_type_at_all(&(data[0]),npout_min,myoffset,"float")
+            != npout_min) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+            << std::endl << "particle data not written correctly to vtk particle file, "
+            << "vtk file is broken." << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      myoffset += datasize*npout_min;
+      int nremain = pm->nprtcl_thisrank - npout_min;
+      if (nremain > 0) {
+        if (partfile.Write_any_type_at(&(data[npout_min]),nremain,myoffset,"float")
+              != nremain) {
+          std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "particle data not written correctly to vtk particle file, "
+              << "vtk file is broken." << std::endl;
+          exit(EXIT_FAILURE);
+        }
+      }
+      header_offset += pm->nprtcl_total*datasize;
+    }
+  }
 
   // close the output file and clean up
   partfile.Close();

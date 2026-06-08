@@ -13,6 +13,8 @@
 #include <utility>
 #include <algorithm>
 #include <cstdio>
+#include <cmath>
+#include <vector>
 
 #include "athena.hpp"
 #include "geodesic-grid/geodesic_grid.hpp"
@@ -27,6 +29,7 @@
 #include "z4c/z4c.hpp"
 #include "radiation/radiation.hpp"
 #include "srcterms/turb_driver.hpp"
+#include "particles/particles.hpp"
 #include "pgen.hpp"
 
 
@@ -633,6 +636,67 @@ ProblemGenerator::ProblemGenerator(ParameterInput *pin, Mesh *pm, IOWrapper resf
                       Kokkos::ALL, Kokkos::ALL, Kokkos::ALL), ccin);
     offset_myrank += nout1*nout2*nout3*nadm*sizeof(Real);   // adm u_adm
     myoffset = offset_myrank;
+  }
+
+  // ---- Particle data (STEP 5 of restart.cpp). Read the whole all-Real table and assign
+  // each particle to the local MeshBlock whose bbox contains it (robust to a changed rank
+  // count); the original tags are preserved, gids recomputed for this decomposition.
+  if (pm->pmb_pack->ppart != nullptr) {
+    particles::Particles *pp = pm->pmb_pack->ppart;
+    int nrd = pp->nrdata, nid = pp->nidata;
+    IOWrapperSizeT nmb_off = single_file_per_rank ?
+        static_cast<IOWrapperSizeT>(nmb) : static_cast<IOWrapperSizeT>(pm->nmb_total);
+    IOWrapperSizeT prtcl_base = headeroffset + data_size*nmb_off;
+    Real total_r = 0.0;
+    resfile.Read_Reals_at(&total_r, 1, prtcl_base, single_file_per_rank);
+    int total = static_cast<int>(std::round(total_r));
+    IOWrapperSizeT rdata_base = prtcl_base + sizeof(Real);
+    IOWrapperSizeT idata_base = rdata_base
+      + static_cast<IOWrapperSizeT>(nrd)*total*sizeof(Real);
+    std::vector<Real> rbuf(static_cast<std::size_t>(nrd)*total);
+    std::vector<Real> ibuf(static_cast<std::size_t>(nid)*total);
+    for (int v=0; v<nrd && total>0; ++v) {
+      resfile.Read_Reals_at(&rbuf[static_cast<std::size_t>(v)*total], total,
+        rdata_base + static_cast<IOWrapperSizeT>(v)*total*sizeof(Real), single_file_per_rank);
+    }
+    for (int v=0; v<nid && total>0; ++v) {
+      resfile.Read_Reals_at(&ibuf[static_cast<std::size_t>(v)*total], total,
+        idata_base + static_cast<IOWrapperSizeT>(v)*total*sizeof(Real), single_file_per_rank);
+    }
+    // keep particles whose position lands in a local MeshBlock
+    std::vector<int> kg, km;
+    bool three_d = pm->three_d;
+    for (int g=0; g<total; ++g) {
+      Real x = rbuf[static_cast<std::size_t>(IPX)*total+g];
+      Real y = rbuf[static_cast<std::size_t>(IPY)*total+g];
+      Real z = three_d ? rbuf[static_cast<std::size_t>(IPZ)*total+g] : 0.0;
+      int m = pp->FindContainingMeshBlock(x,y,z);
+      if (m >= 0) {kg.push_back(g); km.push_back(m);}
+    }
+    int local = static_cast<int>(kg.size());
+    pp->nprtcl_thispack = local;
+    Kokkos::realloc(pp->prtcl_rdata, nrd, local);
+    Kokkos::realloc(pp->prtcl_idata, nid, local);
+    auto rh = Kokkos::create_mirror_view(pp->prtcl_rdata);
+    auto ih = Kokkos::create_mirror_view(pp->prtcl_idata);
+    for (int q=0; q<local; ++q) {
+      int g = kg[q];
+      for (int v=0; v<nrd; ++v) {rh(v,q) = rbuf[static_cast<std::size_t>(v)*total+g];}
+      for (int v=0; v<nid; ++v) {
+        ih(v,q) = static_cast<int>(std::round(ibuf[static_cast<std::size_t>(v)*total+g]));
+      }
+      ih(PGID,q) = pm->pmb_pack->gids + km[q];   // gid for the current decomposition
+    }
+    Kokkos::deep_copy(pp->prtcl_rdata, rh);
+    Kokkos::deep_copy(pp->prtcl_idata, ih);
+    // refresh global particle counters (ctor allocated 0 on restart)
+    pm->nprtcl_thisrank = local;
+    pm->nprtcl_eachrank[global_variable::my_rank] = local;
+#if MPI_PARALLEL_ENABLED
+    MPI_Allgather(&local, 1, MPI_INT, pm->nprtcl_eachrank, 1, MPI_INT, MPI_COMM_WORLD);
+#endif
+    pm->nprtcl_total = 0;
+    for (int r=0; r<global_variable::nranks; ++r) {pm->nprtcl_total += pm->nprtcl_eachrank[r];}
   }
 
   // call problem generator again to re-initialize data, fn ptrs, as needed

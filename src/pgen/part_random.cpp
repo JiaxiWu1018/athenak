@@ -24,6 +24,8 @@
 
 void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   if (restart) return;
+  // file-loaded particles are already populated by the reader; don't overwrite them
+  if (pin->GetOrAddString("particles","init","ppc").compare("file") == 0) return;
 
   MeshBlockPack *pmbp = pmy_mesh_->pmb_pack;
   if (pmbp->ppart == nullptr) {

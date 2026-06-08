@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <iostream>
+#include <cstdlib>
 
 #include "athena.hpp"
 #include "globals.hpp"
@@ -37,6 +38,9 @@ void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> t
   id.recvp  = tl["before_timeintegrator"]->AddTask(&Particles::RecvP, this, id.sendp);
   id.crecv  = tl["before_timeintegrator"]->AddTask(&Particles::ClearRecv, this, id.recvp);
   id.csend  = tl["before_timeintegrator"]->AddTask(&Particles::ClearSend, this, id.crecv);
+  // particle timestep + conserved energy, after migration so positions/gids/counts are final
+  id.newdt  = tl["before_timeintegrator"]->AddTask(&Particles::NewTimeStep, this, id.csend);
+  id.energy = tl["before_timeintegrator"]->AddTask(&Particles::EnergyCalculation, this, id.newdt);
 
   return;
 }
@@ -108,6 +112,25 @@ TaskStatus Particles::ClearRecv(Driver *pdrive, int stage) {
   // check receives of particles complete
   TaskStatus tstat = pbval_part->ClearPrtclRecv();
   return tstat;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn TaskStatus Particles::EnergyCalculation
+//! \brief Wrapper task that dispatches calc_prtcl_energy<NGHOST> on the active ghost count.
+
+TaskStatus Particles::EnergyCalculation(Driver *pdrive, int stage) {
+  int ng = pmy_pack->pmesh->mb_indcs.ng;
+  switch (ng) {
+    case 2: calc_prtcl_energy<2>(); break;
+    case 3: calc_prtcl_energy<3>(); break;
+    case 4: calc_prtcl_energy<4>(); break;
+    default:
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+                << "particle energy supports NGHOST=2,3,4 only (got " << ng << ")"
+                << std::endl;
+      std::exit(EXIT_FAILURE);
+  }
+  return TaskStatus::complete;
 }
 
 } // namespace particles
