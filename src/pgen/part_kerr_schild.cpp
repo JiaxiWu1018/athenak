@@ -18,6 +18,7 @@
 #include "parameter_input.hpp"
 #include "mesh/mesh.hpp"
 #include "coordinates/adm.hpp"
+#include "z4c/z4c.hpp"
 #include "particles/particles.hpp"
 #include "pgen.hpp"
 
@@ -45,4 +46,13 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   // Kerr-Schild, reading the spin from <coord> a and the Minkowski flag from
   // <coord> minkowski (mass M=1). Particles were already loaded by the Particles ctor.
   pmbp->padm->SetADMVariables(pmbp);
+
+  // Seed the GR Boris pusher's previous-step metric snapshot with this (static) background so
+  // the first geodesic substep has a valid step-n metric (Stage-2 backgrounds are time-static).
+  if (pmbp->ppart != nullptr && pmbp->ppart->pusher == ParticlesPusher::gr_boris) {
+    Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->adm_last, pmbp->padm->u_adm);
+    if (pmbp->pz4c != nullptr) {
+      Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->z4c_last, pmbp->pz4c->u0);
+    }
+  }
 }

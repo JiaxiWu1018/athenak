@@ -1,0 +1,67 @@
+<comment>
+problem   = NRPIC Stage-2: dust geodesic in a Kerr-Kerr-Schild background
+reference = gr_boris pusher validation (q=0 geodesic limit), spin a=0.5, mass M=1
+
+# Equatorial circular geodesic in a spinning (Kerr) background. In a stationary, axisymmetric
+# spacetime both E=-u_t and L=u_phi are conserved along any geodesic; for the circular IC the
+# areal radius r should also stay constant.
+# IC (prograde circular r0=8): python scripts/particles/gen_geodesic_orbit.py \
+#              --mode circular --a 0.5 --r0 8 --out part_kerr_ic.h5
+# Run: ./build/src/athena -i inputs/particles/part_kerr.athinput
+# (uses -DPROBLEM=part_kerr_schild; spin read from <coord> a)
+
+<job>
+basename = kerr_geodesic
+
+<mesh>
+nghost = 4
+nx1    = 64
+x1min  = -12.0
+x1max  = 12.0
+ix1_bc = outflow
+ox1_bc = outflow
+
+nx2    = 64
+x2min  = -12.0
+x2max  = 12.0
+ix2_bc = outflow
+ox2_bc = outflow
+
+nx3    = 64
+x3min  = -12.0
+x3max  = 12.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 64
+nx2 = 64
+nx3 = 64
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.3
+nlim       = 1000000
+tlim       = 300.0       # ~2 circular orbits at r0=8
+ndiag      = 200
+
+<coord>
+general_rel = true       # needed so the spin parameter `a` is read into bh_spin
+excise      = false      # no hydro excision (particle-only background)
+a           = 0.5        # Kerr spin
+minkowski   = false
+
+<adm>
+
+<particles>
+particle_type   = dust
+pusher          = gr_boris
+init            = file
+prtcl_init_file = part_kerr_ic.h5
+mass            = 1.0
+
+<output1>
+file_type = pvtk
+variable  = prtcl_all
+dt        = 2.0

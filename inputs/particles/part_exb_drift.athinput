@@ -1,0 +1,96 @@
+<comment>
+problem   = NRPIC: ExB-drift validation (uniform B carried by a uniformly moving fluid)
+reference = boris / gr_boris MHD-coupling validation (w0 = utilde = W*v convention)
+
+# Uniform B = Bz zhat frozen into a uniform fluid moving with Valencia velocity v_f xhat
+# (an exact discrete equilibrium): E = -v x B = v_f*Bz yhat. A particle starting AT REST
+# executes a cycloid whose guiding centre drifts at E x B / B^2 = v_f xhat — i.e. the
+# particle moves with the field lines. Measured drift must equal fluid_vx; a pusher that
+# mistakes the stored projected 4-velocity utilde = W v for the transport velocity v gives
+# drift = W*v_f instead (= 0.5774 for v_f = 0.5, a +15.5% error).
+#   cycloid period (lab)  T = 2 pi gamma_d^2 / (qom Bz (1 - v_f^2)) ... ~ 1.935 here
+#   drift distance        = v_f * tlim = 8  (box extends to x = +10)
+# dfloor is raised to 1e-4 so sigma = B^2/rho ~ 1 and the reset_floor C2P policy never
+# touches the moving floor gas (guard: the mhd_w_bcc dumps must show an unchanged fluid).
+# Build:  cmake -S . -B build -DAthena_ENABLE_MPI=ON -DAthena_ENABLE_HDF5=ON \
+#               -DPROBLEM=uni_mag_part
+# IC:     python scripts/particles/gen_single_particle.py \
+#               --out part_exb_drift_ic.h5 --x 0 --y 0 --z 0 --ux 0 --uy 0 --uz 0
+# Run boris:    ./build/src/athena -i inputs/particles/part_exb_drift.athinput
+# Cross-check:  ... particles/pusher=gr_boris   (flat space; must reproduce the drift)
+
+<job>
+basename = exb_drift
+
+<mesh>
+nghost = 4
+nx1    = 64        # zones in X1 (drift direction)
+x1min  = -10.0
+x1max  = 10.0
+ix1_bc = periodic
+ox1_bc = periodic
+
+nx2    = 16        # zones in X2
+x2min  = -2.5
+x2max  = 2.5
+ix2_bc = periodic
+ox2_bc = periodic
+
+nx3    = 16        # zones in X3
+x3min  = -2.5
+x3max  = 2.5
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 64           # single MeshBlock (single-rank until Stage 3)
+nx2 = 16
+nx3 = 16
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.3
+nlim       = 100000
+tlim       = 16.0      # ~8 cycloid periods; drift to x = 8 (box edge at 10)
+ndiag      = 100
+
+<mhd>
+eos         = ideal
+gamma       = 1.333
+dyn_eos     = ideal
+dyn_error   = reset_floor
+reconstruct = ppm4
+rsolver     = hlle
+dfloor      = 1.0e-4   # sigma = B^2/rho ~ 1: keeps C2P off the moving floor gas
+pfloor      = 0.333e-6
+tfloor      = 1.0e-12
+fofc        = true
+gamma_max   = 20.0
+
+<coord>
+minkowski = true
+
+<adm>
+
+<particles>
+particle_type     = cosmic_ray
+pusher            = boris        # override to gr_boris on the command line for the cross-check
+init              = file
+prtcl_init_file   = part_exb_drift_ic.h5
+charge_mass_ratio = 500.0
+mass              = 1.0
+
+<problem>
+Bz       = 1.0e-2
+fluid_vx = 0.5     # Valencia velocity of the fluid (pgen stores utilde = W*v in w0)
+
+<output1>
+file_type = pvtk          # particle VTK
+variable  = prtcl_all
+dt        = 0.25
+
+<output2>
+file_type = vtk           # fluid state at t = 0, 8, 16: equilibrium / no-C2P-reset guard
+variable  = mhd_w_bcc
+dt        = 8.0

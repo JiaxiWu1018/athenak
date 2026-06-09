@@ -16,6 +16,9 @@
 #include "mesh/mesh.hpp"
 #include "bvals/bvals.hpp"
 #include "particles.hpp"
+#include "mhd/mhd.hpp"            // MHD::nmhd/nscalars for gr_boris snapshot sizing
+#include "coordinates/adm.hpp"   // ADM::nadm
+#include "z4c/z4c.hpp"           // Z4c::nz4c
 
 namespace particles {
 //----------------------------------------------------------------------------------------
@@ -56,10 +59,28 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     std::string ppush = pin->GetString("particles","pusher");
     if (ppush.compare("drift") == 0) {
       pusher = ParticlesPusher::drift;
+    } else if (ppush.compare("boris") == 0) {
+      // special-relativistic Boris: interpolates the EM field from MHD, so MHD is required
+      if (pmy_pack->pmhd == nullptr) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "boris pusher requires an <mhd> block (EM field source)"
+                  << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      pusher = ParticlesPusher::boris;
+    } else if (ppush.compare("gr_boris") == 0) {
+      // GR Boris needs the ADM 3+1 metric (from an <adm> block or a live <z4c> evolution)
+      if (pmy_pack->padm == nullptr) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "gr_boris pusher requires ADM variables (<adm> or <z4c>)"
+                  << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      pusher = ParticlesPusher::gr_boris;
     } else {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
-                << std::endl << "Particle pusher must be specified in <particles> block"
-                <<std::endl;
+                << std::endl << "Particle pusher = '" << ppush
+                << "' not recognized (use drift|boris|gr_boris)" << std::endl;
       std::exit(EXIT_FAILURE);
     }
   }
@@ -99,6 +120,32 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
 
   // allocate boundary object
   pbval_part = new ParticlesBoundaryValues(this, pin);
+
+  // Allocate the previous-step field/metric snapshots used by the GR Boris pusher. Sized to
+  // the full per-MeshBlock cell extent (incl. ghosts), matching the arrays they snapshot so
+  // the per-step Kokkos::deep_copy is extent-correct. adm_last keeps the full nadm in both
+  // the ADM-only and Z4c cases (the lapse/shift-from-Z4c split is a Stage-4 refinement).
+  if (pusher == ParticlesPusher::gr_boris) {
+    auto &indcs = pmy_pack->pmesh->mb_indcs;
+    int ncells1 = indcs.nx1 + 2*(indcs.ng);
+    int ncells2 = (indcs.nx2 > 1) ? (indcs.nx2 + 2*(indcs.ng)) : 1;
+    int ncells3 = (indcs.nx3 > 1) ? (indcs.nx3 + 2*(indcs.ng)) : 1;
+    int nmb = std::max((pmy_pack->nmb_thispack), (pmy_pack->pmesh->nmb_maxperrank));
+
+    if (pmy_pack->pmhd != nullptr) {
+      int nvar = pmy_pack->pmhd->nmhd + pmy_pack->pmhd->nscalars;
+      Kokkos::realloc(w0_last, nmb, nvar, ncells3, ncells2, ncells1);
+      Kokkos::realloc(bcc0_last, nmb, 3, ncells3, ncells2, ncells1);
+    }
+    // match the actual ADM storage extent (full nadm, or nadm-4 when Z4c supplies the
+    // lapse/shift) so the per-step deep_copy into adm_last is always extent-correct
+    int nadm_store = pmy_pack->padm->u_adm.extent_int(1);
+    Kokkos::realloc(adm_last, nmb, nadm_store, ncells3, ncells2, ncells1);
+    if (pmy_pack->pz4c != nullptr) {
+      int nz4c = pmy_pack->pz4c->nz4c;
+      Kokkos::realloc(z4c_last, nmb, nz4c, ncells3, ncells2, ncells1);
+    }
+  }
 }
 
 //----------------------------------------------------------------------------------------

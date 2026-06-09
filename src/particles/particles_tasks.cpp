@@ -29,18 +29,21 @@ namespace particles {
 void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> tl) {
   TaskID none(0);
 
-  // particle integration done in "before_timeintegrator" task list
-  id.push   = tl["before_timeintegrator"]->AddTask(&Particles::Push, this, none);
-  id.newgid = tl["before_timeintegrator"]->AddTask(&Particles::NewGID, this, id.push);
-  id.count  = tl["before_timeintegrator"]->AddTask(&Particles::SendCnt, this, id.newgid);
-  id.irecv  = tl["before_timeintegrator"]->AddTask(&Particles::InitRecv, this, id.count);
-  id.sendp  = tl["before_timeintegrator"]->AddTask(&Particles::SendP, this, id.irecv);
-  id.recvp  = tl["before_timeintegrator"]->AddTask(&Particles::RecvP, this, id.sendp);
-  id.crecv  = tl["before_timeintegrator"]->AddTask(&Particles::ClearRecv, this, id.recvp);
-  id.csend  = tl["before_timeintegrator"]->AddTask(&Particles::ClearSend, this, id.crecv);
+  // Particle integration runs in the "after_timeintegrator" task list, which executes once
+  // per cycle with the full dt (after the fluid/Z4c stages). The full-dt Boris/GR pushers
+  // therefore need no per-stage gating, and for a dynamical metric the push reads the updated
+  // (n+1) metric while the *_last snapshots hold step n.
+  id.push   = tl["after_timeintegrator"]->AddTask(&Particles::Push, this, none);
+  id.newgid = tl["after_timeintegrator"]->AddTask(&Particles::NewGID, this, id.push);
+  id.count  = tl["after_timeintegrator"]->AddTask(&Particles::SendCnt, this, id.newgid);
+  id.irecv  = tl["after_timeintegrator"]->AddTask(&Particles::InitRecv, this, id.count);
+  id.sendp  = tl["after_timeintegrator"]->AddTask(&Particles::SendP, this, id.irecv);
+  id.recvp  = tl["after_timeintegrator"]->AddTask(&Particles::RecvP, this, id.sendp);
+  id.crecv  = tl["after_timeintegrator"]->AddTask(&Particles::ClearRecv, this, id.recvp);
+  id.csend  = tl["after_timeintegrator"]->AddTask(&Particles::ClearSend, this, id.crecv);
   // particle timestep + conserved energy, after migration so positions/gids/counts are final
-  id.newdt  = tl["before_timeintegrator"]->AddTask(&Particles::NewTimeStep, this, id.csend);
-  id.energy = tl["before_timeintegrator"]->AddTask(&Particles::EnergyCalculation, this, id.newdt);
+  id.newdt  = tl["after_timeintegrator"]->AddTask(&Particles::NewTimeStep, this, id.csend);
+  id.energy = tl["after_timeintegrator"]->AddTask(&Particles::EnergyCalculation, this, id.newdt);
 
   return;
 }
