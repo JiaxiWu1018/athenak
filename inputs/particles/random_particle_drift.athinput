@@ -43,6 +43,7 @@ ndiag      = 1         # cycles between diagostic output
 particle_type = cosmic_ray
 ppc    = 0.01
 pusher = drift
+debug  = 0        # 0=off, 1=summary + fatal migration validation, 2=+per-event log
 
 <problem>
 
