@@ -1,17 +1,14 @@
-# NRPIC Stage-3 particle migration test: TWO-LEVEL SMR, refined (-,-,-) OCTANT
-# (7 coarse + 8 fine MeshBlocks), strictly periodic. The refined region has level
-# boundaries normal to ALL THREE axes plus its own edges and corners, so fine<->coarse
-# crossings occur in every axis direction and every diagonal edge/corner combination,
-# with all 8 fine-block parities present; periodic wrap adds the mirrored cases.
-# mode=targeted places one particle per (MeshBlock, neighbor slot) aimed to cross in ONE
-# cycle; debug=1 makes any wrong destination fatal.
+# NRPIC Stage-3 particle migration test: THREE-LEVEL nested SMR. Level 1 covers the
+# x<0 half-domain; level 2 covers the (-,-,-) octant inside it; the tree's 2:1 balance
+# adds level-1 padding where level 2 would touch level 0. Middle-level blocks are
+# simultaneously FINE (vs level 0) and COARSE (vs level 2), exercising compound
+# parity/demotion cases. One particle per (MeshBlock, neighbor slot); debug=1 fatal.
 # Tag decode: tag = gid*56 + NeighborIndex(ix,iy,iz,f1,f2).
-
 <comment>
-problem   = particle MeshBlock-crossing test (SMR octant)
+problem   = particle MeshBlock-crossing test (smr_nested)
 
 <job>
-basename  = part_crossing_smr_octant
+basename  = part_crossing_smr_nested
 
 <mesh>
 nghost    = 2
@@ -43,6 +40,15 @@ refinement = static
 
 <refined_region1>
 level = 1
+x1min = -0.5
+x1max = 0.0
+x2min = -0.5
+x2max = 0.5
+x3min = -0.5
+x3max = 0.5
+
+<refined_region2>
+level = 2
 x1min = -0.5
 x1max = 0.0
 x2min = -0.5

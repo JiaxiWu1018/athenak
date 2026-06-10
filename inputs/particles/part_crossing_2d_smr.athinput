@@ -1,17 +1,12 @@
-# NRPIC Stage-3 particle migration test: TWO-LEVEL SMR, refined (-,-,-) OCTANT
-# (7 coarse + 8 fine MeshBlocks), strictly periodic. The refined region has level
-# boundaries normal to ALL THREE axes plus its own edges and corners, so fine<->coarse
-# crossings occur in every axis direction and every diagonal edge/corner combination,
-# with all 8 fine-block parities present; periodic wrap adds the mirrored cases.
-# mode=targeted places one particle per (MeshBlock, neighbor slot) aimed to cross in ONE
-# cycle; debug=1 makes any wrong destination fatal.
-# Tag decode: tag = gid*56 + NeighborIndex(ix,iy,iz,f1,f2).
-
+# NRPIC Stage-3 particle migration test: 2D TWO-LEVEL SMR, refined half-domain x<0,
+# strictly periodic. 2D fine<->coarse faces and x1x2 'corner' (edge) crossings with
+# both fine parities on the level line. One particle per meaningful 2D slot;
+# debug=1 fatal. Tag decode: tag = gid*56 + NeighborIndex(ix,iy,0,f1,0).
 <comment>
-problem   = particle MeshBlock-crossing test (SMR octant)
+problem   = particle MeshBlock-crossing test (2d_smr)
 
 <job>
-basename  = part_crossing_smr_octant
+basename  = part_crossing_2d_smr
 
 <mesh>
 nghost    = 2
@@ -27,7 +22,7 @@ x2max     = 0.5
 ix2_bc    = periodic
 ox2_bc    = periodic
 
-nx3       = 16
+nx3       = 1
 x3min     = -0.5
 x3max     = 0.5
 ix3_bc    = periodic
@@ -36,7 +31,7 @@ ox3_bc    = periodic
 <meshblock>
 nx1       = 8
 nx2       = 8
-nx3       = 8
+nx3       = 1
 
 <mesh_refinement>
 refinement = static
@@ -46,9 +41,7 @@ level = 1
 x1min = -0.5
 x1max = 0.0
 x2min = -0.5
-x2max = 0.0
-x3min = -0.5
-x3max = 0.0
+x2max = 0.5
 
 <time>
 evolution  = dynamic

@@ -51,10 +51,14 @@ prtcl_init_file = lattice.h5   # used only when init=file (key present for CLI o
 debug  = 1             # fatal post-migration validation (the pass/fail criterion)
 
 <problem>
-mode        = targeted # targeted (slot enumeration) | lattice (statistical soak)
+mode        = targeted # targeted (slot enum) | lattice (soak) | random (fuzz)
 vmax        = 1.0      # particle speed
+audit       = false    # exhaustive destination-search audit vs bbox oracle (fatal)
+delta_frac  = 0.1      # targeted inward offset / min cell (0 = exactly ON boundary)
 select_gid  = -1       # targeted-mode isolation filters (-1 = all)
 select_slot = -1
+nrand       = 64       # random-mode particles per MeshBlock
+seed        = 1        # random-mode RNG seed (re-seeded per block: seed + 7919*gid)
 npx         = 8        # lattice-mode resolution
 npy         = 8
 npz         = 8

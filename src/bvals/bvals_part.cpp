@@ -21,6 +21,7 @@
 #include "mesh/mesh.hpp"
 #include "particles/particles.hpp"
 #include "bvals.hpp"
+#include "prtcl_search.hpp"
 
 namespace particles {
 //----------------------------------------------------------------------------------------
@@ -59,6 +60,7 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   auto &meshsize = pmy_part->pmy_pack->pmesh->mesh_size;
   auto myrank = global_variable::my_rank;
   auto &nghbr = pmy_part->pmy_pack->pmb->nghbr;
+  auto &mbpar = pmy_part->pmy_pack->pmb->mb_parity;
   auto &psendl = sendlist;
   int counter=0;
   int *pcounter = &counter;
@@ -88,10 +90,31 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
     Real ly = (mbsize.d_view(m).x2max - mbsize.d_view(m).x2min);
     Real lz = (mbsize.d_view(m).x3max - mbsize.d_view(m).x3min);
 
-    // integer offset of particle relative to center of MeshBlock (-1,0,+1)
-    int ix = static_cast<int>((x1 - mbsize.d_view(m).x1min + lx)/lx) - 1;
-    int iy = static_cast<int>((x2 - mbsize.d_view(m).x2min + ly)/ly) - 1;
-    int iz = static_cast<int>((x3 - mbsize.d_view(m).x3min + lz)/lz) - 1;
+    // Integer offset of the particle relative to its MeshBlock, by DIRECT COMPARISON
+    // with the same half-open [min,max) predicates that define block ownership
+    // everywhere else (FindContainingMeshBlock, CheckMigration containment). Arithmetic
+    // forms like floor((x-xmin)/lx) are NOT exactly consistent with those predicates:
+    // when x sits within half an ulp of lx BELOW a boundary, the subtraction rounds up
+    // and classifies a crossing that ownership denies (found by the Stage-3a(c) lattice
+    // soak on the nested grid, where x0 + n*dt accumulation landed at -3.5e-18 and was
+    // sent to the x>=0 block). Comparisons also DETECT a particle more than one block
+    // width away (|offset| = 2 fails the search below) instead of mislabeling it.
+    int ix = 0, iy = 0, iz = 0;
+    if (x1 <  mbsize.d_view(m).x1min) {
+      ix = (x1 <  mbsize.d_view(m).x1min - lx) ? -2 : -1;
+    } else if (x1 >= mbsize.d_view(m).x1max) {
+      ix = (x1 >= mbsize.d_view(m).x1max + lx) ?  2 :  1;
+    }
+    if (x2 <  mbsize.d_view(m).x2min) {
+      iy = (x2 <  mbsize.d_view(m).x2min - ly) ? -2 : -1;
+    } else if (x2 >= mbsize.d_view(m).x2max) {
+      iy = (x2 >= mbsize.d_view(m).x2max + ly) ?  2 :  1;
+    }
+    if (x3 <  mbsize.d_view(m).x3min) {
+      iz = (x3 <  mbsize.d_view(m).x3min - lz) ? -2 : -1;
+    } else if (x3 >= mbsize.d_view(m).x3max) {
+      iz = (x3 >= mbsize.d_view(m).x3max + lz) ?  2 :  1;
+    }
 
     // sublock indices for faces and edges with S/AMR
     int fx = (x1 < 0.5*(mbsize.d_view(m).x1min + mbsize.d_view(m).x1max))? 0 : 1;
@@ -103,67 +126,33 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
     // only update particle GID if it has crossed MeshBlock boundary
     if ((abs(ix) + abs(iy) + abs(iz)) != 0) {
       int oldgid = pi(PGID,p);
-      if (dbg > 0) {
-        int d = abs(ix) + abs(iy) + abs(iz);   // 1: face, 2: edge, 3: corner crossing
-        Kokkos::atomic_add(&dcnt(d-1), 1);
+      // resolve the destination by direct parity-indexed lookups (bvals/prtcl_search.hpp;
+      // replaces the legacy slot walk, see the Stage-3a(b) failure catalog)
+      int indx = -1;
+      if (abs(ix) <= 1 && abs(iy) <= 1 && abs(iz) <= 1) {
+        indx = FindDestinationIndex(nghbr.d_view, m, mylevel, ix,iy,iz, fx,fy,fz,
+                                    mbpar.d_view(m,0), mbpar.d_view(m,1),
+                                    mbpar.d_view(m,2));
       }
-      if (iz == 0) {
-        if (iy == 0) {
-          // x1 face
-          int indx = NeighborIndex(ix,0,0,0,0);           // neighbor at same level
-          if (nghbr.d_view(m,indx).lev > mylevel) {       // neighbor at finer level
-            indx = NeighborIndex(ix,0,0,fy,fz);
-          }
-          while (nghbr.d_view(m,indx).gid < 0) {indx++;}  // neighbor at coarser level
-          UpdateGID(pi(PGID,p), nghbr.d_view(m,indx), myrank, pcounter, psendl, p);
-        } else if (ix == 0) {
-          // x2 face
-          int indx = NeighborIndex(0,iy,0,0,0);
-          if (nghbr.d_view(m,indx).lev > mylevel) {
-            indx = NeighborIndex(0,iy,0,fx,fz);
-          }
-          while (nghbr.d_view(m,indx).gid < 0) {indx++;}
-          UpdateGID(pi(PGID,p), nghbr.d_view(m,indx), myrank, pcounter, psendl, p);
-        } else {
-          // x1x2 edge
-          int indx = NeighborIndex(ix,iy,0,0,0);
-          if (nghbr.d_view(m,indx).lev > mylevel) {
-            indx = NeighborIndex(ix,iy,0,fz,0);
-          }
-          while (nghbr.d_view(m,indx).gid < 0) {indx++;}
-          UpdateGID(pi(PGID,p), nghbr.d_view(m,indx), myrank, pcounter, psendl, p);
+      if (indx >= 0) {
+        if (dbg > 0) {
+          int d = abs(ix) + abs(iy) + abs(iz);   // 1: face, 2: edge, 3: corner crossing
+          Kokkos::atomic_add(&dcnt(d-1), 1);
         }
-      } else if (iy == 0) {
-        if (ix == 0) {
-          // x3 face
-          int indx = NeighborIndex(0,0,iz,0,0);
-          if (nghbr.d_view(m,indx).lev > mylevel) {
-            indx = NeighborIndex(0,0,iz,fx,fy);
-          }
-          while (nghbr.d_view(m,indx).gid < 0) {indx++;}
-          UpdateGID(pi(PGID,p), nghbr.d_view(m,indx), myrank, pcounter, psendl, p);
-        } else {
-          // x3x1 edge
-          int indx = NeighborIndex(ix,0,iz,0,0);
-          if (nghbr.d_view(m,indx).lev > mylevel) {
-            indx = NeighborIndex(ix,0,iz,fy,0);
-          }
-          while (nghbr.d_view(m,indx).gid < 0) {indx++;}
-          UpdateGID(pi(PGID,p), nghbr.d_view(m,indx), myrank, pcounter, psendl, p);
-        }
+        UpdateGID(pi(PGID,p), nghbr.d_view(m,indx), myrank, pcounter, psendl, p);
       } else {
-        if (ix == 0) {
-          // x2x3 edge
-          int indx = NeighborIndex(0,iy,iz,0,0);
-          if (nghbr.d_view(m,indx).lev > mylevel) {
-            indx = NeighborIndex(0,iy,iz,fx,0);
-          }
-          while (nghbr.d_view(m,indx).gid < 0) {indx++;}
-          UpdateGID(pi(PGID,p), nghbr.d_view(m,indx), myrank, pcounter, psendl, p);
-        } else {
-          // corners
-          int indx = NeighborIndex(ix,iy,iz,0,0);
-          UpdateGID(pi(PGID,p), nghbr.d_view(m,indx), myrank, pcounter, psendl, p);
+        // No destination: leave the particle on its current MeshBlock rather than write
+        // a dangling GID (the legacy corner path wrote gid=-1 AND rank=-1, which aborted
+        // MPI builds inside MPI_Isend). Reachable only if the particle moved more than
+        // one block width in a step, exited a non-periodic physical boundary (handled by
+        // the destruction machinery of a later Stage-3 session), or the 2:1-balance /
+        // SetNeighbors contract broke. CheckMigration (debug >= 1) makes all of these
+        // fatal via the search_fail counter and the containment check.
+        Kokkos::atomic_add(&dcnt(3), 1);
+        if (dbg > 0) {
+          Kokkos::printf("[prtcl-debug] cycle=%d tag=%d gid=%d SEARCH FAIL off=(%d,%d,%d)"
+                         " pos=(%.6e,%.6e,%.6e)\n", ncycle, pi(PTAG,p), oldgid,
+                         ix, iy, iz, x1, x2, x3);
         }
       }
 

@@ -33,6 +33,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -74,6 +75,11 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << "part_crossing requires a <particles> block in the input file" << std::endl;
     exit(EXIT_FAILURE);
   }
+  // exhaustive destination-search audit (independent of the particle init mode)
+  if (pin->GetOrAddBoolean("problem","audit",false)) {
+    pmbp->ppart->AuditDestinationSearch();
+  }
+
   std::string init = pin->GetOrAddString("particles","init","ppc");
   if (init.compare("file") == 0) {
     return;   // particles already loaded by the HDF5 reader (init=file cross-check path)
@@ -99,10 +105,15 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   if (mode.compare("targeted") == 0) {
     int select_gid  = pin->GetOrAddInteger("problem","select_gid",-1);
     int select_slot = pin->GetOrAddInteger("problem","select_slot",-1);
+    // inward starting offset as a fraction of the block's min cell; 0 places particles
+    // EXACTLY on the boundary (degenerate ownership test: with the half-open [min,max)
+    // convention a particle on the max edge already belongs to the neighbor, so the
+    // first migration must relabel it before the first validation)
+    Real delta_frac = pin->GetOrAddReal("problem","delta_frac",0.1);
 
     // crossing feasibility: the per-component step is vmax*cfl*dx_min/sqrt(3) (the particle
     // timestep is the light-crossing dt = cfl * smallest cell in the mesh) and must exceed
-    // the largest inward offset delta = 0.1 * (min cell of the particle's own block)
+    // the largest inward offset delta = delta_frac * (min cell of the particle's block)
     Real cfl = pin->GetReal("time","cfl_number");
     Real dxmin = std::numeric_limits<Real>::max(), delta_max = 0.0;
     for (int m=0; m<nmb; ++m) {
@@ -110,14 +121,14 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       d = std::fmin(d, mbsize.h_view(m).dx2);
       if (three_d) {d = std::fmin(d, mbsize.h_view(m).dx3);}
       dxmin = std::fmin(dxmin, d);
-      delta_max = std::fmax(delta_max, 0.1*d);
+      delta_max = std::fmax(delta_max, delta_frac*d);
     }
     Real step_min = vmax*cfl*dxmin/sqrt(3.0);
     if (step_min <= delta_max) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
                 << "targeted crossing infeasible: per-component step " << step_min
-                << " <= max inward offset " << delta_max << " (raise vmax or cfl_number)"
-                << std::endl;
+                << " <= max inward offset " << delta_max
+                << " (raise vmax/cfl_number or lower delta_frac)" << std::endl;
       exit(EXIT_FAILURE);
     }
 
@@ -132,7 +143,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       Real d = mbsize.h_view(m).dx1;
       d = std::fmin(d, mbsize.h_view(m).dx2);
       if (three_d) {d = std::fmin(d, mbsize.h_view(m).dx3);}
-      Real delta = 0.1*d;
+      Real delta = delta_frac*d;
 
       for (int iz=-1; iz<=1; ++iz) {
         if (!three_d && iz != 0) {continue;}
@@ -211,10 +222,45 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
         }
       }
     }
+  } else if (mode.compare("random") == 0) {
+    // fuzz mode: nrand particles per local block at random in-block positions, with a
+    // finite probability per coordinate of snapping EXACTLY onto a block boundary or
+    // midline (degenerate ownership/subslot positions), and isotropic random velocity
+    // directions at speed vmax. Deterministic per seed; each block re-seeds with
+    // (seed + gid) so the draw is independent of iteration order and (later) of the
+    // MPI decomposition. tag = gid*nrand + i: globally unique and decodable.
+    int nrand = pin->GetOrAddInteger("problem","nrand",64);
+    int seed  = pin->GetOrAddInteger("problem","seed",1);
+    for (int m=0; m<nmb; ++m) {
+      int gid = gids + m;
+      std::mt19937 gen(static_cast<unsigned int>(seed) + 7919u*gid);
+      std::uniform_real_distribution<Real> u01(0.0, 1.0);
+      std::normal_distribution<Real> gauss(0.0, 1.0);
+      Real bmin[3] = {mbsize.h_view(m).x1min, mbsize.h_view(m).x2min,
+                      mbsize.h_view(m).x3min};
+      Real bmax[3] = {mbsize.h_view(m).x1max, mbsize.h_view(m).x2max,
+                      mbsize.h_view(m).x3max};
+      for (int i=0; i<nrand; ++i) {
+        Real pos[3];
+        for (int dim=0; dim<3; ++dim) {
+          Real len = bmax[dim] - bmin[dim];
+          pos[dim] = bmin[dim] + u01(gen)*len;
+          Real s = u01(gen);
+          if (s < 0.05)      {pos[dim] = bmin[dim];}             // exactly on min edge
+          else if (s < 0.10) {pos[dim] = bmax[dim];}             // exactly on max edge
+          else if (s < 0.15) {pos[dim] = bmin[dim] + 0.5*len;}   // exactly on midline
+        }
+        Real vx = gauss(gen), vy = gauss(gen), vz = three_d ? gauss(gen) : 0.0;
+        Real vn = sqrt(vx*vx + vy*vy + vz*vz);
+        if (vn < 1.0e-12) {vx = 1.0; vy = 0.0; vz = 0.0; vn = 1.0;}
+        st.Add(pos[0], pos[1], pos[2], vmax*vx/vn, vmax*vy/vn, vmax*vz/vn,
+               gid, gid*nrand + i);
+      }
+    }
   } else {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "<problem> mode = '" << mode << "' not recognized (use targeted|lattice)"
-              << std::endl;
+              << "<problem> mode = '" << mode
+              << "' not recognized (use targeted|lattice|random)" << std::endl;
     exit(EXIT_FAILURE);
   }
 
