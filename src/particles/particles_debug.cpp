@@ -110,6 +110,38 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
       }
     });
     Kokkos::fence();
+
+    // host-side reverse lookup: for every offender, report the local MeshBlock that
+    // actually contains its position (the correct destination), turning each failure
+    // into a (wrong gid -> right gid) pair for the migration failure catalog
+    auto hr = Kokkos::create_mirror_view(pr);
+    auto hi = Kokkos::create_mirror_view(pi);
+    Kokkos::deep_copy(hr, pr);
+    Kokkos::deep_copy(hi, pi);
+    for (int p=0; p<npart; ++p) {
+      int gid = hi(PGID,p);
+      bool bad = (gid < gids || gid > gide);
+      if (!bad) {
+        const RegionSize &sz = size.h_view(gid - gids);
+        bad = !((hr(IPX,p) >= sz.x1min) && (hr(IPX,p) < sz.x1max)
+             && (hr(IPY,p) >= sz.x2min) && (hr(IPY,p) < sz.x2max));
+        if (three_d && !bad) {
+          bad = !((hr(IPZ,p) >= sz.x3min) && (hr(IPZ,p) < sz.x3max));
+        }
+      }
+      if (bad) {
+        Real z = three_d ? hr(IPZ,p) : 0.0;
+        int mok = FindContainingMeshBlock(hr(IPX,p), hr(IPY,p), z);
+        if (mok >= 0) {
+          std::cout << "[prtcl-debug] tag=" << hi(PTAG,p) << " has gid=" << gid
+                    << " but should be gid=" << gids + mok << std::endl;
+        } else {
+          std::cout << "[prtcl-debug] tag=" << hi(PTAG,p) << " has gid=" << gid
+                    << " but no local MeshBlock contains its position" << std::endl;
+        }
+      }
+    }
+
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
               << "particle migration check failed at cycle " << ncycle
               << " (rank " << global_variable::my_rank << "): bad_gid=" << nbad_gid

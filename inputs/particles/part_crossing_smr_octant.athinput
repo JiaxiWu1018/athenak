@@ -1,0 +1,80 @@
+# NRPIC Stage-3 particle migration test: TWO-LEVEL SMR, refined (-,-,-) OCTANT
+# (7 coarse + 8 fine MeshBlocks), strictly periodic. The refined region has level
+# boundaries normal to ALL THREE axes plus its own edges and corners, so fine<->coarse
+# crossings occur in every axis direction and every diagonal edge/corner combination,
+# with all 8 fine-block parities present; periodic wrap adds the mirrored cases.
+# mode=targeted places one particle per (MeshBlock, neighbor slot) aimed to cross in ONE
+# cycle; debug=1 makes any wrong destination fatal.
+# Tag decode: tag = gid*56 + NeighborIndex(ix,iy,iz,f1,f2).
+
+<comment>
+problem   = particle MeshBlock-crossing test (SMR octant)
+
+<job>
+basename  = part_crossing_smr_octant
+
+<mesh>
+nghost    = 2
+nx1       = 16        # 2 MeshBlocks in each direction
+x1min     = -0.5
+x1max     = 0.5
+ix1_bc    = periodic
+ox1_bc    = periodic
+
+nx2       = 16
+x2min     = -0.5
+x2max     = 0.5
+ix2_bc    = periodic
+ox2_bc    = periodic
+
+nx3       = 16
+x3min     = -0.5
+x3max     = 0.5
+ix3_bc    = periodic
+ox3_bc    = periodic
+
+<meshblock>
+nx1       = 8
+nx2       = 8
+nx3       = 8
+
+<mesh_refinement>
+refinement = static
+
+<refined_region1>
+level = 1
+x1min = -0.5
+x1max = 0.0
+x2min = -0.5
+x2max = 0.0
+x3min = -0.5
+x3max = 0.0
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.8
+nlim       = 1         # ONE targeted crossing step (raise for a soak run)
+tlim       = 10.0
+ndiag      = 1
+
+<particles>
+particle_type = dust
+pusher = drift
+init   = pgen          # pgen (in-code targeted/lattice) | file (HDF5 lattice twin)
+prtcl_init_file = lattice.h5   # used only when init=file (key present for CLI override)
+debug  = 1             # fatal post-migration validation (the pass/fail criterion)
+
+<problem>
+mode        = targeted # targeted (slot enumeration) | lattice (statistical soak)
+vmax        = 1.0      # particle speed
+select_gid  = -1       # targeted-mode isolation filters (-1 = all)
+select_slot = -1
+npx         = 8        # lattice-mode resolution
+npy         = 8
+npz         = 8
+
+<output1>
+file_type   = pvtk
+variable    = prtcl_all
+dt          = 0.001    # smaller than the cycle dt -> dump every cycle

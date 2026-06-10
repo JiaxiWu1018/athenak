@@ -125,9 +125,16 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   } else if (init.compare("file") == 0) {
     std::string fname = pin->GetString("particles","prtcl_init_file");
     read_prtcl_table(fname.c_str());   // sets nprtcl_thispack and reallocs the arrays
+  } else if (init.compare("pgen") == 0) {
+    // particles are created by the problem generator (e.g. part_crossing): allocate empty
+    // here; the pgen reallocs/fills the arrays, assigns tags, and refreshes the Mesh
+    // particle counts (it runs after AddCoordinatesAndPhysics counted zero particles)
+    nprtcl_thispack = 0;
+    Kokkos::realloc(prtcl_rdata, nrdata, nprtcl_thispack);
+    Kokkos::realloc(prtcl_idata, nidata, nprtcl_thispack);
   } else {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "<particles> init = '" << init << "' not recognized (use ppc|file)"
+              << "<particles> init = '" << init << "' not recognized (use ppc|file|pgen)"
               << std::endl;
     std::exit(EXIT_FAILURE);
   }
@@ -195,10 +202,12 @@ int Particles::FindContainingMeshBlock(Real x, Real y, Real z) const {
 // those with tag numbers less than ntrack.
 
 void Particles::CreateParticleTags(ParameterInput *pin) {
-  // file-loaded particles already carry globally-unique file-index tags (read_particle.cpp);
-  // do not overwrite them with the decomposition-dependent index_order/rank_order tags
-  // (a given physical particle must keep the same tag regardless of the MPI rank count).
-  if (pin->GetOrAddString("particles","init","ppc").compare("file") == 0) {return;}
+  // file-loaded particles already carry globally-unique file-index tags (read_particle),
+  // and pgen-initialized particles get tags from the problem generator; do not overwrite
+  // them with the decomposition-dependent index_order/rank_order tags (a given physical
+  // particle must keep the same tag regardless of the MPI rank count).
+  std::string init = pin->GetOrAddString("particles","init","ppc");
+  if (init.compare("file") == 0 || init.compare("pgen") == 0) {return;}
 
   std::string assign = pin->GetOrAddString("particles","assign_tag","index_order");
 
