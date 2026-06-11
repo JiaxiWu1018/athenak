@@ -245,14 +245,16 @@ particles::ParticlesBoundaryValues::ParticlesBoundaryValues(
 #endif
     pmy_part(pp) {
 #if MPI_PARALLEL_ENABLED
-  // Guess that no more than 10% of particles will be communicated to set size of buffer
-  int npart = pmy_part->nprtcl_thispack;
-
   //resize vectors over number of ranks
   nsends_eachrank.resize(global_variable::nranks);
 
   // create unique communicator for particles
   MPI_Comm_dup(MPI_COMM_WORLD, &mpi_comm_part);
+
+  // commit the <sendrank, recvrank, nprtcls> tuple type used by CountSendsAndRecvs once
+  // (creating it per cycle leaked one MPI datatype handle per cycle)
+  MPI_Type_contiguous(3, MPI_INT, &mpi_ituple);
+  MPI_Type_commit(&mpi_ituple);
 #endif
 }
 
@@ -260,4 +262,9 @@ particles::ParticlesBoundaryValues::ParticlesBoundaryValues(
 // destructor
 
 particles::ParticlesBoundaryValues::~ParticlesBoundaryValues() {
+#if MPI_PARALLEL_ENABLED
+  // ~Mesh runs before MPI_Finalize (main.cpp), so freeing MPI handles here is safe
+  MPI_Type_free(&mpi_ituple);
+  MPI_Comm_free(&mpi_comm_part);
+#endif
 }

@@ -78,9 +78,14 @@ class Particles {
   // destination MeshBlock was found (always fatal; stays 0 until the Stage-3a(c) search
   // rewrite wires failure detection -- the legacy neighbor walk cannot detect failure).
   int nmigr_face, nmigr_edge, nmigr_corner, nsearch_fail;
-  // particle count at the first CheckMigration call (-1 until then); without destruction
-  // (not yet implemented) the count must stay exactly constant on a single rank
-  int nprtcl_initial;
+  // migration conservation ledger (CheckMigration, debug >= 1): GLOBAL {particle count,
+  // sum of tags, sum of tag^2} captured at the first check and recomputed every cycle.
+  // Without destruction (not yet implemented) all three are exact invariants; the tag
+  // checksums additionally catch identity corruption that count conservation alone
+  // cannot (a lost particle replaced by a duplicate of another -- the compaction-bug
+  // signature). Unsigned-64 sums are modular: wraparound is harmless for equality tests.
+  bool ledger_init;
+  unsigned long long ledger0[3];
 
   // snapshots of the field/metric at the previous step, used by the GR pusher to evaluate
   // the implicit geodesic substep at the time midpoint. Allocated only for gr_boris. For a

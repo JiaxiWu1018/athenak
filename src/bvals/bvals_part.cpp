@@ -62,20 +62,45 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   auto &nghbr = pmy_part->pmy_pack->pmb->nghbr;
   auto &mbpar = pmy_part->pmy_pack->pmb->mb_parity;
   auto &psendl = sendlist;
-  int counter=0;
-  int *pcounter = &counter;
+  // GPU-safe device send counter (the legacy code atomically incremented a HOST stack
+  // address from inside the device kernel, and the host read of it had no fence)
+  DvceArray1D<int> scnt("psend_cnt",1);   // zero-initialized
+  int *pcounter = scnt.data();
   bool &multi_d = pmy_part->pmy_pack->pmesh->multi_d;
   bool &three_d = pmy_part->pmy_pack->pmesh->three_d;
 
   // migration debug instrumentation (<particles> debug >= 1): per-cycle crossing counters
   // {0: face, 1: edge, 2: corner, 3: destination-search failure}, accumulated on device
-  // (GPU-safe Kokkos::View, unlike the legacy host-pointer send counter) and copied back
-  // into the Particles members for CheckMigration. debug >= 2 adds a per-event log.
+  // and copied back into the Particles members for CheckMigration. debug >= 2 adds a
+  // per-event log.
   int dbg = pmy_part->debug_lvl;
   int ncycle = pmy_part->pmy_pack->pmesh->ncycle;
   DvceArray1D<int> dcnt("pdbg_cnt",4);   // zero-initialized
 
-  Kokkos::realloc(sendlist, static_cast<int>(0.1*npart));
+#if MPI_PARALLEL_ENABLED
+  // Exact sendlist sizing, pass 1 of 2: count the particles that crossed a MeshBlock
+  // boundary (cheap ownership comparisons only, no neighbor lookups). Crossers bound
+  // off-rank senders from above, and both passes classify a crossing with the SAME
+  // predicate (ComputeBlockOffsets), so the capacity grown here cannot be exceeded by
+  // the pass-2 appends. The legacy guess of 0.1*npart overflowed the device atomic
+  // appends (out-of-bounds writes) whenever more than 10% of a rank's particles left
+  // in one cycle, and was zero for npart < 10. Serial builds never append (UpdateGID
+  // is MPI-only), so the count and the growth are skipped entirely.
+  int ncross = 0;
+  Kokkos::parallel_reduce("part_count_cross",
+    Kokkos::RangePolicy<>(DevExeSpace(), 0, npart),
+    KOKKOS_LAMBDA(const int p, int &csum) {
+      int m = pi(PGID,p) - gids;
+      Real x3 = three_d ? pr(IPZ,p) : 0.0;
+      int cix, ciy, ciz;
+      ComputeBlockOffsets(mbsize.d_view(m), pr(IPX,p), pr(IPY,p), x3, three_d,
+                          cix, ciy, ciz);
+      if ((abs(cix) + abs(ciy) + abs(ciz)) != 0) {csum += 1;}
+    }, Kokkos::Sum<int>(ncross));
+  if (ncross > static_cast<int>(sendlist.extent(0))) {
+    Kokkos::realloc(sendlist, ncross);
+  }
+#endif
   par_for("part_update",DevExeSpace(),0,(npart-1), KOKKOS_LAMBDA(const int p) {
     int m = pi(PGID,p) - gids;
     int mylevel = mblev.d_view(m);
@@ -85,36 +110,12 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
     // position inside the block so all x3 logic below is a no-op (iz=0, fz=0, no wrap)
     Real x3 = three_d ? pr(IPZ,p) : mbsize.d_view(m).x3min;
 
-    // length of MeshBlock in each direction
-    Real lx = (mbsize.d_view(m).x1max - mbsize.d_view(m).x1min);
-    Real ly = (mbsize.d_view(m).x2max - mbsize.d_view(m).x2min);
-    Real lz = (mbsize.d_view(m).x3max - mbsize.d_view(m).x3min);
-
-    // Integer offset of the particle relative to its MeshBlock, by DIRECT COMPARISON
-    // with the same half-open [min,max) predicates that define block ownership
-    // everywhere else (FindContainingMeshBlock, CheckMigration containment). Arithmetic
-    // forms like floor((x-xmin)/lx) are NOT exactly consistent with those predicates:
-    // when x sits within half an ulp of lx BELOW a boundary, the subtraction rounds up
-    // and classifies a crossing that ownership denies (found by the Stage-3a(c) lattice
-    // soak on the nested grid, where x0 + n*dt accumulation landed at -3.5e-18 and was
-    // sent to the x>=0 block). Comparisons also DETECT a particle more than one block
-    // width away (|offset| = 2 fails the search below) instead of mislabeling it.
-    int ix = 0, iy = 0, iz = 0;
-    if (x1 <  mbsize.d_view(m).x1min) {
-      ix = (x1 <  mbsize.d_view(m).x1min - lx) ? -2 : -1;
-    } else if (x1 >= mbsize.d_view(m).x1max) {
-      ix = (x1 >= mbsize.d_view(m).x1max + lx) ?  2 :  1;
-    }
-    if (x2 <  mbsize.d_view(m).x2min) {
-      iy = (x2 <  mbsize.d_view(m).x2min - ly) ? -2 : -1;
-    } else if (x2 >= mbsize.d_view(m).x2max) {
-      iy = (x2 >= mbsize.d_view(m).x2max + ly) ?  2 :  1;
-    }
-    if (x3 <  mbsize.d_view(m).x3min) {
-      iz = (x3 <  mbsize.d_view(m).x3min - lz) ? -2 : -1;
-    } else if (x3 >= mbsize.d_view(m).x3max) {
-      iz = (x3 >= mbsize.d_view(m).x3max + lz) ?  2 :  1;
-    }
+    // Integer offset of the particle relative to its MeshBlock, by the shared ownership
+    // predicate (prtcl_search.hpp::ComputeBlockOffsets) -- the same comparisons used by
+    // the sizing pass above, the containment validator, and the search audit. See the
+    // helper's docstring for why this must never be an arithmetic (floor) form.
+    int ix, iy, iz;
+    ComputeBlockOffsets(mbsize.d_view(m), x1, x2, x3, three_d, ix, iy, iz);
 
     // sublock indices for faces and edges with S/AMR
     int fx = (x1 < 0.5*(mbsize.d_view(m).x1min + mbsize.d_view(m).x1max))? 0 : 1;
@@ -150,17 +151,17 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
         // fatal via the search_fail counter and the containment check.
         Kokkos::atomic_add(&dcnt(3), 1);
         if (dbg > 0) {
-          Kokkos::printf("[prtcl-debug] cycle=%d tag=%d gid=%d SEARCH FAIL off=(%d,%d,%d)"
-                         " pos=(%.6e,%.6e,%.6e)\n", ncycle, pi(PTAG,p), oldgid,
-                         ix, iy, iz, x1, x2, x3);
+          Kokkos::printf("[prtcl-debug] rank=%d cycle=%d tag=%d gid=%d SEARCH FAIL "
+                         "off=(%d,%d,%d) pos=(%.6e,%.6e,%.6e)\n", myrank, ncycle,
+                         pi(PTAG,p), oldgid, ix, iy, iz, x1, x2, x3);
         }
       }
 
       // per-event migration log (<particles> debug = 2); position is pre-wrap
       if (dbg > 1) {
-        Kokkos::printf("[prtcl-debug] cycle=%d tag=%d gid %d -> %d off=(%d,%d,%d) "
-                       "pos=(%.6e,%.6e,%.6e)\n", ncycle, pi(PTAG,p), oldgid, pi(PGID,p),
-                       ix, iy, iz, x1, x2, x3);
+        Kokkos::printf("[prtcl-debug] rank=%d cycle=%d tag=%d gid %d -> %d off=(%d,%d,%d)"
+                       " pos=(%.6e,%.6e,%.6e)\n", myrank, ncycle, pi(PTAG,p), oldgid,
+                       pi(PGID,p), ix, iy, iz, x1, x2, x3);
       }
 
       // reset x,y,z positions if particle crosses Mesh boundary using periodic BCs.
@@ -188,7 +189,20 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
       }
     }
   });
-  nprtcl_send = counter;
+  // read the device send counter back (the deep_copy also fences the kernel above)
+  auto hscnt = Kokkos::create_mirror_view(scnt);
+  Kokkos::deep_copy(hscnt, scnt);
+  nprtcl_send = hscnt(0);
+#if MPI_PARALLEL_ENABLED
+  // by construction senders <= crossers (same predicate in both passes); a violation
+  // means sendlist was overrun above -- make it fatal, never ship garbage entries
+  if (nprtcl_send > ncross) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "sendlist overflow: " << nprtcl_send
+              << " off-rank sends > " << ncross << " counted crossers" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+#endif
   Kokkos::resize(sendlist, nprtcl_send);
   // sync sendlist device array with host
   sendlist.template modify<DevExeSpace>();
@@ -261,13 +275,22 @@ TaskStatus ParticlesBoundaryValues::CountSendsAndRecvs() {
     sends_allranks[n + nsends_displ[global_variable::my_rank]] = sends_thisrank[n];
   }
 
-  // Share tuples using MPI derived data type for tuple of 3*int
-  MPI_Datatype mpi_ituple;
-  MPI_Type_contiguous(3, MPI_INT, &mpi_ituple);
-  MPI_Type_commit(&mpi_ituple);
+  // Share tuples using the MPI derived data type for tuple of 3*int committed once in
+  // the constructor (creating it here leaked one datatype handle per cycle)
   MPI_Allgatherv(MPI_IN_PLACE, nsends_eachrank[global_variable::my_rank],
                    mpi_ituple, sends_allranks.data(), nsends_eachrank.data(),
                    nsends_displ.data(), mpi_ituple, mpi_comm_part);
+
+  // <particles> debug >= 2: rank 0 prints this cycle's global send matrix (every rank
+  // already holds the full tuple list -- no extra communication)
+  if (pmy_part->debug_lvl > 1 && global_variable::my_rank == 0 &&
+      !(sends_allranks.empty())) {
+    std::cout << "[prtcl-debug] cycle=" << pmy_part->pmy_pack->pmesh->ncycle << " sends:";
+    for (auto &s : sends_allranks) {
+      std::cout << " " << s.sendrank << "->" << s.recvrank << ":" << s.nprtcls;
+    }
+    std::cout << std::endl;
+  }
 #endif
   return TaskStatus::complete;
 }
@@ -296,9 +319,11 @@ TaskStatus ParticlesBoundaryValues::InitPrtclRecv() {
     nprtcl_recv += recvs_thisrank[n].nprtcls;
   }
 
-  // Allocate receive buffer
-  Kokkos::realloc(prtcl_rrecvbuf, (pmy_part->nrdata)*nprtcl_recv);
-  Kokkos::realloc(prtcl_irecvbuf, (pmy_part->nidata)*nprtcl_recv);
+  // Allocate receive buffer (skip the zero-extent reallocs on quiet cycles)
+  if (nprtcl_recv > 0) {
+    Kokkos::realloc(prtcl_rrecvbuf, (pmy_part->nrdata)*nprtcl_recv);
+    Kokkos::realloc(prtcl_irecvbuf, (pmy_part->nidata)*nprtcl_recv);
+  }
 
   // Post non-blocking receives
   bool no_errors=true;
@@ -314,7 +339,7 @@ TaskStatus ParticlesBoundaryValues::InitPrtclRecv() {
   for (int n=0; n<nrecvs; ++n) {
     // calculate amount of data to be passed, get pointer to variables
     int data_size = (pmy_part->nrdata)*(recvs_thisrank[n].nprtcls);
-    int data_end = data_start + (pmy_part->nrdata)*(recvs_thisrank[n].nprtcls - 1);
+    int data_end = data_start + data_size;
     auto recv_ptr = Kokkos::subview(prtcl_rrecvbuf, std::make_pair(data_start, data_end));
     int drank = recvs_thisrank[n].sendrank;
     int tag = 0; // 0 for Reals, 1 for ints
@@ -330,7 +355,7 @@ TaskStatus ParticlesBoundaryValues::InitPrtclRecv() {
   for (int n=0; n<nrecvs; ++n) {
     // calculate amount of data to be passed, get pointer to variables
     int data_size = (pmy_part->nidata)*(recvs_thisrank[n].nprtcls);
-    int data_end = data_start + (pmy_part->nidata)*(recvs_thisrank[n].nprtcls - 1);
+    int data_end = data_start + data_size;
     auto recv_ptr = Kokkos::subview(prtcl_irecvbuf, std::make_pair(data_start, data_end));
     int drank = recvs_thisrank[n].sendrank;
     int tag = 1; // 0 for Reals, 1 for ints
@@ -378,8 +403,10 @@ TaskStatus ParticlesBoundaryValues::PackAndSendPrtcls() {
     auto &pi = pmy_part->prtcl_idata;
     auto &rsendbuf = prtcl_rsendbuf;
     auto &isendbuf = prtcl_isendbuf;
+    // local ref so the device lambda does not capture (and dereference) host `this`
+    auto &slist = sendlist;
     par_for("ppack",DevExeSpace(),0,(nprtcl_send-1), KOKKOS_LAMBDA(const int n) {
-      int p = sendlist.d_view(n).prtcl_indx;
+      int p = slist.d_view(n).prtcl_indx;
       for (int i=0; i<nidata; ++i) {
         isendbuf(nidata*n + i) = pi(i,p);
       }
@@ -402,7 +429,7 @@ TaskStatus ParticlesBoundaryValues::PackAndSendPrtcls() {
     for (int n=0; n<nsends; ++n) {
       // calculate amount of data to be passed, get pointer to variables
       int data_size = nrdata*(sends_thisrank[n].nprtcls);
-      int data_end = data_start + nrdata*(sends_thisrank[n].nprtcls - 1);
+      int data_end = data_start + data_size;
       auto send_ptr = Kokkos::subview(prtcl_rsendbuf,std::make_pair(data_start,data_end));
       int drank = sends_thisrank[n].recvrank;
       int tag = 0; // 0 for Reals, 1 for ints
@@ -418,7 +445,7 @@ TaskStatus ParticlesBoundaryValues::PackAndSendPrtcls() {
     for (int n=0; n<nsends; ++n) {
       // calculate amount of data to be passed, get pointer to variables
       int data_size = nidata*(sends_thisrank[n].nprtcls);
-      int data_end = data_start + nidata*(sends_thisrank[n].nprtcls - 1);
+      int data_end = data_start + data_size;
       auto send_ptr = Kokkos::subview(prtcl_isendbuf,std::make_pair(data_start,data_end));
       int drank = sends_thisrank[n].recvrank;
       int tag = 1; // 0 for Reals, 1 for ints
@@ -496,12 +523,15 @@ TaskStatus ParticlesBoundaryValues::RecvAndUnpackPrtcls() {
     auto &rrecvbuf = prtcl_rrecvbuf;
     auto &irecvbuf = prtcl_irecvbuf;
     int &npart = pmy_part->nprtcl_thispack;
+    // locals so the device lambda does not capture (and dereference) host `this`
+    auto &slist = sendlist;
+    int nsend = nprtcl_send;
     par_for("punpack",DevExeSpace(),0,(nprtcl_recv-1), KOKKOS_LAMBDA(const int n) {
       int p;
-      if (n < nprtcl_send) {
-        p = sendlist.d_view(n).prtcl_indx; // place particles in holes created by sends
+      if (n < nsend) {
+        p = slist.d_view(n).prtcl_indx;    // place particles in holes created by sends
       } else {
-        p = npart + (n - nprtcl_send);     // place particle at end of arrays
+        p = npart + (n - nsend);           // place particle at end of arrays
       }
       for (int i=0; i<nidata; ++i) {
         pi(i,p) = irecvbuf(nidata*n + i);
@@ -545,9 +575,20 @@ TaskStatus ParticlesBoundaryValues::RecvAndUnpackPrtcls() {
 
   // Update nparticles_thisrank.  Update cost array (use npart_thismb[nmb]?)
   pmy_part->nprtcl_thispack = new_npart;
-  pmy_part->pmy_pack->pmesh->nprtcl_thisrank = new_npart;
-  MPI_Allgather(&new_npart,1,MPI_INT,(pmy_part->pmy_pack->pmesh->nprtcl_eachrank),1,
-                MPI_INT,MPI_COMM_WORLD);
+  Mesh *pm = pmy_part->pmy_pack->pmesh;
+  pm->nprtcl_thisrank = new_npart;
+  // refresh the global counts on the particle communicator (the legacy call was the lone
+  // particle collective on MPI_COMM_WORLD), and keep nprtcl_total consistent with the
+  // refreshed per-rank counts (a no-op invariant until destruction exists). If no rank
+  // sent anything this cycle the counts cannot have changed: skip the collective
+  // (sends_allranks is Allgather'd, so this branch is identical on every rank).
+  if (!(sends_allranks.empty())) {
+    MPI_Allgather(&new_npart,1,MPI_INT,(pm->nprtcl_eachrank),1,MPI_INT,mpi_comm_part);
+    pm->nprtcl_total = 0;
+    for (int n=0; n<(global_variable::nranks); ++n) {
+      pm->nprtcl_total += pm->nprtcl_eachrank[n];
+    }
+  }
 #endif
   return TaskStatus::complete;
 }
