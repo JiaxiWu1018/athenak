@@ -1,0 +1,116 @@
+# NRPIC Stage-3c horizon-capture test: Kerr a=0.9 (Cartesian Kerr-Schild, M=1).
+# A rest shell at r0=4 (128 particles, u_i=0, zero-L -> frame-dragged plunge) and an equatorial circular
+# ring at r0=8 (64 particles, survivors) on a 2-level static refinement grid whose level
+# boundaries straddle both block parities. The shell crosses L0->L1->L2 while
+# accelerating, penetrates the horizon (r_+=1.436; CKS is horizon-penetrating) and is excised
+# by EITHER criterion, set per run via CLI:
+#   sphere: particles/excise_radius=1.0
+#   lapse : particles/excise_lapse=0.6     (CKS gauge: alpha=0.6 at r~1.125, inside r_h;
+#                                           the horizon itself sits at alpha=1/sqrt(2))
+# The ring survives to tlim with r, E=-u_t, L=u_phi constant (Stage-2 contracts).
+# Controls: problem/ring_np=0 (doomed only) or problem/shell_np=0 (survivors only).
+# Build: cmake -S . -B build_gr -DAthena_ENABLE_MPI=ON -DPROBLEM=part_kerr_schild
+# Run:   mpirun -np 4 build_gr/src/athena -i inputs/particles/part_horizon_kerr.athinput \
+#            particles/excise_radius=1.0
+
+<comment>
+problem   = NRPIC Stage-3c: horizon capture of plunging particles (Kerr a=0.9)
+
+<job>
+basename  = horizon_kerr
+
+<mesh>
+nghost = 4
+nx1    = 64            # 4x4x4 MeshBlocks at the root level
+x1min  = -12.0
+x1max  = 12.0
+ix1_bc = outflow
+ox1_bc = outflow
+
+nx2    = 64
+x2min  = -12.0
+x2max  = 12.0
+ix2_bc = outflow
+ox2_bc = outflow
+
+nx3    = 64
+x3min  = -12.0
+x3max  = 12.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<mesh_refinement>
+refinement = static
+
+# level-1 box spans HALF of each adjacent root block transversely -> refined blocks of
+# both parities sit on every level boundary (the parity-coverage configuration of the
+# Stage-3a SMR tests); same construction for level 2 inside it
+<refined_region1>
+level = 1
+x1min = -3.0
+x1max = 3.0
+x2min = -3.0
+x2max = 3.0
+x3min = -3.0
+x3max = 3.0
+
+<refined_region2>
+level = 2
+x1min = -1.5
+x1max = 1.5
+x2min = -1.5
+x2max = 1.5
+x3min = -1.5
+x3max = 1.5
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.3       # dt = 0.3*dx_min ~ 0.028 (light-crossing of the finest level)
+nlim       = 100000
+tlim       = 25.0      # shell capture completes by t ~ 15-20M; ring does ~1/6 orbit
+ndiag      = 100
+
+<coord>
+general_rel = true     # needed so the spin parameter `a` is read into bh_spin
+excise      = false    # no hydro excision (particle-only background)
+a           = 0.9      # Kerr (r_+ = 1 + sqrt(1-a^2) ~ 1.436)
+minkowski   = false
+
+<adm>
+
+<particles>
+particle_type = dust
+pusher        = gr_boris
+init          = pgen
+mass          = 1.0
+debug         = 1      # fatal post-migration validation + two-sided conservation ledger
+destroy_log   = true   # death-record CSV (<basename>.prtcl_destroy.csv)
+excise_radius = 0.0    # > 0 enables sphere excision (set per run via CLI)
+excise_x1     = 0.0
+excise_x2     = 0.0
+excise_x3     = 0.0
+excise_lapse  = 0.0    # > 0 enables lapse excision (set per run via CLI)
+
+<problem>
+shell_np  = 128        # rest shell (plunges); tags [0, shell_np)
+shell_r0  = 4.0
+ring_np   = 64         # circular ring (survives); tags [shell_np, shell_np+ring_np)
+ring_r0   = 8.0
+ring_sign = 1.0        # +1 prograde, -1 retrograde
+ring_tag0 = 128        # first ring tag (= shell_np, so survivors-only control runs
+                       # with shell_np=0 keep the same ring tags as the mixed run)
+
+<output1>
+file_type = pvtk
+variable  = prtcl_all
+dt        = 1.0
+
+<output2>
+file_type = rst
+dt        = 50.0       # rst at t=0 plus the Driver::Finalize write at nlim/tlim

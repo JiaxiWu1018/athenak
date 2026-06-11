@@ -24,7 +24,11 @@
 #include "z4c/z4c_amr.hpp"
 #include "coordinates/adm.hpp"
 #include "coordinates/cell_locations.hpp"
+#include "particles/particles.hpp"
 
+#if MPI_PARALLEL_ENABLED
+#include <mpi.h>
+#endif
 
 void ADMOnePuncture(MeshBlockPack *pmbp, ParameterInput *pin);
 void RefinementCondition(MeshBlockPack* pmbp);
@@ -63,6 +67,85 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     case 4: pmbp->pz4c->ADMConstraints<4>(pmbp);
             break;
   }
+  // ---- NRPIC Stage 3c(b): optional particle rings for the puncture-lapse excision
+  // smoke test (active only when the input has a <particles> block with init=pgen).
+  // Up to two equatorial rest rings (u_i = 0) of <problem> prtcl_np particles at radii
+  // prtcl_r1 / prtcl_r2 (0 = off; tags ring-1 first). With the pre-collapsed initial
+  // lapse (alpha = psi^-2) and 1+log slicing, alpha at an inner ring (r ~ 0.5M) falls
+  // below a <particles> excise_lapse ~ 0.1 threshold within a few M of evolution -- a
+  // DYNAMICAL-lapse kill through the I_Z4C_ALPHA interpolation branch (the OS-collapse
+  // rehearsal); an outer ring (r ~ 4M) survives. No effect on z4c runs without
+  // particles.
+  if (pmbp->ppart != nullptr && !restart) {
+    particles::Particles *ppart = pmbp->ppart;
+    std::string pinit = pin->GetOrAddString("particles","init","ppc");
+    if (pinit.compare("pgen") != 0) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "z4c_one_puncture particles require init = pgen"
+                << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    int npr  = pin->GetOrAddInteger("problem","prtcl_np",16);
+    Real rr[2] = {pin->GetOrAddReal("problem","prtcl_r1",0.0),
+                  pin->GetOrAddReal("problem","prtcl_r2",0.0)};
+    std::vector<Real> sx, sy, sz;
+    std::vector<int> sgid, stag;
+    int tag = 0;
+    for (int ir=0; ir<2; ++ir) {
+      for (int k=0; k<npr; ++k, ++tag) {
+        if (rr[ir] <= 0.0) {continue;}
+        Real phi = 2.0*M_PI*(k + 0.5)/static_cast<Real>(npr);
+        Real px = rr[ir]*std::cos(phi), py = rr[ir]*std::sin(phi);
+        int m = ppart->FindContainingMeshBlock(px, py, 0.0);
+        if (m >= 0) {
+          sx.push_back(px); sy.push_back(py); sz.push_back(0.0);
+          sgid.push_back(pmbp->gids + m); stag.push_back(tag);
+        }
+      }
+    }
+    int npart = static_cast<int>(sx.size());
+    Kokkos::realloc(ppart->prtcl_rdata, ppart->nrdata, npart);
+    Kokkos::realloc(ppart->prtcl_idata, ppart->nidata, npart);
+    auto hr = Kokkos::create_mirror_view(ppart->prtcl_rdata);
+    auto hi = Kokkos::create_mirror_view(ppart->prtcl_idata);
+    for (int p=0; p<npart; ++p) {
+      hi(PGID,p) = sgid[p];
+      hi(PTAG,p) = stag[p];
+      hr(IPM,p)  = ppart->mass;
+      hr(IPEN,p) = 0.0;
+      hr(IPX,p)  = sx[p];  hr(IPVX,p) = 0.0;
+      hr(IPY,p)  = sy[p];  hr(IPVY,p) = 0.0;
+      hr(IPZ,p)  = sz[p];  hr(IPVZ,p) = 0.0;
+    }
+    Kokkos::deep_copy(ppart->prtcl_rdata, hr);
+    Kokkos::deep_copy(ppart->prtcl_idata, hi);
+    ppart->nprtcl_thispack = npart;
+    pmy_mesh_->nprtcl_thisrank = npart;
+    pmy_mesh_->nprtcl_eachrank[global_variable::my_rank] = npart;
+#if MPI_PARALLEL_ENABLED
+    MPI_Allgather(&npart, 1, MPI_INT, pmy_mesh_->nprtcl_eachrank, 1, MPI_INT,
+                  MPI_COMM_WORLD);
+#endif
+    pmy_mesh_->nprtcl_total = 0;
+    for (int n=0; n<global_variable::nranks; ++n) {
+      pmy_mesh_->nprtcl_total += pmy_mesh_->nprtcl_eachrank[n];
+    }
+    if (global_variable::my_rank == 0) {
+      std::cout << "z4c_one_puncture: placed " << pmy_mesh_->nprtcl_total
+                << " particles (rings r1=" << rr[0] << " r2=" << rr[1] << ")"
+                << std::endl;
+    }
+  }
+  // seed the GR-pusher previous-step snapshots (fresh start AND restart; the restart
+  // reader restores u_adm/u0 before this runs)
+  if (pmbp->ppart != nullptr &&
+      pmbp->ppart->pusher == ParticlesPusher::gr_boris) {
+    Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->adm_last, pmbp->padm->u_adm);
+    if (pmbp->pz4c != nullptr) {
+      Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->z4c_last, pmbp->pz4c->u0);
+    }
+  }
+
   std::cout<<"OnePuncture initialized."<<std::endl;
 
   return;

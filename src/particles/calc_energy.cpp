@@ -20,6 +20,7 @@
 #include "athena.hpp"
 #include "mesh/mesh.hpp"
 #include "coordinates/adm.hpp"
+#include "z4c/z4c.hpp"
 #include "eos/primitive-solver/geom_math.hpp"
 #include "particles.hpp"
 #include "lagrange_interp.hpp"
@@ -42,6 +43,13 @@ void Particles::calc_prtcl_energy() {
   auto &pi = prtcl_idata;
   auto &pr = prtcl_rdata;
   auto &adm_n = pmy_pack->padm->u_adm;
+  // lapse/shift source: when Z4c is live the ADM storage drops the alpha/beta slots
+  // (u_adm holds nadm-4 variables) and the gauge lives in the Z4c state vector -- the
+  // same source switch as the gr_boris pusher. Reading I_ADM_ALPHA from the trimmed
+  // u_adm was out of bounds (latent Stage-1 bug, first reachable with z4c+particles).
+  DvceArray5D<Real> z4c_u0;
+  bool use_z4c = (pmy_pack->pz4c != nullptr);
+  if (use_z4c) {z4c_u0 = pmy_pack->pz4c->u0;}
 
   par_for("calc_prtcl_energy", DevExeSpace(), 0, (nprtcl_thispack-1),
   KOKKOS_LAMBDA(const int p) {
@@ -59,12 +67,28 @@ void Particles::calc_prtcl_energy() {
     Real Lx[2*NGHOST] = {0.0}, Ly[2*NGHOST] = {0.0}, Lz[2*NGHOST] = {0.0};
     CalcInterpWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
 
-    // interpolate lapse, shift, 3-metric (all physical, from ADM)
-    Real alp  = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx,Ly,Lz);
+    // interpolate lapse + shift (from Z4c when live, else ADM) and the 3-metric (ADM)
+    Real alp;
     Real beta[3];
-    beta[0]   = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_BETAX, interp_indcs, Lx,Ly,Lz);
-    beta[1]   = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_BETAY, interp_indcs, Lx,Ly,Lz);
-    beta[2]   = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_BETAZ, interp_indcs, Lx,Ly,Lz);
+    if (use_z4c) {
+      alp     = LagrangeInterpolator<NGHOST>(z4c_u0, z4c::Z4c::I_Z4C_ALPHA,
+                                             interp_indcs, Lx,Ly,Lz);
+      beta[0] = LagrangeInterpolator<NGHOST>(z4c_u0, z4c::Z4c::I_Z4C_BETAX,
+                                             interp_indcs, Lx,Ly,Lz);
+      beta[1] = LagrangeInterpolator<NGHOST>(z4c_u0, z4c::Z4c::I_Z4C_BETAY,
+                                             interp_indcs, Lx,Ly,Lz);
+      beta[2] = LagrangeInterpolator<NGHOST>(z4c_u0, z4c::Z4c::I_Z4C_BETAZ,
+                                             interp_indcs, Lx,Ly,Lz);
+    } else {
+      alp     = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_ALPHA,
+                                             interp_indcs, Lx,Ly,Lz);
+      beta[0] = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_BETAX,
+                                             interp_indcs, Lx,Ly,Lz);
+      beta[1] = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_BETAY,
+                                             interp_indcs, Lx,Ly,Lz);
+      beta[2] = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_BETAZ,
+                                             interp_indcs, Lx,Ly,Lz);
+    }
     Real g3d[6];
     g3d[0]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXX, interp_indcs, Lx,Ly,Lz);
     g3d[1]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXY, interp_indcs, Lx,Ly,Lz);
