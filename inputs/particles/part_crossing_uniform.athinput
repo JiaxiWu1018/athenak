@@ -49,6 +49,12 @@ pusher = drift
 init   = pgen          # pgen (in-code targeted/lattice) | file (HDF5 lattice twin)
 prtcl_init_file = lattice.h5   # used only when init=file (key present for CLI override)
 debug  = 1             # fatal post-migration validation (the pass/fail criterion)
+destroy_log   = true   # death-record CSV (<basename>.prtcl_destroy.csv)
+excise_radius = 0.0    # > 0 enables sphere excision (keys present for CLI override)
+excise_x1     = 0.0    # sphere center
+excise_x2     = 0.0
+excise_x3     = 0.0
+excise_lapse  = 0.0    # > 0 enables lapse excision (requires <adm>; gauge-dependent)
 
 <problem>
 mode        = targeted # targeted (slot enum) | lattice (soak) | random (fuzz)

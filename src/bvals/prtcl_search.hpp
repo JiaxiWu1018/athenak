@@ -39,10 +39,11 @@
 //!    coarse faces force the exterior-corner case in which the diagonal slot was
 //!    populated in the first place (see the stage-3 README section 4.1).
 //!
-//! Returns -1 when no destination exists; the caller must NOT update the particle GID
-//! (a -1 here means the particle exits the mesh through a physical boundary -- handled
-//! by the destruction machinery of a later Stage-3 session -- or a logic/balance error,
-//! which the <particles> debug validation makes fatal).
+//! Returns -1 when no destination exists; the caller must NOT update the particle GID.
+//! Since Stage 3c, particles exiting the mesh through a physical boundary are destroyed
+//! BEFORE the search runs (ExitsMeshBoundary below), so a -1 for a surviving particle
+//! is unconditionally a logic/balance/overspeed error, which the <particles> debug
+//! validation makes fatal.
 //!
 //! All functions are templated on the nghbr view type so the same code runs in device
 //! kernels (pass nghbr.d_view) and in the host enumeration audit (pass nghbr.h_view).
@@ -94,6 +95,39 @@ void ComputeBlockOffsets(const RegionSize &sz, Real x1, Real x2, Real x3, bool t
       iz = (x3 >= sz.x3max + lz) ?  2 :  1;
     }
   }
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn bool ExitsMeshBoundary()
+//! \brief true iff a crossing with block offsets (ix,iy,iz) leaves the computational
+//! domain through a NON-periodic mesh boundary of block m -- the destruction predicate
+//! (reason=exit) of Stage 3c. Decided per direction from this block's own face flags
+//! (MeshBlock::mb_bcs, faces 0..5 = inner/outer x1,x2,x3): `block` means the face is
+//! interior (a neighbor exists), `periodic` means the crossing wraps; ANY other flag
+//! (outflow, diode, vacuum, user, and the unimplemented-for-particles reflect/inflow)
+//! destroys. A single physical direction kills a mixed corner/edge exit -- the periodic
+//! or interior components do not save it. |offset| >= 2 toward a physical face also
+//! exits (the particle is already outside the mesh on that side). Like
+//! ComputeBlockOffsets this is the SINGLE definition of the predicate: the counting
+//! pass and the marking pass must both call it so capacity == appends by construction.
+//! Templated on the mb_bcs view type (device kernels pass d_view, host audits h_view).
+
+template <typename BcsView>
+KOKKOS_INLINE_FUNCTION
+bool ExitsMeshBoundary(const BcsView &bcs, int m, int ix, int iy, int iz) {
+  if (ix != 0) {
+    BoundaryFlag f = bcs(m, (ix < 0) ? 0 : 1);
+    if (f != BoundaryFlag::block && f != BoundaryFlag::periodic) {return true;}
+  }
+  if (iy != 0) {
+    BoundaryFlag f = bcs(m, (iy < 0) ? 2 : 3);
+    if (f != BoundaryFlag::block && f != BoundaryFlag::periodic) {return true;}
+  }
+  if (iz != 0) {
+    BoundaryFlag f = bcs(m, (iz < 0) ? 4 : 5);
+    if (f != BoundaryFlag::block && f != BoundaryFlag::periodic) {return true;}
+  }
+  return false;
 }
 
 //----------------------------------------------------------------------------------------

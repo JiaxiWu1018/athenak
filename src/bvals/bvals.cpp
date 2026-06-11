@@ -236,7 +236,16 @@ void MeshBoundaryValues::InitializeBuffers(const int nvar) {
 
 particles::ParticlesBoundaryValues::ParticlesBoundaryValues(
   particles::Particles *pp, ParameterInput *pin) :
+    nprtcl_send(0),
+    nprtcl_recv(0),
     sendlist("sendlist",1),
+    nprtcl_destroy(0),
+    destroylist("destroylist",1),
+    holelist("holelist",1),
+    cpairs("cpairs",1),
+    destroy_rec_r("drec_r",7,1),
+    destroy_rec_i("drec_i",3,1),
+    ndest_global{0, 0, 0},
 #if MPI_PARALLEL_ENABLED
     prtcl_rsendbuf("rsend",1),
     prtcl_rrecvbuf("rrecv",1),
@@ -247,6 +256,7 @@ particles::ParticlesBoundaryValues::ParticlesBoundaryValues(
 #if MPI_PARALLEL_ENABLED
   //resize vectors over number of ranks
   nsends_eachrank.resize(global_variable::nranks);
+  ndest_eachrank.resize(global_variable::nranks);
 
   // create unique communicator for particles
   MPI_Comm_dup(MPI_COMM_WORLD, &mpi_comm_part);

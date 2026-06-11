@@ -35,7 +35,14 @@ void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> t
   // (n+1) metric while the *_last snapshots hold step n.
   auto &atl = tl["after_timeintegrator"];
   id.push   = atl->AddTask(&Particles::Push, this, none);
-  id.newgid = atl->AddTask(&Particles::NewGID, this, id.push);
+  // excision marking (Stage 3c(b)): scheduled only when a criterion is enabled; writes
+  // the excise_flag/crit arrays that NewGID's destruction marking consumes
+  TaskID newgid_dep = id.push;
+  if (excise_any) {
+    id.excise = atl->AddTask(&Particles::MarkExcised, this, id.push);
+    newgid_dep = id.excise;
+  }
+  id.newgid = atl->AddTask(&Particles::NewGID, this, newgid_dep);
   id.count  = atl->AddTask(&Particles::SendCnt, this, id.newgid);
   id.irecv  = atl->AddTask(&Particles::InitRecv, this, id.count);
   id.sendp  = atl->AddTask(&Particles::SendP, this, id.irecv);

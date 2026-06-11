@@ -57,12 +57,18 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
   int npart = nprtcl_thispack;
   int myrank = global_variable::my_rank;
 
-  // per-cycle migration summary (counters filled by SetNewPrtclGID this cycle)
-  if ((nmigr_face + nmigr_edge + nmigr_corner + nsearch_fail) > 0) {
+  // per-cycle migration/destruction summary (counters filled by SetNewPrtclGID)
+  int ndest_cycle = ndestroy_thisrank[0] + ndestroy_thisrank[1] + ndestroy_thisrank[2];
+  if ((nmigr_face + nmigr_edge + nmigr_corner + nsearch_fail + ndest_cycle) > 0) {
     std::cout << "[prtcl-debug] rank=" << myrank << " cycle=" << ncycle
               << " migrations: face=" << nmigr_face
               << " edge=" << nmigr_edge << " corner=" << nmigr_corner
-              << " search_fail=" << nsearch_fail << " npart=" << npart << std::endl;
+              << " search_fail=" << nsearch_fail;
+    if (ndest_cycle > 0) {
+      std::cout << " destroyed={" << ndestroy_thisrank[0] << ","
+                << ndestroy_thisrank[1] << "," << ndestroy_thisrank[2] << "}";
+    }
+    std::cout << " npart=" << npart << std::endl;
   }
 
   // validation pass: count GID-range and bbox-containment violations
@@ -91,10 +97,16 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
       }
     }, Kokkos::Sum<int>(nbad_gid), Kokkos::Sum<int>(nbad_box));
 
-  // conservation ledger: GLOBAL {count, sum of tags, sum of tag^2}, captured lazily at
-  // the first check (works for any init path -- ppc/file/pgen -- and across restarts),
-  // recomputed and compared every cycle. Cross-rank sends change per-rank counts
-  // legitimately; these global sums are exact migration invariants.
+  // TWO-SIDED conservation ledger: GLOBAL alive {count, sum of tags, sum of tag^2}
+  // plus the destroyed-side counterparts (count from the census-fed Mesh cums --
+  // already global -- and checksums accumulated at marking time, Allreduced here).
+  // Captured lazily at the first check as ledger0 = alive + dead (dead can already be
+  // nonzero: the first check runs after cycle-1 destructions, and a restarted segment
+  // re-captures against its own segment-local dead checksums); the invariant
+  // alive + dead == ledger0 then holds component-wise every cycle. Cross-rank sends
+  // move particles between ranks and destruction moves them to the dead side; nothing
+  // may appear, vanish, or change identity -- which is exactly what the tag checksums
+  // verify across compaction events.
   unsigned long long tsum = 0, tsq = 0;
   Kokkos::parallel_reduce("part_ledger",
     Kokkos::RangePolicy<>(DevExeSpace(), 0, npart),
@@ -104,24 +116,34 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
       s1 += t;
       s2 += t*t;
     }, Kokkos::Sum<unsigned long long>(tsum), Kokkos::Sum<unsigned long long>(tsq));
-  unsigned long long led[3] = {static_cast<unsigned long long>(npart), tsum, tsq};
+  // led = {alive count, alive tag-sum, alive tag-sq, dead tag-sum, dead tag-sq}
+  unsigned long long led[5] = {static_cast<unsigned long long>(npart), tsum, tsq,
+                               ledger_dead[0], ledger_dead[1]};
 #if MPI_PARALLEL_ENABLED
   // collective is safe: this task runs on every rank each cycle and debug_lvl is
   // input-file-uniform across ranks
-  MPI_Allreduce(MPI_IN_PLACE, led, 3, MPI_UNSIGNED_LONG_LONG, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, led, 5, MPI_UNSIGNED_LONG_LONG, MPI_SUM,
                 pbval_part->mpi_comm_part);
 #endif
+  Mesh *pm = pmy_pack->pmesh;
+  unsigned long long dead_cnt = 0;
+  for (int k=0; k<3; ++k) {
+    dead_cnt += static_cast<unsigned long long>(pm->nprtcl_destroyed_cum[k]);
+  }
   if (!ledger_init) {
-    ledger0[0] = led[0]; ledger0[1] = led[1]; ledger0[2] = led[2];
+    ledger0[0] = led[0] + dead_cnt;
+    ledger0[1] = led[1] + led[3];
+    ledger0[2] = led[2] + led[4];
     ledger_init = true;
   }
-  bool bad_ledger = (led[0] != ledger0[0]) || (led[1] != ledger0[1])
-                                          || (led[2] != ledger0[2]);
+  bool bad_ledger = (led[0] + dead_cnt != ledger0[0])
+                 || (led[1] + led[3]  != ledger0[1])
+                 || (led[2] + led[4]  != ledger0[2]);
 
   // per-rank bookkeeping consistency: the local count must match this rank's published
   // nprtcl_eachrank entry, and the published counts must sum to nprtcl_total and to the
-  // Allreduced true total (validates the migration Allgather refresh)
-  Mesh *pm = pmy_pack->pmesh;
+  // Allreduced true total (validates both count-refresh paths: the Allgather on send
+  // cycles and the census-based local decrement on destroy-only cycles)
   long long sum_each = 0;
   for (int n=0; n<(global_variable::nranks); ++n) {sum_each += pm->nprtcl_eachrank[n];}
   bool bad_counts = (npart != pm->nprtcl_eachrank[myrank]) ||
@@ -196,8 +218,9 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
               << " (rank " << myrank << "): bad_gid=" << nbad_gid
               << " out_of_bbox=" << nbad_box << " search_fail=" << nsearch_fail;
     if (bad_ledger) {
-      std::cout << " ledger {count,tagsum,tagsq}={" << led[0] << "," << led[1] << ","
-                << led[2] << "} != initial {" << ledger0[0] << "," << ledger0[1] << ","
+      std::cout << " ledger alive{count,tagsum,tagsq}={" << led[0] << "," << led[1]
+                << "," << led[2] << "} + dead{" << dead_cnt << "," << led[3] << ","
+                << led[4] << "} != initial {" << ledger0[0] << "," << ledger0[1] << ","
                 << ledger0[2] << "}";
     }
     if (bad_counts) {

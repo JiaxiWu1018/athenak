@@ -634,9 +634,13 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
 
   //--- STEP 5. Particle data (variable per-rank count), appended after all grid data.
   // Written as one all-Real section in global particle order:
-  //   [total][rdata: nrdata var-major blocks of length total][idata: nidata blocks (as Real)]
-  // (int tags/gids fit exactly in Real). Read back by the ProblemGenerator restart ctor,
-  // which re-assigns particles to MeshBlocks by position (robust to a changed rank count).
+  //   [4-Real header: total, cum destroyed exit/sphere/lapse]
+  //   [rdata: nrdata var-major blocks of length total][idata: nidata blocks (as Real)]
+  // (int tags/gids/counts fit exactly in Real). Read back by the ProblemGenerator
+  // restart ctor, which re-assigns particles to MeshBlocks by position (robust to a
+  // changed rank count) and restores the cumulative destroyed ledger so conservation
+  // accounting spans restart segments. Stage-3c format change: pre-destruction rst
+  // files carried a 1-Real header and cannot be read by this version.
   if (pm->pmb_pack->ppart != nullptr) {
     particles::Particles *pp = pm->pmb_pack->ppart;
     int count = pp->nprtcl_thispack;
@@ -658,11 +662,14 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
       : static_cast<IOWrapperSizeT>(pm->nmb_total);
     IOWrapperSizeT prtcl_base = grid_start + data_size*nmb_off;
 
-    Real total_r = static_cast<Real>(total);
+    Real hdr[4] = {static_cast<Real>(total),
+                   static_cast<Real>(pm->nprtcl_destroyed_cum[0]),
+                   static_cast<Real>(pm->nprtcl_destroyed_cum[1]),
+                   static_cast<Real>(pm->nprtcl_destroyed_cum[2])};
     if (global_variable::my_rank == 0 || single_file_per_rank) {
-      resfile.Write_any_type_at(&total_r, 1, prtcl_base, "Real", single_file_per_rank);
+      resfile.Write_any_type_at(hdr, 4, prtcl_base, "Real", single_file_per_rank);
     }
-    IOWrapperSizeT rdata_base = prtcl_base + sizeof(Real);
+    IOWrapperSizeT rdata_base = prtcl_base + 4*sizeof(Real);
     IOWrapperSizeT idata_base = rdata_base
       + static_cast<IOWrapperSizeT>(nrd)*total*sizeof(Real);
     if (count > 0) {

@@ -647,10 +647,15 @@ ProblemGenerator::ProblemGenerator(ParameterInput *pin, Mesh *pm, IOWrapper resf
     IOWrapperSizeT nmb_off = single_file_per_rank ?
         static_cast<IOWrapperSizeT>(nmb) : static_cast<IOWrapperSizeT>(pm->nmb_total);
     IOWrapperSizeT prtcl_base = headeroffset + data_size*nmb_off;
-    Real total_r = 0.0;
-    resfile.Read_Reals_at(&total_r, 1, prtcl_base, single_file_per_rank);
-    int total = static_cast<int>(std::round(total_r));
-    IOWrapperSizeT rdata_base = prtcl_base + sizeof(Real);
+    // 4-Real header {total, cum destroyed exit/sphere/lapse}: restore the cumulative
+    // destroyed ledger so conservation accounting spans restart segments (Stage 3c)
+    Real hdr[4] = {0.0, 0.0, 0.0, 0.0};
+    resfile.Read_Reals_at(hdr, 4, prtcl_base, single_file_per_rank);
+    int total = static_cast<int>(std::round(hdr[0]));
+    for (int k=0; k<3; ++k) {
+      pm->nprtcl_destroyed_cum[k] = static_cast<int>(std::round(hdr[1+k]));
+    }
+    IOWrapperSizeT rdata_base = prtcl_base + 4*sizeof(Real);
     IOWrapperSizeT idata_base = rdata_base
       + static_cast<IOWrapperSizeT>(nrd)*total*sizeof(Real);
     std::vector<Real> rbuf(static_cast<std::size_t>(nrd)*total);

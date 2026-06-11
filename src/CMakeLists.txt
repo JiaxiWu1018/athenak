@@ -109,6 +109,8 @@ add_executable(
         particles/particles_tasks.cpp
         particles/particles_newdt.cpp
         particles/particles_debug.cpp
+        particles/particles_destroy.cpp
+        particles/particles_excise.cpp
         particles/calc_energy.cpp
         particles/boris_pusher.cpp
         particles/gr_boris.cpp

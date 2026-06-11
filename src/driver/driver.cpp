@@ -393,6 +393,14 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout) {
   if (time_evolution == TimeEvolution::tstatic) {
     // TODO(@user): add work for time static problems here
   } else {
+    // capture the initial particle census for the end-of-run conservation verdict;
+    // on restart the restored cumulative destroyed counts reconstruct the original
+    // total, so the verdict spans restart segments
+    if (pmesh->pmb_pack->ppart != nullptr) {
+      pmesh->nprtcl_initial = pmesh->nprtcl_total
+        + pmesh->nprtcl_destroyed_cum[0] + pmesh->nprtcl_destroyed_cum[1]
+        + pmesh->nprtcl_destroyed_cum[2];
+    }
     Real elapsed_time = -1.;
     if (wall_time > 0.) {
       elapsed_time = UpdateWallClock();
@@ -511,6 +519,11 @@ void Driver::Finalize(Mesh *pmesh, ParameterInput *pin, Outputs *pout) {
         std::cout << pmesh->pmr->nmb_sent_thisrank << " communicated for load balancing, "
           <<"load balancing efficiency = " << (lb_efficiency_/pmesh->ncycle) << std::endl;
 #endif
+      }
+
+      // particle accounting: initial/final/destroyed-per-reason + conservation verdict
+      if (pmesh->pmb_pack->ppart != nullptr) {
+        pmesh->pmb_pack->ppart->PrintFinalSummary();
       }
 
       // Calculate and print the zone-cycles/cpu-second

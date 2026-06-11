@@ -34,6 +34,7 @@ enum class ParticleType {cosmic_ray, dust};
 
 struct ParticlesTaskIDs {
   TaskID push;
+  TaskID excise;
   TaskID newgid;
   TaskID count;
   TaskID irecv;
@@ -80,12 +81,46 @@ class Particles {
   int nmigr_face, nmigr_edge, nmigr_corner, nsearch_fail;
   // migration conservation ledger (CheckMigration, debug >= 1): GLOBAL {particle count,
   // sum of tags, sum of tag^2} captured at the first check and recomputed every cycle.
-  // Without destruction (not yet implemented) all three are exact invariants; the tag
-  // checksums additionally catch identity corruption that count conservation alone
-  // cannot (a lost particle replaced by a duplicate of another -- the compaction-bug
-  // signature). Unsigned-64 sums are modular: wraparound is harmless for equality tests.
+  // Since destruction exists (Stage 3c) the ledger is TWO-SIDED: alive + destroyed must
+  // equal the captured totals component-wise, where the destroyed-side checksums are
+  // accumulated at marking time in ledger_dead (per-rank cumulative {sum tag, sum
+  // tag^2}, Allreduced at check time) and the destroyed count comes from the global
+  // census ledger on Mesh. The tag checksums catch identity corruption that count
+  // conservation alone cannot (a lost particle replaced by a duplicate of another --
+  // the compaction-bug signature) -- including across destruction events. Unsigned-64
+  // sums are modular: wraparound is harmless for equality tests.
   bool ledger_init;
   unsigned long long ledger0[3];
+  unsigned long long ledger_dead[2];
+  // per-cycle destruction counters by reason {0=exit, 1=sphere, 2=lapse}, set by
+  // SetNewPrtclGID's readback each cycle (this rank only; the global census lives in
+  // ParticlesBoundaryValues::ndest_global)
+  int ndestroy_thisrank[3];
+  // death-record ledger: every destruction appends one row to <basename>.prtcl_destroy
+  // .csv (exact cycle/time/position/velocity/reason at marking), flushed collectively
+  // on every destroy-cycle; <particles> destroy_log = true|false (default true)
+  bool destroy_log;
+  std::string destroy_log_fname;
+
+  // parameterized excision (Stage 3c(b); replaces the prototype's hardcoded
+  // rexcise=2-iff-not-Minkowski, bug B1). Two independent criteria, both default OFF:
+  //   excise_radius > 0: destroy at |x - excise_center| < excise_radius (pure geometry,
+  //     works under any pusher; the sphere lives in coordinate space -- periodic images
+  //     are not considered, so keep it away from periodic boundaries);
+  //   excise_lapse > 0: destroy where alpha(x_p) < excise_lapse, with alpha Lagrange-
+  //     interpolated from the live Z4c (I_Z4C_ALPHA) or ADM (I_ADM_ALPHA) arrays --
+  //     the same source switch as the gr_boris pusher. NOTE the threshold is GAUGE-
+  //     dependent: in Cartesian Kerr-Schild the Schwarzschild horizon sits at
+  //     alpha = 1/sqrt(2) ~ 0.707 (sensible thresholds 0.5-0.6 excise INSIDE the
+  //     horizon); values like 0.1 belong to moving-puncture/1+log collapsed lapses.
+  Real excise_radius;
+  Real excise_x1, excise_x2, excise_x3;
+  Real excise_lapse;
+  bool excise_any;
+  // per-cycle marking written by MarkExcised, consumed by SetNewPrtclGID:
+  // flag 0 = keep, 1 = sphere, 2 = lapse; crit = criterion value at marking (r or alpha)
+  DvceArray1D<int>  excise_flag;
+  DvceArray1D<Real> excise_crit;
 
   // snapshots of the field/metric at the previous step, used by the GR pusher to evaluate
   // the implicit geodesic substep at the time midpoint. Allocated only for gr_boris. For a
@@ -123,6 +158,16 @@ class Particles {
   // post-migration validation: containment/GID-range/count checks (particles_debug.cpp);
   // no-op unless <particles> debug >= 1, fatal (exit) on any violation
   TaskStatus CheckMigration(Driver *pdriver, int stage);
+  // death-record ledger + end-of-run accounting (particles_destroy.cpp): FlushDeathLog
+  // gathers this cycle's death records to rank 0 and appends them to the CSV (collective
+  // -- called on every rank whenever the global census is nonzero); PrintFinalSummary
+  // prints the initial/final/destroyed-by-reason tally + conservation verdict (rank 0)
+  void FlushDeathLog();
+  void PrintFinalSummary();
+  // excision marking task (particles_excise.cpp), scheduled between Push and NewGID
+  // only when a criterion is enabled; mark_excised is its NGHOST-dispatched kernel
+  TaskStatus MarkExcised(Driver *pdriver, int stage);
+  template <int NGHOST> void mark_excised();
   // exhaustive host-side enumeration audit of the destination search against a
   // brute-force bbox oracle (particles_debug.cpp); fatal on any mismatch. Single-rank,
   // strictly-periodic meshes only (test utility, invoked by the part_crossing pgen).

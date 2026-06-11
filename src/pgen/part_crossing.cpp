@@ -42,6 +42,7 @@
 #include "globals.hpp"
 #include "mesh/mesh.hpp"
 #include "mesh/nghbr_index.hpp"
+#include "coordinates/adm.hpp"
 #include "particles/particles.hpp"
 
 #if MPI_PARALLEL_ENABLED
@@ -74,6 +75,11 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
               << "part_crossing requires a <particles> block in the input file" << std::endl;
     exit(EXIT_FAILURE);
+  }
+  // optional <adm> block (Stage 3c(b) lapse-excision negative control: with
+  // <coord> minkowski=true the analytic ADM background has alpha == 1 everywhere)
+  if (pmbp->padm != nullptr) {
+    pmbp->padm->SetADMVariables(pmbp);
   }
   // exhaustive destination-search audit (independent of the particle init mode)
   if (pin->GetOrAddBoolean("problem","audit",false)) {
