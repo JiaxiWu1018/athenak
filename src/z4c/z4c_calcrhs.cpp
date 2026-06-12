@@ -10,8 +10,10 @@
 
 //#include <algorithm>
 //#include <cinttypes>
+#include <cstdio>
 #include <iostream>
 #include <limits>
+#include <vector>
 
 #include "athena.hpp"
 #include "globals.hpp"
@@ -65,7 +67,7 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
     for (int p = 0; p < npunc; ++p) {
       auto* tr = ptracker[bh_ids[p]].get();
       for (int a = 0; a < NDIM; ++a) {
-	      h_punc_info(p, a) = tr->GetPos(a);
+        h_punc_info(p, a) = tr->GetPos(a);
       }
       h_punc_info(p, NDIM) = tr->GetMass();
       if (global_variable::my_rank == 0) {
@@ -90,12 +92,12 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
 
       Real sum = 1.0;
       for (int p = 0; p < npunc; ++p) {
-	      const Real dx = x - punc_info(p, 0);
-	      const Real dy = y - punc_info(p, 1);
-	      const Real dz = z - punc_info(p, 2);
-	      const Real r2 = dx * dx + dy * dy + dz * dz;
-	      const Real rhat2 = r2 / (m_min * m_min);
-	      sum += (1.0 / punc_info(p, NDIM) - 1.0) / (1.0 + 0.25 * rhat2);
+        const Real dx = x - punc_info(p, 0);
+        const Real dy = y - punc_info(p, 1);
+        const Real dz = z - punc_info(p, 2);
+        const Real r2 = dx * dx + dy * dy + dz * dz;
+        const Real rhat2 = r2 / (m_min * m_min);
+        sum += (1.0 / punc_info(p, NDIM) - 1.0) / (1.0 + 0.25 * rhat2);
       }
       spatial_damp_(m, k, j, i) = sum;
     });
@@ -636,7 +638,8 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
                        - f * z4c.alpha(m,k,j,i) * z4c.vKhat(m,k,j,i);
 
     // Shift driver
-    Real shift_eta = opt.const_damp ? opt.shift_eta : opt.shift_eta * spatial_damp_(m,k,j,i);
+    Real shift_eta = opt.const_damp ? opt.shift_eta
+                                    : opt.shift_eta * spatial_damp_(m,k,j,i);
     if (opt.shift_use_B) {
       const Real b1 = opt.shift_advect;
       constexpr Real b2 = 0.75;
@@ -646,8 +649,10 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
                            + rhs.vGam_u(m,a,k,j,i)
                            - shift_eta * z4c.b_u(m,a,k,j,i);
         if (abs(rhs.beta_u(m,a,k,j,i)) > 1e3) {
-          Kokkos::printf("beta index %d %d %d %d %d is huge, B %.5g, damp %.5g, beta %.5g\n",
-                         m, a, k, j, i, z4c.b_u(m,a,k,j,i), spatial_damp_(m,k,j,i), z4c.beta_u(m,a,k,j,i));
+          Kokkos::printf("beta index %d %d %d %d %d is huge, "
+                         "B %.5g, damp %.5g, beta %.5g\n",
+                         m, a, k, j, i, z4c.b_u(m,a,k,j,i),
+                         spatial_damp_(m,k,j,i), z4c.beta_u(m,a,k,j,i));
         }
       }
     } else {
@@ -657,8 +662,10 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
         rhs.beta_u(m,a,k,j,i) -= shift_eta * z4c.beta_u(m,a,k,j,i);
         rhs.b_u(m,a,k,j,i) = 0.0;
         if (abs(rhs.beta_u(m,a,k,j,i)) > 1e3) {
-          Kokkos::printf("beta index %d %d %d %d %d is huge, Gamma %.5g, Lbeta %.5g, damp %.5g, beta %.5g\n",
-                         m, a, k, j, i, z4c.vGam_u(m,a,k,j,i), Lbeta_u(a), spatial_damp_(m,k,j,i), z4c.beta_u(m,a,k,j,i));
+          Kokkos::printf("beta index %d %d %d %d %d is huge, Gamma %.5g, "
+                         "Lbeta %.5g, damp %.5g, beta %.5g\n",
+                         m, a, k, j, i, z4c.vGam_u(m,a,k,j,i), Lbeta_u(a),
+                         spatial_damp_(m,k,j,i), z4c.beta_u(m,a,k,j,i));
         }
       }
       for(int a = 0; a < 3; ++a) {
@@ -666,7 +673,8 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
                             SQR(z4c.alpha(m,k,j,i)) * z4c.vGam_u(m,a,k,j,i);
         for(int b = 0; b < 3; ++b) {
           rhs.beta_u(m,a,k,j,i) += opt.shift_hh * z4c.alpha(m,k,j,i) *
-            chi_guarded * (0.5 * z4c.alpha(m,k,j,i) * dchi_d(b) - dalpha_d(b)) * g_uu(a,b);
+            chi_guarded * (0.5 * z4c.alpha(m,k,j,i) * dchi_d(b) - dalpha_d(b)) *
+            g_uu(a,b);
         }
       }
     }

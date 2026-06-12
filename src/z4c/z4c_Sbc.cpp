@@ -115,7 +115,8 @@ static void Z4cSommerfeld(const Z4c::Z4c_vars& z4c, const Z4c::Z4c_vars& rhs,
         adv_b += z4c.beta_u(m,b,k,j,i) * dB_du(b,a);
         adv_gam += z4c.beta_u(m,b,k,j,i) * dGam_du(b,a);
       }
-      Real shift_eta = opt.const_damp ? opt.shift_eta : opt.shift_eta * spatial_damp(m,k,j,i);
+      Real shift_eta = opt.const_damp ? opt.shift_eta
+                                      : opt.shift_eta * spatial_damp(m,k,j,i);
       rhs.b_u(m,a,k,j,i) = opt.shift_advect * (adv_b - adv_gam)
                          + rhs.vGam_u(m,a,k,j,i)
                          - shift_eta * z4c.b_u(m,a,k,j,i);

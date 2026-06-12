@@ -29,10 +29,10 @@ namespace particles {
 void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> tl) {
   TaskID none(0);
 
-  // Particle integration runs in the "after_timeintegrator" task list, which executes once
-  // per cycle with the full dt (after the fluid/Z4c stages). The full-dt Boris/GR pushers
-  // therefore need no per-stage gating, and for a dynamical metric the push reads the updated
-  // (n+1) metric while the *_last snapshots hold step n.
+  // Particle integration runs in the "after_timeintegrator" task list, which executes
+  // once per cycle with the full dt (after the fluid/Z4c stages). The full-dt Boris/GR
+  // pushers therefore need no per-stage gating, and for a dynamical metric the push reads
+  // the updated (n+1) metric while the *_last snapshots hold step n.
   auto &atl = tl["after_timeintegrator"];
   id.push   = atl->AddTask(&Particles::Push, this, none);
   // excision marking (Stage 3c(b)): scheduled only when a criterion is enabled; writes
@@ -51,7 +51,8 @@ void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> t
   id.csend  = atl->AddTask(&Particles::ClearSend, this, id.crecv);
   // post-migration validation (no-op unless <particles> debug >= 1; particles_debug.cpp)
   id.check  = atl->AddTask(&Particles::CheckMigration, this, id.csend);
-  // particle timestep + conserved energy, after migration so positions/gids/counts are final
+  // particle timestep + conserved energy, after migration so positions/gids/counts are
+  // final
   id.newdt  = atl->AddTask(&Particles::NewTimeStep, this, id.check);
   id.energy = atl->AddTask(&Particles::EnergyCalculation, this, id.newdt);
 
@@ -129,7 +130,8 @@ TaskStatus Particles::ClearRecv(Driver *pdrive, int stage) {
 
 //----------------------------------------------------------------------------------------
 //! \fn TaskStatus Particles::EnergyCalculation
-//! \brief Wrapper task that dispatches calc_prtcl_energy<NGHOST> on the active ghost count.
+//! \brief Wrapper task that dispatches calc_prtcl_energy<NGHOST> on the active ghost
+//! count.
 
 TaskStatus Particles::EnergyCalculation(Driver *pdrive, int stage) {
   int ng = pmy_pack->pmesh->mb_indcs.ng;
@@ -138,7 +140,8 @@ TaskStatus Particles::EnergyCalculation(Driver *pdrive, int stage) {
     case 3: calc_prtcl_energy<3>(); break;
     case 4: calc_prtcl_energy<4>(); break;
     default:
-      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
                 << "particle energy supports NGHOST=2,3,4 only (got " << ng << ")"
                 << std::endl;
       std::exit(EXIT_FAILURE);

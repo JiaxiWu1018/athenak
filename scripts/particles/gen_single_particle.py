@@ -17,23 +17,23 @@ from _prtcl_io import write_particle_table  # noqa: E402
 
 
 def main():
-  ap = argparse.ArgumentParser(description=__doc__,
-                               formatter_class=argparse.RawDescriptionHelpFormatter)
-  ap.add_argument("--out", default="single_particle.h5", help="output HDF5 file")
-  ap.add_argument("--x", type=float, default=0.0, help="x position")
-  ap.add_argument("--y", type=float, default=0.0, help="y position")
-  ap.add_argument("--z", type=float, default=0.0, help="z position")
-  ap.add_argument("--ux", type=float, default=0.0, help="covariant u_x")
-  ap.add_argument("--uy", type=float, default=0.0, help="covariant u_y")
-  ap.add_argument("--uz", type=float, default=0.0, help="covariant u_z")
-  ap.add_argument("--mass", type=float, default=None,
-                  help="per-particle rest mass (omit to use <particles> mass)")
-  args = ap.parse_args()
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--out", default="single_particle.h5", help="output HDF5 file")
+    ap.add_argument("--x", type=float, default=0.0, help="x position")
+    ap.add_argument("--y", type=float, default=0.0, help="y position")
+    ap.add_argument("--z", type=float, default=0.0, help="z position")
+    ap.add_argument("--ux", type=float, default=0.0, help="covariant u_x")
+    ap.add_argument("--uy", type=float, default=0.0, help="covariant u_y")
+    ap.add_argument("--uz", type=float, default=0.0, help="covariant u_z")
+    ap.add_argument("--mass", type=float, default=None,
+                    help="per-particle rest mass (omit to use <particles> mass)")
+    args = ap.parse_args()
 
-  mass = None if args.mass is None else [args.mass]
-  write_particle_table(args.out, [args.x], [args.y], [args.z],
-                       [args.ux], [args.uy], [args.uz], mass=mass)
+    mass = None if args.mass is None else [args.mass]
+    write_particle_table(args.out, [args.x], [args.y], [args.z],
+                         [args.ux], [args.uy], [args.uz], mass=mass)
 
 
 if __name__ == "__main__":
-  main()
+    main()

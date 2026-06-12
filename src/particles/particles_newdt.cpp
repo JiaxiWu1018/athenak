@@ -4,16 +4,17 @@
 // Licensed under the 3-clause BSD License (the "LICENSE")
 //========================================================================================
 //! \file particles_newdt.cpp
-//! \brief compute the particle timestep across all MeshBlock(s) in a MeshBlockPack as the cell
-//! light-crossing CFL condition dt = cfl * min(dx,dy,dz). This is the robust choice for
-//! particles that ACCELERATE under gravity or the Lorentz force: a velocity-based crossing
-//! time dx/v would (a) inflate dt without bound as v->0 -- so an initially-at-rest particle
-//! (radial geodesic infall) would take a single enormous step -- and (b) under-resolve the
-//! acceleration even when v>0, since dx/v assumes constant velocity. Because the coordinate
-//! speed cannot exceed c=1, the light-crossing time dx is always the binding constraint, so no
-//! velocity factor is needed. Mesh::NewTimeStep mins in this dtnew WITHOUT a cfl_no factor, so
-//! the CFL number is baked in here. (A cyclotron limit for strongly magnetized charges, dt <=
-//! C*2*pi*gamma/(|q/m| B), can be added later; the Stage-2 tests resolve the gyro-period.)
+//! \brief compute the particle timestep across all MeshBlock(s) in a MeshBlockPack as the
+//! cell light-crossing CFL condition dt = cfl * min(dx,dy,dz). This is the robust choice
+//! for particles that ACCELERATE under gravity or the Lorentz force: a velocity-based
+//! crossing time dx/v would (a) inflate dt without bound as v->0 -- so an
+//! initially-at-rest particle (radial geodesic infall) would take a single enormous step
+//! -- and (b) under-resolve the acceleration even when v>0, since dx/v assumes constant
+//! velocity. Because the coordinate speed cannot exceed c=1, the light-crossing time dx
+//! is always the binding constraint, so no velocity factor is needed. Mesh::NewTimeStep
+//! mins in this dtnew WITHOUT a cfl_no factor, so the CFL number is baked in here. (A
+//! cyclotron limit for strongly magnetized charges, dt <= C*2*pi*gamma/(|q/m| B), can be
+//! added later; the Stage-2 tests resolve the gyro-period.)
 
 #include <cmath>
 #include <limits>

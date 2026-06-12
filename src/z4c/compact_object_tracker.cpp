@@ -14,6 +14,7 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #if MPI_PARALLEL_ENABLED
 #include <mpi.h>
@@ -143,8 +144,9 @@ void CompactObjectTracker::EvolveTracker(MeshBlockPack *pmbp) {
   if (owns_compact_object) {
     if (mode == ODE) {
       // Debugging output only (per-step tracker pos/vel); commented out for production.
-      // Kokkos::printf("co on rank %d has position %.5g %.5g %.5g and velocity %.5g %.5g %.5g\n",
-      //                global_variable::my_rank, pos[0], pos[1], pos[2], vel[0], vel[1], vel[2]);
+      // Kokkos::printf("co on rank %d has position %.5g %.5g %.5g and
+      //                velocity %.5g %.5g %.5g\n", global_variable::my_rank,
+      //                pos[0], pos[1], pos[2], vel[0], vel[1], vel[2]);
       for (int a = 0; a < NDIM; ++a) {
         pos[a] += pmesh->dt * vel[a];
       }
@@ -262,8 +264,7 @@ void CompactObjectTracker::WriteTracker() {
   }
 }
 
-namespace z4c
-{
+namespace z4c {
 //----------------------------------------------------------------------------------------
 void Z4c::BHMergeDetector() {
   while (true) {
@@ -288,22 +289,22 @@ void Z4c::BHMergeDetector() {
       const Real yi = ptracker[i]->GetPos(1);
       const Real zi = ptracker[i]->GetPos(2);
       for (int b = a + 1; b < static_cast<int>(bh_ids.size()); ++b) {
-	const int j = bh_ids[b];
-	const Real xj = ptracker[j]->GetPos(0);
-	const Real yj = ptracker[j]->GetPos(1);
-	const Real zj = ptracker[j]->GetPos(2);
-	const Real dx = xi - xj;
-	const Real dy = yi - yj;
-	const Real dz = zi - zj;
-	const Real d2 = dx * dx + dy * dy + dz * dz;
-	if (d2 < d2_merge) {
-	  if (d2 < best_d2) {
-	    best_d2 = d2;
-	    best_i = i;
-	    best_j = j;
-	    found = true;
-	  }
-	}
+        const int j = bh_ids[b];
+        const Real xj = ptracker[j]->GetPos(0);
+        const Real yj = ptracker[j]->GetPos(1);
+        const Real zj = ptracker[j]->GetPos(2);
+        const Real dx = xi - xj;
+        const Real dy = yi - yj;
+        const Real dz = zi - zj;
+        const Real d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < d2_merge) {
+          if (d2 < best_d2) {
+            best_d2 = d2;
+            best_i = i;
+            best_j = j;
+            found = true;
+          }
+        }
       }
     }
 
@@ -320,28 +321,31 @@ void Z4c::BHMergeDetector() {
       survivor = (mi > mj) ? best_i : best_j;
       victim = (mi > mj) ? best_j : best_i;
     }
-    // std::cout << "two masses " << mi << " " << mj << std::endl;  // debug, off for production
+    // std::cout << "two masses " << mi << " " << mj << std::endl;
+    // debug, off for production
     ptracker[survivor]->SetMass(mi + mj);
-    // std::cout << "After set mass " << ptracker[survivor]->GetMass() << std::endl;  // debug
+    // std::cout << "After set mass " << ptracker[survivor]->GetMass() << std::endl;
+    // debug
     ptracker[victim]->SetActive(false);
     // Debugging output only (stdout); commented out for production. The merger is
     // still recorded to the tracker file via WriteMergedInto() below.
     /* if (global_variable::my_rank == 0) {
       std::cout << "BHMergeDetector: merged tracker " << victim
-		<< " into " << survivor
-		<< " at iter=" << pmy_pack->pmesh->ncycle
-		<< " time=" << pmy_pack->pmesh->time
+                << " into " << survivor
+                << " at iter=" << pmy_pack->pmesh->ncycle
+                << " time=" << pmy_pack->pmesh->time
                 << " survivor location=" << ptracker[survivor]->GetPos(0)
                 << " " << ptracker[survivor]->GetPos(1)
                 << " " << ptracker[survivor]->GetPos(2)
                 << " victim location=" << ptracker[victim]->GetPos(0)
                 << " " << ptracker[victim]->GetPos(1)
                 << " " << ptracker[victim]->GetPos(2)
-		<< std::endl;
+                << std::endl;
     } */
     // Record merger info into tracker file
     const Real sep = std::sqrt(best_d2);
-    ptracker[victim]->WriteMergedInto(survivor, pmy_pack->pmesh->ncycle, pmy_pack->pmesh->time, sep);
+    ptracker[victim]->WriteMergedInto(survivor, pmy_pack->pmesh->ncycle,
+                                      pmy_pack->pmesh->time, sep);
   }
 }
 } // end namespace z4c

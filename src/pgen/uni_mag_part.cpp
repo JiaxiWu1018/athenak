@@ -7,14 +7,14 @@
 //! \brief NRPIC Stage-2 validation pgen: a single charged particle in a uniform magnetic
 //! field on a flat (Minkowski) background. With the default quiescent fluid (v=0) the
 //! ideal-MHD electric field vanishes and the particle executes a pure relativistic Larmor
-//! orbit. With <problem> fluid_vx = v_f != 0 the uniform fluid carries the field (an exact
-//! equilibrium), E = -v x B = v_f*Bz yhat, and a particle starting at rest executes a cycloid
-//! whose guiding centre drifts at E x B / B^2 = v_f xhat — the ExB-drift validation of the
-//! w0 = utilde = W*v convention handling in the pushers. Used to validate
-//! the `boris` pusher and, as a flat-space cross-check, the `gr_boris` pusher (whose tetrad
-//! reduces to the identity and whose geodesic substep is force-free here).
-//! Requires <mhd>, <adm>/<coord minkowski=true>, and <particles> (use init=file). B is set by
-//! <problem> Bz; the particle position/velocity come from the HDF5 IC file.
+//! orbit. With <problem> fluid_vx = v_f != 0 the uniform fluid carries the field (an
+//! exact equilibrium), E = -v x B = v_f*Bz yhat, and a particle starting at rest executes
+//! a cycloid whose guiding centre drifts at E x B / B^2 = v_f xhat — the ExB-drift
+//! validation of the w0 = utilde = W*v convention handling in the pushers. Used to
+//! validate the `boris` pusher and, as a flat-space cross-check, the `gr_boris` pusher
+//! (whose tetrad reduces to the identity and whose geodesic substep is force-free here).
+//! Requires <mhd>, <adm>/<coord minkowski=true>, and <particles> (use init=file). B is
+//! set by <problem> Bz; the particle position/velocity come from the HDF5 IC file.
 
 #include <cmath>
 #include <cstdlib>
@@ -50,9 +50,9 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   int ksg = ks-indcs.ng; int keg = ke+indcs.ng;
   int nmb = pmbp->nmb_thispack;
 
-  // uniform floor fluid; default at rest (E = -v x B = 0, Larmor test), optionally moving in
-  // x with Valencia velocity v_f (ExB-drift test). The velocity slots take the projected
-  // 4-velocity utilde^i = W v^i, the SR-MHD/dyn_grmhd primitive convention.
+  // uniform floor fluid; default at rest (E = -v x B = 0, Larmor test), optionally
+  // moving in x with Valencia velocity v_f (ExB-drift test). The velocity slots take
+  // the projected 4-velocity utilde^i = W v^i, the SR-MHD/dyn_grmhd convention.
   auto &w0_ = pmbp->pmhd->w0;
   Real dfloor = pmbp->pmhd->peos->eos_data.dfloor;
   Real pfloor = pmbp->pmhd->peos->eos_data.pfloor;

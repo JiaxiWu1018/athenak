@@ -656,7 +656,8 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
       }
     }
     // base offset = just past all cell/face-centered MeshBlock data
-    IOWrapperSizeT grid_start = step1size + step2size + step3size + sizeof(IOWrapperSizeT);
+    IOWrapperSizeT grid_start = step1size + step2size + step3size
+                              + sizeof(IOWrapperSizeT);
     IOWrapperSizeT nmb_off = single_file_per_rank ?
         static_cast<IOWrapperSizeT>(pm->pmb_pack->nmb_thispack)
       : static_cast<IOWrapperSizeT>(pm->nmb_total);

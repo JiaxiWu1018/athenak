@@ -7,16 +7,17 @@
 //========================================================================================
 //! \file lagrange_interp.hpp
 //! \brief device-side templated Lagrange interpolation of grid fields to a particle
-//! position. Header-only, all KOKKOS_INLINE_FUNCTION so it can be called from per-particle
-//! device kernels (the host/per-point utils/lagrange_interpolator.hpp is unsuitable there).
+//! position. Header-only, all KOKKOS_INLINE_FUNCTION so it can be called from
+//! per-particle device kernels (the host/per-point utils/lagrange_interpolator.hpp is
+//! unsuitable there).
 //!
-//! ORDER is tied to NGHOST: a centred stencil of width N=2*ORDER cell centres straddles the
-//! particle. Callers dispatch on the active NGHOST (2,3,4) via a switch.
+//! ORDER is tied to NGHOST: a centred stencil of width N=2*ORDER cell centres straddles
+//! the particle. Callers dispatch on the active NGHOST (2,3,4) via a switch.
 //!
-//! Stage 2 added CalcInterpWghtAndDrv<ORDER> (basis weights AND their first derivatives, for
-//! the geodesic / Christoffel force in gr_boris) and a per-node inverse-metric vector overload
-//! of LagrangeInterpolator (interpolate gamma^{ij} by inverting the 3-metric at each stencil
-//! node). The scalar overload (Stage 1) is unchanged.
+//! Stage 2 added CalcInterpWghtAndDrv<ORDER> (basis weights AND their first derivatives,
+//! for the geodesic / Christoffel force in gr_boris) and a per-node inverse-metric
+//! vector overload of LagrangeInterpolator (interpolate gamma^{ij} by inverting the
+//! 3-metric at each stencil node). The scalar overload (Stage 1) is unchanged.
 
 #include <math.h>
 
@@ -46,10 +47,12 @@ int ClampInterpIndex(const int idx, const int ncell) {
 //! \brief Compute the clamped base stencil index in each direction for a particle at x0.
 //! interp_indcs[0] is the MeshBlock index (set by the caller); [1],[2],[3] are the i,j,k
 //! cell indices of the cell centre just below the particle, relative to the first active
-//! cell centre (xmin + dx/2). grid[9] = {x1min,x1max,dx1, x2min,x2max,dx2, x3min,x3max,dx3}.
+//! cell centre (xmin + dx/2). grid[9] = {x1min,x1max,dx1, x2min,x2max,dx2,
+//! x3min,x3max,dx3}.
 
 KOKKOS_INLINE_FUNCTION
-void SetInterpIndices(const Real *x0, const Real *grid, const int *ncell, int *interp_indcs) {
+void SetInterpIndices(const Real *x0, const Real *grid, const int *ncell,
+                      int *interp_indcs) {
   interp_indcs[1] = ClampInterpIndex(
       static_cast<int>(floor((x0[0] - (grid[0] + 0.5*grid[2])) / grid[2])), ncell[0]);
   interp_indcs[2] = ClampInterpIndex(
@@ -60,8 +63,8 @@ void SetInterpIndices(const Real *x0, const Real *grid, const int *ncell, int *i
 
 //----------------------------------------------------------------------------------------
 //! \fn void CalcInterpWght
-//! \brief Build the 1-D Lagrange basis weights L_a(x0) = prod_{b!=a} (x0 - x_b)/(x_a - x_b)
-//! over the N=2*ORDER cell-centre nodes straddling the particle, in each direction.
+//! \brief Build the 1-D Lagrange basis weights L_a(x0) = prod_{b!=a} (x0 - x_b)/(x_a -
+//! x_b) over the N=2*ORDER cell-centre nodes straddling the particle, in each direction.
 //! Outputs Lx[2*ORDER], Ly[2*ORDER], Lz[2*ORDER].
 
 template <int ORDER>
@@ -93,9 +96,9 @@ void CalcInterpWght(const Real *x0, const Real *grid, const int *ncell,
 //! \fn void CalcInterpWghtAndDrv
 //! \brief Like CalcInterpWght, but also returns the first derivative of each 1-D Lagrange
 //! basis weight w.r.t. its coordinate: dL_a/dx = sum_{j!=a} 1/(x_a-x_j) * prod_{k!=a,j}
-//! (x0-x_k)/(x_a-x_k). Feeding dLx (in place of Lx) into LagrangeInterpolator then yields the
-//! x-derivative of the interpolated field, which gr_boris uses to build the geodesic force
-//! (gradients of alpha, beta^i, gamma^{ij}). Outputs L*[2*ORDER] and dL*[2*ORDER].
+//! (x0-x_k)/(x_a-x_k). Feeding dLx (in place of Lx) into LagrangeInterpolator then yields
+//! the x-derivative of the interpolated field, which gr_boris uses to build the geodesic
+//! force (gradients of alpha, beta^i, gamma^{ij}). Outputs L*[2*ORDER] and dL*[2*ORDER].
 
 template <int ORDER>
 KOKKOS_INLINE_FUNCTION
@@ -139,10 +142,10 @@ void CalcInterpWghtAndDrv(const Real *x0, const Real *grid, const int *ncell,
 //----------------------------------------------------------------------------------------
 //! \fn Real LagrangeInterpolator
 //! \brief Interpolate scalar field variable nvar of the 5-D array u0 to the particle:
-//! sum over the 2*ORDER^3 stencil of Lx_i*Ly_j*Lz_k * u0(m,nvar,k,j,i). The allocated-index
-//! identity (interp_indcs[.] + idx + 1) holds because the first active cell is at array
-//! index is == NGHOST == ORDER, so cell-centre-relative index a maps to array index a+ORDER,
-//! and the stencil starts at a-ORDER+1 -> array index a+1.
+//! sum over the 2*ORDER^3 stencil of Lx_i*Ly_j*Lz_k * u0(m,nvar,k,j,i). The
+//! allocated-index identity (interp_indcs[.] + idx + 1) holds because the first active
+//! cell is at array index is == NGHOST == ORDER, so cell-centre-relative index a maps to
+//! array index a+ORDER, and the stencil starts at a-ORDER+1 -> array index a+1.
 
 template <int ORDER>
 KOKKOS_INLINE_FUNCTION
@@ -168,11 +171,11 @@ Real LagrangeInterpolator(const DvceArray5D<Real> &u0, const int nvar,
 //----------------------------------------------------------------------------------------
 //! \fn void LagrangeInterpolator (vector / inverse-metric overload)
 //! \brief Interpolate the inverse 3-metric gamma^{ij} to the weights L*. The 6 symmetric
-//! components of the (covariant) 3-metric are stored contiguously starting at variable nvar
-//! (= I_ADM_GXX). At EACH stencil node the stored gamma_{ij} is inverted to gamma^{ij}, and
-//! the result is accumulated with the weights. Passing derivative weights (dLx,...) gives the
-//! corresponding derivative of the interpolated gamma^{ij} field. Output results[6] in the
-//! geom_math symmetric order {S11,S12,S13,S22,S23,S33}.
+//! components of the (covariant) 3-metric are stored contiguously starting at variable
+//! nvar (= I_ADM_GXX). At EACH stencil node the stored gamma_{ij} is inverted to
+//! gamma^{ij}, and the result is accumulated with the weights. Passing derivative weights
+//! (dLx,...) gives the corresponding derivative of the interpolated gamma^{ij} field.
+//! Output results[6] in the geom_math symmetric order {S11,S12,S13,S22,S23,S33}.
 
 template <int ORDER>
 KOKKOS_INLINE_FUNCTION

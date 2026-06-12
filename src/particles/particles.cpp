@@ -60,7 +60,8 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     if (ppush.compare("drift") == 0) {
       pusher = ParticlesPusher::drift;
     } else if (ppush.compare("boris") == 0) {
-      // special-relativistic Boris: interpolates the EM field from MHD, so MHD is required
+      // special-relativistic Boris: interpolates the EM field from MHD, so MHD is
+      // required
       if (pmy_pack->pmhd == nullptr) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
                   << std::endl << "boris pusher requires an <mhd> block (EM field source)"
@@ -72,7 +73,8 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
       // GR Boris needs the ADM 3+1 metric (from an <adm> block or a live <z4c> evolution)
       if (pmy_pack->padm == nullptr) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
-                  << std::endl << "gr_boris pusher requires ADM variables (<adm> or <z4c>)"
+                  << std::endl
+                  << "gr_boris pusher requires ADM variables (<adm> or <z4c>)"
                   << std::endl;
         std::exit(EXIT_FAILURE);
       }
@@ -201,10 +203,11 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   // allocate boundary object
   pbval_part = new ParticlesBoundaryValues(this, pin);
 
-  // Allocate the previous-step field/metric snapshots used by the GR Boris pusher. Sized to
-  // the full per-MeshBlock cell extent (incl. ghosts), matching the arrays they snapshot so
-  // the per-step Kokkos::deep_copy is extent-correct. adm_last keeps the full nadm in both
-  // the ADM-only and Z4c cases (the lapse/shift-from-Z4c split is a Stage-4 refinement).
+  // Allocate the previous-step field/metric snapshots used by the GR Boris pusher. Sized
+  // to the full per-MeshBlock cell extent (incl. ghosts), matching the arrays they
+  // snapshot so the per-step Kokkos::deep_copy is extent-correct. adm_last keeps the full
+  // nadm in both the ADM-only and Z4c cases (the lapse/shift-from-Z4c split is a Stage-4
+  // refinement).
   if (pusher == ParticlesPusher::gr_boris) {
     auto &indcs = pmy_pack->pmesh->mb_indcs;
     int ncells1 = indcs.nx1 + 2*(indcs.ng);
@@ -240,9 +243,10 @@ Particles::~Particles() {
 //----------------------------------------------------------------------------------------
 //! \fn int Particles::FindContainingMeshBlock
 //! \brief return the local MeshBlock index whose bounding box contains (x,y,z) using a
-//! half-open [min,max) convention, or -1 if none on this rank. The z- (and in 1D, y-) test
-//! is skipped when the problem is not three_d (multi_d), where xNmin==xNmax. Host-side;
-//! used by the HDF5 reader and the restart reader to assign loaded particles to MeshBlocks.
+//! half-open [min,max) convention, or -1 if none on this rank. The z- (and in 1D, y-)
+//! test is skipped when the problem is not three_d (multi_d), where xNmin==xNmax.
+//! Host-side; used by the HDF5 reader and the restart reader to assign loaded particles
+//! to MeshBlocks.
 
 int Particles::FindContainingMeshBlock(Real x, Real y, Real z) const {
   int nmb = pmy_pack->nmb_thispack;

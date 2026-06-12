@@ -33,8 +33,10 @@ struct BHPosition {
   double y;
   double z;
 };
-void LoadSpectreInitialData(MeshBlockPack *pmbp, const std::vector<BHPosition> &bh_positions,
-                            const std::string &filename_glob, const std::string &subfile_name,
+void LoadSpectreInitialData(MeshBlockPack *pmbp,
+                            const std::vector<BHPosition> &bh_positions,
+                            const std::string &filename_glob,
+                            const std::string &subfile_name,
                             const int observation_step);
 void RefinementCondition(MeshBlockPack *pmbp);
 
@@ -117,8 +119,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
 }
 
 //! \brief Interpolate SpECTRE initial data to AthenaK mesh
-void LoadSpectreInitialData(MeshBlockPack *pmbp, const std::vector<BHPosition> &bh_positions,
-                            const std::string &filename_glob, const std::string &subfile_name,
+void LoadSpectreInitialData(MeshBlockPack *pmbp,
+                            const std::vector<BHPosition> &bh_positions,
+                            const std::string &filename_glob,
+                            const std::string &subfile_name,
                             const int observation_step) {
   auto &u_adm = pmbp->padm->u_adm;
   HostArray5D<Real>::HostMirror host_u_adm = create_mirror(u_adm);
@@ -186,9 +190,13 @@ void LoadSpectreInitialData(MeshBlockPack *pmbp, const std::vector<BHPosition> &
               << nmb - 1 << " with " << sz << " points..." << std::endl;
     const auto data = spectre::Exporter::interpolate_to_points<3>(
         filename_glob, subfile_name, spectre::Exporter::ObservationStep{observation_step},
-        {"Field", "TracelessConformalExtrinsicCurvature_xx", "TracelessConformalExtrinsicCurvature_yx",
-         "TracelessConformalExtrinsicCurvature_zx", "TracelessConformalExtrinsicCurvature_yy",
-         "TracelessConformalExtrinsicCurvature_zy", "TracelessConformalExtrinsicCurvature_zz"},
+        {"Field",
+         "TracelessConformalExtrinsicCurvature_xx",
+         "TracelessConformalExtrinsicCurvature_yx",
+         "TracelessConformalExtrinsicCurvature_zx",
+         "TracelessConformalExtrinsicCurvature_yy",
+         "TracelessConformalExtrinsicCurvature_zy",
+         "TracelessConformalExtrinsicCurvature_zz"},
         /* target_points */ x,
         /* extrapolate_into_excisions */ true);
     std::cout << "  done in " << timer.seconds() << " seconds." << std::endl;

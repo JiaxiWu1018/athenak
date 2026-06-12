@@ -6,6 +6,8 @@
 //! \file bvals_part.cpp
 //! \brief
 
+#include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <utility>
@@ -82,7 +84,7 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   // counts (exit/sphere/lapse)} and the destroyed-side {sum tag, sum tag^2} checksum
   // accumulators of the two-sided conservation ledger (written only when debug >= 1)
   DvceArray1D<int> dstc("pdest_cnt",4);                    // zero-initialized
-  DvceArray1D<unsigned long long> dsums("pdest_sums",2);   // zero-initialized
+  DvceArray1D<uint64_t> dsums("pdest_sums",2);             // zero-initialized
   auto &pdestl = destroylist;
   auto &drr = destroy_rec_r;
   auto &dri = destroy_rec_i;
@@ -179,7 +181,7 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
       if (dbg > 0) {
         // destroyed-side checksums of the two-sided conservation ledger (cast BEFORE
         // multiplying: int tag*tag overflows at tag >= 46341)
-        unsigned long long t = static_cast<unsigned long long>(pi(PTAG,p));
+        uint64_t t = static_cast<uint64_t>(pi(PTAG,p));
         Kokkos::atomic_add(&dsums(0), t);
         Kokkos::atomic_add(&dsums(1), t*t);
       }

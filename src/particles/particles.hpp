@@ -8,6 +8,7 @@
 //! \file particles.hpp
 //  \brief definitions for Particles class
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -20,8 +21,9 @@
 // forward declarations
 
 // constants that enumerate ParticlesPusher options
-// (boris = special-relativistic Boris; gr_boris = general-relativistic Boris whose q=0 limit
-// is the geodesic integrator. geo_boris is intentionally NOT implemented for NRPIC.)
+// (boris = special-relativistic Boris; gr_boris = general-relativistic Boris whose q=0
+// limit is the geodesic integrator. geo_boris is intentionally NOT implemented for
+// NRPIC.)
 enum class ParticlesPusher {drift, leap_frog, lagrangian_tracer, lagrangian_mc,
                             boris, gr_boris};
 
@@ -65,7 +67,8 @@ class Particles {
   DvceArray2D<Real> prtcl_rdata;   // real number properties each particle (x,v,etc.)
   DvceArray2D<int>  prtcl_idata;   // integer properties each particle (gid, tag, etc.)
   Real dtnew;
-  Real mass;                       // default/scalar rest mass (per-particle override in IPM)
+  Real mass;                       // default/scalar rest mass (per-particle override
+                                   // in IPM)
   Real q_over_m;                   // charge-to-mass ratio (0 for dust)
 
   // migration debug instrumentation (<particles> debug = 0|1|2, default 0):
@@ -90,8 +93,8 @@ class Particles {
   // the compaction-bug signature) -- including across destruction events. Unsigned-64
   // sums are modular: wraparound is harmless for equality tests.
   bool ledger_init;
-  unsigned long long ledger0[3];
-  unsigned long long ledger_dead[2];
+  uint64_t ledger0[3];
+  uint64_t ledger_dead[2];
   // per-cycle destruction counters by reason {0=exit, 1=sphere, 2=lapse}, set by
   // SetNewPrtclGID's readback each cycle (this rank only; the global census lives in
   // ParticlesBoundaryValues::ndest_global)
@@ -123,9 +126,9 @@ class Particles {
   DvceArray1D<Real> excise_crit;
 
   // snapshots of the field/metric at the previous step, used by the GR pusher to evaluate
-  // the implicit geodesic substep at the time midpoint. Allocated only for gr_boris. For a
-  // static background (all Stage-2 tests) these equal the current arrays; they carry real
-  // information once the metric is dynamical (Stage 4 live Z4c).
+  // the implicit geodesic substep at the time midpoint. Allocated only for gr_boris. For
+  // a static background (all Stage-2 tests) these equal the current arrays; they
+  // carry real information once the metric is dynamical (Stage 4 live Z4c).
   DvceArray5D<Real> w0_last;       // MHD primitives at step n
   DvceArray5D<Real> bcc0_last;     // cell-centred B at step n
   DvceArray5D<Real> adm_last;      // ADM metric at step n
@@ -175,7 +178,8 @@ class Particles {
 
   // load particle initial conditions from an HDF5 file (read_particle.cpp)
   void read_prtcl_table(const char *fname);
-  // host helper: local MeshBlock index whose bbox contains (x,y,z), or -1 (read_particle/restart)
+  // host helper: local MeshBlock index whose bbox contains (x,y,z), or -1
+  // (read_particle/restart)
   int FindContainingMeshBlock(Real x, Real y, Real z) const;
   // compute conserved specific energy -u_t into IPEN (calc_energy.cpp)
   template <int NGHOST>

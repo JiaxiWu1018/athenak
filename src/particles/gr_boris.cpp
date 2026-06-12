@@ -4,25 +4,28 @@
 // Licensed under the 3-clause BSD License (the "LICENSE")
 //========================================================================================
 //! \file gr_boris.cpp
-//! \brief general-relativistic Boris particle pusher (Bacchini/Zou-style). One full-dt update
-//! per cycle via a Strang split:
+//! \brief general-relativistic Boris particle pusher (Bacchini/Zou-style). One full-dt
+//! update per cycle via a Strang split:
 //!   (1) interpolate (B, v) and the metric at x^n; build the normal-observer tetrad; do a
 //!       half-dt electromagnetic Boris kick in the local orthonormal frame;
-//!   (2) implicitly advance the geodesic motion x^n -> x^{n+1}, u -> u^{+} with a fixed-point
-//!       iteration over the time-and-space midpoint metric (forward-Euler fallback on failure);
+//!   (2) implicitly advance the geodesic motion x^n -> x^{n+1}, u -> u^{+} with a
+//!       fixed-point iteration over the time-and-space midpoint metric (forward-Euler
+//!       fallback on failure);
 //!   (3) interpolate fields/metric at x^{n+1} and do the second half-dt EM kick.
-//! The q=0 / no-MHD limit is the geodesic integrator (steps 1 and 3 are skipped). The metric
-//! is read at two time levels: the *_last snapshots hold step n, the live arrays hold step n+1
-//! (for a static background the two coincide). Velocity slots IPVX/IPVY/IPVZ store the
-//! covariant spatial 4-velocity u_i.
+//! The q=0 / no-MHD limit is the geodesic integrator (steps 1 and 3 are skipped). The
+//! metric is read at two time levels: the *_last snapshots hold step n, the live arrays
+//! hold step n+1 (for a static background the two coincide). Velocity slots
+//! IPVX/IPVY/IPVZ store the covariant spatial 4-velocity u_i.
 //!
-//! MHD storage conventions (dyn_grmhd, see dyn_grmhd.cpp PrimToCon and the rsolvers): bcc0
-//! holds the DENSITIZED field B~^i = sqrt(gamma) B^i, and the w0 velocity slots hold the
-//! PROJECTED 4-velocity utilde^i = W v^i (W = Lorentz factor, v = Valencia velocity). The EM
-//! kicks below undensitize B and divide out W before forming the normal-frame ideal-MHD field
-//! E_i = -sqrt(gamma) eps_ijk v^j B^k and the tetrad components.
+//! MHD storage conventions (dyn_grmhd, see dyn_grmhd.cpp PrimToCon and the rsolvers):
+//! bcc0 holds the DENSITIZED field B~^i = sqrt(gamma) B^i, and the w0 velocity slots
+//! hold the PROJECTED 4-velocity utilde^i = W v^i (W = Lorentz factor, v = Valencia
+//! velocity). The EM kicks below undensitize B and divide out W before forming the
+//! normal-frame ideal-MHD field E_i = -sqrt(gamma) eps_ijk v^j B^k and the tetrad
+//! components.
 
 #include <cmath>
+#include <cstdio>
 
 #include "athena.hpp"
 #include "mesh/mesh.hpp"
@@ -41,10 +44,11 @@ namespace particles {
 
 //----------------------------------------------------------------------------------------
 //! \struct GeodesicPush
-//! \brief functor evaluating one implicit geodesic substep. operator()(xin,uin,xout,uout,Euler)
-//! returns the updated (x,u) given a trial (x,u): it interpolates the metric and its spatial
-//! derivatives at the space-time midpoint and applies the 3+1 geodesic equations. Euler=true
-//! evaluates at (x^n, step n) for the forward-Euler fallback.
+//! \brief functor evaluating one implicit geodesic substep.
+//! operator()(xin,uin,xout,uout,Euler) returns the updated (x,u) given a trial (x,u): it
+//! interpolates the metric and its spatial derivatives at the space-time midpoint and
+//! applies the 3+1 geodesic equations. Euler=true evaluates at (x^n, step n) for the
+//! forward-Euler fallback.
 
 template <int NG>
 struct GeodesicPush {
@@ -77,7 +81,8 @@ struct GeodesicPush {
     SetInterpIndices(x_mid, mb_par, ncell, interp_indcs);
     Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
     Real dLx[8] = {0.0}, dLy[8] = {0.0}, dLz[8] = {0.0};
-    CalcInterpWghtAndDrv<NG>(x_mid, mb_par, ncell, interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
+    CalcInterpWghtAndDrv<NG>(x_mid, mb_par, ncell,
+                             interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
 
     // ---- Step 1: update position ----
     // (i) interpolate lapse/shift/3-metric at the midpoint (time-averaged old/new)
@@ -85,25 +90,35 @@ struct GeodesicPush {
     Real beta_old[3] = {0.0}, beta_new[3] = {0.0}, beta[3] = {0.0};
     Real g3d_old[6] = {0.0}, g3d_new[6] = {0.0}, g3d[6] = {0.0};
     if (use_z4c) {
-      alp_old = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, Ly, Lz);
-      alp_new = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, Ly, Lz);
+      alp_old = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
+                                         interp_indcs, Lx, Ly, Lz);
+      alp_new = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
+                                         interp_indcs, Lx, Ly, Lz);
       for (int i = 0; i < 3; ++i) {
-        beta_old[i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i, interp_indcs, Lx, Ly, Lz);
-        beta_new[i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i, interp_indcs, Lx, Ly, Lz);
+        beta_old[i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
+                                               interp_indcs, Lx, Ly, Lz);
+        beta_new[i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
+                                               interp_indcs, Lx, Ly, Lz);
       }
     } else {
-      alp_old = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, Ly, Lz);
-      alp_new = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, Ly, Lz);
+      alp_old = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA,
+                                         interp_indcs, Lx, Ly, Lz);
+      alp_new = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA,
+                                         interp_indcs, Lx, Ly, Lz);
       for (int i = 0; i < 3; ++i) {
-        beta_old[i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i, interp_indcs, Lx, Ly, Lz);
-        beta_new[i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i, interp_indcs, Lx, Ly, Lz);
+        beta_old[i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i,
+                                               interp_indcs, Lx, Ly, Lz);
+        beta_new[i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i,
+                                               interp_indcs, Lx, Ly, Lz);
       }
     }
     alp = 0.5 * (alp_old + alp_new);
     for (int i = 0; i < 3; ++i) { beta[i] = 0.5 * (beta_old[i] + beta_new[i]); }
     for (int i = 0; i < 6; ++i) {
-      g3d_old[i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX+i, interp_indcs, Lx, Ly, Lz);
-      g3d_new[i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX+i, interp_indcs, Lx, Ly, Lz);
+      g3d_old[i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX+i,
+                                            interp_indcs, Lx, Ly, Lz);
+      g3d_new[i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX+i,
+                                            interp_indcs, Lx, Ly, Lz);
       g3d[i] = 0.5 * (g3d_old[i] + g3d_new[i]);
     }
     if (Euler) {
@@ -124,53 +139,88 @@ struct GeodesicPush {
     for (int i = 0; i < 3; ++i) { xout[i] = x_old[i] + dt * v[i]; }
 
     // ---- Step 2: update velocity ----
-    // (i) interpolate spatial derivatives of lapse, shift, and inverse 3-metric at the midpoint
+    // (i) interpolate spatial derivatives of lapse, shift, and inverse 3-metric at
+    // the midpoint
     Real dalp_old[3] = {0.0}, dalp_new[3] = {0.0}, dalp[3] = {0.0};
     Real dbeta_old[3][3] = {0.0}, dbeta_new[3][3] = {0.0}, dbeta[3][3] = {0.0};
     Real dg3u_old[3][6] = {0.0}, dg3u_new[3][6] = {0.0}, dg3u[3][6] = {0.0};
     if (use_z4c) {
-      dalp_old[0] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, dLx, Ly, Lz);
-      dalp_old[1] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, dLy, Lz);
-      dalp_old[2] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, Ly, dLz);
-      dalp_new[0] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, dLx, Ly, Lz);
-      dalp_new[1] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, dLy, Lz);
-      dalp_new[2] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, Ly, dLz);
+      dalp_old[0] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
+                                             interp_indcs, dLx, Ly, Lz);
+      dalp_old[1] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
+                                             interp_indcs, Lx, dLy, Lz);
+      dalp_old[2] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
+                                             interp_indcs, Lx, Ly, dLz);
+      dalp_new[0] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
+                                             interp_indcs, dLx, Ly, Lz);
+      dalp_new[1] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
+                                             interp_indcs, Lx, dLy, Lz);
+      dalp_new[2] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
+                                             interp_indcs, Lx, Ly, dLz);
       for (int i = 0; i < 3; ++i) {
-        dbeta_old[0][i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i, interp_indcs, dLx, Ly, Lz);
-        dbeta_old[1][i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i, interp_indcs, Lx, dLy, Lz);
-        dbeta_old[2][i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i, interp_indcs, Lx, Ly, dLz);
-        dbeta_new[0][i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i, interp_indcs, dLx, Ly, Lz);
-        dbeta_new[1][i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i, interp_indcs, Lx, dLy, Lz);
-        dbeta_new[2][i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i, interp_indcs, Lx, Ly, dLz);
+        dbeta_old[0][i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
+                                                   interp_indcs, dLx, Ly, Lz);
+        dbeta_old[1][i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
+                                                   interp_indcs, Lx, dLy, Lz);
+        dbeta_old[2][i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
+                                                   interp_indcs, Lx, Ly, dLz);
+        dbeta_new[0][i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
+                                                   interp_indcs, dLx, Ly, Lz);
+        dbeta_new[1][i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
+                                                   interp_indcs, Lx, dLy, Lz);
+        dbeta_new[2][i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
+                                                   interp_indcs, Lx, Ly, dLz);
       }
     } else {
-      dalp_old[0] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA, interp_indcs, dLx, Ly, Lz);
-      dalp_old[1] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, dLy, Lz);
-      dalp_old[2] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, Ly, dLz);
-      dalp_new[0] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA, interp_indcs, dLx, Ly, Lz);
-      dalp_new[1] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, dLy, Lz);
-      dalp_new[2] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, Ly, dLz);
+      dalp_old[0] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA,
+                                             interp_indcs, dLx, Ly, Lz);
+      dalp_old[1] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA,
+                                             interp_indcs, Lx, dLy, Lz);
+      dalp_old[2] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA,
+                                             interp_indcs, Lx, Ly, dLz);
+      dalp_new[0] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA,
+                                             interp_indcs, dLx, Ly, Lz);
+      dalp_new[1] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA,
+                                             interp_indcs, Lx, dLy, Lz);
+      dalp_new[2] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA,
+                                             interp_indcs, Lx, Ly, dLz);
       for (int i = 0; i < 3; ++i) {
-        dbeta_old[0][i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i, interp_indcs, dLx, Ly, Lz);
-        dbeta_old[1][i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i, interp_indcs, Lx, dLy, Lz);
-        dbeta_old[2][i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i, interp_indcs, Lx, Ly, dLz);
-        dbeta_new[0][i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i, interp_indcs, dLx, Ly, Lz);
-        dbeta_new[1][i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i, interp_indcs, Lx, dLy, Lz);
-        dbeta_new[2][i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i, interp_indcs, Lx, Ly, dLz);
+        dbeta_old[0][i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i,
+                                                   interp_indcs, dLx, Ly, Lz);
+        dbeta_old[1][i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i,
+                                                   interp_indcs, Lx, dLy, Lz);
+        dbeta_old[2][i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i,
+                                                   interp_indcs, Lx, Ly, dLz);
+        dbeta_new[0][i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i,
+                                                   interp_indcs, dLx, Ly, Lz);
+        dbeta_new[1][i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i,
+                                                   interp_indcs, Lx, dLy, Lz);
+        dbeta_new[2][i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i,
+                                                   interp_indcs, Lx, Ly, dLz);
       }
     }
     for (int i = 0; i < 3; ++i) {
       dalp[i] = 0.5 * (dalp_old[i] + dalp_new[i]);
-      for (int j = 0; j < 3; ++j) { dbeta[i][j] = 0.5 * (dbeta_old[i][j] + dbeta_new[i][j]); }
+      for (int j = 0; j < 3; ++j) {
+        dbeta[i][j] = 0.5 * (dbeta_old[i][j] + dbeta_new[i][j]);
+      }
     }
-    LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX, interp_indcs, dLx, Ly, Lz, dg3u_old[0]);
-    LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX, interp_indcs, Lx, dLy, Lz, dg3u_old[1]);
-    LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX, interp_indcs, Lx, Ly, dLz, dg3u_old[2]);
-    LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX, interp_indcs, dLx, Ly, Lz, dg3u_new[0]);
-    LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX, interp_indcs, Lx, dLy, Lz, dg3u_new[1]);
-    LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX, interp_indcs, Lx, Ly, dLz, dg3u_new[2]);
+    LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX,
+                             interp_indcs, dLx, Ly, Lz, dg3u_old[0]);
+    LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX,
+                             interp_indcs, Lx, dLy, Lz, dg3u_old[1]);
+    LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX,
+                             interp_indcs, Lx, Ly, dLz, dg3u_old[2]);
+    LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX,
+                             interp_indcs, dLx, Ly, Lz, dg3u_new[0]);
+    LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX,
+                             interp_indcs, Lx, dLy, Lz, dg3u_new[1]);
+    LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX,
+                             interp_indcs, Lx, Ly, dLz, dg3u_new[2]);
     for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 6; ++j) { dg3u[i][j] = 0.5 * (dg3u_old[i][j] + dg3u_new[i][j]); }
+      for (int j = 0; j < 6; ++j) {
+        dg3u[i][j] = 0.5 * (dg3u_old[i][j] + dg3u_new[i][j]);
+      }
     }
     if (Euler) {
       for (int i = 0; i < 3; ++i) {
@@ -199,9 +249,9 @@ struct GeodesicPush {
 
 //----------------------------------------------------------------------------------------
 //! \fn bool FixedPointIteration
-//! \brief solve the implicit geodesic substep x=f(x) by fixed-point iteration. Returns true on
-//! convergence (writes x,u); on non-finite iterates or non-convergence it falls back to a
-//! forward-Euler step f(x0,u0,...,Euler=true) and returns false.
+//! \brief solve the implicit geodesic substep x=f(x) by fixed-point iteration. Returns
+//! true on convergence (writes x,u); on non-finite iterates or non-convergence it falls
+//! back to a forward-Euler step f(x0,u0,...,Euler=true) and returns false.
 
 template<class F>
 KOKKOS_INLINE_FUNCTION
@@ -236,8 +286,8 @@ bool FixedPointIteration(const F& f, const Real x0[3], const Real u0[3],
 //! \fn void Particles::GR_BorisPush
 
 void Particles::GR_BorisPush() {
-  // GR Boris requires the ADM metric (the constructor enforces this; guard again so misuse
-  // fails safe rather than dereferencing a null pointer).
+  // GR Boris requires the ADM metric (the constructor enforces this; guard again so
+  // misuse fails safe rather than dereferencing a null pointer).
   if (pmy_pack->padm == nullptr) {return;}
 
   auto &indcs = pmy_pack->pmesh->mb_indcs;
@@ -275,9 +325,12 @@ void Particles::GR_BorisPush() {
   par_for("gr_boris_push", DevExeSpace(), 0, nprtcl_thispack - 1,
   KOKKOS_LAMBDA(const int p) {
     int mb = pi(PGID, p) - gids;
-    const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max, size.d_view(mb).dx1,
-                            size.d_view(mb).x2min, size.d_view(mb).x2max, size.d_view(mb).dx2,
-                            size.d_view(mb).x3min, size.d_view(mb).x3max, size.d_view(mb).dx3};
+    const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max,
+                            size.d_view(mb).dx1,
+                            size.d_view(mb).x2min, size.d_view(mb).x2max,
+                            size.d_view(mb).dx2,
+                            size.d_view(mb).x3min, size.d_view(mb).x3max,
+                            size.d_view(mb).dx3};
     int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
 
     Real x_n[3] = {pr(IPX, p), pr(IPY, p), pr(IPZ, p)};
@@ -295,69 +348,91 @@ void Particles::GR_BorisPush() {
       case 2: {
         CalcInterpWght<2>(x_n, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
         for (int idx = 0; idx < 3; ++idx) {
-          B_interp_n[idx] = LagrangeInterpolator<2>(bcc0_n, idx, interp_indcs, Lx, Ly, Lz);
-          v_interp_n[idx] = LagrangeInterpolator<2>(w0_n, idx+IVX, interp_indcs, Lx, Ly, Lz);
+          B_interp_n[idx] = LagrangeInterpolator<2>(bcc0_n, idx,
+                                                    interp_indcs, Lx, Ly, Lz);
+          v_interp_n[idx] = LagrangeInterpolator<2>(w0_n, idx+IVX,
+                                                    interp_indcs, Lx, Ly, Lz);
         }
         if (use_z4c) {
-          alp_n = LagrangeInterpolator<2>(z4c_n, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_n = LagrangeInterpolator<2>(z4c_n, z4c::Z4c::I_Z4C_ALPHA,
+                                          interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_n[idx] = LagrangeInterpolator<2>(z4c_n, idx+z4c::Z4c::I_Z4C_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_n[idx] = LagrangeInterpolator<2>(z4c_n, idx+z4c::Z4c::I_Z4C_BETAX,
+                                                  interp_indcs, Lx, Ly, Lz);
           }
         } else {
-          alp_n = LagrangeInterpolator<2>(adm_n, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_n = LagrangeInterpolator<2>(adm_n, adm::ADM::I_ADM_ALPHA,
+                                          interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_n[idx] = LagrangeInterpolator<2>(adm_n, idx+adm::ADM::I_ADM_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_n[idx] = LagrangeInterpolator<2>(adm_n, idx+adm::ADM::I_ADM_BETAX,
+                                                  interp_indcs, Lx, Ly, Lz);
           }
         }
         for (int idx = 0; idx < 6; ++idx) {
-          g3d_n[idx] = LagrangeInterpolator<2>(adm_n, idx+adm::ADM::I_ADM_GXX, interp_indcs, Lx, Ly, Lz);
+          g3d_n[idx] = LagrangeInterpolator<2>(adm_n, idx+adm::ADM::I_ADM_GXX,
+                                               interp_indcs, Lx, Ly, Lz);
         }
         break;
       }
       case 3: {
         CalcInterpWght<3>(x_n, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
         for (int idx = 0; idx < 3; ++idx) {
-          B_interp_n[idx] = LagrangeInterpolator<3>(bcc0_n, idx, interp_indcs, Lx, Ly, Lz);
-          v_interp_n[idx] = LagrangeInterpolator<3>(w0_n, idx+IVX, interp_indcs, Lx, Ly, Lz);
+          B_interp_n[idx] = LagrangeInterpolator<3>(bcc0_n, idx,
+                                                    interp_indcs, Lx, Ly, Lz);
+          v_interp_n[idx] = LagrangeInterpolator<3>(w0_n, idx+IVX,
+                                                    interp_indcs, Lx, Ly, Lz);
         }
         if (use_z4c) {
-          alp_n = LagrangeInterpolator<3>(z4c_n, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_n = LagrangeInterpolator<3>(z4c_n, z4c::Z4c::I_Z4C_ALPHA,
+                                          interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_n[idx] = LagrangeInterpolator<3>(z4c_n, idx+z4c::Z4c::I_Z4C_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_n[idx] = LagrangeInterpolator<3>(z4c_n, idx+z4c::Z4c::I_Z4C_BETAX,
+                                                  interp_indcs, Lx, Ly, Lz);
           }
         } else {
-          alp_n = LagrangeInterpolator<3>(adm_n, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_n = LagrangeInterpolator<3>(adm_n, adm::ADM::I_ADM_ALPHA,
+                                          interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_n[idx] = LagrangeInterpolator<3>(adm_n, idx+adm::ADM::I_ADM_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_n[idx] = LagrangeInterpolator<3>(adm_n, idx+adm::ADM::I_ADM_BETAX,
+                                                  interp_indcs, Lx, Ly, Lz);
           }
         }
         for (int idx = 0; idx < 6; ++idx) {
-          g3d_n[idx] = LagrangeInterpolator<3>(adm_n, idx+adm::ADM::I_ADM_GXX, interp_indcs, Lx, Ly, Lz);
+          g3d_n[idx] = LagrangeInterpolator<3>(adm_n, idx+adm::ADM::I_ADM_GXX,
+                                               interp_indcs, Lx, Ly, Lz);
         }
         break;
       }
       case 4: {
         CalcInterpWght<4>(x_n, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
         for (int idx = 0; idx < 3; ++idx) {
-          B_interp_n[idx] = LagrangeInterpolator<4>(bcc0_n, idx, interp_indcs, Lx, Ly, Lz);
-          v_interp_n[idx] = LagrangeInterpolator<4>(w0_n, idx+IVX, interp_indcs, Lx, Ly, Lz);
+          B_interp_n[idx] = LagrangeInterpolator<4>(bcc0_n, idx,
+                                                    interp_indcs, Lx, Ly, Lz);
+          v_interp_n[idx] = LagrangeInterpolator<4>(w0_n, idx+IVX,
+                                                    interp_indcs, Lx, Ly, Lz);
         }
         if (use_z4c) {
-          alp_n = LagrangeInterpolator<4>(z4c_n, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_n = LagrangeInterpolator<4>(z4c_n, z4c::Z4c::I_Z4C_ALPHA,
+                                          interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_n[idx] = LagrangeInterpolator<4>(z4c_n, idx+z4c::Z4c::I_Z4C_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_n[idx] = LagrangeInterpolator<4>(z4c_n, idx+z4c::Z4c::I_Z4C_BETAX,
+                                                  interp_indcs, Lx, Ly, Lz);
           }
         } else {
-          alp_n = LagrangeInterpolator<4>(adm_n, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_n = LagrangeInterpolator<4>(adm_n, adm::ADM::I_ADM_ALPHA,
+                                          interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_n[idx] = LagrangeInterpolator<4>(adm_n, idx+adm::ADM::I_ADM_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_n[idx] = LagrangeInterpolator<4>(adm_n, idx+adm::ADM::I_ADM_BETAX,
+                                                  interp_indcs, Lx, Ly, Lz);
           }
         }
         for (int idx = 0; idx < 6; ++idx) {
-          g3d_n[idx] = LagrangeInterpolator<4>(adm_n, idx+adm::ADM::I_ADM_GXX, interp_indcs, Lx, Ly, Lz);
+          g3d_n[idx] = LagrangeInterpolator<4>(adm_n, idx+adm::ADM::I_ADM_GXX,
+                                               interp_indcs, Lx, Ly, Lz);
         }
         break;
-      }}
+      }
+      }
       // bcc0 stores the densitized B~^i = sqrt(gamma) B^i and w0 the projected 4-velocity
       // utilde^i = W v^i (dyn_grmhd conventions): recover physical B and Valencia v first
       Real sqrtdet = std::sqrt(Primitive::GetDeterminant(g3d_n));
@@ -369,9 +444,12 @@ void Particles::GR_BorisPush() {
 
       // normal-frame ideal-MHD E field: E_i = -sqrt(gamma) eps_ijk v^j B^k
       Real E_interp_n[3] = {0.0};
-      E_interp_n[0] = sqrtdet * (B_interp_n[1]*v_interp_n[2] - B_interp_n[2]*v_interp_n[1]);
-      E_interp_n[1] = sqrtdet * (B_interp_n[2]*v_interp_n[0] - B_interp_n[0]*v_interp_n[2]);
-      E_interp_n[2] = sqrtdet * (B_interp_n[0]*v_interp_n[1] - B_interp_n[1]*v_interp_n[0]);
+      E_interp_n[0] = sqrtdet * (B_interp_n[1]*v_interp_n[2] -
+                                 B_interp_n[2]*v_interp_n[1]);
+      E_interp_n[1] = sqrtdet * (B_interp_n[2]*v_interp_n[0] -
+                                 B_interp_n[0]*v_interp_n[2]);
+      E_interp_n[2] = sqrtdet * (B_interp_n[0]*v_interp_n[1] -
+                                 B_interp_n[1]*v_interp_n[0]);
 
       // half EM kick in the local orthonormal tetrad
       Real tetrad[4][4] = {0.0}, inv_tetrad[4][4] = {0.0};
@@ -392,20 +470,24 @@ void Particles::GR_BorisPush() {
     bool find_root = false;
     switch (ng) {
     case 2: {
-      GeodesicPush<2> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c, z4c_n, z4c_np1);
+      GeodesicPush<2> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
+                         z4c_n, z4c_np1);
       find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
       break;
     }
     case 3: {
-      GeodesicPush<3> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c, z4c_n, z4c_np1);
+      GeodesicPush<3> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
+                         z4c_n, z4c_np1);
       find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
       break;
     }
     case 4: {
-      GeodesicPush<4> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c, z4c_n, z4c_np1);
+      GeodesicPush<4> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
+                         z4c_n, z4c_np1);
       find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
       break;
-    }}
+    }
+    }
     if (!find_root) {
       Kokkos::printf("WARNING: gr_boris geodesic fixed-point did not converge "
                      "(particle tag %d); forward-Euler step used\n", pi(PTAG, p));
@@ -423,69 +505,91 @@ void Particles::GR_BorisPush() {
       case 2: {
         CalcInterpWght<2>(x_np1, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
         for (int idx = 0; idx < 3; ++idx) {
-          B_interp_np1[idx] = LagrangeInterpolator<2>(bcc0_np1, idx, interp_indcs, Lx, Ly, Lz);
-          v_interp_np1[idx] = LagrangeInterpolator<2>(w0_np1, idx+IVX, interp_indcs, Lx, Ly, Lz);
+          B_interp_np1[idx] = LagrangeInterpolator<2>(bcc0_np1, idx,
+                                                      interp_indcs, Lx, Ly, Lz);
+          v_interp_np1[idx] = LagrangeInterpolator<2>(w0_np1, idx+IVX,
+                                                      interp_indcs, Lx, Ly, Lz);
         }
         if (use_z4c) {
-          alp_np1 = LagrangeInterpolator<2>(z4c_np1, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_np1 = LagrangeInterpolator<2>(z4c_np1, z4c::Z4c::I_Z4C_ALPHA,
+                                            interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_np1[idx] = LagrangeInterpolator<2>(z4c_np1, idx+z4c::Z4c::I_Z4C_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_np1[idx] = LagrangeInterpolator<2>(z4c_np1, idx+z4c::Z4c::I_Z4C_BETAX,
+                                                    interp_indcs, Lx, Ly, Lz);
           }
         } else {
-          alp_np1 = LagrangeInterpolator<2>(adm_np1, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_np1 = LagrangeInterpolator<2>(adm_np1, adm::ADM::I_ADM_ALPHA,
+                                            interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_np1[idx] = LagrangeInterpolator<2>(adm_np1, idx+adm::ADM::I_ADM_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_np1[idx] = LagrangeInterpolator<2>(adm_np1, idx+adm::ADM::I_ADM_BETAX,
+                                                    interp_indcs, Lx, Ly, Lz);
           }
         }
         for (int idx = 0; idx < 6; ++idx) {
-          g3d_np1[idx] = LagrangeInterpolator<2>(adm_np1, idx+adm::ADM::I_ADM_GXX, interp_indcs, Lx, Ly, Lz);
+          g3d_np1[idx] = LagrangeInterpolator<2>(adm_np1, idx+adm::ADM::I_ADM_GXX,
+                                                 interp_indcs, Lx, Ly, Lz);
         }
         break;
       }
       case 3: {
         CalcInterpWght<3>(x_np1, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
         for (int idx = 0; idx < 3; ++idx) {
-          B_interp_np1[idx] = LagrangeInterpolator<3>(bcc0_np1, idx, interp_indcs, Lx, Ly, Lz);
-          v_interp_np1[idx] = LagrangeInterpolator<3>(w0_np1, idx+IVX, interp_indcs, Lx, Ly, Lz);
+          B_interp_np1[idx] = LagrangeInterpolator<3>(bcc0_np1, idx,
+                                                      interp_indcs, Lx, Ly, Lz);
+          v_interp_np1[idx] = LagrangeInterpolator<3>(w0_np1, idx+IVX,
+                                                      interp_indcs, Lx, Ly, Lz);
         }
         if (use_z4c) {
-          alp_np1 = LagrangeInterpolator<3>(z4c_np1, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_np1 = LagrangeInterpolator<3>(z4c_np1, z4c::Z4c::I_Z4C_ALPHA,
+                                            interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_np1[idx] = LagrangeInterpolator<3>(z4c_np1, idx+z4c::Z4c::I_Z4C_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_np1[idx] = LagrangeInterpolator<3>(z4c_np1, idx+z4c::Z4c::I_Z4C_BETAX,
+                                                    interp_indcs, Lx, Ly, Lz);
           }
         } else {
-          alp_np1 = LagrangeInterpolator<3>(adm_np1, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_np1 = LagrangeInterpolator<3>(adm_np1, adm::ADM::I_ADM_ALPHA,
+                                            interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_np1[idx] = LagrangeInterpolator<3>(adm_np1, idx+adm::ADM::I_ADM_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_np1[idx] = LagrangeInterpolator<3>(adm_np1, idx+adm::ADM::I_ADM_BETAX,
+                                                    interp_indcs, Lx, Ly, Lz);
           }
         }
         for (int idx = 0; idx < 6; ++idx) {
-          g3d_np1[idx] = LagrangeInterpolator<3>(adm_np1, idx+adm::ADM::I_ADM_GXX, interp_indcs, Lx, Ly, Lz);
+          g3d_np1[idx] = LagrangeInterpolator<3>(adm_np1, idx+adm::ADM::I_ADM_GXX,
+                                                 interp_indcs, Lx, Ly, Lz);
         }
         break;
       }
       case 4: {
         CalcInterpWght<4>(x_np1, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
         for (int idx = 0; idx < 3; ++idx) {
-          B_interp_np1[idx] = LagrangeInterpolator<4>(bcc0_np1, idx, interp_indcs, Lx, Ly, Lz);
-          v_interp_np1[idx] = LagrangeInterpolator<4>(w0_np1, idx+IVX, interp_indcs, Lx, Ly, Lz);
+          B_interp_np1[idx] = LagrangeInterpolator<4>(bcc0_np1, idx,
+                                                      interp_indcs, Lx, Ly, Lz);
+          v_interp_np1[idx] = LagrangeInterpolator<4>(w0_np1, idx+IVX,
+                                                      interp_indcs, Lx, Ly, Lz);
         }
         if (use_z4c) {
-          alp_np1 = LagrangeInterpolator<4>(z4c_np1, z4c::Z4c::I_Z4C_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_np1 = LagrangeInterpolator<4>(z4c_np1, z4c::Z4c::I_Z4C_ALPHA,
+                                            interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_np1[idx] = LagrangeInterpolator<4>(z4c_np1, idx+z4c::Z4c::I_Z4C_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_np1[idx] = LagrangeInterpolator<4>(z4c_np1, idx+z4c::Z4c::I_Z4C_BETAX,
+                                                    interp_indcs, Lx, Ly, Lz);
           }
         } else {
-          alp_np1 = LagrangeInterpolator<4>(adm_np1, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx, Ly, Lz);
+          alp_np1 = LagrangeInterpolator<4>(adm_np1, adm::ADM::I_ADM_ALPHA,
+                                            interp_indcs, Lx, Ly, Lz);
           for (int idx = 0; idx < 3; ++idx) {
-            beta_np1[idx] = LagrangeInterpolator<4>(adm_np1, idx+adm::ADM::I_ADM_BETAX, interp_indcs, Lx, Ly, Lz);
+            beta_np1[idx] = LagrangeInterpolator<4>(adm_np1, idx+adm::ADM::I_ADM_BETAX,
+                                                    interp_indcs, Lx, Ly, Lz);
           }
         }
         for (int idx = 0; idx < 6; ++idx) {
-          g3d_np1[idx] = LagrangeInterpolator<4>(adm_np1, idx+adm::ADM::I_ADM_GXX, interp_indcs, Lx, Ly, Lz);
+          g3d_np1[idx] = LagrangeInterpolator<4>(adm_np1, idx+adm::ADM::I_ADM_GXX,
+                                                 interp_indcs, Lx, Ly, Lz);
         }
         break;
-      }}
+      }
+      }
       // undensitize B and recover Valencia v (same conventions as the step-n kick)
       Real sqrtdet = std::sqrt(Primitive::GetDeterminant(g3d_np1));
       for (int idx = 0; idx < 3; ++idx) { B_interp_np1[idx] /= sqrtdet; }
@@ -496,9 +600,12 @@ void Particles::GR_BorisPush() {
 
       // normal-frame ideal-MHD E field: E_i = -sqrt(gamma) eps_ijk v^j B^k
       Real E_interp_np1[3] = {0.0};
-      E_interp_np1[0] = sqrtdet * (B_interp_np1[1]*v_interp_np1[2] - B_interp_np1[2]*v_interp_np1[1]);
-      E_interp_np1[1] = sqrtdet * (B_interp_np1[2]*v_interp_np1[0] - B_interp_np1[0]*v_interp_np1[2]);
-      E_interp_np1[2] = sqrtdet * (B_interp_np1[0]*v_interp_np1[1] - B_interp_np1[1]*v_interp_np1[0]);
+      E_interp_np1[0] = sqrtdet * (B_interp_np1[1]*v_interp_np1[2] -
+                                   B_interp_np1[2]*v_interp_np1[1]);
+      E_interp_np1[1] = sqrtdet * (B_interp_np1[2]*v_interp_np1[0] -
+                                   B_interp_np1[0]*v_interp_np1[2]);
+      E_interp_np1[2] = sqrtdet * (B_interp_np1[0]*v_interp_np1[1] -
+                                   B_interp_np1[1]*v_interp_np1[0]);
 
       Real tetrad[4][4] = {0.0}, inv_tetrad[4][4] = {0.0};
       CalcTetrad(alp_np1, beta_np1, g3d_np1, tetrad, inv_tetrad);
@@ -522,8 +629,9 @@ void Particles::GR_BorisPush() {
     pr(IPVZ, p) = u_np1[2];
   });
 
-  // snapshot the current fields/metric as step n for the next push (for a static background
-  // these copies are a no-op; they carry the time level once the metric evolves, Stage 4)
+  // snapshot the current fields/metric as step n for the next push (for a static
+  // background these copies are a no-op; they carry the time level once the metric
+  // evolves, Stage 4)
   if (use_mhd) {
     Kokkos::deep_copy(DevExeSpace(), w0_last, pmy_pack->pmhd->w0);
     Kokkos::deep_copy(DevExeSpace(), bcc0_last, pmy_pack->pmhd->bcc0);

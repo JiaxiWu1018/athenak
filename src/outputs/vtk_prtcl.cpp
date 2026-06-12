@@ -244,7 +244,8 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
     header_offset += pm->nprtcl_total*datasize;
   }
 
-  // Write Part 7: velocity VECTORS (the covariant spatial 4-velocity u_i, in IPVX/IPVY/IPVZ)
+  // Write Part 7: velocity VECTORS (the covariant spatial 4-velocity u_i, in
+  // IPVX/IPVY/IPVZ)
   {
     std::stringstream msg;
     msg << std::endl << "VECTORS prtcl_vel float" << std::endl;
@@ -295,7 +296,8 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
       msg << std::endl << "SCALARS " << rnames[v] << " float" << std::endl
           << "LOOKUP_TABLE default" << std::endl;
       if (global_variable::my_rank == 0) {
-        partfile.Write_any_type_at(msg.str().c_str(),msg.str().size(),header_offset,"byte");
+        partfile.Write_any_type_at(msg.str().c_str(),msg.str().size(),
+                                   header_offset,"byte");
       }
       header_offset += msg.str().size();
 

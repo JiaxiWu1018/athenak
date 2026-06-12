@@ -21,9 +21,10 @@ namespace particles {
 
 //----------------------------------------------------------------------------------------
 //! \fn void FlatBorisPush
-//! \brief One Boris update of the (special-relativistic) spatial 4-velocity u over a step dt
-//! under fields E,B with charge-to-mass ratio qom: half electric kick -> magnetic rotation ->
-//! half electric kick. u is the contravariant spatial 4-velocity (in flat space u^i==u_i).
+//! \brief One Boris update of the (special-relativistic) spatial 4-velocity u over a step
+//! dt under fields E,B with charge-to-mass ratio qom: half electric kick -> magnetic
+//! rotation -> half electric kick. u is the contravariant spatial 4-velocity (in flat
+//! space u^i==u_i).
 //! NOTE: tsqr = t0^2 + t1^2 + t2^2 (the prototype had a `*` typo here).
 
 KOKKOS_INLINE_FUNCTION

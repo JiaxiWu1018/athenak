@@ -19,6 +19,7 @@
 //! .hst convention), so restarted runs continue the same file; tags are globally unique
 //! and die at most once, so cross-segment merging/dedup is trivially by tag.
 
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -139,10 +140,10 @@ void Particles::FlushDeathLog() {
 
 void Particles::PrintFinalSummary() {
   Mesh *pm = pmy_pack->pmesh;
-  long long dtot = 0;
+  int64_t dtot = 0;
   for (int k=0; k<3; ++k) {dtot += pm->nprtcl_destroyed_cum[k];}
-  bool ok = (static_cast<long long>(pm->nprtcl_total) + dtot ==
-             static_cast<long long>(pm->nprtcl_initial));
+  bool ok = (static_cast<int64_t>(pm->nprtcl_total) + dtot ==
+             static_cast<int64_t>(pm->nprtcl_initial));
   std::cout << std::endl << "particles: initial=" << pm->nprtcl_initial
             << " final=" << pm->nprtcl_total
             << " destroyed: exit=" << pm->nprtcl_destroyed_cum[0]

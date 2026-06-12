@@ -59,7 +59,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('file_stem', help='path to files, excluding .#.bin')
     parser.add_argument('--skip-existing', action='store_true',
-                        help='only convert bins whose .athdf or .xdmf outputs are missing')
+                        help='only convert bins whose .athdf or .xdmf outputs '
+                             'are missing')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='print file conversion progress')
     args = parser.parse_args()

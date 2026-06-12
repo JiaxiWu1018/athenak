@@ -24,12 +24,12 @@
 //========================================================================================
 
 // C/C++ headers
+#include <fenv.h>  // NOLINT
 #include <cstdlib>
 #include <iostream>
 #include <string>
 #include <memory>
 #include <cstdio> // sscanf
-#include <fenv.h>
 #include <csignal>
 #include <fstream>  // Include this for std::ifstream
 
