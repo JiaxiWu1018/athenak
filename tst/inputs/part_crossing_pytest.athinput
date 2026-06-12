@@ -1,0 +1,83 @@
+# NRPIC Stage-3d pytest fixture: uniform 8-block periodic grid, 8^3 drift lattice.
+# Tuned for the repo regression tier (tst/test_suite/particles), deliberately separate
+# from the demo inputs in inputs/particles/:
+#   - nlim=50 -> t_end=2.5 at dt = 0.8*(1/16) = 0.05; the all-outflow destruction test
+#     (mesh/*_bc CLI overrides) fully drains by t~1.7, leaving the 18 rest particles;
+#   - output1 dt=0.117 never coincides with a 0.05k cycle end, keeping the restart
+#     test's dump-threshold ladder robust to the 6-digit last_time rst round-trip;
+#   - <output2> rst block present because CLI cannot ADD blocks: writes at t=0 plus
+#     the Driver::Finalize write (the restart test's handoff point).
+
+<comment>
+problem   = particle crossing pytest fixture (uniform)
+
+<job>
+basename  = part_crossing_pytest
+
+<mesh>
+nghost    = 2
+nx1       = 16        # 2 MeshBlocks in each direction
+x1min     = -0.5
+x1max     = 0.5
+ix1_bc    = periodic
+ox1_bc    = periodic
+
+nx2       = 16
+x2min     = -0.5
+x2max     = 0.5
+ix2_bc    = periodic
+ox2_bc    = periodic
+
+nx3       = 16
+x3min     = -0.5
+x3max     = 0.5
+ix3_bc    = periodic
+ox3_bc    = periodic
+
+<meshblock>
+nx1       = 8
+nx2       = 8
+nx3       = 8
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.8
+nlim       = 50        # t_end = 2.5 (restart test overrides to 10/20 via CLI)
+tlim       = 10.0
+ndiag      = 1
+
+<particles>
+particle_type = dust
+pusher = drift
+init   = pgen          # in-code deterministic lattice (no HDF5 dependency)
+prtcl_init_file = lattice.h5   # used only when init=file (key present for CLI override)
+debug  = 1             # fatal post-migration validation (the per-cycle oracle)
+destroy_log   = true   # death-record CSV (<basename>.prtcl_destroy.csv)
+excise_radius = 0.0    # > 0 enables sphere excision (keys present for CLI override)
+excise_x1     = 0.0
+excise_x2     = 0.0
+excise_x3     = 0.0
+excise_lapse  = 0.0    # > 0 enables lapse excision (requires <adm>; gauge-dependent)
+
+<problem>
+mode        = lattice  # 8^3 = 512 particles, tag = i + npx*(j + npy*k)
+vmax        = 1.0      # particle speed
+audit       = false
+delta_frac  = 0.1
+select_gid  = -1
+select_slot = -1
+nrand       = 64
+seed        = 1
+npx         = 8        # lattice-mode resolution
+npy         = 8
+npz         = 8
+
+<output1>
+file_type   = pvtk
+variable    = prtcl_all
+dt          = 0.117    # off the 0.05k cycle-end grid (see header note)
+
+<output2>
+file_type   = rst
+dt          = 50.0     # >> tlim: rst only at t=0 + the Driver::Finalize write
