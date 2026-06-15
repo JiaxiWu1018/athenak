@@ -128,6 +128,56 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     Kokkos::realloc(excise_crit, 1);
   }
 
+  // stress-energy feedback (Stage 4): deposit particle Tmunu for the Z4c matter terms.
+  // Allowed configurations (stage4_feedback README section 5.1, user-locked 2026-06-12):
+  // any-physics + particles with feedback=false (pusher only), and z4c + particles +
+  // feedback without MHD. Everything else is fatal here.
+  feedback = pin->GetOrAddBoolean("particles","feedback",false);
+  nimages_thispack = 0;
+  if (feedback) {
+    if (!pmy_pack->pmesh->three_d) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "<particles> feedback = true requires a 3D mesh (the deposition"
+                << std::endl
+                << "kernel and the Z4c solver are 3D)." << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    if (pmy_pack->pz4c == nullptr) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "<particles> feedback = true requires a <z4c> block: the Z4c solver"
+                << std::endl
+                << "is the only Tmunu consumer (a static ADM/flat metric cannot respond)."
+                << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    if (pmy_pack->pdyngr != nullptr) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "<particles> feedback = true with dynamical GR(M)HD is not supported:"
+                << std::endl
+                << "the fluid SetTmunu *sets* Tmunu (two writers); the fluid+particle"
+                << std::endl
+                << "merge is a future stage. Remove <mhd> or set feedback=false."
+                << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    if (global_variable::nranks > 1) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "<particles> feedback = true supports a single rank only until the"
+                << std::endl
+                << "ghost-image MPI transport lands (Stage 4c). Run with 1 rank."
+                << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    Kokkos::realloc(tmunu_images, 1);
+    Kokkos::realloc(tmunu_nimg, 1);
+    Kokkos::realloc(tmunu_psums, 10);
+    Kokkos::realloc(tmunu_csums, 10);
+  }
+
   // C1 guard: dynamic AMR has no particle support anywhere (mesh_refinement.cpp and
   // load_balance.cpp move MeshBlocks and renumber gids without touching particles, so
   // the first regrid event leaves every PGID stale -- silent corruption). Implementation

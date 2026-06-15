@@ -1,0 +1,95 @@
+# NRPIC Stage-4a Tmunu-deposition curved-space test: analytic Schwarzschild in
+# Cartesian Kerr-Schild coordinates (<coord> a=0), z4c present as the feedback
+# consumer. nlim=0: seed deposit + initial outputs only. Discriminates the
+# sqrt(gamma) factors: the in-code identity must hold exactly with sqrt(gamma) != 1,
+# and the per-cell E values match m W S_ijk/(sqrt(gamma)_cell dV) with the ANALYTIC
+# cell-center metric (a particle-interpolated sqrt(gamma) would be off by O(dx d(g))).
+# Outflow boundaries: a particle placed in a domain-edge band exercises the
+# boundary-clip factor f_p of the identity diagnostic (suite T3c).
+
+<comment>
+problem   = particle Tmunu deposition test (Schwarzschild-KS)
+
+<job>
+basename  = part_tmunu_schw
+
+<mesh>
+nghost    = 2
+nx1       = 32
+x1min     = -12.0
+x1max     = 12.0
+ix1_bc    = outflow
+ox1_bc    = outflow
+
+nx2       = 32
+x2min     = -12.0
+x2max     = 12.0
+ix2_bc    = outflow
+ox2_bc    = outflow
+
+nx3       = 32
+x3min     = -12.0
+x3max     = 12.0
+ix3_bc    = outflow
+ox3_bc    = outflow
+
+<meshblock>
+nx1       = 16
+nx2       = 16
+nx3       = 16
+
+<coord>
+general_rel = true
+minkowski   = false
+a           = 0.0      # Schwarzschild (M = 1)
+excise      = false
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.25
+nlim       = 0
+tlim       = 1.0
+ndiag      = 1
+
+<z4c>
+diss       = 0.0
+
+<particles>
+particle_type = dust
+pusher    = drift
+init      = pgen
+mass      = 1.0
+feedback  = true
+debug     = 1
+destroy_log = false
+
+<problem>
+mode      = single
+px        = 5.0625     # generic point near r ~ 5M, off cell centers and symmetry axes
+py        = 0.9375
+pz        = -1.6875
+pux       = 0.0
+puy       = 0.0
+puz       = 0.0
+pmass     = 1.0
+sweep_x1  = 0.0        # sweep keys present for CLI override (anchor = interior corner)
+sweep_x2  = 0.0
+sweep_x3  = 0.0
+sweep_dx  = 0.75       # cell width h = 24/32
+sweep_span = 12.0      # block width of the 2x2x2 decomposition
+
+<output1>
+file_type  = bin
+variable   = tmunu
+dt         = 0.001
+
+<output2>
+file_type  = bin
+variable   = adm
+dt         = 0.001
+
+<output3>
+file_type  = pvtk
+variable   = prtcl_all
+dt         = 0.001

@@ -343,6 +343,30 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
     if (ppart != nullptr) {
       (void) ppart->EnergyCalculation(this, 1);
     }
+
+    // Restart-file state holds PHYSICAL cells only, so anything ghost-dependent must
+    // be re-derived AFTER the ghost exchange of Step 1 -- problem generators run too
+    // early for that. For live-Z4c runs: re-derive u_adm (incl. ghosts) from the
+    // post-exchange u0, and refresh the GR pusher's previous-step snapshots (the
+    // pgen-time seed copied a u_adm whose ghost zones were never filled on restart;
+    // harmless for block-interior particles, wrong for boundary-band stencils). On
+    // fresh starts both are bitwise no-ops (pgens already derived/copied the same).
+    if (ppart != nullptr && pz4c != nullptr &&
+        (ppart->feedback || ppart->pusher == ParticlesPusher::gr_boris)) {
+      pz4c->Z4cToADM(pmesh->pmb_pack);
+      if (ppart->pusher == ParticlesPusher::gr_boris) {
+        Kokkos::deep_copy(DevExeSpace(), ppart->adm_last,
+                          pmesh->pmb_pack->padm->u_adm);
+        Kokkos::deep_copy(DevExeSpace(), ppart->z4c_last, pz4c->u0);
+      }
+    }
+
+    // seed the particle stress-energy deposit (Stage 4) so cycle 1 consumes a valid
+    // Tmunu and the initial output contains it. Runs on BOTH fresh starts and restarts
+    // (Tmunu is derived state, not in the restart file).
+    if (ppart != nullptr && ppart->feedback) {
+      (void) ppart->SetPrtclTmunu(this, 1);
+    }
   }
 
   //---- Step 3.  Cycle through output Types and load data / write files.

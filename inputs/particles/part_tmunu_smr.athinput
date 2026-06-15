@@ -1,0 +1,102 @@
+# NRPIC Stage-4a matter-confinement guard demo: flat metric on a 2-level static mesh.
+# Root grid 32^3 over [-1,1]^3 (dx = 1/16) in 16^3 blocks (= 2x2x2 root blocks of
+# width 1). The level-1 box [0.25,0.75]^3 intersects ONLY the [0,1]^3 root block, which
+# refines into 2x2x2 fine blocks (dx = 1/32); coarse-fine interfaces sit at the octant
+# faces (x1 = 0 etc.). The default single particle sits INSIDE the fine block [0,0.5)^3
+# within half a fine cell of the x1 = 0 interface, so its CIC cloud touches the coarse
+# neighbor: the deposit must FATAL with the LEVEL INTERFACE offender dump (suite T6).
+# Override problem/px to a fine-block-interior position (e.g. 0.25) for the negative
+# control (runs clean).
+
+<comment>
+problem   = particle Tmunu deposition confinement-guard demo (SMR)
+
+<job>
+basename  = part_tmunu_smr
+
+<mesh>
+nghost    = 2
+nx1       = 32
+x1min     = -1.0
+x1max     = 1.0
+ix1_bc    = periodic
+ox1_bc    = periodic
+
+nx2       = 32
+x2min     = -1.0
+x2max     = 1.0
+ix2_bc    = periodic
+ox2_bc    = periodic
+
+nx3       = 32
+x3min     = -1.0
+x3max     = 1.0
+ix3_bc    = periodic
+ox3_bc    = periodic
+
+<meshblock>
+nx1       = 16
+nx2       = 16
+nx3       = 16
+
+<mesh_refinement>
+refinement = static
+
+<refined_region1>
+level = 1
+x1min = 0.25
+x1max = 0.75
+x2min = 0.25
+x2max = 0.75
+x3min = 0.25
+x3max = 0.75
+
+<coord>
+general_rel = true
+minkowski   = true
+excise      = false
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.25
+nlim       = 0
+tlim       = 1.0
+ndiag      = 1
+
+<z4c>
+diss       = 0.0
+
+<particles>
+particle_type = dust
+pusher    = drift
+init      = pgen
+mass      = 1.0
+feedback  = true
+debug     = 1
+destroy_log = false
+
+<problem>
+mode      = single
+px        = 0.0078125  # 0.25*dx_fine: lower half-cell band at the x1 = 0 interface
+py        = 0.25       # fine-block interior in x2/x3 (a mid-block cell face)
+pz        = 0.25
+pux       = 0.0
+puy       = 0.0
+puz       = 0.0
+pmass     = 1.0
+sweep_x1  = 0.0        # sweep keys present for CLI override
+sweep_x2  = 0.0
+sweep_x3  = 0.0
+sweep_dx  = 0.03125
+sweep_span = 0.5
+
+<output1>
+file_type  = bin
+variable   = tmunu
+dt         = 0.001
+
+<output2>
+file_type  = pvtk
+variable   = prtcl_all
+dt         = 0.001

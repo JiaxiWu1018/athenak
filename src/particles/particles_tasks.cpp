@@ -55,6 +55,13 @@ void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> t
   // final
   id.newdt  = atl->AddTask(&Particles::NewTimeStep, this, id.check);
   id.energy = atl->AddTask(&Particles::EnergyCalculation, this, id.newdt);
+  // stress-energy deposition (Stage 4): last in the chain so positions, velocities and
+  // the t^{n+1} metric (Z4cToADM ran at the final RK stage) are all final; the deposited
+  // Tmunu is then frozen across every RK substage of the next cycle (first-order matter
+  // coupling). Queued only when feedback is on.
+  if (feedback) {
+    id.tmunu = atl->AddTask(&Particles::SetPrtclTmunu, this, id.energy);
+  }
 
   return;
 }

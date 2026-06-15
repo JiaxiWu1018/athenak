@@ -47,9 +47,34 @@ struct ParticlesTaskIDs {
   TaskID csend;
   TaskID crecv;
   TaskID check;
+  TaskID tmunu;
 };
 
 namespace particles {
+
+//----------------------------------------------------------------------------------------
+//! \struct TmunuImage
+//  \brief ghost-image record for cross-block stress-energy deposition (Stage 4).
+//  The deposit kernel writes only its own MeshBlock's physical cells; the share of a
+//  boundary-band particle's CIC cloud that falls in a neighbor is delivered by one of
+//  these records (up to 7 per particle: 3 faces + 3 edges + 1 corner). The CIC stencil
+//  (idx, delta) is computed ONCE on the source block and shipped; because same-level
+//  neighbor index spaces align, the target cells follow from off_code alone (banded dim
+//  with b=-1 -> target cell n-1 at weight 1-delta; b=+1 -> cell 0 at weight delta) --
+//  no wrapped-position arithmetic, so periodic wrap is exact by construction. The
+//  payload is otherwise particle-like (mass, u_i, tag) so the same machinery can later
+//  carry charge/current deposition.
+
+struct TmunuImage {
+  int target_m;     // local MeshBlock index (gid - gids) of the receiving block
+  int tag;          // source particle tag (canonical-order key)
+  int off_code;     // image offset (bx+1) + 3*(by+1) + 9*(bz+1) in 0..26 (13 = self)
+  int idx[3];       // source-computed left-center CIC index per dim
+  Real delta[3];    // source-computed CIC offset per dim, clamped to [0,1]
+  Real mass;        // particle rest mass (IPM)
+  Real lorentz;     // normal-frame Lorentz factor W at the particle
+  Real u_d[3];      // covariant velocity u_i
+};
 
 //----------------------------------------------------------------------------------------
 //! \class Particles
@@ -125,6 +150,21 @@ class Particles {
   DvceArray1D<int>  excise_flag;
   DvceArray1D<Real> excise_crit;
 
+  // stress-energy feedback (Stage 4): <particles> feedback = true deposits the particle
+  // stress-energy into Tmunu (created in MeshBlockPack when this flag is set) once per
+  // cycle after push+migration; z4c_calcrhs consumes it. Requires <z4c> (the only
+  // consumer), forbids dyn_grmhd (two Tmunu writers), nranks > 1 (ghost-image MPI
+  // transport lands in Stage 4c) and 1D/2D (deposit kernel and z4c are 3D).
+  bool feedback;
+  // ghost-image records (grow-only capacity) + device fill counter + per-cycle count
+  DualArray1D<TmunuImage> tmunu_images;
+  DvceArray1D<int> tmunu_nimg;
+  int nimages_thispack;
+  // deposit identity diagnostics (debug >= 1): particle-side and cell-side sums of the
+  // 10 conserved combinations {Sum m W f_p == Sum E sqrt(g) dV, ...} (particles_tmunu)
+  DvceArray1D<Real> tmunu_psums;
+  DvceArray1D<Real> tmunu_csums;
+
   // snapshots of the field/metric at the previous step, used by the GR pusher to evaluate
   // the implicit geodesic substep at the time midpoint. Allocated only for gr_boris. For
   // a static background (all Stage-2 tests) these equal the current arrays; they
@@ -171,6 +211,11 @@ class Particles {
   // only when a criterion is enabled; mark_excised is its NGHOST-dispatched kernel
   TaskStatus MarkExcised(Driver *pdriver, int stage);
   template <int NGHOST> void mark_excised();
+  // stress-energy deposition task (particles_tmunu.cpp), scheduled after Energy-
+  // Calculation when feedback is on (+ one seed call from Driver::Initialize);
+  // set_prtcl_tmunu is its NGHOST-dispatched kernel
+  TaskStatus SetPrtclTmunu(Driver *pdriver, int stage);
+  template <int NGHOST> void set_prtcl_tmunu();
   // exhaustive host-side enumeration audit of the destination search against a
   // brute-force bbox oracle (particles_debug.cpp); fatal on any mismatch. Single-rank,
   // strictly-periodic meshes only (test utility, invoked by the part_crossing pgen).

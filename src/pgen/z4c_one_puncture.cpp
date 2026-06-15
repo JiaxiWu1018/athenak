@@ -48,6 +48,11 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     exit(EXIT_FAILURE);
   }
 
+  // On restart the z4c/ADM state (including ghosts) and the particles were restored
+  // from the restart file; re-running the initial data here would CLOBBER the evolved
+  // state back to t=0 (the canonical upstream guard, cf. z4c_two_puncture.cpp). Only
+  // the GR-pusher snapshot re-seed at the bottom runs on both paths.
+  if (!restart) {
   ADMOnePuncture(pmbp, pin);
   pmbp->pz4c->GaugePreCollapsedLapse(pmbp, pin);
   switch (indcs.ng) {
@@ -76,7 +81,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   // DYNAMICAL-lapse kill through the I_Z4C_ALPHA interpolation branch (the OS-collapse
   // rehearsal); an outer ring (r ~ 4M) survives. No effect on z4c runs without
   // particles.
-  if (pmbp->ppart != nullptr && !restart) {
+  if (pmbp->ppart != nullptr) {
     particles::Particles *ppart = pmbp->ppart;
     std::string pinit = pin->GetOrAddString("particles","init","ppc");
     if (pinit.compare("pgen") != 0) {
@@ -136,8 +141,11 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
                 << std::endl;
     }
   }
-  // seed the GR-pusher previous-step snapshots (fresh start AND restart; the restart
-  // reader restores u_adm/u0 before this runs)
+  }  // if (!restart)
+  // seed the GR-pusher previous-step snapshots (fresh start AND restart). NOTE the
+  // restart file stores PHYSICAL cells only, so on restart this copy carries unfilled
+  // ghost zones; Driver::Initialize refreshes both snapshots after the ghost exchange
+  // (the authoritative restart-path seed -- this one keeps fresh starts self-contained)
   if (pmbp->ppart != nullptr &&
       pmbp->ppart->pusher == ParticlesPusher::gr_boris) {
     Kokkos::deep_copy(DevExeSpace(), pmbp->ppart->adm_last, pmbp->padm->u_adm);

@@ -233,6 +233,14 @@ void MeshBlockPack::AddPhysics(ParameterInput *pin) {
   // Create particles module.  Create tasklist.
   if (pin->DoesBlockExist("particles")) {
     ppart = new particles::Particles(this, pin);
+    // particle stress-energy feedback (Stage 4): create the Tmunu container the
+    // deposition writes and z4c_calcrhs consumes. The ctor guard matrix has already
+    // vetted the configuration (z4c present, no dyn_grmhd -- so ptmunu is still null
+    // here). CalcRHS checks ptmunu at run time, so creating it after the
+    // NumericalRelativity task assembly above is safe.
+    if (ppart->feedback && pz4c != nullptr && ptmunu == nullptr) {
+      ptmunu = new Tmunu(this, pin);
+    }
     ppart->AssembleTasks(tl_map);
     nphysics++;
   } else {
