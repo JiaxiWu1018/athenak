@@ -1,0 +1,124 @@
+# NRPIC Stage 4b: Oppenheimer-Snyder pressureless-dust collapse to a black hole.
+# A homogeneous dust ball (R0 = 5M areal, momentarily at rest) represented by self-
+# gravitating particles whose stress-energy sources the Z4c spacetime (feedback=true),
+# evolved in moving-puncture gauge (1+log slicing + Gamma-driver shift). UNIFORM grid,
+# SINGLE RANK (feedback FATALs nranks>1 until Stage 4c); no SMR/AMR. The headline NRPIC
+# validation -- compared against the analytic OS cycloid and Staley et al. CQG 29 (2012).
+#
+# Build: cmake -S . -B build_os -DAthena_ENABLE_MPI=ON -DAthena_ENABLE_HDF5=ON \
+#               -DPROBLEM=nr_pic_os && cmake --build build_os -j
+# Run:   build_os/src/athena -i inputs/particles/nr_pic_os.athinput
+#   t=0 constraint-convergence rung (fast): ... time/nlim=0 mesh/nx1=96 mesh/nx2=96 \
+#               mesh/nx3=96   (and 128, 192; full-3D adm/tmunu/con dumps fire at t=0)
+
+<comment>
+problem   = NRPIC Stage 4b: Oppenheimer-Snyder dust collapse (feedback)
+
+<job>
+basename  = os
+
+<mesh>
+nghost = 4
+nx1    = 96            # uniform; dx = 32/96 = 0.333 M (ball r0_iso ~ 3.94M ~ 24 cells)
+x1min  = -16.0
+x1max  = 16.0
+ix1_bc = outflow       # z4c applies a Sommerfeld-type radiative outer condition
+ox1_bc = outflow
+
+nx2    = 96
+x2min  = -16.0
+x2max  = 16.0
+ix2_bc = outflow
+ox2_bc = outflow
+
+nx3    = 96
+x3min  = -16.0
+x3max  = 16.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+
+<time>
+evolution  = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim       = 10000000
+tlim       = 40.0      # R0=5M: tau_coll ~ 12.4M proper; collapse+lapse-freeze+excision
+ndiag      = 50
+
+<z4c>
+# moving-puncture gauge: 1+log slicing + Gamma-driver shift (cf. boosted-puncture input)
+lapse_harmonic  = 0.0      # mu_L
+lapse_oplog     = 2.0      # 1+log lapse coefficient (standard moving-puncture value)
+shift_eta       = 2.0      # Gamma-driver shift damping
+diss            = 0.1      # Kreiss-Oliger dissipation
+chi_div_floor   = 0.00001
+damp_kappa1     = 0.02     # constraint damping
+damp_kappa2     = 0.00
+
+<particles>
+particle_type = dust
+pusher        = gr_boris   # zero charge -> geodesic dust integrator
+init          = pgen       # in-pgen lattice (metric + masses from the same keys)
+prtcl_init_file = none     # placeholder so `init=file` runs can override it on the CLI
+                           # (e.g. the equal-mass MC scheme from gen_os_dust.py)
+feedback      = true       # deposit particle stress-energy into Tmunu -> Z4c
+mass          = 1.0        # scalar fallback (UNUSED: init=pgen sets per-particle IPM)
+debug         = 1          # per-cycle conservation identity + migration validation
+destroy_log   = true       # death-record CSV (<basename>.prtcl_destroy.csv)
+excise_radius = 0.0        # sphere excision off
+excise_x1     = 0.0
+excise_x2     = 0.0
+excise_x3     = 0.0
+excise_lapse  = 0.1        # horizon kill: destroy particles where alpha < 0.1
+
+<problem>
+os_mass               = 1.0    # ADM mass M
+os_radius_over_mass   = 5.0    # areal surface radius R0/M
+os_lattice_n          = 48     # init=pgen: lattice cell centres across the diameter 2 r0
+os_precollapsed_lapse = false  # false: alpha0 = 1 (lapse collapses); true: alpha0 = psi^-2
+
+<output1>
+file_type = hst            # global norms incl H-norm2 (Hamiltonian-constraint residual)
+dt        = 0.5
+
+<output2>
+file_type = pvtk           # particle positions/velocity/energy/mass/tag (movie + shells)
+variable  = prtcl_all
+dt        = 0.5
+
+<output3>
+file_type = bin            # z=0 slice of Z4c: central lapse alpha_c(t) + 2D lapse movie
+variable  = z4c
+slice_x3  = 0.0
+dt        = 0.5
+
+<output4>
+file_type = bin            # z=0 slice of Tmunu: central density rho_c(t) ~ E + 2D movie
+variable  = tmunu
+slice_x3  = 0.0
+dt        = 0.5
+
+<output5>
+file_type = bin            # z=0 slice of ADM (psi4): conformal factor (areal radius, viz)
+variable  = adm
+slice_x3  = 0.0
+dt        = 0.5
+
+<output6>
+file_type = bin            # full-3D constraints at t=0 + final (in-code con_H cross-check)
+variable  = con
+dt        = 1000.0
+
+<output7>
+file_type = rst            # restart (mid-collapse restart tests)
+dt        = 20.0
+
+# NOTE: exactly one bin block per variable (z4c/tmunu/adm/con) -- two blocks dumping the
+# same variable would COLLIDE on the <basename>.<variable>.NNNNN.bin filename. The t=0
+# Hamiltonian-constraint convergence (ladder 1) is computed in python as 2 pi psi^5
+# (E_dep - rho0) from the tmunu-E slice (psi, rho0 analytic) -- see analyze_os.py.
