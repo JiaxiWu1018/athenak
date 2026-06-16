@@ -68,11 +68,36 @@ namespace particles {
 struct TmunuImage {
   int target_m;     // local MeshBlock index (gid - gids) of the receiving block
   int tag;          // source particle tag (canonical-order key)
-  int off_code;     // image offset (bx+1) + 3*(by+1) + 9*(bz+1) in 0..26 (13 = self)
+  int off_code;     // image offset (bx+1) + 3*(by+1) + 9*(bz+1) in 0..26; 13 = self (the
+                    // particle's own block: a first-class record so the local cloud and
+                    // every neighbor image deposit in canonical (target_m,tag,off_code)
+                    // pass -- the Stage-4c bitwise rank-invariance refactor)
   int idx[3];       // source-computed left-center CIC index per dim
   Real delta[3];    // source-computed CIC offset per dim, clamped to [0,1]
   Real mass;        // particle rest mass (IPM)
   Real lorentz;     // normal-frame Lorentz factor W at the particle
+  Real u_d[3];      // covariant velocity u_i
+};
+
+//----------------------------------------------------------------------------------------
+//! \struct TmunuImageWire
+//  \brief wire form of a TmunuImage destined for a MeshBlock on ANOTHER rank (Stage 4c).
+//  Identical payload to TmunuImage except the receiving block is named by its GLOBAL id
+//  rather than the sender's local index (meaningless off-rank): the receiver converts it
+//  back via target_m = target_gid - gids. Shipped as two flat buffers (6 ints, 8 Reals)
+//  on the particle communicator; the received image is appended to the local tmunu_images
+//  queue and deposited by the canonical-order pass, so cross-rank feedback is bitwise
+//  rank-count invariant by construction. Order on the wire is irrelevant (the receiver
+//  re-sorts). Payload is particle-like so the same machinery can later carry currents.
+
+struct TmunuImageWire {
+  int target_gid;   // GLOBAL id of the receiving block
+  int tag;          // source particle tag
+  int off_code;     // image offset code in 0..26
+  int idx[3];       // source-computed left-center CIC index per dim
+  Real delta[3];    // source-computed CIC offset per dim, clamped to [0,1]
+  Real mass;        // particle rest mass
+  Real lorentz;     // normal-frame Lorentz factor W
   Real u_d[3];      // covariant velocity u_i
 };
 
@@ -156,10 +181,19 @@ class Particles {
   // consumer), forbids dyn_grmhd (two Tmunu writers), nranks > 1 (ghost-image MPI
   // transport lands in Stage 4c) and 1D/2D (deposit kernel and z4c are 3D).
   bool feedback;
-  // ghost-image records (grow-only capacity) + device fill counter + per-cycle count
+  // ghost-image records (grow-only capacity): slots [0,npart) hold the per-particle self
+  // records (own-block cloud, off_code 13); same-rank neighbor images are appended after
+  // npart; cross-rank received images are appended after those (Stage 4c). tmunu_nimg is
+  // the device fill counter, two slots {0: same-rank images appended beyond npart, 1:
+  // cross-rank images staged into tmunu_img_send}; nimages_thispack is the host total in
+  // tmunu_images (npart + same-rank + received).
   DualArray1D<TmunuImage> tmunu_images;
   DvceArray1D<int> tmunu_nimg;
   int nimages_thispack;
+  // cross-rank-bound images staged this cycle (grow-only); shipped by the boundary-values
+  // ExchangeTmunuImages(). nimg_send_thispack is the host count.
+  DualArray1D<TmunuImageWire> tmunu_img_send;
+  int nimg_send_thispack;
   // deposit identity diagnostics (debug >= 1): particle-side and cell-side sums of the
   // 10 conserved combinations {Sum m W f_p == Sum E sqrt(g) dV, ...} (particles_tmunu)
   DvceArray1D<Real> tmunu_psums;

@@ -284,6 +284,20 @@ class ParticlesBoundaryValues {
   std::vector<MPI_Request> irecv_req, isend_req;  // vectors of requests for ints
   MPI_Comm mpi_comm_part;                       // unique MPI communicators for particles
   MPI_Datatype mpi_ituple;                      // 3-int ParticleMessageData tuple type
+
+  // Stage 4c: cross-rank Tmunu ghost-image transport. Distinct message tags (2 = Reals,
+  // 3 = ints) on the SHARED mpi_comm_part: migration (tags 0/1) is fully drained before
+  // the tmunu task runs and no migration is in flight at the init seed, so there is no
+  // temporal overlap. A SEPARATE Allgather/Allgatherv census (the migration census runs
+  // in an earlier task, before images exist). Buffers carry 8 Reals + 6 ints per image.
+  DvceArray1D<Real> img_rsendbuf, img_rrecvbuf;
+  DvceArray1D<int>  img_isendbuf, img_irecvbuf;
+  std::vector<MPI_Request> img_rrecv_req, img_rsend_req, img_irecv_req, img_isend_req;
+  int n_img_send_msgs, n_img_recv_msgs;             // # MPI messages sent / received
+  int n_img_recv;                                   // total images received this rank
+  std::vector<int> n_imgsend_eachrank;              // length nranks
+  std::vector<ParticleMessageData> imgsends_thisrank, imgrecvs_thisrank;
+  std::vector<ParticleMessageData> imgsends_allranks;
 #endif
 
   //functions
@@ -294,6 +308,11 @@ class ParticlesBoundaryValues {
   TaskStatus PackAndSendPrtcls();
   TaskStatus ClearPrtclSend();
   TaskStatus RecvAndUnpackPrtcls();
+  // Stage 4c synchronous cross-rank ghost-image exchange (serial no-op): census,
+  // post Irecv, pack + Isend, wait, then append received images into the Particles'
+  // tmunu_images queue. Called inside set_prtcl_tmunu between image generation and the
+  // canonical sort; reuses mpi_comm_part + mpi_ituple.
+  void ExchangeTmunuImages();
 
  protected:
   particles::Particles* pmy_part;

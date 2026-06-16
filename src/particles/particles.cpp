@@ -134,6 +134,7 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   // feedback without MHD. Everything else is fatal here.
   feedback = pin->GetOrAddBoolean("particles","feedback",false);
   nimages_thispack = 0;
+  nimg_send_thispack = 0;
   if (feedback) {
     if (!pmy_pack->pmesh->three_d) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
@@ -163,17 +164,14 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
                 << std::endl;
       std::exit(EXIT_FAILURE);
     }
-    if (global_variable::nranks > 1) {
-      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
-                << std::endl
-                << "<particles> feedback = true supports a single rank only until the"
-                << std::endl
-                << "ghost-image MPI transport lands (Stage 4c). Run with 1 rank."
-                << std::endl;
-      std::exit(EXIT_FAILURE);
-    }
+    // multi-rank feedback is supported (Stage 4c): a boundary-band particle's cross-rank
+    // cloud share is shipped as a TmunuImageWire on the particle communicator and merged
+    // into the receiver's canonical deposit pass, so the result is bitwise rank-count
+    // invariant. (Cross-LEVEL deposition, i.e. matter touching a coarse-fine interface,
+    // remains fatal in set_prtcl_tmunu and is deferred to Stage 5.)
     Kokkos::realloc(tmunu_images, 1);
-    Kokkos::realloc(tmunu_nimg, 1);
+    Kokkos::realloc(tmunu_nimg, 2);   // {same-rank imgs beyond npart, cross-rank imgs}
+    Kokkos::realloc(tmunu_img_send, 1);
     Kokkos::realloc(tmunu_psums, 10);
     Kokkos::realloc(tmunu_csums, 10);
   }

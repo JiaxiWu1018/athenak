@@ -17,6 +17,7 @@ add_executable(
         bvals/bvals_cc.cpp
         bvals/bvals_fc.cpp
         bvals/bvals_part.cpp
+        bvals/bvals_part_tmunu.cpp
         bvals/bvals_tasks.cpp
         bvals/flux_correct_cc.cpp
         bvals/flux_correct_fc.cpp
