@@ -176,16 +176,22 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     Kokkos::realloc(tmunu_csums, 10);
   }
 
-  // C1 guard: dynamic AMR has no particle support anywhere (mesh_refinement.cpp and
-  // load_balance.cpp move MeshBlocks and renumber gids without touching particles, so
-  // the first regrid event leaves every PGID stale -- silent corruption). Implementation
-  // is deferred to Stage 5 (after the SMR Tmunu + OS-collapse test); static refinement
-  // (SMR) is fully supported. See stage3_communication/README.md section 5.3 C(c)7.
-  if (pmy_pack->pmesh->adaptive) {
+  // Dynamic AMR + particles (NRPIC Stage 5). Stage 5a lifted the redistribution guard for
+  // the FEEDBACK-OFF case: RedistAndRefineMeshBlocks now remaps every stale PGID
+  // from its old block's fate and ships the cross-rank movers (particles_amr.cpp +
+  // bvals_part_amr.cpp), so kinematic particles (drift / gr_boris geodesics) survive
+  // refine/derefine/rebalance events. Stays FATAL with feedback=true: cross-level Tmunu
+  // deposition (a cloud straddling a coarse-fine interface) is Stage 5b -- the
+  // level-mismatch FATAL in set_prtcl_tmunu guards that. Static refinement is unaffected.
+  if (pmy_pack->pmesh->adaptive && feedback) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "Particles do not support adaptive mesh refinement yet (PGIDs go stale"
+              << "<particles> feedback = true with adaptive mesh refinement is not yet"
               << std::endl
-              << "on regrid; deferred to Stage 5). Use refinement = static instead."
+              << "supported: cross-level Tmunu deposition (a deposition cloud spanning a"
+              << std::endl
+              << "coarse-fine interface) is deferred to Stage 5b. Use feedback = false"
+              << std::endl
+              << "(kinematic particles survive regrids) or refinement = static."
               << std::endl;
     std::exit(EXIT_FAILURE);
   }

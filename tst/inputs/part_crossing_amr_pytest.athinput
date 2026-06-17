@@ -1,0 +1,80 @@
+# NRPIC Stage 5a pytest input: dynamic-AMR redistribution (forced-regrid toy). A scripted
+# moving box (problem/amr=moving_box) oscillates along x1, driving deterministic regrid
+# events; drift particles must follow their MeshBlocks through every regrid. <particles>
+# debug=1 makes the post-regrid containment + two-sided ledger fatal. Small + short for the
+# repo-resident gate; the research suite runs the larger soak.
+
+<comment>
+problem   = particle redistribution through dynamic-AMR (forced-regrid toy, pytest)
+
+<job>
+basename  = part_crossing_amr_pytest
+
+<mesh>
+nghost    = 2
+nx1       = 16
+x1min     = -0.5
+x1max     = 0.5
+ix1_bc    = periodic
+ox1_bc    = periodic
+nx2       = 16
+x2min     = -0.5
+x2max     = 0.5
+ix2_bc    = periodic
+ox2_bc    = periodic
+nx3       = 16
+x3min     = -0.5
+x3max     = 0.5
+ix3_bc    = periodic
+ox3_bc    = periodic
+
+<mesh_refinement>
+refinement          = adaptive
+num_levels          = 2
+max_nmb_per_rank    = 512
+refinement_interval = 1
+
+<amr_criterion0>
+method = user
+
+<meshblock>
+nx1       = 8
+nx2       = 8
+nx3       = 8
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.8
+nlim       = 30
+tlim       = 10.0
+ndiag      = 10
+
+<particles>
+particle_type = dust
+pusher = drift
+init   = pgen
+debug  = 1
+destroy_log   = true
+
+<problem>
+mode            = lattice
+vmax            = 1.0
+npx             = 8
+npy             = 8
+npz             = 8
+amr             = moving_box
+amr_target_level = 1
+amr_box_axis    = 0
+amr_box_hw      = 0.15
+amr_box_amp     = 0.30
+amr_box_period  = 1.0
+
+<output1>
+file_type   = pvtk
+variable    = prtcl_all
+dt          = 0.001
+
+<output2>
+file_type   = rst
+dt          = 50.0     # >> tlim: rst only at t=0 + the Driver::Finalize write (handoff)

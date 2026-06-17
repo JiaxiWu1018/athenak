@@ -17,6 +17,7 @@ add_executable(
         bvals/bvals_cc.cpp
         bvals/bvals_fc.cpp
         bvals/bvals_part.cpp
+        bvals/bvals_part_amr.cpp
         bvals/bvals_part_tmunu.cpp
         bvals/bvals_tasks.cpp
         bvals/flux_correct_cc.cpp
@@ -106,6 +107,7 @@ add_executable(
         outputs/vtk_prtcl.cpp
 
         particles/particles.cpp
+        particles/particles_amr.cpp
         particles/particles_pushers.cpp
         particles/particles_tasks.cpp
         particles/particles_newdt.cpp

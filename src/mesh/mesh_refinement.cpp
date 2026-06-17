@@ -28,6 +28,7 @@
 #include "coordinates/adm.hpp"
 #include "z4c/z4c.hpp"
 #include "z4c/z4c_amr.hpp"
+#include "particles/particles.hpp"
 #include "prolongation.hpp"
 #include "restriction.hpp"
 
@@ -134,6 +135,31 @@ void MeshRefinement::AdaptiveMeshRefinement(Driver *pdriver, ParameterInput *pin
     }
     if (pmbp->pz4c != nullptr) {
       (void) pmbp->pz4c->NewTimeStep(pdriver, pdriver->nexp_stages);
+    }
+
+    // NRPIC Stage 5a: refresh the gr_boris previous-step metric snapshots to the
+    // POST-regrid layout. adm_last/z4c_last are indexed by (PGID - gids); the regrid
+    // renumbered the blocks, so a wholesale deep_copy from the (remapped + prolongated)
+    // live arrays puts the correct block's metric in slot (PGID - gids). This sets
+    // step-n := step-(n+1) for the regrid cycle (a negligible O(dt) error in one geodesic
+    // midpoint substep) but is positionally correct. Mirrors the restart-path seed
+    // (driver.cpp): call Z4cToADM FIRST, because for a pure-Z4c run the
+    // InitBoundaryValuesAndPrimitives does NOT rederive u_adm (only its dyngr branch
+    // does), so otherwise u_adm holds pre-regrid data and the next gr_boris push reads a
+    // wrong-block metric -> NaN. Snapshots are nmb_maxperrank-sized (fixed), no realloc.
+    particles::Particles *ppart = pmbp->ppart;
+    if (ppart != nullptr && ppart->pusher == ParticlesPusher::gr_boris) {
+      if (pmbp->pz4c != nullptr) {
+        pmbp->pz4c->Z4cToADM(pmbp);   // rederive u_adm from the prolongated u0
+        Kokkos::deep_copy(DevExeSpace(), ppart->z4c_last, pmbp->pz4c->u0);
+      }
+      if (pmbp->padm != nullptr) {
+        Kokkos::deep_copy(DevExeSpace(), ppart->adm_last, pmbp->padm->u_adm);
+      }
+      if (pmbp->pmhd != nullptr) {
+        Kokkos::deep_copy(DevExeSpace(), ppart->w0_last, pmbp->pmhd->w0);
+        Kokkos::deep_copy(DevExeSpace(), ppart->bcc0_last, pmbp->pmhd->bcc0);
+      }
     }
 
     nmb_created += nnew;
@@ -554,6 +580,28 @@ void MeshRefinement::RedistAndRefineMeshBlocks(ParameterInput *pin, int nnew, in
   new_to_old.template modify<HostMemSpace>();
   new_to_old.template sync<DevExeSpace>();
 
+  // NRPIC Stage 5a (relabel). With the OLD MeshBlock geometry (mb_size, for the refined-
+  // child half-tests) and the (oldtonew / reconciled refine_flag / new_rank_eachmb) maps
+  // all still live, rewrite every particle's PGID from its old block's fate into NEW gid
+  // space and build the cross-rank sendlist. Feedback is OFF in Stage 5a (cross-level
+  // deposition is Stage 5b), matching the relaxed ctor guard. The movers are SHIPPED
+  // below, after the new MeshBlockPack gids/ranks are installed. old_gids captured here
+  // because pmb_pack->gids is overwritten with the new value further down.
+  particles::Particles *ppart = pm->pmb_pack->ppart;
+  bool do_prtcl_amr = (ppart != nullptr) && (!ppart->feedback);
+  int old_gids_amr = pm->pmb_pack->gids;
+  if (do_prtcl_amr) {
+    DualArray1D<int> oldtonew_dev("oldtonew_amr", old_nmb);
+    DualArray1D<int> newrank_dev("newrank_amr", new_nmb_total);
+    for (int m=0; m<old_nmb; ++m) {oldtonew_dev.h_view(m) = oldtonew[m];}
+    for (int m=0; m<new_nmb_total; ++m) {newrank_dev.h_view(m) = new_rank_eachmb[m];}
+    oldtonew_dev.template modify<HostMemSpace>();
+    oldtonew_dev.template sync<DevExeSpace>();
+    newrank_dev.template modify<HostMemSpace>();
+    newrank_dev.template sync<DevExeSpace>();
+    ppart->RelabelForAMR(oldtonew_dev, newrank_dev, refine_flag, old_gids_amr);
+  }
+
   // Step 9.
   // Coarse arrays are now up-to-date, either through copies on same rank or MPI calls
   // So prolongate (refine) evolved physics variables for all MBs flagged for refinement.
@@ -613,6 +661,14 @@ void MeshRefinement::RedistAndRefineMeshBlocks(ParameterInput *pin, int nnew, in
   pm->pmb_pack->AddMeshBlocks(pin);
   pm->pmb_pack->AddCoordinates(pin);
   pm->pmb_pack->pmb->SetNeighbors(pm->ptree, pm->rank_eachmb);
+
+  // NRPIC Stage 5a (ship). The new MeshBlockPack gids/ranks/geometry are now installed,
+  // so ship the cross-rank movers built by the relabel above through the existing
+  // migration chain (collective on every rank). After this, every PGID is valid in the
+  // new gid space and each particle is on its owning rank; CheckMigration validates it.
+  if (do_prtcl_amr) {
+    ppart->ShipAfterAMR();
+  }
 
   // clean-up
   delete [] newtoold;

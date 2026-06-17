@@ -235,6 +235,14 @@ class Particles {
   // post-migration validation: containment/GID-range/count checks (particles_debug.cpp);
   // no-op unless <particles> debug >= 1, fatal (exit) on any violation
   TaskStatus CheckMigration(Driver *pdriver, int stage);
+  // NRPIC Stage 5a redistribution through a regrid (particles_amr.cpp). Driven
+  // synchronously by MeshRefinement::RedistAndRefineMeshBlocks, NOT the task list:
+  // RelabelForAMR rewrites the PGIDs + builds the sendlist while OLD geometry is live;
+  // ShipAfterAMR runs the existing migration chain once the NEW grid is installed.
+  TaskStatus RelabelForAMR(const DualArray1D<int> &oldtonew,
+                           const DualArray1D<int> &newrank,
+                           const DualArray1D<int> &refflag, int old_gids);
+  void ShipAfterAMR();
   // death-record ledger + end-of-run accounting (particles_destroy.cpp): FlushDeathLog
   // gathers this cycle's death records to rank 0 and appends them to the CSV (collective
   // -- called on every rank whenever the global census is nonzero); PrintFinalSummary

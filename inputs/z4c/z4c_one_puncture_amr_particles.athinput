@@ -1,0 +1,98 @@
+# NRPIC Stage 5a chi-driven demo: a single Z4c puncture with LIVE adaptive mesh refinement
+# (chi criterion) and gr_boris geodesic particle rings, feedback OFF. The conformal factor
+# chi drops near the puncture, so the chi criterion refines the throat dynamically -- the
+# particles must survive those regrids (PGID remap + cross-rank ship) AND keep integrating
+# geodesics across them (the post-regrid adm_last/z4c_last re-snapshot). debug=1 makes the
+# post-regrid containment + ledger fatal on any violation. prtcl_orbit selects circular
+# (default; approximately circular prograde equatorial orbits) or radial (rest rings ->
+# infall toward the refining throat). Multi-rank runs exercise the cross-rank redistribution.
+
+<comment>
+problem   = z4c one puncture + chi-AMR + gr_boris particle rings (NRPIC Stage 5a demo)
+
+<job>
+basename  = z4c_op_amr_prtcl
+
+<mesh>
+nghost    = 4
+nx1       = 48
+x1min     = -12.0
+x1max     = 12.0
+ix1_bc    = outflow
+ox1_bc    = outflow
+
+nx2       = 48
+x2min     = -12.0
+x2max     = 12.0
+ix2_bc    = outflow
+ox2_bc    = outflow
+
+nx3       = 48
+x3min     = -12.0
+x3max     = 12.0
+ix3_bc    = outflow
+ox3_bc    = outflow
+
+<meshblock>
+nx1       = 16
+nx2       = 16
+nx3       = 16
+
+<mesh_refinement>
+refinement          = adaptive
+max_nmb_per_rank    = 512
+num_levels          = 3
+refinement_interval = 1
+
+<amr_criterion0>
+method = user             # dispatches to z4c_one_puncture's RefinementCondition -> pamr->Refine
+
+<z4c_amr>
+method  = chi
+chi_min = 0.2             # refine where min(chi) on a block drops below this (throat)
+
+<z4c>
+lapse_harmonic  = 0.0
+lapse_oplog     = 2.0
+shift_eta       = 2.0
+diss            = 0.1
+chi_div_floor   = 0.00001
+damp_kappa1     = 0.02
+damp_kappa2     = 0.00
+nco             = 1
+co_0_x          = 0.
+co_0_type       = BH
+
+<time>
+evolution  = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim       = 200
+tlim       = 50.0
+ndiag      = 1
+
+<particles>
+particle_type = dust
+pusher = gr_boris          # GR geodesic (q=0); reads the live ADM/Z4c metric
+init   = pgen
+feedback = false           # Stage 5a is kinematic; cross-level deposition is Stage 5b
+debug  = 1                 # fatal post-regrid validation
+destroy_log   = true
+
+<problem>
+pgen_name      = z4c_one_puncture
+punc_ADM_mass  = 1.0
+prtcl_np       = 16        # particles per ring
+prtcl_r1       = 5.0       # inner ring isotropic radius
+prtcl_r2       = 8.0       # outer ring isotropic radius
+prtcl_orbit    = circular  # circular (approx prograde orbit) | radial (rest -> infall)
+#prtcl_uphi    = -1.0      # <0 = auto specific angular momentum sqrt(M r); else override
+
+<output1>
+file_type   = pvtk
+variable    = prtcl_all
+dt          = 1.0
+
+<output2>
+file_type   = hst
+dt          = 1.0

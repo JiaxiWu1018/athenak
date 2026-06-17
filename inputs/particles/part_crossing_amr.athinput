@@ -1,0 +1,80 @@
+# NRPIC Stage 5a forced-regrid toy: DYNAMIC AMR + particles (feedback OFF). A scripted
+# moving box (problem/amr=moving_box) oscillates along x1 about the domain center, driving a
+# deterministic, particle-independent stream of refine/derefine events. The drift particles
+# (mode=lattice) must follow their MeshBlocks through every regrid: <particles> debug=1 makes
+# the post-regrid containment + two-sided conservation ledger fatal on any violation. The
+# regrid timing is a function of time alone, so it is identical across rank counts -> the
+# per-tag dumps are bitwise np{1,2,4,8}-invariant through the regrids.
+
+<comment>
+problem   = particle redistribution through dynamic-AMR regrids (forced-regrid toy)
+
+<job>
+basename  = part_crossing_amr
+
+<mesh>
+nghost    = 2
+nx1       = 16        # 2 root MeshBlocks per dim (8^3 blocks) -> 8 root blocks
+x1min     = -0.5
+x1max     = 0.5
+ix1_bc    = periodic
+ox1_bc    = periodic
+
+nx2       = 16
+x2min     = -0.5
+x2max     = 0.5
+ix2_bc    = periodic
+ox2_bc    = periodic
+
+nx3       = 16
+x3min     = -0.5
+x3max     = 0.5
+ix3_bc    = periodic
+ox3_bc    = periodic
+
+<mesh_refinement>
+refinement          = adaptive
+num_levels          = 2      # root + one refined level
+max_nmb_per_rank    = 512    # generous cap (8 root + box children + 2:1 balance)
+refinement_interval = 1      # check every cycle (maximize regrid events)
+
+<amr_criterion0>
+method = user                # dispatches to pgen->user_ref_func = MovingBoxRefinement
+
+<meshblock>
+nx1       = 8
+nx2       = 8
+nx3       = 8
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.8
+nlim       = 50            # ~1+ oscillation periods of the box -> many regrid events
+tlim       = 10.0
+ndiag      = 1
+
+<particles>
+particle_type = dust
+pusher = drift
+init   = pgen
+debug  = 1                 # fatal post-regrid validation (the pass/fail criterion)
+destroy_log   = true
+
+<problem>
+mode            = lattice  # domain-filling streaming lattice (soak)
+vmax            = 1.0
+npx             = 8
+npy             = 8
+npz             = 8
+amr             = moving_box   # enable the scripted moving-box AMR criterion
+amr_target_level = 1           # refine blocks overlapping the box to level 1
+amr_box_axis    = 0            # oscillate the box along x1
+amr_box_hw      = 0.15         # box half-width
+amr_box_amp     = 0.30         # oscillation amplitude of the center
+amr_box_period  = 1.0          # oscillation period (code time)
+
+<output1>
+file_type   = pvtk
+variable    = prtcl_all
+dt          = 0.001        # < cycle dt -> dump every cycle

@@ -62,13 +62,51 @@ struct PrtclStage {
   }
 };
 
+// NRPIC Stage 5a "forced-regrid toy": a scripted moving-box refinement criterion. Set in
+// UserProblem (the only place with ParameterInput); read by MovingBoxRefinement, which
+// the engine calls via user_ref_func. The box center oscillates along amr_axis about the
+// domain center -- a smooth, deterministic, particle-INDEPENDENT, rank-count-invariant
+// function of time alone -- so refine/derefine events occur at known cycles regardless
+// of particle state, exactly what the bitwise + ledger tests want. File-scope because
+// user_ref_func takes only a MeshBlockPack*; every rank sets identical values from the
+// same input file.
+bool amr_box_enabled = false;
+int  amr_target_level = 1;     // refine overlapping blocks up to this level above root
+int  amr_box_axis = 0;         // 0/1/2 = move along x1/x2/x3
+Real amr_box_hw = 0.15;        // box half-width (same in all active dims)
+Real amr_box_amp = 0.3;        // oscillation amplitude of the center
+Real amr_box_period = 1.0;     // oscillation period (code time; <=0 freezes the box)
+Real amr_box_c0[3] = {0.0, 0.0, 0.0};   // domain-center anchor of the oscillation
+
 } // namespace
+
+// scripted moving-box AMR criterion (enrolled via user_ref_func when amr=moving_box)
+void MovingBoxRefinement(MeshBlockPack *pmbp);
 
 //----------------------------------------------------------------------------------------
 //! \fn ProblemGenerator::UserProblem()
 //! \brief sets up the targeted (or lattice) particle crossing test
 
 void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
+  // Optional scripted moving-box AMR (NRPIC Stage 5a forced-regrid toy). Enrolled on BOTH
+  // the fresh-start and restart paths -- it must precede the restart early-return so a
+  // restarted segment keeps regridding (cf. z4c_one_puncture, which sets user_ref_func
+  // before its own restart guard). The criterion is feedback-independent geometry.
+  std::string amr_mode = pin->GetOrAddString("problem","amr","none");
+  if (amr_mode.compare("moving_box") == 0) {
+    auto &msize = pmy_mesh_->mesh_size;
+    amr_box_enabled = true;
+    amr_target_level = pin->GetOrAddInteger("problem","amr_target_level",1);
+    amr_box_axis     = pin->GetOrAddInteger("problem","amr_box_axis",0);
+    amr_box_hw       = pin->GetOrAddReal("problem","amr_box_hw",0.15);
+    amr_box_amp      = pin->GetOrAddReal("problem","amr_box_amp",0.3);
+    amr_box_period   = pin->GetOrAddReal("problem","amr_box_period",1.0);
+    amr_box_c0[0] = 0.5*(msize.x1min + msize.x1max);
+    amr_box_c0[1] = 0.5*(msize.x2min + msize.x2max);
+    amr_box_c0[2] = 0.5*(msize.x3min + msize.x3max);
+    user_ref_func = MovingBoxRefinement;
+  }
+
   if (restart) return;
   MeshBlockPack *pmbp = pmy_mesh_->pmb_pack;
   if (pmbp->ppart == nullptr) {
@@ -342,5 +380,53 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
                 << ")" << std::endl << std::flush;
     }
   }
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void MovingBoxRefinement(MeshBlockPack *pmbp)
+//! \brief NRPIC Stage 5a forced-regrid toy criterion. Flags every block overlapping a
+//! time-scripted box for refinement up to amr_target_level and every other block for
+//! derefinement (clamped at root). The box center oscillates along amr_box_axis about the
+//! domain center, so as it sweeps it drives a deterministic, particle-independent stream
+//! of refine/derefine events at known cycles -- rank-count-invariant (a function of time
+//! only, evaluated identically on every rank). Host pattern mirrors z4c's RefineTracker.
+
+void MovingBoxRefinement(MeshBlockPack *pmbp) {
+  if (!amr_box_enabled) {return;}
+  Mesh *pmesh = pmbp->pmesh;
+  auto &refine_flag = pmesh->pmr->refine_flag;
+  auto &size = pmbp->pmb->mb_size;
+  int nmb = pmbp->nmb_thispack;
+  int mbs = pmesh->gids_eachrank[global_variable::my_rank];
+  bool multi_d = pmesh->multi_d;
+  bool three_d = pmesh->three_d;
+
+  // scripted box center (function of time alone) and its AABB
+  Real ctr[3] = {amr_box_c0[0], amr_box_c0[1], amr_box_c0[2]};
+  Real phase = (amr_box_period > 0.0) ? (2.0*M_PI*pmesh->time/amr_box_period) : 0.0;
+  ctr[amr_box_axis] += amr_box_amp*std::sin(phase);
+  Real bmin[3], bmax[3];
+  for (int d=0; d<3; ++d) {bmin[d] = ctr[d] - amr_box_hw; bmax[d] = ctr[d] + amr_box_hw;}
+
+  for (int m=0; m<nmb; ++m) {
+    int level = pmesh->lloc_eachmb[m + mbs].level - pmesh->root_level;
+    Real x1min = size.h_view(m).x1min, x1max = size.h_view(m).x1max;
+    Real x2min = size.h_view(m).x2min, x2max = size.h_view(m).x2max;
+    Real x3min = size.h_view(m).x3min, x3max = size.h_view(m).x3max;
+    // AABB block-box overlap, testing only the active dimensions
+    bool overlap = (x1max >= bmin[0]) && (x1min <= bmax[0]);
+    if (multi_d) {overlap = overlap && (x2max >= bmin[1]) && (x2min <= bmax[1]);}
+    if (three_d) {overlap = overlap && (x3max >= bmin[2]) && (x3min <= bmax[2]);}
+    int flag;
+    if (overlap) {
+      flag = (level < amr_target_level) ? 1 : 0;   // refine toward target, then hold
+    } else {
+      flag = -1;                                   // derefine toward root (engine clamps)
+    }
+    refine_flag.h_view(m + mbs) = flag;
+  }
+  refine_flag.template modify<HostMemSpace>();
+  refine_flag.template sync<DevExeSpace>();
   return;
 }

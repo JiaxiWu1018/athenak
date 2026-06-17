@@ -93,7 +93,19 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     int npr  = pin->GetOrAddInteger("problem","prtcl_np",16);
     Real rr[2] = {pin->GetOrAddReal("problem","prtcl_r1",0.0),
                   pin->GetOrAddReal("problem","prtcl_r2",0.0)};
-    std::vector<Real> sx, sy, sz;
+    // NRPIC Stage 5a ring kinematics. prtcl_orbit = radial (default: u_i = 0 rest rings,
+    // radial infall under gravity) | circular (approximately circular prograde equatorial
+    // orbit). For circular, the conserved specific angular momentum u_phi = L maps to the
+    // stored Cartesian COVARIANT spatial 4-velocity u_i = (L/r)(-sin phi, cos phi, 0); L
+    // defaults to the Newtonian estimate sqrt(M r) in isotropic radius (bound + orbiting,
+    // which is all the regrid-survival demo needs -- not an exact geodesic), overridable
+    // via prtcl_uphi. Either way the particles ride gr_boris geodesics through the chi-
+    // driven regrids with feedback OFF.
+    std::string orbit = pin->GetOrAddString("problem","prtcl_orbit","radial");
+    bool circular = (orbit.compare("circular") == 0);
+    Real punc_M = pin->GetOrAddReal("problem","punc_ADM_mass",1.0);
+    Real uphi_in = pin->GetOrAddReal("problem","prtcl_uphi",-1.0);  // <0 = auto sqrt(M r)
+    std::vector<Real> sx, sy, sz, svx, svy, svz;
     std::vector<int> sgid, stag;
     int tag = 0;
     for (int ir=0; ir<2; ++ir) {
@@ -103,7 +115,14 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
         Real px = rr[ir]*std::cos(phi), py = rr[ir]*std::sin(phi);
         int m = ppart->FindContainingMeshBlock(px, py, 0.0);
         if (m >= 0) {
+          Real ux = 0.0, uy = 0.0;
+          if (circular) {
+            Real L = (uphi_in >= 0.0) ? uphi_in : std::sqrt(punc_M*rr[ir]);
+            ux = -L*std::sin(phi)/rr[ir];
+            uy =  L*std::cos(phi)/rr[ir];
+          }
           sx.push_back(px); sy.push_back(py); sz.push_back(0.0);
+          svx.push_back(ux); svy.push_back(uy); svz.push_back(0.0);
           sgid.push_back(pmbp->gids + m); stag.push_back(tag);
         }
       }
@@ -118,9 +137,9 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       hi(PTAG,p) = stag[p];
       hr(IPM,p)  = ppart->mass;
       hr(IPEN,p) = 0.0;
-      hr(IPX,p)  = sx[p];  hr(IPVX,p) = 0.0;
-      hr(IPY,p)  = sy[p];  hr(IPVY,p) = 0.0;
-      hr(IPZ,p)  = sz[p];  hr(IPVZ,p) = 0.0;
+      hr(IPX,p)  = sx[p];  hr(IPVX,p) = svx[p];
+      hr(IPY,p)  = sy[p];  hr(IPVY,p) = svy[p];
+      hr(IPZ,p)  = sz[p];  hr(IPVZ,p) = svz[p];
     }
     Kokkos::deep_copy(ppart->prtcl_rdata, hr);
     Kokkos::deep_copy(ppart->prtcl_idata, hi);

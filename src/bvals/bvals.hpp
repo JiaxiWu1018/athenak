@@ -302,6 +302,15 @@ class ParticlesBoundaryValues {
 
   //functions
   TaskStatus SetNewPrtclGID();
+  // NRPIC Stage 5a: redistribution after a dynamic-AMR regrid. Rewrites every PGID from
+  // its old block's fate (oldtonew + reconciled refine_flag, both indexed by OLD gid;
+  // newrank indexed by NEW gid) and builds the sendlist of cross-rank movers, which the
+  // existing CountSendsAndRecvs->...->RecvAndUnpackPrtcls chain then ships. No neighbor
+  // walk, no wrap, no destruction (the regrid covers the domain; nothing is created or
+  // destroyed). See bvals_part_amr.cpp.
+  TaskStatus SetPrtclGIDForAMR(const DualArray1D<int> &oldtonew,
+                               const DualArray1D<int> &newrank,
+                               const DualArray1D<int> &refflag, int old_gids);
   TaskStatus CountSendsAndRecvs();
   TaskStatus InitPrtclRecv();
   TaskStatus ClearPrtclRecv();
