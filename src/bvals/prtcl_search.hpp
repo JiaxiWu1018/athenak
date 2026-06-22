@@ -251,5 +251,123 @@ int FindDestinationIndex(const NghbrView &ngh, int m, int mylev,
   return indx;
 }
 
+//----------------------------------------------------------------------------------------
+//! \fn int EnumerateImageTargets()
+//! \brief nghbr slots that receive a CIC ghost image for a cloud overhang in offset
+//! direction (ox,oy,oz) (NRPIC Stage 5b). A SAME-LEVEL or COARSER neighbor is the single
+//! slot from FindDestinationIndex (aligned index / fine->coarse: one image). A FINER
+//! neighbor (coarse->fine) yields every populated fine subslot of the group -- a coarse
+//! cloud spans up to 4 fine children on a face, 2 on an edge, 1 on a corner (mirroring
+//! SetNeighbors population: x1 face subslots (fy,fz), x2 (fx,fz), x3 (fx,fy); edges one
+//! transverse half). The deposit clips each child to its own cells, so a child the cloud
+//! does not reach gets a zero deposit (harmless). Writes up to 4 entries into slots[] and
+//! returns the count. Count and fill passes MUST both call this, so queue cap == appends.
+
+template <typename NghbrView>
+KOKKOS_INLINE_FUNCTION
+int EnumerateImageTargets(const NghbrView &ngh, int m, int mylev,
+                          int ox, int oy, int oz, int fx, int fy, int fz,
+                          int px, int py, int pz, bool multi_d, bool three_d,
+                          int slots[4]) {
+  int indx = FindDestinationIndex(ngh, m, mylev, ox,oy,oz, fx,fy,fz, px,py,pz);
+  if (indx < 0) {return 0;}
+  if (ngh(m,indx).lev <= mylev) {slots[0] = indx; return 1;}  // same-level/coarser: one
+  // ---- finer neighbor (coarse->fine): enumerate populated fine subslots of the group
+  int refx = 2, refy = multi_d ? 2 : 1, refz = three_d ? 2 : 1;   // per-axis refinement
+  int d = abs(ox) + abs(oy) + abs(oz);
+  int ns = 0;
+  if (d == 1) {                              // face: two transverse sub-axes
+    int r1, r2;
+    if (ox != 0) {                           // x1 face -> subslots (fy,fz)
+      r1 = refy; r2 = refz;
+    } else if (oy != 0) {                    // x2 face -> (fx,fz)
+      r1 = refx; r2 = refz;
+    } else {                                 // x3 face -> (fx,fy)
+      r1 = refx; r2 = refy;
+    }
+    for (int s2=0; s2<r2; ++s2) {
+      for (int s1=0; s1<r1; ++s1) {
+        int sl = NeighborIndex(ox,oy,oz, s1, s2);
+        if (ngh(m,sl).gid >= 0 && ngh(m,sl).lev > mylev) {slots[ns++] = sl;}
+      }
+    }
+  } else if (d == 2) {                       // edge: one transverse sub-axis
+    int r1 = (oz == 0) ? refz : ((oy == 0) ? refy : refx);
+    for (int s1=0; s1<r1; ++s1) {
+      int sl = NeighborIndex(ox,oy,oz, s1, 0);
+      if (ngh(m,sl).gid >= 0 && ngh(m,sl).lev > mylev) {slots[ns++] = sl;}
+    }
+  } else {                                   // corner: single slot
+    int sl = NeighborIndex(ox,oy,oz, 0, 0);
+    if (ngh(m,sl).gid >= 0 && ngh(m,sl).lev > mylev) {slots[ns++] = sl;}
+  }
+  return ns;
+}
+
+//----------------------------------------------------------------------------------------
+//! \struct PartImageTarget
+//! \brief one ghost-image target for a particle: the nghbr-array slot + the offset code.
+
+struct PartImageTarget {
+  int slot;     // index into the block's nghbr array (resolve to gid/rank/lev there)
+  int oc;       // off_code (bx+1)+3*(by+1)+9*(bz+1); the same-level deposit's routing key
+};
+
+//----------------------------------------------------------------------------------------
+//! \fn int EnumerateParticleTargets()
+//! \brief the per-particle ghost-image target list (NRPIC Stage 5b), shared by the count
+//! pass (uses the returned size) and the fill pass (emits each entry) so the image-queue
+//! capacity == appends by construction. Loops the 7 nonempty offset subsets of the
+//! banded-open dims; each calls EnumerateImageTargets. SAME-LEVEL targets are kept
+//! per-subset -- distinct off_codes deposit DISJOINT cells (DepositCloud routes by
+//! off_code). CROSS-LEVEL targets are made UNIQUE per neighbor gid: DepositCloudNative
+//! deposits the WHOLE target-frame clipped cloud (it ignores off_code), so a 2nd record
+//! to the same target is a byte-identical repeat. When FindDestinationIndex DEMOTES a
+//! diagonal overhang onto an already-targeted coarse face, the duplicate drops -- the
+//! first (lowest-code) record already covers that target's entire share, with no gap, so
+//! the deposit is idempotent in the kept record. Returns the kept count; out[] (cap
+//! out_cap, >= 19 = coarse->fine max 3 faces*4 + 3 edges*2 + corner) gets the entries;
+//! n_missing counts banded-open subsets with NO neighbor (the fill pass's derr(0));
+//! overflow is set if the dedup table or out[] is exceeded (cannot happen for <= 19).
+
+template <typename NghbrView>
+KOKKOS_INLINE_FUNCTION
+int EnumerateParticleTargets(const NghbrView &ngh, int m, int mylev, const int beff[3],
+                             int fx, int fy, int fz, int px, int py, int pz,
+                             bool multi_d, bool three_d,
+                             PartImageTarget *out, int out_cap,
+                             int &n_missing, int &overflow) {
+  constexpr int MAXSEEN = 24;
+  int seen[MAXSEEN];
+  int n_seen = 0;
+  int n = 0;
+  n_missing = 0;
+  overflow = 0;
+  for (int code=1; code<8; ++code) {
+    int sx = code & 1, sy = (code >> 1) & 1, sz2 = (code >> 2) & 1;
+    if ((sx && beff[0] == 0) || (sy && beff[1] == 0) || (sz2 && beff[2] == 0)) {continue;}
+    int ox = sx ? beff[0] : 0;
+    int oy = sy ? beff[1] : 0;
+    int oz = sz2 ? beff[2] : 0;
+    int oc = (ox+1) + 3*(oy+1) + 9*(oz+1);
+    int slots[4];
+    int ns = EnumerateImageTargets(ngh, m, mylev, ox,oy,oz, fx,fy,fz, px,py,pz,
+                                   multi_d, three_d, slots);
+    if (ns == 0) {++n_missing; continue;}   // banded-open dir with no neighbor (an error)
+    for (int s=0; s<ns; ++s) {
+      int slot = slots[s];
+      if (ngh(m,slot).lev != mylev) {       // cross-level: one record per distinct gid
+        int gid = ngh(m,slot).gid;
+        bool dup = false;
+        for (int t=0; t<n_seen; ++t) {if (seen[t] == gid) {dup = true; break;}}
+        if (dup) {continue;}
+        if (n_seen < MAXSEEN) {seen[n_seen++] = gid;} else {overflow = 1;}
+      }
+      if (n < out_cap) {out[n].slot = slot; out[n].oc = oc; ++n;} else {overflow = 1;}
+    }
+  }
+  return n;
+}
+
 } // namespace particles
 #endif // BVALS_PRTCL_SEARCH_HPP_

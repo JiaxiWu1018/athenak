@@ -167,8 +167,9 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     // multi-rank feedback is supported (Stage 4c): a boundary-band particle's cross-rank
     // cloud share is shipped as a TmunuImageWire on the particle communicator and merged
     // into the receiver's canonical deposit pass, so the result is bitwise rank-count
-    // invariant. (Cross-LEVEL deposition, i.e. matter touching a coarse-fine interface,
-    // remains fatal in set_prtcl_tmunu and is deferred to Stage 5.)
+    // invariant. (Cross-LEVEL deposition -- a cloud spanning a coarse-fine seam -- is
+    // supported on STATIC refinement since Stage 5b(a), scheme B; only dynamic AMR +
+    // feedback stays guarded below.)
     Kokkos::realloc(tmunu_images, 1);
     Kokkos::realloc(tmunu_nimg, 2);   // {same-rank imgs beyond npart, cross-rank imgs}
     Kokkos::realloc(tmunu_img_send, 1);
@@ -180,16 +181,16 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   // the FEEDBACK-OFF case: RedistAndRefineMeshBlocks now remaps every stale PGID
   // from its old block's fate and ships the cross-rank movers (particles_amr.cpp +
   // bvals_part_amr.cpp), so kinematic particles (drift / gr_boris geodesics) survive
-  // refine/derefine/rebalance events. Stays FATAL with feedback=true: cross-level Tmunu
-  // deposition (a cloud straddling a coarse-fine interface) is Stage 5b -- the
-  // level-mismatch FATAL in set_prtcl_tmunu guards that. Static refinement is unaffected.
+  // refine/derefine/rebalance events. Stage 5b(a) added cross-level Tmunu deposition on
+  // STATIC refinement (scheme B). Dynamic AMR + feedback STAYS FATAL: the regrid-time
+  // remap of cross-level deposition is Stage 5b(b)/5c. Static refinement works.
   if (pmy_pack->pmesh->adaptive && feedback) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
               << "<particles> feedback = true with adaptive mesh refinement is not yet"
               << std::endl
-              << "supported: cross-level Tmunu deposition (a deposition cloud spanning a"
+              << "supported: cross-level deposition works on STATIC refinement (5b),"
               << std::endl
-              << "coarse-fine interface) is deferred to Stage 5b. Use feedback = false"
+              << "but its remap through live regrids is deferred. Use feedback = false"
               << std::endl
               << "(kinematic particles survive regrids) or refinement = static."
               << std::endl;

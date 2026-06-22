@@ -14,7 +14,7 @@
 //! (nothing to overlap) and also runs as a driver-init seed OUTSIDE any task list, where
 //! the migration-style "return incomplete and re-poll" split is unavailable. Received
 //! images are appended to the SAME tmunu_images queue and deposited by the one canonical
-//! (target_m, tag, off_code) pass back in set_prtcl_tmunu, so the per-cell accumulation
+//! (target_m, tag, off_code, lev) pass in set_prtcl_tmunu, so the per-cell accumulation
 //! order is identical for every rank decomposition: cross-rank feedback is bitwise
 //! rank-count invariant by construction (serial-host; GPU atomics are correct but not
 //! bit-reproducible, as for the same-rank deposit).
@@ -45,11 +45,12 @@
 
 namespace particles {
 
-// flat-buffer widths per image: 8 Reals {delta[3], mass, lorentz, u_d[3]} and 6 ints
-// {target_gid, tag, off_code, idx[3]} -- must match the pack/unpack kernels below
+// flat-buffer widths per image: 11 Reals {delta[3], x[3], mass, lorentz, u_d[3]} and 7
+// ints {target_gid, tag, off_code, lev, idx[3]} -- match the pack/unpack kernels below
+// (x[3]/lev carry the cross-level (Stage 5b) payload; ignored for same-level images)
 namespace {
-constexpr int kImgNR = 8;
-constexpr int kImgNI = 6;
+constexpr int kImgNR = 11;
+constexpr int kImgNI = 7;
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -168,17 +169,21 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
       ibuf(kImgNI*n + 0) = w.target_gid;
       ibuf(kImgNI*n + 1) = w.tag;
       ibuf(kImgNI*n + 2) = w.off_code;
-      ibuf(kImgNI*n + 3) = w.idx[0];
-      ibuf(kImgNI*n + 4) = w.idx[1];
-      ibuf(kImgNI*n + 5) = w.idx[2];
+      ibuf(kImgNI*n + 3) = w.lev;
+      ibuf(kImgNI*n + 4) = w.idx[0];
+      ibuf(kImgNI*n + 5) = w.idx[1];
+      ibuf(kImgNI*n + 6) = w.idx[2];
       rbuf(kImgNR*n + 0) = w.delta[0];
       rbuf(kImgNR*n + 1) = w.delta[1];
       rbuf(kImgNR*n + 2) = w.delta[2];
-      rbuf(kImgNR*n + 3) = w.mass;
-      rbuf(kImgNR*n + 4) = w.lorentz;
-      rbuf(kImgNR*n + 5) = w.u_d[0];
-      rbuf(kImgNR*n + 6) = w.u_d[1];
-      rbuf(kImgNR*n + 7) = w.u_d[2];
+      rbuf(kImgNR*n + 3) = w.x[0];
+      rbuf(kImgNR*n + 4) = w.x[1];
+      rbuf(kImgNR*n + 5) = w.x[2];
+      rbuf(kImgNR*n + 6) = w.mass;
+      rbuf(kImgNR*n + 7) = w.lorentz;
+      rbuf(kImgNR*n + 8) = w.u_d[0];
+      rbuf(kImgNR*n + 9) = w.u_d[1];
+      rbuf(kImgNR*n + 10) = w.u_d[2];
     });
     Kokkos::fence();
   }
@@ -238,17 +243,21 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
       rec.target_m = tm;
       rec.tag      = ibuf(kImgNI*n + 1);
       rec.off_code = ibuf(kImgNI*n + 2);
-      rec.idx[0]   = ibuf(kImgNI*n + 3);
-      rec.idx[1]   = ibuf(kImgNI*n + 4);
-      rec.idx[2]   = ibuf(kImgNI*n + 5);
+      rec.lev      = ibuf(kImgNI*n + 3);
+      rec.idx[0]   = ibuf(kImgNI*n + 4);
+      rec.idx[1]   = ibuf(kImgNI*n + 5);
+      rec.idx[2]   = ibuf(kImgNI*n + 6);
       rec.delta[0] = rbuf(kImgNR*n + 0);
       rec.delta[1] = rbuf(kImgNR*n + 1);
       rec.delta[2] = rbuf(kImgNR*n + 2);
-      rec.mass     = rbuf(kImgNR*n + 3);
-      rec.lorentz  = rbuf(kImgNR*n + 4);
-      rec.u_d[0]   = rbuf(kImgNR*n + 5);
-      rec.u_d[1]   = rbuf(kImgNR*n + 6);
-      rec.u_d[2]   = rbuf(kImgNR*n + 7);
+      rec.x[0]     = rbuf(kImgNR*n + 3);
+      rec.x[1]     = rbuf(kImgNR*n + 4);
+      rec.x[2]     = rbuf(kImgNR*n + 5);
+      rec.mass     = rbuf(kImgNR*n + 6);
+      rec.lorentz  = rbuf(kImgNR*n + 7);
+      rec.u_d[0]   = rbuf(kImgNR*n + 8);
+      rec.u_d[1]   = rbuf(kImgNR*n + 9);
+      rec.u_d[2]   = rbuf(kImgNR*n + 10);
       img.d_view(base + n) = rec;
     });
     auto hrerr = Kokkos::create_mirror_view(rerr);

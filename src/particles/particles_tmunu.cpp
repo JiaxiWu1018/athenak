@@ -21,24 +21,28 @@
 //! -- the debug >= 1 diagnostic at the bottom of this file. The sources are deposited
 //! undensitized; the consumer applies the 4pi/8pi/16pi factors.
 //!
-//! GHOST-IMAGE ARCHITECTURE (user-locked 2026-06-12): the kernel writes ONLY its own
-//! MeshBlock's physical cells. The share of a boundary-band particle's cloud that falls
-//! in a neighbor is delivered by a TmunuImage record (particles.hpp) carrying the
-//! source-computed CIC stencil; because same-level neighbor index spaces align, the
-//! target cells follow from the image offset alone (no wrapped-position arithmetic --
-//! periodic wrap is exact by construction). Every contribution -- each particle's own
-//! cloud (a first-class self record, off_code 13), its same-rank neighbor images, and
-//! images received from other ranks -- deposits in ONE pass in canonical
-//! (target_m, tag, off_code) order; since tag is globally unique the per-cell sums are
-//! independent of how blocks are distributed over ranks (the Stage-4c bitwise
-//! np-invariance criterion, CPU/serial-host). Kokkos::atomic_add on every write keeps
-//! the kernel GPU-correct (harmless on serial hosts).
+//! GHOST-IMAGE ARCHITECTURE (user-locked 2026-06-12; cross-level added in Stage 5b(a)):
+//! the kernel writes ONLY its own MeshBlock's cells. The share of a boundary-band
+//! particle's cloud that falls in a neighbor is delivered by a TmunuImage record
+//! (particles.hpp). A SAME-LEVEL share carries the source CIC stencil and routes by
+//! off_code alone (index spaces align -- no wrapped-position arithmetic, periodic wrap
+//! exact). A CROSS-LEVEL share (a cloud spanning a seam) carries the particle's
+//! absolute position x[3] + the target level and deposits at the target's own resolution
+//! (DepositCloudNative); such records are made UNIQUE per (tag, target gid) at generation
+//! (EnumerateParticleTargets), since the native deposit ignores off_code. Every
+//! contribution -- each particle's own cloud (self record, off_code 13), its
+//! same-rank neighbor images, and images from other ranks -- deposits in ONE pass
+//! in canonical (target_m, tag, off_code, lev) order; since tag is globally unique the
+//! per-cell sums are independent of how blocks are distributed over ranks (the Stage-4c
+//! bitwise np-invariance criterion, CPU/serial-host). Kokkos::atomic_add on every write
+//! keeps the kernel GPU-correct (harmless on serial hosts).
 //!
-//! Matter is confined to a single refinement level: if a particle's cloud touches a
-//! coarse-fine interface the run aborts with an offender dump (cross-level deposition
-//! is designed in Stage 5 together with dynamic AMR). Bands at non-periodic physical
-//! mesh boundaries generate no image; the lost share is exactly the per-dim clip
-//! factor f_p accounted by the identity diagnostic.
+//! Cross-level deposition is supported on STATIC refinement since Stage 5b(a) (scheme B,
+//! native-resolution): the per-cycle identity is then a measured O(straddle)
+//! non-conservation, NOT a fatal (the diagnostic at the bottom of this file). Bands at
+//! non-periodic physical mesh boundaries generate no image; the lost share is exactly the
+//! per-dim clip factor f_p accounted by that diagnostic. (Dynamic AMR + feedback stays
+//! guarded in particles.cpp -- the regrid-time remap of cross-level images is 5b(b)/5c.)
 
 #include <algorithm>
 #include <cstdio>
@@ -195,15 +199,78 @@ void DepositCloud(const Tmunu::Tmunu_vars &tmunu,
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn void DepositCloudNative()
+//! \brief Stage-5b scheme-B cross-level deposit: deposit one CIC cloud into block tm at
+//! tm's OWN resolution, from the particle's ABSOLUTE position x[3]. Where DepositCloud
+//! routes a source-frame stencil by off_code (valid only when the index spaces align),
+//! this recomputes the left-center index and CIC weight in tm's frame -- the SAME
+//! LeftCenterIndex/CellCenterX predicates as CicClassify, so it is bitwise-consistent --
+//! and keeps only the stencil cells inside tm's physical range [0, n-1]. The dropped
+//! (out-of-range) cells carry the share owned by the source side / sibling blocks, which
+//! deposit it at THEIR resolution; the kept weights therefore do NOT sum to 1 across the
+//! seam -- the O(straddle) non-conservation that defines scheme B. dV and sqrt(gamma) are
+//! tm's own (cell-center metric), exactly as in the same-level kernel.
+
+KOKKOS_INLINE_FUNCTION
+void DepositCloudNative(const Tmunu::Tmunu_vars &tmunu,
+                        const AthenaTensor<Real, TensorSymm::SYM2, 3, 2> &g_dd,
+                        int tm, int is, int js, int ks, const int ncell[3],
+                        const RegionSize &tsz, const Real x[3], const Real amp[10]) {
+  Real xmin[3] = {tsz.x1min, tsz.x2min, tsz.x3min};
+  Real xmax[3] = {tsz.x1max, tsz.x2max, tsz.x3max};
+  int cells[3][2];
+  Real wght[3][2];
+  int ncl[3];
+  for (int d=0; d<3; ++d) {
+    int idxt = LeftCenterIndex(x[d], ncell[d], xmin[d], xmax[d]);
+    Real dxd = (xmax[d] - xmin[d])/static_cast<Real>(ncell[d]);
+    Real delt = fmin(fmax((x[d] - CellCenterX(idxt, ncell[d], xmin[d], xmax[d]))/dxd,
+                          0.0), 1.0);
+    ncl[d] = 0;                                  // keep only the in-block stencil cells
+    if (idxt >= 0 && idxt <= ncell[d]-1) {
+      cells[d][ncl[d]] = idxt;   wght[d][ncl[d]] = 1.0 - delt; ncl[d]++;
+    }
+    if (idxt+1 >= 0 && idxt+1 <= ncell[d]-1) {
+      cells[d][ncl[d]] = idxt+1; wght[d][ncl[d]] = delt;       ncl[d]++;
+    }
+  }
+  Real dv = tsz.dx1*tsz.dx2*tsz.dx3;             // tm's native cell volume
+  for (int kk=0; kk<ncl[2]; ++kk) {
+    for (int jj=0; jj<ncl[1]; ++jj) {
+      for (int ii=0; ii<ncl[0]; ++ii) {
+        Real s = wght[0][ii]*wght[1][jj]*wght[2][kk];
+        int ci = is + cells[0][ii];
+        int cj = js + cells[1][jj];
+        int ck = ks + cells[2][kk];
+        Real detg = adm::SpatialDet(g_dd(tm,0,0,ck,cj,ci), g_dd(tm,0,1,ck,cj,ci),
+                                    g_dd(tm,0,2,ck,cj,ci), g_dd(tm,1,1,ck,cj,ci),
+                                    g_dd(tm,1,2,ck,cj,ci), g_dd(tm,2,2,ck,cj,ci));
+        Real fac = s/(sqrt(detg)*dv);
+        Kokkos::atomic_add(&tmunu.E(tm,ck,cj,ci), amp[0]*fac);
+        for (int a=0; a<3; ++a) {
+          Kokkos::atomic_add(&tmunu.S_d(tm,a,ck,cj,ci), amp[1+a]*fac);
+          for (int b=a; b<3; ++b) {
+            int c = 4 + (a*(7-a))/2 + (b-a);   // SYM2 row-major slot {xx,xy,xz,yy,yz,zz}
+            Kokkos::atomic_add(&tmunu.S_dd(tm,a,b,ck,cj,ci), amp[c]*fac);
+          }
+        }
+      }
+    }
+  }
+}
+
+//----------------------------------------------------------------------------------------
 //! \struct SortTmunuImage
-//! \brief canonical image order (target_m, tag, off_code): per-block grouping, then a
-//! total order that makes the deposit independent of generation/arrival order.
+//! \brief canonical order (target_m, tag, off_code, lev): per-block grouping, then a
+//! total order that makes the deposit independent of generation/arrival order (the
+//! duplicate check is lev-conditional -- see the deposit pass below).
 
 struct SortTmunuImage {
   bool operator()(const TmunuImage &a, const TmunuImage &b) const {
     if (a.target_m != b.target_m) {return a.target_m < b.target_m;}
     if (a.tag != b.tag) {return a.tag < b.tag;}
-    return a.off_code < b.off_code;
+    if (a.off_code != b.off_code) {return a.off_code < b.off_code;}
+    return a.lev < b.lev;   // Stage 5b: total order incl. cross-level images
   }
 };
 
@@ -237,6 +304,8 @@ void Particles::set_prtcl_tmunu() {
   int dbg = debug_lvl;
   int myrank = global_variable::my_rank;
   int ncycle = pmy_pack->pmesh->ncycle;
+  bool multi_d = pmy_pack->pmesh->multi_d;
+  bool three_d = pmy_pack->pmesh->three_d;
 
   // ---- (a) zero pass: full array including ghosts (the deposit below touches physical
   // cells only and nothing else writes u_tmunu in the feedback configuration -- dyn_grmhd
@@ -251,6 +320,7 @@ void Particles::set_prtcl_tmunu() {
 
   nimages_thispack = 0;
   nimg_send_thispack = 0;
+  int n_cross_thispack = 0;   // Stage 5b: cross-level images this pack (= derr(1))
   if (npart > 0) {
     // ---- (b1) count pass: cross-block images per particle = nonempty offset subsets of
     // the banded-and-open dims (same predicates as the deposit pass: CicClassify). The
@@ -270,11 +340,24 @@ void Particles::set_prtcl_tmunu() {
                     mbbcs.d_view(m,2), mbbcs.d_view(m,3), cd[1]);
         CicClassify(x[2], ncell[2], sz.x3min, sz.x3max,
                     mbbcs.d_view(m,4), mbbcs.d_view(m,5), cd[2]);
-        int nb = 0;
+        int beff[3];
         for (int d=0; d<3; ++d) {
-          if (cd[d].band != 0 && cd[d].open) {nb++;}
+          beff[d] = (cd[d].band != 0 && cd[d].open) ? cd[d].band : 0;
         }
-        sum += (1 << nb) - 1;
+        if (beff[0] == 0 && beff[1] == 0 && beff[2] == 0) {return;}
+        int mylev = mblev.d_view(m);
+        int fx = (x[0] < 0.5*(sz.x1min + sz.x1max)) ? 0 : 1;
+        int fy = (x[1] < 0.5*(sz.x2min + sz.x2max)) ? 0 : 1;
+        int fz = (x[2] < 0.5*(sz.x3min + sz.x3max)) ? 0 : 1;
+        int px = mbpar.d_view(m,0), py = mbpar.d_view(m,1), pz = mbpar.d_view(m,2);
+        // count = the per-particle DEDUPED ghost-image target count, via the SAME helper
+        // the fill pass uses (EnumerateParticleTargets) so cap == appends: same-level
+        // 1 per subset, coarse->fine up to 4 children, fine->coarse unique per coarse gid
+        // (a demoted diagonal that lands on an already-targeted coarse face is dropped).
+        PartImageTarget tgt[24];
+        int nmiss = 0, ov = 0;
+        sum += EnumerateParticleTargets(nghbr.d_view, m, mylev, beff, fx,fy,fz, px,py,pz,
+                                        multi_d, three_d, tgt, 24, nmiss, ov);
       }, Kokkos::Sum<int>(nimg_need));
     // size the queue for npart self records (slots [0,npart)) plus all cross-block images
     // if they were all same-rank (the upper bound); cross-rank-bound images go to the
@@ -289,8 +372,10 @@ void Particles::set_prtcl_tmunu() {
 #endif
     Kokkos::deep_copy(tmunu_nimg, 0);   // {0: same-rank imgs beyond npart, 1: cross-rank}
 
-    // device error counters: {0: no-neighbor slot, 1: level mismatch (matter touched a
-    // coarse-fine interface), 2: bad local pack range, 3: image-list overflow}
+    // device counters: slots {0: no-neighbor, 2: bad local pack range, 3: image-list
+    // overflow} are fatal errors; slot {1: cross-level image count} is a Stage-5b
+    // DIAGNOSTIC (not an error) -- a nonzero global value flips the conservation identity
+    // below to a measured report (scheme B is non-conservative across a seam).
     DvceArray1D<int> derr("tmunu_err",4);   // zero-initialized
 
     // ---- (b2) record-generation pass: emit one self record per particle (its own-block
@@ -346,16 +431,18 @@ void Particles::set_prtcl_tmunu() {
       TmunuAmplitudes(mp, lor, u_d, amp);
 
       // self record: the particle's own-block cloud (off_code 13 -> off {0,0,0}, clipped
-      // per dim). A first-class image at slot p so the local cloud and every neighbor
-      // image deposit together in the one canonical (target_m, tag, off_code) pass below.
+      // per dim). A first-class image at slot p so cloud + neighbor images all
+      // deposit in the one canonical (target_m,tag,off_code,lev) pass below.
       {
         TmunuImage self;
         self.target_m = m;
         self.tag = pi(PTAG,p);
         self.off_code = 13;
+        self.lev = -1;                 // self record is always same-level
         for (int d=0; d<3; ++d) {
           self.idx[d] = idx[d];
           self.delta[d] = dlt[d];
+          self.x[d] = x[d];
           self.u_d[d] = u_d[d];
         }
         self.mass = mp;
@@ -372,36 +459,28 @@ void Particles::set_prtcl_tmunu() {
         int fx = (x[0] < 0.5*(sz.x1min + sz.x1max)) ? 0 : 1;
         int fy = (x[1] < 0.5*(sz.x2min + sz.x2max)) ? 0 : 1;
         int fz = (x[2] < 0.5*(sz.x3min + sz.x3max)) ? 0 : 1;
-        for (int code=1; code<8; ++code) {
-          int sx = code & 1, sy = (code >> 1) & 1, sz2 = (code >> 2) & 1;
-          if ((sx && beff[0] == 0) || (sy && beff[1] == 0) || (sz2 && beff[2] == 0)) {
-            continue;
-          }
-          int ox = sx ? beff[0] : 0;
-          int oy = sy ? beff[1] : 0;
-          int oz = sz2 ? beff[2] : 0;
-          int indx = FindDestinationIndex(nghbr.d_view, m, mylev, ox,oy,oz, fx,fy,fz,
-                                          mbpar.d_view(m,0), mbpar.d_view(m,1),
-                                          mbpar.d_view(m,2));
-          if (indx < 0) {
-            Kokkos::atomic_add(&derr(0), 1);
-            Kokkos::printf("[tmunu-debug] rank=%d cycle=%d tag=%d gid=%d NO NEIGHBOR "
-                           "off=(%d,%d,%d) pos=(%.16e,%.16e,%.16e)\n", myrank, ncycle,
-                           pi(PTAG,p), pi(PGID,p), ox, oy, oz, x[0], x[1], x[2]);
-            continue;
-          }
-          const NeighborBlock &nb = nghbr.d_view(m,indx);
-          if (nb.lev != mylev) {
-            // matter-confinement violation: the cloud touches a coarse-fine interface
-            Kokkos::atomic_add(&derr(1), 1);
-            Kokkos::printf("[tmunu-debug] rank=%d cycle=%d tag=%d gid=%d LEVEL "
-                           "INTERFACE off=(%d,%d,%d) nbr_gid=%d nbr_lev=%d my_lev=%d "
-                           "pos=(%.16e,%.16e,%.16e)\n", myrank, ncycle, pi(PTAG,p),
-                           pi(PGID,p), ox, oy, oz, nb.gid, nb.lev, mylev,
-                           x[0], x[1], x[2]);
-            continue;
-          }
-          int oc = (ox+1) + 3*(oy+1) + 9*(oz+1);
+        int px = mbpar.d_view(m,0), py = mbpar.d_view(m,1), pz = mbpar.d_view(m,2);
+        PartImageTarget tgt[24];
+        int nmiss = 0, ov = 0;
+        int ntgt = EnumerateParticleTargets(nghbr.d_view, m, mylev, beff, fx,fy,fz,
+                                            px,py,pz, multi_d, three_d, tgt, 24,
+                                            nmiss, ov);
+        if (nmiss > 0) {                          // banded-open dir(s) with no neighbor
+          Kokkos::atomic_add(&derr(0), nmiss);
+          Kokkos::printf("[tmunu-debug] rank=%d cycle=%d tag=%d gid=%d NO NEIGHBOR "
+                         "(missing=%d) pos=(%.16e,%.16e,%.16e)\n", myrank, ncycle,
+                         pi(PTAG,p), pi(PGID,p), nmiss, x[0], x[1], x[2]);
+        }
+        if (ov) {Kokkos::atomic_add(&derr(3), 1);}   // dedup overflow (impossible: <=19)
+        for (int s=0; s<ntgt; ++s) {
+          const NeighborBlock &nb = nghbr.d_view(m, tgt[s].slot);
+          int oc = tgt[s].oc;
+          // img_lev = -1 same-level (off_code); else the TARGET level -- the image
+          // carries x[3] and deposits at the target's resolution (scheme B). Cross-
+          // level records are unique per target gid (deduped); derr(1) counts them (a
+          // diagnostic, not an error) so the identity below is a measured report.
+          int img_lev = (nb.lev == mylev) ? -1 : nb.lev;
+          if (img_lev >= 0) {Kokkos::atomic_add(&derr(1), 1);}
           if (nb.rank == myrank) {
             // same-rank neighbor: append into the local queue (slots beyond npart self
             // records). Its gid must map into this pack -- a violation is corruption.
@@ -409,8 +488,8 @@ void Particles::set_prtcl_tmunu() {
             if (tm < 0 || tm >= nmb) {
               Kokkos::atomic_add(&derr(2), 1);
               Kokkos::printf("[tmunu-debug] rank=%d cycle=%d tag=%d gid=%d BAD LOCAL "
-                             "TARGET off=(%d,%d,%d) nbr_gid=%d\n", myrank, ncycle,
-                             pi(PTAG,p), pi(PGID,p), ox, oy, oz, nb.gid);
+                             "TARGET nbr_gid=%d\n", myrank, ncycle, pi(PTAG,p),
+                             pi(PGID,p), nb.gid);
               continue;
             }
             int slot = npart + Kokkos::atomic_fetch_add(&nimg_ctr(0), 1);
@@ -422,17 +501,19 @@ void Particles::set_prtcl_tmunu() {
             rec.target_m = tm;
             rec.tag = pi(PTAG,p);
             rec.off_code = oc;
+            rec.lev = img_lev;           // -1 same-level; else cross-level (5b)
             for (int d=0; d<3; ++d) {
               rec.idx[d] = idx[d];
               rec.delta[d] = dlt[d];
+              rec.x[d] = x[d];
               rec.u_d[d] = u_d[d];
             }
             rec.mass = mp;
             rec.lorentz = lor;
             img.d_view(slot) = rec;
           } else {
-            // cross-rank neighbor: stage a wire record for the MPI transport. The target
-            // is named by its GLOBAL gid (the receiver converts it to a local index and
+            // cross-rank neighbor: stage a wire record for MPI transport. The target is
+            // named by its GLOBAL gid (the receiver converts it to a local index and
             // re-sorts the image into its own queue -- Stage 4c ExchangeTmunuImages).
             int slot = Kokkos::atomic_fetch_add(&nimg_ctr(1), 1);
             if (slot >= send_cap) {
@@ -443,9 +524,11 @@ void Particles::set_prtcl_tmunu() {
             w.target_gid = nb.gid;
             w.tag = pi(PTAG,p);
             w.off_code = oc;
+            w.lev = img_lev;             // -1 same-level; else cross-level (5b)
             for (int d=0; d<3; ++d) {
               w.idx[d] = idx[d];
               w.delta[d] = dlt[d];
+              w.x[d] = x[d];
               w.u_d[d] = u_d[d];
             }
             w.mass = mp;
@@ -482,16 +565,14 @@ void Particles::set_prtcl_tmunu() {
     nimg_send_thispack = n_remote_img;
     auto herr = Kokkos::create_mirror_view(derr);
     Kokkos::deep_copy(herr, derr);
-    if (herr(0) + herr(1) + herr(2) + herr(3) > 0 ||
+    n_cross_thispack = herr(1);   // diagnostic (cross-level images), NOT an error
+    if (herr(0) + herr(2) + herr(3) > 0 ||
         (n_local_img + n_remote_img) != nimg_need) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
                 << std::endl << "Tmunu deposit failed at cycle " << ncycle
                 << ": no_neighbor=" << herr(0)
-                << " level_interface=" << herr(1)
-                << " (matter must stay >= 1 cell away from coarse-fine interfaces;"
-                << std::endl
-                << "cross-level deposition is deferred to Stage 5)"
                 << " bad_local_target=" << herr(2) << " overflow=" << herr(3)
+                << " (cross_level=" << herr(1) << ")"
                 << " images=" << (n_local_img + n_remote_img) << "/" << nimg_need
                 << " (see offender dump above)" << std::endl << std::flush;
 #if MPI_PARALLEL_ENABLED
@@ -511,7 +592,7 @@ void Particles::set_prtcl_tmunu() {
 #endif
 
   // ---- (c) canonical deposit order: sort the merged queue (self records + same-rank +
-  // received cross-rank images) on host by (target_m,tag,off_code). The key is total and
+  // received cross-rank images) on host by (target_m,tag,off_code,lev) -- a total order;
   // tag is globally unique, so per-cell accumulation order is identical for every rank
   // decomposition (the Stage-4c bitwise rank-invariance criterion). A duplicate key means
   // duplicate particle tags (an init=pgen contract violation) or a generation bug: fatal.
@@ -521,14 +602,25 @@ void Particles::set_prtcl_tmunu() {
     TmunuImage *ibeg = tmunu_images.h_view.data();
     std::sort(ibeg, ibeg + nimages_thispack, SortTmunuImage());
     for (int g=1; g<nimages_thispack; ++g) {
-      if (ibeg[g-1].target_m == ibeg[g].target_m && ibeg[g-1].tag == ibeg[g].tag &&
-          ibeg[g-1].off_code == ibeg[g].off_code) {
+      // duplicate-key invariant (records sharing (target_m, tag) are adjacent under the
+      // sort). CROSS-LEVEL (lev>=0): exactly ONE record per (target_m, tag) is allowed --
+      // DepositCloudNative deposits the whole clipped cloud, so a duplicate is a double-
+      // deposit and EnumerateParticleTargets should have deduped it (gid). SAME-LEVEL
+      // (lev<0): off_code distinguishes the disjoint cells, so the key is (.., off_code).
+      bool same_mt = (ibeg[g-1].target_m == ibeg[g].target_m &&
+                      ibeg[g-1].tag == ibeg[g].tag);
+      bool xlevel_dup = same_mt && (ibeg[g-1].lev >= 0 || ibeg[g].lev >= 0);
+      bool samelev_dup = same_mt && ibeg[g-1].lev < 0 && ibeg[g].lev < 0 &&
+                         ibeg[g-1].off_code == ibeg[g].off_code;
+      if (xlevel_dup || samelev_dup) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
-                  << std::endl << "duplicate Tmunu image key (target_m="
-                  << ibeg[g].target_m << ", tag=" << ibeg[g].tag << ", off_code="
-                  << ibeg[g].off_code << ") at cycle " << ncycle
-                  << ": duplicate particle tags break the canonical deposit order"
-                  << std::endl << std::flush;
+                  << std::endl
+                  << (xlevel_dup ? "duplicate CROSS-LEVEL Tmunu target (one record per "
+                                   "(target_m, tag) required -- dedup failed): "
+                                 : "duplicate same-level Tmunu image key: ")
+                  << "target_m=" << ibeg[g].target_m << ", tag=" << ibeg[g].tag
+                  << ", off_code=" << ibeg[g].off_code << ", lev=" << ibeg[g].lev
+                  << " at cycle " << ncycle << std::endl << std::flush;
 #if MPI_PARALLEL_ENABLED
         MPI_Abort(MPI_COMM_WORLD, 1);
 #else
@@ -548,16 +640,22 @@ void Particles::set_prtcl_tmunu() {
     KOKKOS_LAMBDA(const int g) {
       const TmunuImage rec = imgd.d_view(g);
       int tm = rec.target_m;
-      int off[3];
-      off[0] = rec.off_code % 3 - 1;
-      off[1] = (rec.off_code / 3) % 3 - 1;
-      off[2] = rec.off_code / 9 - 1;
       Real amp[10];
       TmunuAmplitudes(rec.mass, rec.lorentz, rec.u_d, amp);
       const RegionSize &tsz = size.d_view(tm);
-      Real dv = tsz.dx1*tsz.dx2*tsz.dx3;
-      DepositCloud(tmunu, g_dd, tm, is, js, ks, ncell, dv, off, rec.idx, rec.delta,
-                   amp);
+      if (rec.lev < 0) {
+        // same-level (self or same-level neighbor): off_code routing at the shared dx
+        int off[3];
+        off[0] = rec.off_code % 3 - 1;
+        off[1] = (rec.off_code / 3) % 3 - 1;
+        off[2] = rec.off_code / 9 - 1;
+        Real dv = tsz.dx1*tsz.dx2*tsz.dx3;
+        DepositCloud(tmunu, g_dd, tm, is, js, ks, ncell, dv, off, rec.idx, rec.delta,
+                     amp);
+      } else {
+        // cross-level (Stage 5b, scheme B): native-resolution deposit from abs position
+        DepositCloudNative(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.x, amp);
+      }
     });
   }
 
@@ -595,6 +693,7 @@ void Particles::set_prtcl_tmunu() {
     Kokkos::deep_copy(hps, tmunu_psums);
     Kokkos::deep_copy(hcs, tmunu_csums);
     int npart_tot = npart;
+    int ncross_tot = n_cross_thispack;   // global: did ANY cloud cross a level seam?
 #if MPI_PARALLEL_ENABLED
     // the identity closes only GLOBALLY: a particle on one rank deposits (via an image)
     // into cells that may be owned by another. Reduce both sides and the count (the
@@ -606,6 +705,8 @@ void Particles::set_prtcl_tmunu() {
     MPI_Allreduce(MPI_IN_PLACE, hcs.data(), 10, MPI_ATHENA_REAL, MPI_SUM,
                   pbval_part->mpi_comm_part);
     MPI_Allreduce(MPI_IN_PLACE, &npart_tot, 1, MPI_INT, MPI_SUM,
+                  pbval_part->mpi_comm_part);
+    MPI_Allreduce(MPI_IN_PLACE, &ncross_tot, 1, MPI_INT, MPI_SUM,
                   pbval_part->mpi_comm_part);
 #endif
     Real scale = 0.0, resid = 0.0;
@@ -619,7 +720,11 @@ void Particles::set_prtcl_tmunu() {
     Real tol = scale*fmax(1.0e-12, 32.0*eps*static_cast<Real>(npart_tot));
     static char const * const comp[10] = {"E","Sx","Sy","Sz","Sxx","Sxy","Sxz",
                                           "Syy","Syz","Szz"};
-    if (resid > tol) {
+    // EXACT-conservation regime (no cloud crossed a seam): a residual above tol is a
+    // transport/deposit bug -- fatal, exactly as Stage 4. When cross-level images are
+    // present (scheme B) the identity is INTENTIONALLY violated by O(straddle): report
+    // measured residual but do NOT abort (Stage 5b README sec 2.2 / test 8).
+    if (ncross_tot == 0 && resid > tol) {
       if (myrank == 0) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
                   << std::endl << "Tmunu conservation identity violated at cycle "
@@ -639,9 +744,18 @@ void Particles::set_prtcl_tmunu() {
 #endif
     }
     if (myrank == 0) {
-      std::cout << "[tmunu-debug] cycle=" << ncycle << " npart=" << npart_tot
-                << " identity max_resid=" << resid << " (tol " << tol << ") (global)"
-                << std::endl;
+      if (ncross_tot > 0) {
+        std::streamsize op = std::cout.precision(12);   // resid is verified vs the closed
+        std::cout << "[tmunu-debug] cycle=" << ncycle << " npart=" << npart_tot
+                  << " cross_level=" << ncross_tot     // form, so print enough digits
+                  << " scheme-B non-conservation max_resid=" << resid << " (worst "
+                  << comp[cbad] << "; measured, not fatal)" << std::endl;
+        std::cout.precision(op);
+      } else {
+        std::cout << "[tmunu-debug] cycle=" << ncycle << " npart=" << npart_tot
+                  << " identity max_resid=" << resid << " (tol " << tol << ") (global)"
+                  << std::endl;
+      }
     }
   }
   return;

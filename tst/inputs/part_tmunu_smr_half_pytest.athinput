@@ -1,0 +1,107 @@
+# NRPIC Stage-5b(a) cross-level dedup regression: a static-SMR geometry that DEMOTES.
+# Root 32^3 over [-1,1]^3 (dx = 1/16) in 16^3 blocks (2x2x2 root blocks of width 1). The
+# x1 < 0 half is refined to level 1 (dx = 1/32), FULL in x2/x3 -- so the coarse-fine seam
+# is the whole x1 = 0 plane and a fine block on it has FINE SIBLINGS transverse in x2/x3.
+# A fine block that is NOT at its parent's exterior x2/x3 edge (e.g. [-0.5,0]x[0,0.5]^2,
+# whose x2 = 0.5 face is the parent midplane) therefore has an EMPTY x1x2-edge coarse slot,
+# so FindDestinationIndex DEMOTES an x1x2 diagonal overhang onto the coarse x1-face -- the
+# same coarse block the x1-face subset already targets. The default particle straddles x1
+# (-> coarse) AND x2 (-> fine sibling) near that block's (x1=0, x2=0.5) edge, so the x1-face
+# and the demoted x1x2-edge subsets resolve to the SAME coarse gid. With the cross-level
+# dedup (one record per (tag, target gid)) the coarse block is deposited ONCE -> resid =
+# m W /8 = 0.125 (only x1 is cross-level; x2 same-level + x3 interior conserve), clean, and
+# bitwise np-invariant. WITHOUT the dedup the coarse block is double-deposited and the
+# post-sort (lev>=0) duplicate invariant FATALs (the seeded-bug drill).
+
+<comment>
+problem   = particle Tmunu cross-level dedup demotion test (half-domain SMR)
+
+<job>
+basename  = part_tmunu_smr_half
+
+<mesh>
+nghost    = 2
+nx1       = 32
+x1min     = -1.0
+x1max     = 1.0
+ix1_bc    = periodic
+ox1_bc    = periodic
+
+nx2       = 32
+x2min     = -1.0
+x2max     = 1.0
+ix2_bc    = periodic
+ox2_bc    = periodic
+
+nx3       = 32
+x3min     = -1.0
+x3max     = 1.0
+ix3_bc    = periodic
+ox3_bc    = periodic
+
+<meshblock>
+nx1       = 16
+nx2       = 16
+nx3       = 16
+
+<mesh_refinement>
+refinement = static
+
+<refined_region1>
+level = 1
+x1min = -1.0
+x1max = 0.0
+x2min = -1.0
+x2max = 1.0
+x3min = -1.0
+x3max = 1.0
+
+<coord>
+general_rel = true
+minkowski   = true
+excise      = false
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.25
+nlim       = 0
+tlim       = 1.0
+ndiag      = 1
+
+<z4c>
+diss       = 0.0
+
+<particles>
+particle_type = dust
+pusher    = drift
+init      = pgen
+mass      = 1.0
+feedback  = true
+debug     = 1
+destroy_log = false
+
+<problem>
+mode      = single
+px        = -0.0078125  # fine, upper x1 band toward the x1=0 coarse seam (-> coarse)
+py        = 0.4921875   # fine, upper x2 band toward x2=0.5 (-> fine sibling, same level)
+pz        = 0.25        # fine-block interior in x3 (a mid-block cell face)
+pux       = 0.0
+puy       = 0.0
+puz       = 0.0
+pmass     = 1.0
+sweep_x1  = -0.0078125
+sweep_x2  = 0.4921875
+sweep_x3  = 0.25
+sweep_dx  = 0.03125
+sweep_span = 0.0
+
+<output1>
+file_type  = bin
+variable   = tmunu
+dt         = 0.001
+
+<output2>
+file_type  = pvtk
+variable   = prtcl_all
+dt         = 0.001

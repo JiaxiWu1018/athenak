@@ -61,7 +61,11 @@ namespace particles {
 //  (idx, delta) is computed ONCE on the source block and shipped; because same-level
 //  neighbor index spaces align, the target cells follow from off_code alone (banded dim
 //  with b=-1 -> target cell n-1 at weight 1-delta; b=+1 -> cell 0 at weight delta) --
-//  no wrapped-position arithmetic, so periodic wrap is exact by construction. The
+//  no wrapped-position arithmetic, so periodic wrap is exact by construction. A cloud
+//  spanning a COARSE-FINE seam (Stage 5b) cannot use off_code alone (fine/coarse index
+//  spaces do not align): such a cross-level image sets lev = the TARGET block's level and
+//  carries the particle's absolute position x[3], from which the target rebuilds its
+//  own-frame CIC stencil (scheme B native resolution -- non-conservative but smooth). The
 //  payload is otherwise particle-like (mass, u_i, tag) so the same machinery can later
 //  carry charge/current deposition.
 
@@ -72,8 +76,14 @@ struct TmunuImage {
                     // particle's own block: a first-class record so the local cloud and
                     // every neighbor image deposit in canonical (target_m,tag,off_code)
                     // pass -- the Stage-4c bitwise rank-invariance refactor)
-  int idx[3];       // source-computed left-center CIC index per dim
-  Real delta[3];    // source-computed CIC offset per dim, clamped to [0,1]
+  int lev;          // -1 for self + same-level images (which route by off_code); for a
+                    // cross-level image (cloud spanning a coarse-fine seam, Stage 5b) the
+                    // TARGET block's level -- picks the native deposit and is the final
+                    // canonical-sort tiebreak
+  int idx[3];       // source-computed left-center CIC index per dim (same-level images)
+  Real delta[3];    // source-computed CIC offset per dim, clamped to [0,1] (same-level)
+  Real x[3];        // particle absolute position; cross-level images rebuild the target's
+                    // own-frame idx/delta from this (same-level images ignore it)
   Real mass;        // particle rest mass (IPM)
   Real lorentz;     // normal-frame Lorentz factor W at the particle
   Real u_d[3];      // covariant velocity u_i
@@ -84,7 +94,7 @@ struct TmunuImage {
 //  \brief wire form of a TmunuImage destined for a MeshBlock on ANOTHER rank (Stage 4c).
 //  Identical payload to TmunuImage except the receiving block is named by its GLOBAL id
 //  rather than the sender's local index (meaningless off-rank): the receiver converts it
-//  back via target_m = target_gid - gids. Shipped as two flat buffers (6 ints, 8 Reals)
+//  back via target_m = target_gid - gids. Shipped as two flat buffers (7 ints, 11 Reals)
 //  on the particle communicator; the received image is appended to the local tmunu_images
 //  queue and deposited by the canonical-order pass, so cross-rank feedback is bitwise
 //  rank-count invariant by construction. Order on the wire is irrelevant (the receiver
@@ -94,8 +104,10 @@ struct TmunuImageWire {
   int target_gid;   // GLOBAL id of the receiving block
   int tag;          // source particle tag
   int off_code;     // image offset code in 0..26
+  int lev;          // -1 same-level; else TARGET level (cross-level image, 5b)
   int idx[3];       // source-computed left-center CIC index per dim
   Real delta[3];    // source-computed CIC offset per dim, clamped to [0,1]
+  Real x[3];        // particle absolute position (cross-level images rebuild idx/delta)
   Real mass;        // particle rest mass
   Real lorentz;     // normal-frame Lorentz factor W
   Real u_d[3];      // covariant velocity u_i
