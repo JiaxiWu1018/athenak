@@ -80,6 +80,7 @@ mass      = 1.0
 feedback  = true
 debug     = 1
 destroy_log = false
+cross_level_deposit = conservative   # scheme A (default); CLI-override to native for B
 
 <problem>
 mode      = single

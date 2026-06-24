@@ -1,0 +1,101 @@
+# NRPIC Stage 5b(b) regression: scheme-A conservation at a coarse->fine seam THAT ALSO
+# touches a closed physical boundary in a transverse dimension. Root grid 32^3 over [-1,1]^3
+# (dx_coarse = 1/16) in 16^3 blocks (2x2x2 root blocks). The +x half (x1 in [0,1)) is refined
+# to level 1 (dx_fine = 1/32), so a coarse particle in the -x half straddling x1=0 deposits
+# its WHOLE cloud at the fine sublevel (cfine = true, scheme A). The y faces are OUTFLOW
+# (CLOSED): a particle parked near y = -1 (or +1) clips its cloud at the y boundary. The
+# scheme-A deposit clips at FINE-cell granularity; the debug=1 conservation diagnostic must
+# therefore compute the boundary clip factor from the FINE stencil, not the coarse one --
+# this input is the regression for that fix (without it: particle-side 0.75, cell-side 1.0,
+# residual 0.25 -> the scheme-A exact-identity FATAL). x1/x3 periodic; flat metric; nlim=0.
+# Override problem/py = 0.984375 for the symmetric UPPER-y boundary case.
+
+<comment>
+problem   = scheme-A conservation at a c->f seam + a closed physical boundary (SMR)
+
+<job>
+basename  = part_tmunu_smr_bdy
+
+<mesh>
+nghost    = 2
+nx1       = 32
+x1min     = -1.0
+x1max     = 1.0
+ix1_bc    = periodic
+ox1_bc    = periodic
+
+nx2       = 32
+x2min     = -1.0
+x2max     = 1.0
+ix2_bc    = outflow      # CLOSED lower-y physical boundary (the cloud clips here)
+ox2_bc    = outflow      # CLOSED upper-y (symmetric case via problem/py = 0.984375)
+
+nx3       = 32
+x3min     = -1.0
+x3max     = 1.0
+ix3_bc    = periodic
+ox3_bc    = periodic
+
+<meshblock>
+nx1       = 16
+nx2       = 16
+nx3       = 16
+
+<mesh_refinement>
+refinement = static
+
+<refined_region1>
+level = 1                # refine the +x HALF (the four x1 in [0,1) root blocks) -> dx_fine=1/32
+x1min = 0.1
+x1max = 0.9
+x2min = -0.95
+x2max = 0.95
+x3min = -0.95
+x3max = 0.95
+
+<coord>
+general_rel = true
+minkowski   = true
+excise      = false
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.25
+nlim       = 0
+tlim       = 1.0
+ndiag      = 1
+
+<z4c>
+diss       = 0.0
+
+<particles>
+particle_type = dust
+pusher    = drift
+init      = pgen
+mass      = 1.0
+feedback  = true
+debug     = 1
+destroy_log = false
+cross_level_deposit = conservative   # scheme A (the fix target); CLI-override to native for B
+
+<problem>
+mode      = single
+px        = -0.0078125  # -dx_fine/4: coarse -x block, straddles x1=0 into the fine +x neighbor
+py        = -0.984375   # = -1 + dx_fine/2: parked at the first FINE cell center, near the
+                        # CLOSED lower-y boundary (coarse stencil sees the lower half-band)
+pz        = -0.25       # interior in x3
+pux       = 0.0
+puy       = 0.0
+puz       = 0.0
+pmass     = 1.0
+sweep_x1  = -0.0078125
+sweep_x2  = -0.984375
+sweep_x3  = -0.25
+sweep_dx  = 0.03125
+sweep_span = 0.0
+
+<output1>
+file_type  = bin
+variable   = tmunu
+dt         = 0.001

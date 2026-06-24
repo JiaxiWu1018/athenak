@@ -45,12 +45,13 @@
 
 namespace particles {
 
-// flat-buffer widths per image: 11 Reals {delta[3], x[3], mass, lorentz, u_d[3]} and 7
-// ints {target_gid, tag, off_code, lev, idx[3]} -- match the pack/unpack kernels below
-// (x[3]/lev carry the cross-level (Stage 5b) payload; ignored for same-level images)
+// buffer widths per image: 14 Reals {delta[3], x[3], mass, lorentz, u_d[3], sxmin[3]} and
+// 8 ints {target_gid, tag, off_code, lev, idx[3], slev} -- match the pack/unpack kernels
+// below (x[3]/lev/slev/sxmin[3] carry the cross-level (5b) payload: scheme B uses x[3];
+// scheme A's restrict uses idx[3]+sxmin[3]+slev; same-level images ignore them)
 namespace {
-constexpr int kImgNR = 11;
-constexpr int kImgNI = 7;
+constexpr int kImgNR = 14;
+constexpr int kImgNI = 8;
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -173,6 +174,7 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
       ibuf(kImgNI*n + 4) = w.idx[0];
       ibuf(kImgNI*n + 5) = w.idx[1];
       ibuf(kImgNI*n + 6) = w.idx[2];
+      ibuf(kImgNI*n + 7) = w.slev;
       rbuf(kImgNR*n + 0) = w.delta[0];
       rbuf(kImgNR*n + 1) = w.delta[1];
       rbuf(kImgNR*n + 2) = w.delta[2];
@@ -184,6 +186,9 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
       rbuf(kImgNR*n + 8) = w.u_d[0];
       rbuf(kImgNR*n + 9) = w.u_d[1];
       rbuf(kImgNR*n + 10) = w.u_d[2];
+      rbuf(kImgNR*n + 11) = w.sxmin[0];
+      rbuf(kImgNR*n + 12) = w.sxmin[1];
+      rbuf(kImgNR*n + 13) = w.sxmin[2];
     });
     Kokkos::fence();
   }
@@ -247,6 +252,7 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
       rec.idx[0]   = ibuf(kImgNI*n + 4);
       rec.idx[1]   = ibuf(kImgNI*n + 5);
       rec.idx[2]   = ibuf(kImgNI*n + 6);
+      rec.slev     = ibuf(kImgNI*n + 7);
       rec.delta[0] = rbuf(kImgNR*n + 0);
       rec.delta[1] = rbuf(kImgNR*n + 1);
       rec.delta[2] = rbuf(kImgNR*n + 2);
@@ -258,6 +264,9 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
       rec.u_d[0]   = rbuf(kImgNR*n + 8);
       rec.u_d[1]   = rbuf(kImgNR*n + 9);
       rec.u_d[2]   = rbuf(kImgNR*n + 10);
+      rec.sxmin[0] = rbuf(kImgNR*n + 11);
+      rec.sxmin[1] = rbuf(kImgNR*n + 12);
+      rec.sxmin[2] = rbuf(kImgNR*n + 13);
       img.d_view(base + n) = rec;
     });
     auto hrerr = Kokkos::create_mirror_view(rerr);

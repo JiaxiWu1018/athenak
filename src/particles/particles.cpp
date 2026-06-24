@@ -133,6 +133,7 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   // any-physics + particles with feedback=false (pusher only), and z4c + particles +
   // feedback without MHD. Everything else is fatal here.
   feedback = pin->GetOrAddBoolean("particles","feedback",false);
+  xlevel_deposit = CrossLevelDeposit::conservative;   // default (A); used if feedback
   nimages_thispack = 0;
   nimg_send_thispack = 0;
   if (feedback) {
@@ -175,24 +176,45 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     Kokkos::realloc(tmunu_img_send, 1);
     Kokkos::realloc(tmunu_psums, 10);
     Kokkos::realloc(tmunu_csums, 10);
+
+    // cross-level deposition scheme (Stage 5b(b)): how a CIC cloud spanning a coarse-fine
+    // seam is deposited. conservative (A, DEFAULT) restricts the fine source to coarse
+    // leaf cells (exact Sum E sqrt(g) dV identity); native (B, 5b(a)) deposits each
+    // cross-level image at its target's own resolution (smooth, non-conservative).
+    std::string xls =
+        pin->GetOrAddString("particles", "cross_level_deposit", "conservative");
+    if (xls.compare("conservative") == 0) {
+      xlevel_deposit = CrossLevelDeposit::conservative;
+    } else if (xls.compare("native") == 0) {
+      xlevel_deposit = CrossLevelDeposit::native;
+    } else {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "<particles> cross_level_deposit = '" << xls << "' not recognized "
+                << "(use 'conservative' [A, default] or 'native' [B])." << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
   }
 
   // Dynamic AMR + particles (NRPIC Stage 5). Stage 5a lifted the redistribution guard for
-  // the FEEDBACK-OFF case: RedistAndRefineMeshBlocks now remaps every stale PGID
-  // from its old block's fate and ships the cross-rank movers (particles_amr.cpp +
-  // bvals_part_amr.cpp), so kinematic particles (drift / gr_boris geodesics) survive
-  // refine/derefine/rebalance events. Stage 5b(a) added cross-level Tmunu deposition on
-  // STATIC refinement (scheme B). Dynamic AMR + feedback STAYS FATAL: the regrid-time
-  // remap of cross-level deposition is Stage 5b(b)/5c. Static refinement works.
+  // the FEEDBACK-OFF case (RedistAndRefineMeshBlocks remaps stale PGIDs + ships movers,
+  // so particles survive refine/derefine/rebalance). Stage 5b added cross-level Tmunu
+  // deposition (scheme A conservative / B native), verified on STATIC refinement. But
+  // adaptive + feedback STAYS FATAL: the 5b(b) smoke test found the gr_boris pusher's
+  // post-regrid metric snapshot (adm_last/z4c_last, the Stage-5a *_last refresh) is NOT
+  // robust once feedback sources the metric -- the geodesic fixed point diverges at the
+  // first regrid. That refresh-under-feedback fix is the Stage-5c integration work (the
+  // OS-AMR headline). Use feedback=false (survives regrids) or refinement=static.
   if (pmy_pack->pmesh->adaptive && feedback) {
-    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl
               << "<particles> feedback = true with adaptive mesh refinement is not yet"
               << std::endl
-              << "supported: cross-level deposition works on STATIC refinement (5b),"
+              << "supported: cross-level deposition (Stage 5b) works on STATIC refinement"
               << std::endl
-              << "but its remap through live regrids is deferred. Use feedback = false"
+              << "but the gr_boris post-regrid metric snapshot is not yet robust under"
               << std::endl
-              << "(kinematic particles survive regrids) or refinement = static."
+              << "feedback (Stage 5c). Use feedback = false or refinement = static."
               << std::endl;
     std::exit(EXIT_FAILURE);
   }

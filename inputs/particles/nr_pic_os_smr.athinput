@@ -1,0 +1,123 @@
+# NRPIC Stage 5b(b) test 10 -- constraint seeding at a coarse-fine seam.
+# Oppenheimer-Snyder dust (R0 = 5M) on a STATIC-SMR grid whose refined CENTRAL block puts
+# a coarse-fine seam THROUGH the ball (seam surface at |x| = 8/3 ~ 2.67M, inside the ball
+# r0_iso ~ 3.94M), so a large dust population straddles the seam -> cross-level deposition.
+# The Z4c Hamiltonian/momentum constraint residual at the seam isolates the deposition
+# scheme: the OS conformal factor solves H=0 in the continuum, so with CONSERVATIVE (A)
+# deposition the discrete con_H sits at the FD floor everywhere (incl. the seam); with
+# NATIVE (B) the straddle mis-normalizes E by O(eps/h) -> a localized con_H spike that grows
+# under evolution. Run A / B (CLI: particles/cross_level_deposit=native) / a no-seam
+# uniform baseline (CLI: mesh_refinement/refinement=none) and difference. Damping is OFF so
+# B's seam violation is not masked. t=0 snapshot: time/nlim=0; short evolution: time/nlim=300.
+#
+# Build: cmake -S . -B build_os -DAthena_ENABLE_MPI=ON -DPROBLEM=nr_pic_os && \
+#        cmake --build build_os -j
+
+<comment>
+problem   = NRPIC Stage 5b(b): OS dust constraint-seeding at an SMR seam
+
+<job>
+basename  = os_smr
+
+<mesh>
+nghost = 4
+nx1    = 48            # dx_coarse = 16/48 = 1/3 M; central block refined -> dx_fine = 1/6
+x1min  = -8.0
+x1max  = 8.0
+ix1_bc = outflow       # z4c Sommerfeld-type radiative outer condition
+ox1_bc = outflow
+
+nx2    = 48
+x2min  = -8.0
+x2max  = 8.0
+ix2_bc = outflow
+ox2_bc = outflow
+
+nx3    = 48
+x3min  = -8.0
+x3max  = 8.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 16              # 3 blocks/dim; boundaries at -8, -8/3, 8/3, 8
+nx2 = 16
+nx3 = 16
+
+<mesh_refinement>
+refinement = static    # CLI-override to none for the uniform no-seam baseline
+
+<refined_region1>
+level = 1              # refine the CENTRAL block [-8/3,8/3]^3 -> seam through the ball
+x1min = -2.0           # region inside the central block; AthenaK refines the whole block
+x1max = 2.0
+x2min = -2.0
+x2max = 2.0
+x3min = -2.0
+x3max = 2.0
+
+<time>
+evolution  = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim       = 0         # CLI-override to ~300 for the short evolution (shows B's spike grow)
+tlim       = 8.0
+ndiag      = 50
+
+<z4c>
+# moving-puncture gauge; constraint damping + KO dissipation OFF so the seam violation of
+# scheme B is visible (not damped away). The A-vs-B difference is the deposition artifact.
+lapse_harmonic  = 0.0
+lapse_oplog     = 2.0
+shift_eta       = 2.0
+diss            = 0.0
+chi_div_floor   = 0.00001
+damp_kappa1     = 0.0
+damp_kappa2     = 0.0
+
+<particles>
+particle_type = dust
+pusher        = gr_boris
+init          = pgen
+prtcl_init_file = none
+feedback      = true
+mass          = 1.0
+debug         = 1
+destroy_log   = true
+excise_radius = 0.0
+excise_x1     = 0.0
+excise_x2     = 0.0
+excise_x3     = 0.0
+excise_lapse  = 0.1
+cross_level_deposit = conservative   # scheme A (default); CLI-override to native for B
+
+<problem>
+os_mass               = 1.0
+os_radius_over_mass   = 5.0
+os_lattice_n          = 24     # ~1 particle/coarse cell across the diameter (~7000 total)
+os_precollapsed_lapse = false
+
+<output1>
+file_type = hst            # global norms incl H-norm2 (Hamiltonian-constraint residual)
+dt        = 0.25
+
+<output2>
+file_type = bin            # z=0 slice of the constraints: con_H, con_Mx/My/Mz across seam
+variable  = con
+slice_x3  = 0.0
+dt        = 0.25
+
+<output3>
+file_type = bin            # z=0 slice of Tmunu: E across the seam (smoothness / P2)
+variable  = tmunu
+slice_x3  = 0.0
+dt        = 0.25
+
+<output4>
+file_type = bin            # z=0 slice of Z4c: central lapse alpha context
+variable  = z4c
+slice_x3  = 0.0
+dt        = 0.25
+# NOTE: exactly one bin block per variable (con/tmunu/z4c) -- two blocks of the same
+# variable collide on <basename>.<variable>.NNNNN.bin. The seam-slab L2(con_H) vs time
+# (P3b) and the 1D con_H slice (P3a) are both read from the output2 z=0 con-slice series.

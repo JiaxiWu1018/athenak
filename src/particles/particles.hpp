@@ -30,6 +30,15 @@ enum class ParticlesPusher {drift, leap_frog, lagrangian_tracer, lagrangian_mc,
 // constants that enumerate ParticleTypes
 enum class ParticleType {cosmic_ray, dust};
 
+// cross-level Tmunu deposition scheme (NRPIC Stage 5b), <particles> cross_level_deposit:
+//   conservative (A, DEFAULT) -- deposit the whole CIC cloud at the FINEST level it
+//     touches, then RESTRICT (sum the proper-volume-integrated source Q = q sqrt(g) dV)
+//     fine cells over a coarser leaf into the covering coarse cell. Recovers the exact
+//     identity Sum E sqrt(g) dV == Sum m W across a seam (the WarpX/AMR-PIC rule);
+//   native (B, 5b(a)) -- each cross-level image deposits at its TARGET block's own
+//     resolution (DepositCloudNative); smooth but O(straddle) non-conservative.
+enum class CrossLevelDeposit {conservative, native};
+
 //----------------------------------------------------------------------------------------
 //! \struct ParticlesTaskIDs
 //  \brief container to hold TaskIDs of all particles tasks
@@ -64,10 +73,14 @@ namespace particles {
 //  no wrapped-position arithmetic, so periodic wrap is exact by construction. A cloud
 //  spanning a COARSE-FINE seam (Stage 5b) cannot use off_code alone (fine/coarse index
 //  spaces do not align): such a cross-level image sets lev = the TARGET block's level and
-//  carries the particle's absolute position x[3], from which the target rebuilds its
-//  own-frame CIC stencil (scheme B native resolution -- non-conservative but smooth). The
-//  payload is otherwise particle-like (mass, u_i, tag) so the same machinery can later
-//  carry charge/current deposition.
+//  carries the particle's absolute position x[3]. SCHEME B (native) rebuilds the target's
+//  own-frame CIC stencil from x[3] (non-conservative but smooth). SCHEME A (conservative,
+//  default) instead carries the FINE-resolution stencil (idx/delta in the source block's
+//  frame) + the source block origin sxmin[3] + the source level slev, and RESTRICTS those
+//  fine cells into the target's coarse cells (DepositCloudRestrict, exact conservation).
+//  The dispatch picks the kernel from (slev vs lev): slev > lev -> restrict (f->c),
+//  slev < lev -> native at the finer target (c->f). The payload is otherwise
+//  particle-like (mass, u_i, tag) so the same machinery can later carry charge/current.
 
 struct TmunuImage {
   int target_m;     // local MeshBlock index (gid - gids) of the receiving block
@@ -78,12 +91,18 @@ struct TmunuImage {
                     // pass -- the Stage-4c bitwise rank-invariance refactor)
   int lev;          // -1 for self + same-level images (which route by off_code); for a
                     // cross-level image (cloud spanning a coarse-fine seam, Stage 5b) the
-                    // TARGET block's level -- picks the native deposit and is the final
-                    // canonical-sort tiebreak
-  int idx[3];       // source-computed left-center CIC index per dim (same-level images)
-  Real delta[3];    // source-computed CIC offset per dim, clamped to [0,1] (same-level)
-  Real x[3];        // particle absolute position; cross-level images rebuild the target's
-                    // own-frame idx/delta from this (same-level images ignore it)
+                    // TARGET block's level -- picks the cross-level deposit and is the
+                    // final canonical-sort tiebreak
+  int slev;         // SOURCE level of the carried (fine) stencil (scheme A): slev > lev =
+                    // fine->coarse restrict, slev < lev = coarse->fine native; -1 unused
+                    // (same-level + scheme B records route without it)
+  int idx[3];       // left-center CIC index per dim. SAME-LEVEL: source coarse stencil.
+                    // SCHEME-A cross-level (restrict): the FINE stencil in sxmin's frame
+  Real delta[3];    // CIC offset per dim, clamped to [0,1] (matches idx's frame)
+  Real x[3];        // particle absolute position; scheme-B native rebuilds idx/delta from
+                    // it (same-level images ignore it)
+  Real sxmin[3];    // SOURCE block origin (x1min,x2min,x3min): restrict places the
+                    // exact fine-cell centers from sxmin + idx (clamp-independent)
   Real mass;        // particle rest mass (IPM)
   Real lorentz;     // normal-frame Lorentz factor W at the particle
   Real u_d[3];      // covariant velocity u_i
@@ -94,7 +113,7 @@ struct TmunuImage {
 //  \brief wire form of a TmunuImage destined for a MeshBlock on ANOTHER rank (Stage 4c).
 //  Identical payload to TmunuImage except the receiving block is named by its GLOBAL id
 //  rather than the sender's local index (meaningless off-rank): the receiver converts it
-//  back via target_m = target_gid - gids. Shipped as two flat buffers (7 ints, 11 Reals)
+//  back via target_m = target_gid - gids. Shipped as two flat buffers (8 ints, 14 Reals)
 //  on the particle communicator; the received image is appended to the local tmunu_images
 //  queue and deposited by the canonical-order pass, so cross-rank feedback is bitwise
 //  rank-count invariant by construction. Order on the wire is irrelevant (the receiver
@@ -105,9 +124,11 @@ struct TmunuImageWire {
   int tag;          // source particle tag
   int off_code;     // image offset code in 0..26
   int lev;          // -1 same-level; else TARGET level (cross-level image, 5b)
-  int idx[3];       // source-computed left-center CIC index per dim
-  Real delta[3];    // source-computed CIC offset per dim, clamped to [0,1]
-  Real x[3];        // particle absolute position (cross-level images rebuild idx/delta)
+  int slev;         // source level of the carried fine stencil (scheme A; -1 unused)
+  int idx[3];       // left-center CIC index per dim (same-level or scheme-A fine stencil)
+  Real delta[3];    // CIC offset per dim, clamped to [0,1]
+  Real x[3];        // particle absolute position (scheme-B native rebuilds idx/delta)
+  Real sxmin[3];    // source block origin (scheme-A restrict exact fine-cell centers)
   Real mass;        // particle rest mass
   Real lorentz;     // normal-frame Lorentz factor W
   Real u_d[3];      // covariant velocity u_i
@@ -193,6 +214,10 @@ class Particles {
   // consumer), forbids dyn_grmhd (two Tmunu writers), nranks > 1 (ghost-image MPI
   // transport lands in Stage 4c) and 1D/2D (deposit kernel and z4c are 3D).
   bool feedback;
+  // cross-level Tmunu deposition scheme (Stage 5b), <particles> cross_level_deposit =
+  // conservative (A, default) | native (B). Only consulted when a CIC cloud spans a
+  // coarse-fine seam (same-level deposit is identical for both). See CrossLevelDeposit.
+  CrossLevelDeposit xlevel_deposit;
   // ghost-image records (grow-only capacity): slots [0,npart) hold the per-particle self
   // records (own-block cloud, off_code 13); same-rank neighbor images are appended after
   // npart; cross-rank received images are appended after those (Stage 4c). tmunu_nimg is
