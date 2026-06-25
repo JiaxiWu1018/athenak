@@ -45,8 +45,9 @@
 //! across a seam (a residual above tol is fatal); with scheme B it is a measured
 //! O(straddle) non-conservation, NOT a fatal (the diagnostic at the bottom). Bands at
 //! non-periodic physical mesh boundaries generate no image; the lost share is exactly the
-//! per-dim clip factor f_p accounted by that diagnostic. (Dynamic AMR + feedback stays
-//! guarded in particles.cpp -- the regrid-time remap of cross-level images is 5c.)
+//! per-dim clip factor f_p accounted by that diagnostic. (Dynamic AMR + feedback is
+//! supported as of Stage 5c: the regrid relabels/ships particles and re-deposits Tmunu on
+//! the new grid -- see mesh_refinement.cpp AdaptiveMeshRefinement.)
 
 #include <algorithm>
 #include <cstdio>
@@ -461,10 +462,11 @@ void Particles::set_prtcl_tmunu() {
     Kokkos::deep_copy(tmunu_nimg, 0);   // {0: same-rank imgs beyond npart, 1: cross-rank}
 
     // device counters: slots {0: no-neighbor, 2: bad local pack range, 3: image-list
-    // overflow} are fatal errors; slot {1: cross-level image count} is a Stage-5b
-    // DIAGNOSTIC (not an error) -- a nonzero global value flips the conservation identity
-    // below to a measured report (scheme B is non-conservative across a seam).
-    DvceArray1D<int> derr("tmunu_err",4);   // zero-initialized
+    // overflow, 4: cross-level image through a PERIODIC boundary (NRPIC Stage 5c,
+    // unsupported -- see the host check below)} are fatal errors; slot {1: cross-level
+    // image count} is a Stage-5b DIAGNOSTIC (not an error): a nonzero global value flips
+    // the conservation identity below to a measured report (scheme B non-conservative).
+    DvceArray1D<int> derr("tmunu_err",5);   // zero-initialized
 
     // ---- (b2) record-generation pass: emit one self record per particle (its own-block
     // cloud) into slot p, append same-rank neighbor images beyond npart, stage cross-rank
@@ -634,7 +636,25 @@ void Particles::set_prtcl_tmunu() {
             rslev = -1;
             for (int d=0; d<3; ++d) {ridx[d] = idx[d]; rdlt[d] = dlt[d];}
           }
-          if (rlev >= 0) {Kokkos::atomic_add(&derr(1), 1);}   // cross-level (diagnostic)
+          if (rlev >= 0) {
+            Kokkos::atomic_add(&derr(1), 1);   // cross-level image (Stage-5b diagnostic)
+            // NRPIC Stage 5c: a cross-level image rebuilds the deposit stencil in the
+            // TARGET block's frame from the particle's absolute position
+            // (DepositCloudNative / Restrict), which assumes the target's coordinates are
+            // adjacent to the particle. That is FALSE for a coarse-fine seam that ALSO
+            // wraps a PERIODIC boundary (the wrap neighbor sits a domain-length away) ->
+            // unsupported. Detect it (crossed face is periodic) and flag a fatal below;
+            // INTERIOR seams cross block faces, not periodic ones, so old tests pass.
+            int bxo = (oc % 3) - 1, byo = ((oc / 3) % 3) - 1, bzo = (oc / 9) - 1;
+            if ((bxo < 0 && mbbcs.d_view(m,0) == BoundaryFlag::periodic) ||
+                (bxo > 0 && mbbcs.d_view(m,1) == BoundaryFlag::periodic) ||
+                (byo < 0 && mbbcs.d_view(m,2) == BoundaryFlag::periodic) ||
+                (byo > 0 && mbbcs.d_view(m,3) == BoundaryFlag::periodic) ||
+                (bzo < 0 && mbbcs.d_view(m,4) == BoundaryFlag::periodic) ||
+                (bzo > 0 && mbbcs.d_view(m,5) == BoundaryFlag::periodic)) {
+              Kokkos::atomic_add(&derr(4), 1);
+            }
+          }
           if (nb.rank == myrank) {
             // same-rank neighbor: append into the local queue (slots beyond npart self
             // records). Its gid must map into this pack -- a violation is corruption.
@@ -739,6 +759,24 @@ void Particles::set_prtcl_tmunu() {
     auto herr = Kokkos::create_mirror_view(derr);
     Kokkos::deep_copy(herr, derr);
     n_cross_thispack = herr(1);   // diagnostic (cross-level images), NOT an error
+    if (herr(4) > 0) {  // NRPIC Stage 5c: periodic cross-level seam (unsupported)
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "cross-level Tmunu deposition through a PERIODIC boundary is not "
+                << "supported (Stage 5c): " << herr(4) << " image(s) at cycle " << ncycle
+                << "." << std::endl
+                << "A cloud straddling a coarse-fine seam that ALSO wraps a periodic "
+                << "boundary would mis-deposit: the cross-level image carries the "
+                << "particle's absolute position and rebuilds the stencil in the wrap "
+                << "neighbor's frame, a domain away. Use non-periodic boundaries in the "
+                << "refined directions, or keep refinement away from periodic faces."
+                << std::endl << std::flush;
+#if MPI_PARALLEL_ENABLED
+      MPI_Abort(MPI_COMM_WORLD, 1);
+#else
+      std::exit(EXIT_FAILURE);
+#endif
+    }
     if (herr(0) + herr(2) + herr(3) > 0 ||
         (n_local_img + n_remote_img) != nimg_need) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__

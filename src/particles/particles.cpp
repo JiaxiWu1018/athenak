@@ -169,8 +169,8 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     // cloud share is shipped as a TmunuImageWire on the particle communicator and merged
     // into the receiver's canonical deposit pass, so the result is bitwise rank-count
     // invariant. (Cross-LEVEL deposition -- a cloud spanning a coarse-fine seam -- is
-    // supported on STATIC refinement since Stage 5b(a), scheme B; only dynamic AMR +
-    // feedback stays guarded below.)
+    // supported on STATIC refinement since Stage 5b(a), and under dynamic AMR + feedback
+    // since Stage 5c; see the note below.)
     Kokkos::realloc(tmunu_images, 1);
     Kokkos::realloc(tmunu_nimg, 2);   // {same-rank imgs beyond npart, cross-rank imgs}
     Kokkos::realloc(tmunu_img_send, 1);
@@ -196,28 +196,15 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     }
   }
 
-  // Dynamic AMR + particles (NRPIC Stage 5). Stage 5a lifted the redistribution guard for
-  // the FEEDBACK-OFF case (RedistAndRefineMeshBlocks remaps stale PGIDs + ships movers,
-  // so particles survive refine/derefine/rebalance). Stage 5b added cross-level Tmunu
-  // deposition (scheme A conservative / B native), verified on STATIC refinement. But
-  // adaptive + feedback STAYS FATAL: the 5b(b) smoke test found the gr_boris pusher's
-  // post-regrid metric snapshot (adm_last/z4c_last, the Stage-5a *_last refresh) is NOT
-  // robust once feedback sources the metric -- the geodesic fixed point diverges at the
-  // first regrid. That refresh-under-feedback fix is the Stage-5c integration work (the
-  // OS-AMR headline). Use feedback=false (survives regrids) or refinement=static.
-  if (pmy_pack->pmesh->adaptive && feedback) {
-    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
-              << std::endl
-              << "<particles> feedback = true with adaptive mesh refinement is not yet"
-              << std::endl
-              << "supported: cross-level deposition (Stage 5b) works on STATIC refinement"
-              << std::endl
-              << "but the gr_boris post-regrid metric snapshot is not yet robust under"
-              << std::endl
-              << "feedback (Stage 5c). Use feedback = false or refinement = static."
-              << std::endl;
-    std::exit(EXIT_FAILURE);
-  }
+  // Dynamic AMR + particles (NRPIC Stage 5, fully enabled in Stage 5c). 5a remaps stale
+  // PGIDs + ships movers through a regrid (redistribution); 5b added cross-level Tmunu
+  // deposition (scheme A conservative / B native) across coarse-fine seams; 5c made the
+  // combination correct under FEEDBACK -- the regrid now relabels/ships particles for
+  // feedback runs too AND re-deposits Tmunu on the new grid before the next Z4c CalcRHS
+  // (see mesh_refinement.cpp AdaptiveMeshRefinement), so the gr_boris geodesic no longer
+  // reads a stale wrong-block metric. adaptive + feedback is therefore SUPPORTED; the
+  // earlier FATAL guard here is retired. The only remaining feedback restriction is
+  // dynamical GR(M)HD (two Tmunu writers), guarded above.
 
   // Particles crossing any non-periodic mesh boundary are DESTROYED (Stage 3c). For
   // outflow/diode/user faces that is the physically expected behavior; for reflect or

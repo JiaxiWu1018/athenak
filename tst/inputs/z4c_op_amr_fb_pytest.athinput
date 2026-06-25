@@ -1,0 +1,97 @@
+# NRPIC Stage 5c pytest vehicle: Z4c puncture + live chi-AMR + gr_boris rings, FEEDBACK ON.
+# The determinism gate for adaptive + feedback (the case FATAL-guarded through 5b): particles
+# source Tmunu through the regrids; debug=1 makes the post-regrid ledger + the per-cycle
+# E-conservation identity fatal, and deposited Tmunu + per-tag positions and velocities
+# must be bitwise np-invariant through the regrids. The 3x3x3 root grid, shifted z-domain,
+# and inner ring at r=2.65M produce a genuine mixed-level seam with nonzero cross-level
+# deposition while keeping particles off child-block boundaries.
+
+<comment>
+problem   = NRPIC Stage 5c feedback+chi-AMR determinism gate (pytest)
+
+<job>
+basename  = op_fbamr
+
+<mesh>
+nghost = 4
+nx1    = 48
+x1min  = -8.0
+x1max  = 8.0
+ix1_bc = outflow
+ox1_bc = outflow
+nx2    = 48
+x2min  = -8.0
+x2max  = 8.0
+ix2_bc = outflow
+ox2_bc = outflow
+nx3    = 48
+x3min  = -7.5
+x3max  = 8.5
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<mesh_refinement>
+refinement          = adaptive
+max_nmb_per_rank    = 512
+num_levels          = 2
+refinement_interval = 2
+
+<amr_criterion0>
+method = user
+
+<z4c_amr>
+method  = chi
+chi_min = 0.2
+
+<z4c>
+lapse_harmonic  = 0.0
+lapse_oplog     = 2.0
+shift_eta       = 2.0
+diss            = 0.1
+chi_div_floor   = 0.00001
+damp_kappa1     = 0.02
+damp_kappa2     = 0.00
+nco             = 1
+co_0_x          = 0.
+co_0_type       = BH
+
+<time>
+evolution  = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim       = 6
+tlim       = 50.0
+ndiag      = 1
+
+<particles>
+particle_type = dust
+pusher = gr_boris
+init   = pgen
+feedback = true
+mass   = 1.0e-3
+cross_level_deposit = conservative
+debug  = 1
+destroy_log   = true
+
+<problem>
+pgen_name      = z4c_one_puncture
+punc_ADM_mass  = 1.0
+prtcl_np       = 16
+prtcl_r1       = 2.65
+prtcl_r2       = 5.0
+prtcl_orbit    = radial
+
+<output1>
+file_type   = pvtk
+variable    = prtcl_all
+dt          = 0.25
+
+<output2>
+file_type   = bin
+variable    = tmunu
+dt          = 0.25

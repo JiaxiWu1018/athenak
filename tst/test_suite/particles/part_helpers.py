@@ -5,11 +5,10 @@ Ports of the proven parsers/checks from the NRPIC Stage-3 research tooling
 death-record CSV reader, and assert-style wrappers (per-tag bitwise comparison,
 analytic drift check, death-ledger invariants and per-dump set algebra).
 
-All assertions are made on artifacts (exit codes, pvtk dumps, the death CSV) --
-testutils funnels every run's stdout into one shared log file, so stdout is not
-usable for per-run checks. With <particles> debug=1 the in-code per-cycle validator
-makes any migration/conservation violation fatal, so a nonzero exit code (run_args
-raises) is the per-cycle oracle.
+Assertions use both output artifacts and the exact section each command appends to
+testutils' shared log. With <particles> debug=1 the in-code per-cycle validator makes
+any migration/conservation violation fatal, while the captured log section proves that
+the intended cross-level and topology-changing paths actually ran.
 """
 import glob
 import os
@@ -53,11 +52,17 @@ def run_args(args, threads=1):
     """mpirun -np <threads> ./athena <args>, via testutils.run_command (shared log).
 
     Unlike testutils.run/mpi_run this does not hardcode '-i', so restart runs ('-r')
-    and run-dir runs ('-d') are expressible. Raises on nonzero exit.
+    and run-dir runs ('-d') are expressible. Returns this command's exact appended log
+    section and raises on nonzero exit.
     """
     cmd = ["mpirun", "-np", str(threads), "./athena"] + args
+    start = os.path.getsize(testutils.LOG_FILE_PATH) \
+        if os.path.exists(testutils.LOG_FILE_PATH) else 0
     if not testutils.run_command(cmd):
         raise RuntimeError(f"athena failed: {' '.join(cmd)}")
+    with open(testutils.LOG_FILE_PATH, "rb") as f:
+        f.seek(start)
+        return f.read().decode(errors="replace")
 
 
 def rank_counts(want):
@@ -132,6 +137,90 @@ def pick_dump(d, sel, other_time=None):
     pytest.fail(f"bad pick selector '{sel}'")
 
 
+# ----------------------------- Tmunu .bin parsing (refinement / bitwise oracle)
+def _bin_header(f):
+    """Read the v1.1 bin preamble from open file f, leaving it at the first block record.
+    Returns (time, loc_bytes, var_bytes, nvars). Format: vis/python/bin_convert.py."""
+    f.seek(0)
+    magic = f.readline().split()
+    assert magic and magic[0] == b"Athena" and magic[-1].split(b"=")[-1] == b"1.1", \
+        "not an Athena v1.1 binary dump"
+    hp = {}
+    for _ in range(int(f.readline().split(b"=")[-1]) - 1):
+        k, v = f.readline().decode().split("=", 1)
+        hp[k.strip()] = v.strip()
+    nvars = int(f.readline().split(b"=")[-1])
+    f.readline()                                    # variable-name line
+    f.seek(int(f.readline().split(b"=")[-1]), 1)    # skip the <mesh>/<meshblock> text
+    return (float(hp["time"]), int(hp["size of location"]),
+            int(hp["size of variable"]), nvars)
+
+
+def read_bin_levels(fp):
+    """(time, levels[n_mbs]) from a v1.1 binary dump -- header-only walk (each block's
+    field data is seeked past). Proves refinement occurred / time-matches dumps."""
+    levels = []
+    with open(fp, "rb") as f:
+        f.seek(0, 2)
+        filesize = f.tell()
+        time, locb, varb, nvars = _bin_header(f)
+        while f.tell() < filesize:
+            idx = struct.unpack("=6i", f.read(24))      # mb_index (i/j/k start,end)
+            levels.append(struct.unpack("=4i", f.read(16))[3])   # mb_logical[3] = level
+            f.seek(6 * locb, 1)                         # skip geometry
+            ncell = (idx[1] - idx[0] + 1) * (idx[3] - idx[2] + 1) * (idx[5] - idx[4] + 1)
+            f.seek(ncell * nvars * varb, 1)             # skip field data
+        assert f.tell() == filesize, f"{fp}: bin walk misaligned (format drift?)"
+    return time, np.array(levels)
+
+
+def read_bin_fields(fp):
+    """(time, {logical-loc -> raw field bytes}) -- the deposited-Tmunu payload per block,
+    keyed by logical location so two dumps compare independent of block write order and of
+    the ASCII header (a restart echoes different launch metadata, but the deposited field
+    is identical)."""
+    blocks = {}
+    with open(fp, "rb") as f:
+        f.seek(0, 2)
+        filesize = f.tell()
+        time, locb, varb, nvars = _bin_header(f)
+        while f.tell() < filesize:
+            idx = struct.unpack("=6i", f.read(24))
+            lloc = struct.unpack("=4i", f.read(16))
+            f.seek(6 * locb, 1)                         # skip geometry
+            ncell = (idx[1] - idx[0] + 1) * (idx[3] - idx[2] + 1) * (idx[5] - idx[4] + 1)
+            blocks[lloc] = f.read(ncell * nvars * varb)
+        assert f.tell() == filesize, f"{fp}: bin walk misaligned (format drift?)"
+    return time, blocks
+
+
+def tmunu_dumps(d):
+    """All Tmunu bin dumps in a run dir, sorted (consolidated from both test files)."""
+    fs = sorted(glob.glob(os.path.join(d, "bin", "*.tmunu.*.bin")))
+    if not fs:
+        pytest.fail(f"no tmunu bin dumps in {d}")
+    return fs
+
+
+def tmunu_time(fp):
+    """Dump time from a Tmunu bin header (for restart time-matching)."""
+    return read_bin_levels(fp)[0]
+
+
+def pick_tmunu(d, sel, other_time=None):
+    """Select a Tmunu dump: last | match (= other_time). Restart shifts file NUMBERS, so a
+    restart comparison must match by time -- as pick_dump does for particle dumps."""
+    fs = tmunu_dumps(d)
+    if sel == "last":
+        return fs[-1]
+    if sel == "match":
+        for f in fs:
+            if tmunu_time(f) == other_time:
+                return f
+        pytest.fail(f"no tmunu dump in {d} with time {other_time!r}")
+    pytest.fail(f"bad tmunu selector '{sel}'")
+
+
 # --------------------------------------------------------------- death CSV (proven port)
 def read_death_csv(path):
     """Parse one <basename>.prtcl_destroy.csv into a list of dict rows."""
@@ -158,19 +247,71 @@ def death_key(r):
 
 # ---------------------------------------------------------------------------- asserts
 def assert_bitwise(fa, fb):
-    """Per-tag bitwise position equality between two dumps, plus dump-time equality
-    and tag-SET equality (catches re-tagging as well as divergence)."""
-    ta, pa, _, _, taga = read_part_vtk(fa)
-    tb, pb, _, _, tagb = read_part_vtk(fb)
+    """Per-tag bitwise position AND velocity equality between two dumps, plus dump-time
+    equality and tag-SET equality (catches re-tagging as well as divergence). GID is
+    intentionally not compared -- it is decomposition- and restart-dependent."""
+    ta, pa, va, _, taga = read_part_vtk(fa)
+    tb, pb, vb, _, tagb = read_part_vtk(fb)
     assert ta == tb, f"dump times differ: {ta} vs {tb} ({fa} vs {fb})"
     ia, ib = np.argsort(taga), np.argsort(tagb)
     assert np.array_equal(taga[ia], tagb[ib]), f"tag sets differ ({fa} vs {fb})"
-    dmax = np.abs(pa[ia] - pb[ib]).max() if len(taga) else 0.0
-    assert dmax == 0.0, f"not bitwise: max |dpos| = {dmax} ({fa} vs {fb})"
+    dpos = np.abs(pa[ia] - pb[ib]).max() if len(taga) else 0.0
+    dvel = np.abs(va[ia] - vb[ib]).max() if len(taga) else 0.0
+    assert dpos == 0.0, f"not bitwise: max |dpos| = {dpos} ({fa} vs {fb})"
+    assert dvel == 0.0, f"not bitwise: max |dvel| = {dvel} ({fa} vs {fb})"
 
 
 def assert_last_dumps_bitwise(da, db):
     assert_bitwise(pick_dump(da, "last"), pick_dump(db, "last"))
+
+
+def assert_tmunu_bitwise(fa, fb):
+    """Bitwise identity of the deposited-Tmunu FIELD payload (per MeshBlock, keyed by
+    logical location) -- NOT the ASCII header, which carries launch metadata that differs
+    across a restart even when the field is identical. It is decomposition-invariant; a
+    broken or stale redeposition changes the field bytes."""
+    ta, ba = read_bin_fields(fa)
+    tb, bb = read_bin_fields(fb)
+    assert ta == tb, f"tmunu dump times differ: {ta} vs {tb} ({fa} vs {fb})"
+    assert ba.keys() == bb.keys(), f"tmunu mesh structure differs ({fa} vs {fb})"
+    for k in ba:
+        assert ba[k] == bb[k], f"tmunu field not bitwise at logical {k} ({fa} vs {fb})"
+
+
+def assert_tmunu_last_bitwise(da, db):
+    assert_tmunu_bitwise(pick_tmunu(da, "last"), pick_tmunu(db, "last"))
+
+
+def assert_refined(d):
+    """Prove a single Tmunu dump contains a genuine mixed-level leaf mesh.
+
+    Merely seeing level 0 in an early dump and level 1 in a later uniformly refined dump
+    is not enough: that has no coarse-fine interface and makes cross-level checks vacuous.
+    """
+    per_dump = []
+    for fp in tmunu_dumps(d):
+        levels = set(read_bin_levels(fp)[1].tolist())
+        per_dump.append((os.path.basename(fp), sorted(levels)))
+        if len(levels) > 1:
+            return
+    pytest.fail(f"no mixed-level Tmunu dump in {d}: {per_dump} "
+                f"(no genuine coarse-fine interface was exercised)")
+
+
+def assert_cross_level(log):
+    """Require at least one nonzero cross-level deposition count in this run segment."""
+    counts = [int(v) for v in re.findall(r"cross_level=(\d+)", log)]
+    assert counts, "run log contains no cross_level diagnostics"
+    assert max(counts) > 0, f"cross-level deposition stayed zero: {counts}"
+
+
+def assert_regridded(log):
+    """Require this run segment to create or delete at least one MeshBlock."""
+    changes = [(int(a), int(b)) for a, b in re.findall(
+        r"(\d+) MeshBlocks created,\s*(\d+) deleted by AMR", log)]
+    assert changes, "run log contains no AMR topology summary"
+    assert any(created or deleted for created, deleted in changes), \
+        f"AMR made no topology change in this run segment: {changes}"
 
 
 def assert_analytic_drift(d, xmin=-0.5, xmax=0.5, tol=5e-7):

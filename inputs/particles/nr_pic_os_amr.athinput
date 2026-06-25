@@ -1,0 +1,128 @@
+# NRPIC Stage 5c HEADLINE -- Oppenheimer-Snyder dust collapse with LIVE adaptive mesh
+# refinement driven by the Z4c metric (chi criterion) and particle FEEDBACK. The dust ball
+# (R0 = 5M, momentarily at rest) collapses; the conformal factor chi drops as the core
+# densifies, so chi-AMR refines the collapsing core during infall and the vacuum puncture
+# that forms after the dust excises (chi -> 0 at the puncture keeps refinement active
+# post-excision -- a metric criterion does this, a particle-density one would not). The
+# particles survive the regrids (Stage 5a redistribution), deposit their stress-energy
+# across the chi-created coarse-fine seams (Stage 5b scheme A, exact E-conservation), and
+# source the Z4c spacetime through the regrids (Stage 5c). Validate against the analytic OS
+# cycloid (central density rho_c) and the Staley et al. 2012 central lapse alpha_c, bitwise
+# np-invariant through the regrids. debug=1 makes the post-regrid containment + ledger + the
+# per-cycle E-conservation identity fatal on any violation.
+#
+# Build: cmake -S . -B build_os -DAthena_ENABLE_MPI=ON -DPROBLEM=nr_pic_os && \
+#        cmake --build build_os -j2
+# Small grid for this serial Mac; bump nx / os_lattice_n / num_levels on a GPU cluster.
+
+<comment>
+problem   = NRPIC Stage 5c: OS dust collapse + live chi-AMR + feedback (the headline)
+
+<job>
+basename  = os_amr
+
+<mesh>
+nghost = 4
+nx1    = 48            # dx_coarse = 16/48 = 1/3 M
+x1min  = -8.0
+x1max  = 8.0
+ix1_bc = outflow       # z4c Sommerfeld-type radiative outer condition
+ox1_bc = outflow
+
+nx2    = 48
+x2min  = -8.0
+x2max  = 8.0
+ix2_bc = outflow
+ox2_bc = outflow
+
+nx3    = 48
+x3min  = -8.0
+x3max  = 8.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 16              # 3 blocks/dim at root
+nx2 = 16
+nx3 = 16
+
+<mesh_refinement>
+refinement          = adaptive
+max_nmb_per_rank    = 256     # sizes the per-block arrays (incl. the gr_boris *_last metric
+                              # snapshots) -> the dominant memory knob; keep modest on this Mac
+num_levels          = 2       # root + 1 level: caps blocks at 8x(root) regardless of chi_min;
+                              # bump (+ raise max_nmb_per_rank) on a GPU cluster for the puncture
+refinement_interval = 8       # check/regrid cadence (cycles); keeps regrid cost modest
+
+<amr_criterion0>
+method = user                 # dispatches to nr_pic_os's RefinementCondition -> pamr->Refine
+
+<z4c_amr>
+method  = chi
+chi_min = 0.55                # OS center chi ~ 0.70 at t=0; the 1+log lapse freezes the core,
+                              # so chi asymptotes ~0.45-0.5 -- 0.55 refines the densifying core
+                              # mid-collapse (chi is minimal at the center, so it stays
+                              # localized). On a cluster use a lower threshold + more levels to
+                              # resolve the puncture; too high a threshold over-refines.
+
+<time>
+evolution  = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim       = 200              # CLI-override; enough to reach core collapse + several regrids
+tlim       = 40.0
+ndiag      = 1
+
+<z4c>
+# moving-puncture gauge (1+log slicing + Gamma-driver) with light constraint damping + KO
+# dissipation ON for a stable collapse through regrids (cf. the Stage-4b OS headline).
+lapse_harmonic  = 0.0
+lapse_oplog     = 2.0
+shift_eta       = 2.0
+diss            = 0.1
+chi_div_floor   = 0.00001
+damp_kappa1     = 0.02
+damp_kappa2     = 0.0
+
+<particles>
+particle_type = dust
+pusher        = gr_boris
+init          = pgen
+prtcl_init_file = none
+feedback      = true
+mass          = 1.0
+debug         = 1
+destroy_log   = true
+excise_radius = 0.0
+excise_x1     = 0.0
+excise_x2     = 0.0
+excise_x3     = 0.0
+excise_lapse  = 0.1            # kill-front: excise dust once the local lapse alpha < 0.1
+cross_level_deposit = conservative   # scheme A (default): exact E-conservation across seams
+
+<problem>
+os_mass               = 1.0
+os_radius_over_mass   = 5.0
+os_lattice_n          = 24     # ~7000 dust particles; bump on a cluster
+os_precollapsed_lapse = false
+
+<output1>
+file_type = hst            # global norms incl H-norm2 (Hamiltonian-constraint residual)
+dt        = 0.5
+
+<output2>
+file_type = pvtk           # particle snapshots (survival through regrids; bitwise np-inv)
+variable  = prtcl_all
+dt        = 0.5
+
+<output3>
+file_type = bin            # z=0 slice of Tmunu: deposited E (central density rho_c)
+variable  = tmunu
+slice_x3  = 0.0
+dt        = 0.5
+
+<output4>
+file_type = bin            # z=0 slice of Z4c: central lapse alpha_c (Staley comparison)
+variable  = z4c
+slice_x3  = 0.0
+dt        = 0.5

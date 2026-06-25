@@ -49,12 +49,17 @@
 #include "coordinates/adm.hpp"
 #include "coordinates/cell_locations.hpp"
 #include "z4c/z4c.hpp"
+#include "z4c/z4c_amr.hpp"     // Z4c_AMR def: RefinementCondition -> pamr->Refine
 #include "particles/particles.hpp"
 #include "pgen.hpp"
 
 #if MPI_PARALLEL_ENABLED
 #include <mpi.h>
 #endif
+
+// NRPIC Stage 5c: drives chi/dchi/Loehner-based adaptive refinement from the Z4c metric
+// (the z4c_one_puncture pattern; the OS-AMR headline). Defined at the bottom of the file.
+void RefinementCondition(MeshBlockPack *pmbp);
 
 namespace {
 
@@ -81,6 +86,10 @@ struct PrtclStage {
 
 void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   MeshBlockPack *pmbp = pmy_mesh_->pmb_pack;
+  // Enroll the metric-driven refinement criterion on BOTH fresh-start and restart (so a
+  // restarted segment keeps regridding). Dispatched by <amr_criterion> method = user; a
+  // no-op unless <mesh_refinement> refinement = adaptive (NRPIC Stage 5c, OS headline).
+  user_ref_func = RefinementCondition;
 
   if (pmbp->pz4c == nullptr) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
@@ -255,4 +264,16 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << std::endl;
   }
   return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn RefinementCondition
+//! \brief Drives adaptive mesh refinement from the Z4c metric (chi / dchi / Loehner,
+//! set in <z4c_amr>), via <amr_criterion> method = user. chi -> 0 at the puncture
+//! that forms after the dust excises, so chi-AMR tracks the collapsing core during infall
+//! AND keeps refinement active on the vacuum puncture post-excision (Stage 5c). pamr
+//! is always allocated by the Z4c ctor; pz4c is non-null (checked in UserProblem).
+
+void RefinementCondition(MeshBlockPack *pmbp) {
+  pmbp->pz4c->pamr->Refine(pmbp);
 }

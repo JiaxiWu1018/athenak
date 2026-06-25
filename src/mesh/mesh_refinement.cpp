@@ -137,28 +137,45 @@ void MeshRefinement::AdaptiveMeshRefinement(Driver *pdriver, ParameterInput *pin
       (void) pmbp->pz4c->NewTimeStep(pdriver, pdriver->nexp_stages);
     }
 
-    // NRPIC Stage 5a: refresh the gr_boris previous-step metric snapshots to the
-    // POST-regrid layout. adm_last/z4c_last are indexed by (PGID - gids); the regrid
-    // renumbered the blocks, so a wholesale deep_copy from the (remapped + prolongated)
-    // live arrays puts the correct block's metric in slot (PGID - gids). This sets
-    // step-n := step-(n+1) for the regrid cycle (a negligible O(dt) error in one geodesic
-    // midpoint substep) but is positionally correct. Mirrors the restart-path seed
-    // (driver.cpp): call Z4cToADM FIRST, because for a pure-Z4c run the
-    // InitBoundaryValuesAndPrimitives does NOT rederive u_adm (only its dyngr branch
-    // does), so otherwise u_adm holds pre-regrid data and the next gr_boris push reads a
-    // wrong-block metric -> NaN. Snapshots are nmb_maxperrank-sized (fixed), no realloc.
+    // NRPIC Stage 5a/5c: after a regrid, refresh the particle-side metric state to the
+    // POST-regrid block layout. Two pieces, both keyed on the (PGID - gids) indexing that
+    // the regrid renumbering invalidated:
+    //  (1) [5a] gr_boris previous-step snapshots adm_last/z4c_last -- a wholesale
+    //      deep_copy from the (remapped + prolongated) live arrays puts the correct
+    //      block's metric in slot (PGID - gids). Sets step-n := step-(n+1) for the regrid
+    //      cycle (a negligible O(dt) error in one geodesic midpoint substep) but is
+    //      positionally correct.
+    //  (2) [5c] FEEDBACK: the Tmunu array is recomputed every cycle and is NEVER
+    //      prolongated by the regrid, so it still holds the PRE-regrid block layout. The
+    //      next cycle's Z4c CalcRHS would source the metric with that stale, wrong-block
+    //      Tmunu (only feedback consumes Tmunu) -> corrupted metric -> the gr_boris fixed
+    //      point diverges at the first regrid. Re-deposit here, on the new grid, so
+    //      CalcRHS sees a correct Tmunu. Reuses the conservation-exact scheme-A deposit
+    //      (bitwise np-invariant; the debug=1 identity asserts conservation at the seam).
+    // Z4cToADM must run FIRST (a pure-Z4c run's InitBoundaryValuesAndPrimitives does NOT
+    // rederive u_adm, only its dyngr branch does) -- it feeds BOTH the gr_boris snapshot
+    // and the re-deposit's metric/energy reads. Snapshots are nmb_maxperrank-sized.
     particles::Particles *ppart = pmbp->ppart;
-    if (ppart != nullptr && ppart->pusher == ParticlesPusher::gr_boris) {
-      if (pmbp->pz4c != nullptr) {
+    if (ppart != nullptr) {
+      bool is_grb = (ppart->pusher == ParticlesPusher::gr_boris);
+      if ((is_grb || ppart->feedback) && pmbp->pz4c != nullptr) {
         pmbp->pz4c->Z4cToADM(pmbp);   // rederive u_adm from the prolongated u0
-        Kokkos::deep_copy(DevExeSpace(), ppart->z4c_last, pmbp->pz4c->u0);
       }
-      if (pmbp->padm != nullptr) {
-        Kokkos::deep_copy(DevExeSpace(), ppart->adm_last, pmbp->padm->u_adm);
+      if (is_grb) {
+        if (pmbp->pz4c != nullptr) {
+          Kokkos::deep_copy(DevExeSpace(), ppart->z4c_last, pmbp->pz4c->u0);
+        }
+        if (pmbp->padm != nullptr) {
+          Kokkos::deep_copy(DevExeSpace(), ppart->adm_last, pmbp->padm->u_adm);
+        }
+        if (pmbp->pmhd != nullptr) {
+          Kokkos::deep_copy(DevExeSpace(), ppart->w0_last, pmbp->pmhd->w0);
+          Kokkos::deep_copy(DevExeSpace(), ppart->bcc0_last, pmbp->pmhd->bcc0);
+        }
       }
-      if (pmbp->pmhd != nullptr) {
-        Kokkos::deep_copy(DevExeSpace(), ppart->w0_last, pmbp->pmhd->w0);
-        Kokkos::deep_copy(DevExeSpace(), ppart->bcc0_last, pmbp->pmhd->bcc0);
+      if (ppart->feedback) {
+        (void) ppart->EnergyCalculation(pdriver, pdriver->nexp_stages);
+        (void) ppart->SetPrtclTmunu(pdriver, pdriver->nexp_stages);
       }
     }
 
@@ -583,12 +600,15 @@ void MeshRefinement::RedistAndRefineMeshBlocks(ParameterInput *pin, int nnew, in
   // NRPIC Stage 5a (relabel). With the OLD MeshBlock geometry (mb_size, for the refined-
   // child half-tests) and the (oldtonew / reconciled refine_flag / new_rank_eachmb) maps
   // all still live, rewrite every particle's PGID from its old block's fate into NEW gid
-  // space and build the cross-rank sendlist. Feedback is OFF in Stage 5a (cross-level
-  // deposition is Stage 5b), matching the relaxed ctor guard. The movers are SHIPPED
-  // below, after the new MeshBlockPack gids/ranks are installed. old_gids captured here
-  // because pmb_pack->gids is overwritten with the new value further down.
+  // space and build the cross-rank sendlist. The movers are SHIPPED below, after the new
+  // MeshBlockPack gids/ranks are installed. old_gids captured here because pmb_pack->gids
+  // is overwritten with the new value further down. NRPIC Stage 5c: this runs for
+  // FEEDBACK runs too (5a gated it to feedback-off, matching the then-active ctor guard).
+  // The relabel/ship is feedback-agnostic -- it only rewrites PGID, preserving PTAG --
+  // and the Stage-5c post-regrid Tmunu re-deposit (below) + the cross-level scheme (5b)
+  // make adaptive+feedback correct, so that ctor guard is retired.
   particles::Particles *ppart = pm->pmb_pack->ppart;
-  bool do_prtcl_amr = (ppart != nullptr) && (!ppart->feedback);
+  bool do_prtcl_amr = (ppart != nullptr);
   int old_gids_amr = pm->pmb_pack->gids;
   if (do_prtcl_amr) {
     DualArray1D<int> oldtonew_dev("oldtonew_amr", old_nmb);
