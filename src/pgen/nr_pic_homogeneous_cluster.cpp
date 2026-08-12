@@ -68,6 +68,21 @@
 //!                          momentum.  NOTE: this variant deliberately introduces
 //!                          co-located particles and exact local velocity pairing;
 //!                          it is kept separate from monte_carlo.
+//!   stratified_antithetic  hybrid production sampler from the 2026-08-01
+//!                          sampler-causality campaign: one radial CDF draw per
+//!                          equal-rest-mass stratum with one stratum per
+//!                          antithetic PAIR (N/2 strata, u = F^{-1}((p+eta)/(N/2))
+//!                          for pair p), one uniform S^2 direction and one uniform
+//!                          tangent angle chi per pair, and two co-located
+//!                          equal-mass particles with tangent vectors +t and -t.
+//!                          Combines the stratified sampler's radial fidelity with
+//!                          the antithetic sampler's exact pairwise momentum and
+//!                          angular-momentum cancellation, with no octahedral or
+//!                          grid-aligned angular symmetry.  Because the stratum
+//!                          index equals the pair index, the tag group
+//!                          tag/(4*nangular) is a contiguous equal-rest-mass
+//!                          radial band: the Lagrangian shell ledger tracks true
+//!                          initial-radius cohorts for this sampler.
 //! All random draws come from a stateless counter-based hash (SplitMix64) keyed by
 //! (cluster_seed, global particle tag or site id, stream), so every realization is
 //! independent of the MPI decomposition and particle construction order.  No net
@@ -180,7 +195,8 @@ enum class ClusterSampler {
   angular_random,          // C: deterministic shells, random S^2 + tangent angles
   monte_carlo,             // D: fully independent Monte Carlo
   stratified_random,       // E: per-particle radial strata, random angles
-  monte_carlo_antithetic   // F: paired +-t Monte Carlo (co-located pairs)
+  monte_carlo_antithetic,  // F: paired +-t Monte Carlo (co-located pairs)
+  stratified_antithetic    // G: per-pair radial strata + random angles + +-t pairs
 };
 
 ClusterSampler ParseClusterSampler(const std::string &name) {
@@ -192,9 +208,12 @@ ClusterSampler ParseClusterSampler(const std::string &name) {
   if (name == "monte_carlo_antithetic") {
     return ClusterSampler::monte_carlo_antithetic;
   }
+  if (name == "stratified_antithetic") {
+    return ClusterSampler::stratified_antithetic;
+  }
   Fatal("Unknown cluster_sampler '" + name + "'. Options: shell_fibonacci, "
         "radial_random, angular_random, monte_carlo, stratified_random, "
-        "monte_carlo_antithetic.");
+        "monte_carlo_antithetic, stratified_antithetic.");
 }
 
 void ShellRotation(std::uint64_t seed, int shell, Real rot[3][3]) {
@@ -1036,7 +1055,11 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       (sampler == ClusterSampler::angular_random ||
        sampler == ClusterSampler::monte_carlo ||
        sampler == ClusterSampler::stratified_random ||
-       sampler == ClusterSampler::monte_carlo_antithetic);
+       sampler == ClusterSampler::monte_carlo_antithetic ||
+       sampler == ClusterSampler::stratified_antithetic);
+  bool antithetic_pairs =
+      (sampler == ClusterSampler::monte_carlo_antithetic ||
+       sampler == ClusterSampler::stratified_antithetic);
 
   if (!independent_particles) {
   for (int ir = 0; ir < nradial; ++ir) {
@@ -1172,11 +1195,16 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     //   C (angular_random):   u from the deterministic midpoint shell quantile,
     //   D (monte_carlo):      u = F^{-1}(U), U uniform per particle,
     //   E (stratified_random):u = F^{-1}((tag+eta)/N), one draw per stratum,
-    //   F (antithetic):       u = F^{-1}(U) shared by the +-t pair.
+    //   F (antithetic):       u = F^{-1}(U) shared by the +-t pair,
+    //   G (strat_antithetic): u = F^{-1}((pair+eta)/(N/2)), one equal-rest-mass
+    //                         stratum per +-t pair, radius/direction/chi shared
+    //                         within the pair.
     // Tags keep the historical layout tag = 4*(ir*nangular+ia)+idir, so for C the
-    // tag group ir is still an exact radial shell and for E it is an equal-rest-
-    // mass radial band; for D and F the group index is only a label.
+    // tag group ir is still an exact radial shell and for E and G it is an
+    // equal-rest-mass radial band (for G because stratum index == pair index ==
+    // tag/2 is monotone in tag); for D and F the group index is only a label.
     Real inv_ntotal = 1.0/static_cast<Real>(npart_total);
+    Real inv_npairs = 2.0/static_cast<Real>(npart_total);
     for (int ir = 0; ir < nradial; ++ir) {
       RadialState shell_state;
       if (sampler == ClusterSampler::angular_random) {
@@ -1189,7 +1217,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
         for (int idir = 0; idir < 4; ++idir) {
           int tag = 4*(ir*nangular + ia) + idir;
           std::uint64_t draw_id = static_cast<std::uint64_t>(
-              (sampler == ClusterSampler::monte_carlo_antithetic) ? tag/2 : tag);
+              antithetic_pairs ? tag/2 : tag);
           RadialState s;
           switch (sampler) {
             case ClusterSampler::angular_random:
@@ -1199,6 +1227,15 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               s = EvalRadial(InvertCDF(profile,
                   (static_cast<Real>(tag) +
                    HashUnitId(seed64, draw_id, 0))*inv_ntotal));
+              break;
+            case ClusterSampler::stratified_antithetic:
+              // One equal-probability stratum per pair: pair index tag/2 is the
+              // stratum, so u = F^{-1}((pair + eta)/(N/2)) with eta drawn once
+              // per pair (stream 0 keyed by draw_id = pair).  Both pair members
+              // share the radius exactly.
+              s = EvalRadial(InvertCDF(profile,
+                  (static_cast<Real>(draw_id) +
+                   HashUnitId(seed64, draw_id, 0))*inv_npairs));
               break;
             default:  // monte_carlo, monte_carlo_antithetic
               s = EvalRadial(InvertCDF(profile, HashUnitId(seed64, draw_id, 0)));
@@ -1217,8 +1254,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
           // The antithetic partner (odd tag) is co-located with exactly the
           // opposite tangent vector: exact pairwise momentum and angular-
           // momentum cancellation, by construction.
-          Real sign = (sampler == ClusterSampler::monte_carlo_antithetic &&
-                       (tag % 2) == 1) ? -1.0 : 1.0;
+          Real sign = (antithetic_pairs && (tag % 2) == 1) ? -1.0 : 1.0;
           Real tvec[3] = {
             sign*(cchi*eth[0] + schi*eph[0]),
             sign*(cchi*eth[1] + schi*eph[1]),
@@ -1331,7 +1367,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
         : (octahedral_quiet_start ? std::string("octahedral-fibonacci")
                                   : std::string("fibonacci"));
     int positions_per_tag_group = independent_particles
-        ? ((sampler == ClusterSampler::monte_carlo_antithetic) ? 2 : 4) : 1;
+        ? (antithetic_pairs ? 2 : 4) : 1;
     std::cout << std::setprecision(16)
               << "Homogeneous tangential-orbit cluster initialized\n"
               << "  mode=" << (live ? "live-z4c" : "fixed-adm")
