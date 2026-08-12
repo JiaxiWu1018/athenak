@@ -624,8 +624,14 @@ struct ClusterFieldHealth {
   Real density_max = 0.0;
 };
 
+// The deposited matter source only exists when the field is live: MeshBlockPack
+// allocates Tmunu for live z4c with feedback (or dyn_grmhd), so a fixed <adm>
+// background with feedback=false leaves ptmunu null.  The density columns are
+// then reported as NaN rather than dereferencing it; the lapse columns and the
+// whole Lagrangian shell ledger remain available in both modes.
 ClusterFieldHealth MeasureClusterFieldHealth(Mesh *pm) {
   ClusterFieldHealth result;
+  bool have_matter = (pm->pmb_pack->ptmunu != nullptr);
   auto &indcs = pm->pmb_pack->pmesh->mb_indcs;
   int is = indcs.is, js = indcs.js, ks = indcs.ks;
   int nx1 = indcs.nx1, nx2 = indcs.nx2, nx3 = indcs.nx3;
@@ -634,7 +640,10 @@ ClusterFieldHealth MeasureClusterFieldHealth(Mesh *pm) {
   int nmkji = pm->pmb_pack->nmb_thispack*nkji;
   auto &size = pm->pmb_pack->pmb->mb_size;
   auto &adm = pm->pmb_pack->padm->adm;
-  auto &matter = pm->pmb_pack->ptmunu->tmunu;
+  // Aliasing the ADM view when there is no matter keeps the device lambdas free
+  // of a null capture; the matter columns are masked out on the host below.
+  auto matter_E = have_matter ? pm->pmb_pack->ptmunu->tmunu.E
+                              : pm->pmb_pack->padm->adm.alpha;
   Real cx = cluster_center_history[0];
   Real cy = cluster_center_history[1];
   Real cz = cluster_center_history[2];
@@ -649,7 +658,7 @@ ClusterFieldHealth MeasureClusterFieldHealth(Mesh *pm) {
     int j = (idx - m*nkji - k*nji)/nx1;
     int i = idx - m*nkji - k*nji - j*nx1;
     k += ks; j += js; i += is;
-    local_density_max = fmax(local_density_max, matter.E(m,k,j,i));
+    local_density_max = fmax(local_density_max, matter_E(m,k,j,i));
     local_alpha_min = fmin(local_alpha_min, adm.alpha(m,k,j,i));
   }, Kokkos::Max<Real>(density_max), Kokkos::Min<Real>(alpha_min));
 
@@ -669,7 +678,7 @@ ClusterFieldHealth MeasureClusterFieldHealth(Mesh *pm) {
     if (x*x + y*y + z*z <= 0.80*dx*dx) {
       array_sum::GlobalSum sample;
       sample.the_array[0] = adm.alpha(m,k,j,i);
-      sample.the_array[1] = matter.E(m,k,j,i);
+      sample.the_array[1] = matter_E(m,k,j,i);
       sample.the_array[2] = 1.0;
       values += sample;
     }
@@ -697,13 +706,15 @@ ClusterFieldHealth MeasureClusterFieldHealth(Mesh *pm) {
     center_values[0] = center_values[1] = center_values[2] = 0.0;
   }
 #endif
+  Real no_matter = std::numeric_limits<Real>::quiet_NaN();
   if (global_variable::my_rank == 0 && center_values[2] > 0.0) {
     result.alpha_center = center_values[0]/center_values[2];
-    result.density_center = center_values[1]/center_values[2];
+    result.density_center =
+        have_matter ? center_values[1]/center_values[2] : no_matter;
   }
   if (global_variable::my_rank == 0) {
     result.alpha_min = alpha_min;
-    result.density_max = density_max;
+    result.density_max = have_matter ? density_max : no_matter;
   }
   return result;
 }
