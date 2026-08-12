@@ -40,6 +40,39 @@
 //!   cluster_rotation_enable, cluster_rotation_axis_x, cluster_rotation_axis_y,
 //!   cluster_rotation_axis_z, cluster_rotation_angle
 //!   cluster_center_x1, cluster_center_x2, cluster_center_x3
+//!   cluster_sampler
+//!
+//! cluster_sampler selects the finite-N realization of the SAME continuum measure
+//!   p(u) du ~ u^2 du/[W(u) sqrt(1-2C u^2)],   u = r_s/R,
+//! with tangential speed v(u) and stored covariant u_i = A W v t_i unchanged:
+//!   shell_fibonacci        (default) deterministic midpoint radial quantiles,
+//!                          Fibonacci/octahedral angular sites, +-e_theta/+-e_phi
+//!                          quartets.  Bitwise-identical to the historical start.
+//!   radial_random          independent radial CDF draw per angular site; the
+//!                          Fibonacci/octahedral angular sites, per-shell-group
+//!                          rotations, and tangent quartets are retained.
+//!   angular_random         deterministic midpoint radial quantiles (exact shells
+//!                          retained); every particle gets an independent uniform
+//!                          direction on S^2 and an independent uniform tangent
+//!                          angle chi, t = cos(chi) e_theta + sin(chi) e_phi.
+//!   monte_carlo            fully independent per-particle radial CDF, S^2
+//!                          direction, and tangent-angle draws.
+//!   stratified_random      one radial CDF draw per equal-rest-mass stratum
+//!                          (N strata, one particle each, u = F^{-1}((tag+eta)/N)),
+//!                          with independent random S^2 direction and tangent
+//!                          angle per particle.
+//!   monte_carlo_antithetic balanced Monte Carlo: particles are created in
+//!                          co-located pairs sharing one radial/direction/chi draw
+//!                          with exactly opposite tangent vectors (+t, -t).  Each
+//!                          pair has exactly zero net momentum and angular
+//!                          momentum.  NOTE: this variant deliberately introduces
+//!                          co-located particles and exact local velocity pairing;
+//!                          it is kept separate from monte_carlo.
+//! All random draws come from a stateless counter-based hash (SplitMix64) keyed by
+//! (cluster_seed, global particle tag or site id, stream), so every realization is
+//! independent of the MPI decomposition and particle construction order.  No net
+//! momentum or angular momentum is subtracted for any sampler; the initialization
+//! banner reports the realized totals.
 
 #include <algorithm>
 #include <climits>
@@ -128,6 +161,40 @@ Real HashUnit(std::uint64_t seed, int shell, int stream) {
   // Use the upper 53 bits so the conversion is exact on IEEE double builds.
   return static_cast<Real>(SplitMix64(key) >> 11) /
          static_cast<Real>(UINT64_C(9007199254740992));
+}
+
+// Counter-based uniform variate on [0,1) keyed by (seed, 64-bit id, stream).
+// Used by the randomized samplers with id = global particle tag (or site/pair id),
+// so draws are reproducible and independent of MPI decomposition and construction
+// order.  Two SplitMix64 rounds decorrelate sequential ids and streams.
+Real HashUnitId(std::uint64_t seed, std::uint64_t id, std::uint64_t stream) {
+  std::uint64_t key = SplitMix64(seed + UINT64_C(0x9e3779b97f4a7c15)*(id + 1));
+  key = SplitMix64(key ^ (UINT64_C(0xbf58476d1ce4e5b9)*(stream + 1)));
+  return static_cast<Real>(key >> 11) /
+         static_cast<Real>(UINT64_C(9007199254740992));
+}
+
+enum class ClusterSampler {
+  shell_fibonacci,         // A: deterministic shells + Fibonacci + quartets
+  radial_random,           // B: random radius per site, deterministic angles/quartets
+  angular_random,          // C: deterministic shells, random S^2 + tangent angles
+  monte_carlo,             // D: fully independent Monte Carlo
+  stratified_random,       // E: per-particle radial strata, random angles
+  monte_carlo_antithetic   // F: paired +-t Monte Carlo (co-located pairs)
+};
+
+ClusterSampler ParseClusterSampler(const std::string &name) {
+  if (name == "shell_fibonacci") { return ClusterSampler::shell_fibonacci; }
+  if (name == "radial_random") { return ClusterSampler::radial_random; }
+  if (name == "angular_random") { return ClusterSampler::angular_random; }
+  if (name == "monte_carlo") { return ClusterSampler::monte_carlo; }
+  if (name == "stratified_random") { return ClusterSampler::stratified_random; }
+  if (name == "monte_carlo_antithetic") {
+    return ClusterSampler::monte_carlo_antithetic;
+  }
+  Fatal("Unknown cluster_sampler '" + name + "'. Options: shell_fibonacci, "
+        "radial_random, angular_random, monte_carlo, stratified_random, "
+        "monte_carlo_antithetic.");
 }
 
 void ShellRotation(std::uint64_t seed, int shell, Real rot[3][3]) {
@@ -797,6 +864,9 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     AxisAngleRotation(rotation_axis, rotation_angle, cluster_rotation);
   }
   int seed = pin->GetOrAddInteger("problem", "cluster_seed", 1);
+  std::string sampler_name =
+      pin->GetOrAddString("problem", "cluster_sampler", "shell_fibonacci");
+  ClusterSampler sampler = ParseClusterSampler(sampler_name);
   Real center[3] = {
     pin->GetOrAddReal("problem", "cluster_center_x1", 0.0),
     pin->GetOrAddReal("problem", "cluster_center_x2", 0.0),
@@ -923,11 +993,39 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   Real particle_mass = cluster_particle_mass_history;
   Real golden = 0.5*(std::sqrt(5.0) - 1.0);
   Real global_j[3] = {0.0, 0.0, 0.0};
+  Real global_p[3] = {0.0, 0.0, 0.0};
   Real scalar_l = 0.0;
   Real energy0 = 0.0;
   Real max_quartet_p = 0.0;
   Real max_quartet_j = 0.0;
 
+  // Shared radial kinematics.  The arithmetic matches the historical per-shell
+  // expressions exactly so the default sampler remains bitwise unchanged.
+  struct RadialState {
+    Real rs, riso, conformal_a, x, v, w, umag, alpha;
+  };
+  auto EvalRadial = [&](Real u) {
+    RadialState s;
+    s.rs = radius*u;
+    s.riso = IsotropicRadius(s.rs, mass, r0, cnum);
+    s.conformal_a = (s.riso > 0.0) ? s.rs/s.riso :
+        cnum/(2.0*r0*r0*r0);
+    s.x = compactness*u*u;  // m(r_s)/r_s
+    s.v = xi*std::sqrt(s.x/(1.0 - 2.0*s.x));
+    s.w = 1.0/std::sqrt(1.0 - s.v*s.v);
+    s.umag = s.conformal_a*s.w*s.v;
+    s.alpha = lapse_prefactor*std::pow(1.0 - 2.0*s.x, -0.25);
+    return s;
+  };
+  std::uint64_t seed64 =
+      static_cast<std::uint64_t>(static_cast<std::uint32_t>(seed));
+  bool independent_particles =
+      (sampler == ClusterSampler::angular_random ||
+       sampler == ClusterSampler::monte_carlo ||
+       sampler == ClusterSampler::stratified_random ||
+       sampler == ClusterSampler::monte_carlo_antithetic);
+
+  if (!independent_particles) {
   for (int ir = 0; ir < nradial; ++ir) {
     Real probability = (ir + 0.5)/static_cast<Real>(nradial);
     Real u = InvertCDF(profile, probability);
@@ -946,6 +1044,21 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
 
     int nfibonacci = octahedral_quiet_start ? nangular/24 : nangular;
     for (int ia = 0; ia < nangular; ++ia) {
+      if (sampler == ClusterSampler::radial_random) {
+        // Sampler B: independent radial CDF draw per angular site.  The four
+        // quartet members remain co-located at the site radius; Fibonacci/
+        // octahedral angular sites, per-shell-group rotations, and tangent
+        // quartets are retained unchanged.
+        std::uint64_t site_id =
+            static_cast<std::uint64_t>(ir)*static_cast<std::uint64_t>(nangular)
+            + static_cast<std::uint64_t>(ia);
+        RadialState site_state =
+            EvalRadial(InvertCDF(profile, HashUnitId(seed64, site_id, 0)));
+        riso = site_state.riso;
+        umag = site_state.umag;
+        alpha = site_state.alpha;
+        w = site_state.w;
+      }
       int ifibonacci = octahedral_quiet_start ? ia/24 : ia;
       int igroup = octahedral_quiet_start ? ia % 24 : 0;
       Real cth = 1.0 - 2.0*(ifibonacci + 0.5)/
@@ -1021,6 +1134,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
           qmomentum[a] += particle_mass*vel[a];
           qangular[a] += particle_mass*lvec[a];
           global_j[a] += particle_mass*lvec[a];
+          global_p[a] += particle_mass*vel[a];
         }
         scalar_l += particle_mass*
             std::sqrt(lvec[0]*lvec[0] + lvec[1]*lvec[1] + lvec[2]*lvec[2]);
@@ -1034,6 +1148,121 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
                           qangular[2]*qangular[2]);
       max_quartet_p = std::max(max_quartet_p, qp);
       max_quartet_j = std::max(max_quartet_j, qj);
+    }
+  }
+  } else {
+    // Samplers C/D/E/F: every particle receives its own direction uniform on S^2
+    // and its own tangent angle chi, t = cos(chi) e_theta + sin(chi) e_phi, drawn
+    // from the counter-based hash keyed by the immutable global tag (or, for the
+    // antithetic variant, the pair id tag/2).  The radial measure is the same
+    // rest-mass CDF as the deterministic sampler:
+    //   C (angular_random):   u from the deterministic midpoint shell quantile,
+    //   D (monte_carlo):      u = F^{-1}(U), U uniform per particle,
+    //   E (stratified_random):u = F^{-1}((tag+eta)/N), one draw per stratum,
+    //   F (antithetic):       u = F^{-1}(U) shared by the +-t pair.
+    // Tags keep the historical layout tag = 4*(ir*nangular+ia)+idir, so for C the
+    // tag group ir is still an exact radial shell and for E it is an equal-rest-
+    // mass radial band; for D and F the group index is only a label.
+    Real inv_ntotal = 1.0/static_cast<Real>(npart_total);
+    for (int ir = 0; ir < nradial; ++ir) {
+      RadialState shell_state;
+      if (sampler == ClusterSampler::angular_random) {
+        Real probability = (ir + 0.5)/static_cast<Real>(nradial);
+        shell_state = EvalRadial(InvertCDF(profile, probability));
+      }
+      for (int ia = 0; ia < nangular; ++ia) {
+        Real qmomentum[3] = {0.0, 0.0, 0.0};
+        Real qangular[3] = {0.0, 0.0, 0.0};
+        for (int idir = 0; idir < 4; ++idir) {
+          int tag = 4*(ir*nangular + ia) + idir;
+          std::uint64_t draw_id = static_cast<std::uint64_t>(
+              (sampler == ClusterSampler::monte_carlo_antithetic) ? tag/2 : tag);
+          RadialState s;
+          switch (sampler) {
+            case ClusterSampler::angular_random:
+              s = shell_state;
+              break;
+            case ClusterSampler::stratified_random:
+              s = EvalRadial(InvertCDF(profile,
+                  (static_cast<Real>(tag) +
+                   HashUnitId(seed64, draw_id, 0))*inv_ntotal));
+              break;
+            default:  // monte_carlo, monte_carlo_antithetic
+              s = EvalRadial(InvertCDF(profile, HashUnitId(seed64, draw_id, 0)));
+              break;
+          }
+          Real cth = 1.0 - 2.0*HashUnitId(seed64, draw_id, 1);
+          Real sth = std::sqrt(std::max(static_cast<Real>(1.0) - cth*cth,
+                                        static_cast<Real>(0.0)));
+          Real phi = 2.0*M_PI*HashUnitId(seed64, draw_id, 2);
+          Real cph = std::cos(phi), sph = std::sin(phi);
+          Real n[3] = {sth*cph, sth*sph, cth};
+          Real eth[3] = {cth*cph, cth*sph, -sth};
+          Real eph[3] = {-sph, cph, 0.0};
+          Real chi = 2.0*M_PI*HashUnitId(seed64, draw_id, 3);
+          Real cchi = std::cos(chi), schi = std::sin(chi);
+          // The antithetic partner (odd tag) is co-located with exactly the
+          // opposite tangent vector: exact pairwise momentum and angular-
+          // momentum cancellation, by construction.
+          Real sign = (sampler == ClusterSampler::monte_carlo_antithetic &&
+                       (tag % 2) == 1) ? -1.0 : 1.0;
+          Real tvec[3] = {
+            sign*(cchi*eth[0] + schi*eph[0]),
+            sign*(cchi*eth[1] + schi*eph[1]),
+            sign*(cchi*eth[2] + schi*eph[2])
+          };
+          Real pos[3] = {
+            center[0] + s.riso*n[0],
+            center[1] + s.riso*n[1],
+            center[2] + s.riso*n[2]
+          };
+          Real vel[3] = {s.umag*tvec[0], s.umag*tvec[1], s.umag*tvec[2]};
+          if (rotation_enable) {
+            Real rel_unrotated[3] = {s.riso*n[0], s.riso*n[1], s.riso*n[2]};
+            Real rel_rotated[3];
+            Real vel_rotated[3];
+            Rotate(cluster_rotation, rel_unrotated, rel_rotated);
+            Rotate(cluster_rotation, vel, vel_rotated);
+            for (int a = 0; a < 3; ++a) {
+              pos[a] = center[a] + rel_rotated[a];
+              vel[a] = vel_rotated[a];
+            }
+          }
+          int mb = ppart->FindContainingMeshBlock(pos[0], pos[1], pos[2]);
+          if (mb >= 0) {
+            stage.Add(pos[0], pos[1], pos[2], vel[0], vel[1], vel[2],
+                      particle_mass, pmbp->gids + mb, tag);
+          }
+          Real rel[3] = {
+            pos[0] - center[0], pos[1] - center[1], pos[2] - center[2]
+          };
+          Real lvec[3] = {
+            rel[1]*vel[2] - rel[2]*vel[1],
+            rel[2]*vel[0] - rel[0]*vel[2],
+            rel[0]*vel[1] - rel[1]*vel[0]
+          };
+          for (int a = 0; a < 3; ++a) {
+            qmomentum[a] += particle_mass*vel[a];
+            qangular[a] += particle_mass*lvec[a];
+            global_j[a] += particle_mass*lvec[a];
+            global_p[a] += particle_mass*vel[a];
+          }
+          scalar_l += particle_mass*
+              std::sqrt(lvec[0]*lvec[0] + lvec[1]*lvec[1] + lvec[2]*lvec[2]);
+          energy0 += particle_mass*s.alpha*s.w;
+        }
+        // For these samplers the four tag-sharing particles are independent (or
+        // pairwise antithetic) draws, so this measures the per-group residual
+        // rather than an exact quadrature cancellation.
+        Real qp = std::sqrt(qmomentum[0]*qmomentum[0] +
+                            qmomentum[1]*qmomentum[1] +
+                            qmomentum[2]*qmomentum[2]);
+        Real qj = std::sqrt(qangular[0]*qangular[0] +
+                            qangular[1]*qangular[1] +
+                            qangular[2]*qangular[2]);
+        max_quartet_p = std::max(max_quartet_p, qp);
+        max_quartet_j = std::max(max_quartet_j, qj);
+      }
     }
   }
 
@@ -1081,6 +1310,15 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     Real jnorm = std::sqrt(global_j[0]*global_j[0] +
                            global_j[1]*global_j[1] +
                            global_j[2]*global_j[2]);
+    Real pnorm = std::sqrt(global_p[0]*global_p[0] +
+                           global_p[1]*global_p[1] +
+                           global_p[2]*global_p[2]);
+    std::string angular_description = independent_particles
+        ? std::string("random-s2")
+        : (octahedral_quiet_start ? std::string("octahedral-fibonacci")
+                                  : std::string("fibonacci"));
+    int positions_per_tag_group = independent_particles
+        ? ((sampler == ClusterSampler::monte_carlo_antithetic) ? 2 : 4) : 1;
     std::cout << std::setprecision(16)
               << "Homogeneous tangential-orbit cluster initialized\n"
               << "  mode=" << (live ? "live-z4c" : "fixed-adm")
@@ -1088,9 +1326,14 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << "  xi=" << xi << "\n"
               << "  N=" << npart_total << " (nradial=" << nradial
               << ", nangular=" << nangular << ", quartet=4)"
-              << "  angular_start="
-              << (octahedral_quiet_start ? "octahedral-fibonacci" : "fibonacci")
+              << "  angular_start=" << angular_description
               << "  seed=" << seed << "\n"
+              << "  sampler=" << sampler_name
+              << "  unique_positions_nominal="
+              << positions_per_tag_group*nsites << "\n"
+              << "  P_part/M=(" << global_p[0]/mass << ","
+              << global_p[1]/mass << "," << global_p[2]/mass << ")"
+              << "  |P_part|/M=" << pnorm/mass << "\n"
               << "  rigid_rotation="
               << (rotation_enable ? "enabled" : "disabled") << "\n";
     if (rotation_enable) {
