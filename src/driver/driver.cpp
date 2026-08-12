@@ -366,6 +366,22 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
     // (Tmunu is derived state, not in the restart file).
     if (ppart != nullptr && ppart->feedback) {
       (void) ppart->SetPrtclTmunu(this, 1);
+      // Particle Tmunu did not exist when particle problem generators converted their
+      // analytic ADM data to Z4c. Refresh the stored constraints now so the initial
+      // constraint output uses the same matter source as cycle 1.
+      if (pz4c != nullptr) {
+        int ng = pmesh->mb_indcs.ng;
+        switch (ng) {
+          case 2: pz4c->ADMConstraints<2>(pmesh->pmb_pack); break;
+          case 3: pz4c->ADMConstraints<3>(pmesh->pmb_pack); break;
+          case 4: pz4c->ADMConstraints<4>(pmesh->pmb_pack); break;
+          default:
+            std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                      << std::endl << "Z4c constraints support nghost=2,3,4 (got "
+                      << ng << ")" << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
+      }
     }
   }
 

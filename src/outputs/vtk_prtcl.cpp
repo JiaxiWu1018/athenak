@@ -58,6 +58,30 @@ void ParticleVTKOutput::LoadOutputData(Mesh *pm) {
   // Copy particle positions from device mirror to host output array
   Kokkos::deep_copy(outpart_rdata, d_outpart_rdata);
   Kokkos::deep_copy(outpart_idata, d_outpart_idata);
+  if (pp->gr_boris_diagnostics) {
+    Kokkos::realloc(outpart_du_dt, 3, npout_thisrank);
+    Kokkos::realloc(outpart_dL_dt, 3, npout_thisrank);
+    auto d_outpart_du_dt = Kokkos::create_mirror_view(
+        Kokkos::DefaultHostExecutionSpace(), outpart_du_dt);
+    auto d_outpart_dL_dt = Kokkos::create_mirror_view(
+        Kokkos::DefaultHostExecutionSpace(), outpart_dL_dt);
+    Kokkos::deep_copy(d_outpart_du_dt, pp->gr_boris_du_dt);
+    Kokkos::deep_copy(d_outpart_dL_dt, pp->gr_boris_dL_dt);
+    Kokkos::deep_copy(outpart_du_dt, d_outpart_du_dt);
+    Kokkos::deep_copy(outpart_dL_dt, d_outpart_dL_dt);
+    if (pp->gr_boris_live_monopole) {
+      Kokkos::realloc(outpart_raw_du_dt, 3, npout_thisrank);
+      Kokkos::realloc(outpart_raw_dL_dt, 3, npout_thisrank);
+      auto d_outpart_raw_du_dt = Kokkos::create_mirror_view(
+          Kokkos::DefaultHostExecutionSpace(), outpart_raw_du_dt);
+      auto d_outpart_raw_dL_dt = Kokkos::create_mirror_view(
+          Kokkos::DefaultHostExecutionSpace(), outpart_raw_dL_dt);
+      Kokkos::deep_copy(d_outpart_raw_du_dt, pp->gr_boris_raw_du_dt);
+      Kokkos::deep_copy(d_outpart_raw_dL_dt, pp->gr_boris_raw_dL_dt);
+      Kokkos::deep_copy(outpart_raw_du_dt, d_outpart_raw_du_dt);
+      Kokkos::deep_copy(outpart_raw_dL_dt, d_outpart_raw_dL_dt);
+    }
+  }
 }
 
 //----------------------------------------------------------------------------------------
@@ -284,6 +308,56 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
       }
     }
     header_offset += 3*pm->nprtcl_total*datasize;
+  }
+
+  // Optional instantaneous geodesic diagnostics. These arrays are recomputed after
+  // particle migration, so their row order is identical to the position/tag output.
+  if (pm->pmb_pack->ppart->gr_boris_diagnostics) {
+    const char *names[4] = {"prtcl_du_dt", "prtcl_dL_dt",
+                            "prtcl_raw_live_du_dt", "prtcl_raw_live_dL_dt"};
+    HostArray2D<Real> *arrays[4] = {
+        &outpart_du_dt, &outpart_dL_dt, &outpart_raw_du_dt, &outpart_raw_dL_dt};
+    int nvec = pm->pmb_pack->ppart->gr_boris_live_monopole ? 4 : 2;
+    for (int v=0; v<nvec; ++v) {
+      std::stringstream msg;
+      msg << std::endl << "VECTORS " << names[v] << " float" << std::endl;
+      if (global_variable::my_rank == 0) {
+        partfile.Write_any_type_at(msg.str().c_str(), msg.str().size(),
+                                   header_offset, "byte");
+      }
+      header_offset += msg.str().size();
+
+      for (int p=0; p<npout_thisrank; ++p) {
+        data[3*p]     = static_cast<float>((*arrays[v])(0,p));
+        data[(3*p)+1] = static_cast<float>((*arrays[v])(1,p));
+        data[(3*p)+2] = static_cast<float>((*arrays[v])(2,p));
+      }
+      if (!big_end) {
+        for (int i=0; i<(3*npout_thisrank); ++i) { Swap4Bytes(&data[i]); }
+      }
+      std::size_t datasize = sizeof(float);
+      std::size_t myoffset =
+          header_offset + 3*rank_offset[global_variable::my_rank]*datasize;
+      if (partfile.Write_any_type_at_all(data, 3*npout_min, myoffset, "float")
+            != 3*npout_min) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "particle diagnostic data not written correctly to "
+                  << "vtk particle file, vtk file is broken." << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      myoffset += datasize*3*npout_min;
+      int nremain = pm->nprtcl_thisrank - npout_min;
+      if (nremain > 0) {
+        if (partfile.Write_any_type_at(data + 3*npout_min, 3*nremain,
+                                      myoffset, "float") != 3*nremain) {
+          std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                    << std::endl << "particle diagnostic data not written correctly to "
+                    << "vtk particle file, vtk file is broken." << std::endl;
+          exit(EXIT_FAILURE);
+        }
+      }
+      header_offset += 3*pm->nprtcl_total*datasize;
+    }
   }
 
   // Write Part 6 (cont.): additional real SCALARS — conserved specific energy (-u_t) and

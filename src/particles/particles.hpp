@@ -244,6 +244,43 @@ class Particles {
   DvceArray5D<Real> bcc0_last;     // cell-centred B at step n
   DvceArray5D<Real> adm_last;      // ADM metric at step n
   DvceArray5D<Real> z4c_last;      // Z4c variables at step n
+  // Optional geodesic diagnostics, recomputed after particle migration so their
+  // particle index matches prtcl_rdata at output time.  gr_boris_du_dt stores the
+  // instantaneous covariant force du_i/dt and gr_boris_dL_dt stores
+  // d(x cross u)/dt from the same interpolated metric derivatives as the pusher.
+  DvceArray2D<Real> gr_boris_du_dt;
+  DvceArray2D<Real> gr_boris_dL_dt;
+  // In the live-monopole control, retain the unfiltered live-field rates beside the
+  // rates actually used by the spherical pusher.  These are diagnostics only.
+  DvceArray2D<Real> gr_boris_raw_du_dt;
+  DvceArray2D<Real> gr_boris_raw_dL_dt;
+  bool gr_boris_diagnostics;
+  // When enabled, particles continue to move but always read the initial numerical
+  // Z4c/ADM snapshots.  This isolates initial mesh/interpolation anisotropy from
+  // time-dependent matter/metric feedback.
+  bool gr_boris_freeze_metric;
+  // Experimental live-monopole control.  Deposition and Z4c remain live, while the
+  // particle geodesic pusher uses only a spherical angular average of the current
+  // numerical metric.  All switches are opt-in and default false/off.
+  bool gr_boris_live_monopole;
+  bool gr_boris_monopole_profile_valid;
+  int gr_boris_monopole_nr;
+  int gr_boris_monopole_sample_stride;
+  int gr_boris_monopole_profile_interval;
+  Real gr_boris_monopole_rmax;
+  Real gr_boris_monopole_dr;
+  Real gr_boris_monopole_center[3];
+  DvceArray2D<Real> gr_boris_monopole_profile_old;
+  DvceArray2D<Real> gr_boris_monopole_profile_new;
+  DvceArray2D<Real> gr_boris_monopole_accum;
+  std::string gr_boris_monopole_profile_fname;
+  // Exact cumulative count of implicit geodesic solves that used the forward-Euler
+  // fallback.  The device counter avoids one warning per failed particle; gr_boris
+  // reports a periodic global summary instead.  Cluster history exposes the count as a
+  // numerical-health diagnostic.
+  DvceArray1D<uint64_t> gr_boris_failures;
+  uint64_t gr_boris_failures_reported;
+  int gr_boris_warning_interval;
 
   ParticlesPusher pusher;
 
@@ -259,6 +296,11 @@ class Particles {
   // pusher kernels (particles_pushers.cpp dispatches Push() to these)
   void BorisPush();      // special-relativistic Boris (boris_pusher.cpp)
   void GR_BorisPush();   // general-relativistic Boris / geodesic (gr_boris.cpp)
+  void GRBorisDiagnostics();  // instantaneous du_i/dt and dL_i/dt (gr_boris.cpp)
+  void BuildGRBorisMonopoleProfiles(
+      const DvceArray5D<Real> &adm_old, const DvceArray5D<Real> &adm_new,
+      bool use_z4c, const DvceArray5D<Real> &z4c_old,
+      const DvceArray5D<Real> &z4c_new, bool equal_time);
   TaskStatus Push(Driver *pdriver, int stage);
   TaskStatus NewGID(Driver *pdriver, int stage);
   TaskStatus SendCnt(Driver *pdriver, int stage);

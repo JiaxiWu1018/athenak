@@ -54,12 +54,13 @@ void Particles::FlushDeathLog() {
   // pack this rank's records from the device record arrays
   std::vector<DeathRec> loc(nloc);
   if (nloc > 0) {
+    // Copy the full contiguous record arrays, then read the active prefix.  The
+    // active 2D subview (ALL, 0:nloc) is strided under some Kokkos layouts, and
+    // Cuda->Host deep_copy has no generic mechanism for non-contiguous subviews.
     auto hr = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-        Kokkos::subview(pbval_part->destroy_rec_r, Kokkos::ALL,
-                        std::make_pair(0, nloc)));
+                                                  pbval_part->destroy_rec_r);
     auto hi = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-        Kokkos::subview(pbval_part->destroy_rec_i, Kokkos::ALL,
-                        std::make_pair(0, nloc)));
+                                                  pbval_part->destroy_rec_i);
     for (int n=0; n<nloc; ++n) {
       loc[n].tag    = hi(0,n);
       loc[n].gid    = hi(1,n);

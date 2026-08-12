@@ -85,8 +85,12 @@ The read_*(...) functions return a filedata dictionary-like object with
 
 import numpy as np
 import os
-import h5py
 import glob
+
+try:
+    import h5py
+except ModuleNotFoundError:
+    h5py = None
 
 
 def read_binary(filename):
@@ -130,7 +134,10 @@ def read_binary(filename):
     pheader_count = int(fp.readline().split(b"=")[-1])
     pheader = {}
     for _ in range(pheader_count - 1):
-        key, val = [x.strip() for x in fp.readline().decode("utf-8").split("=")]
+        key, val = [
+            x.strip()
+            for x in fp.readline().decode("utf-8").split("=", maxsplit=1)
+        ]
         pheader[key] = val
     time = float(pheader["time"])
     cycle = int(pheader["cycle"])
@@ -167,7 +174,7 @@ def read_binary(filename):
             if line.startswith("<"):
                 block = line
                 continue
-            key, value = line.split("=")
+            key, value = line.split("=", maxsplit=1)
             if block == blockname and key.strip() == keyname:
                 return value
         raise KeyError(f"no parameter called {blockname}/{keyname}")
@@ -299,7 +306,10 @@ def read_coarsened_binary(filename):
     pheader_count = int(fp.readline().split(b"=")[-1])
     pheader = {}
     for _ in range(pheader_count - 1):
-        key, val = [x.strip() for x in fp.readline().decode("utf-8").split("=")]
+        key, val = [
+            x.strip()
+            for x in fp.readline().decode("utf-8").split("=", maxsplit=1)
+        ]
         pheader[key] = val
     time = float(pheader["time"])
     cycle = int(pheader["cycle"])
@@ -337,7 +347,7 @@ def read_coarsened_binary(filename):
             if line.startswith("<"):
                 block = line
                 continue
-            key, value = line.split("=")
+            key, value = line.split("=", maxsplit=1)
             if block == blockname and key.strip() == keyname:
                 return value
         raise KeyError(f"no parameter called {blockname}/{keyname}")
@@ -1818,6 +1828,11 @@ def write_athdf(filename, fdata, varsize_bytes=4, locsize_bytes=8):
     if len(vars_only_b) > 0:
         dataset_names.append(np.array("B", dtype="|S21"))
         dataset_nvars.append(len(vars_only_b))
+
+    if h5py is None:
+        raise ModuleNotFoundError(
+            "write_athdf requires the optional h5py package"
+        )
 
     # Set Attributes
     hfp = h5py.File(filename, "w")
