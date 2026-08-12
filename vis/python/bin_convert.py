@@ -85,8 +85,12 @@ The read_*(...) functions return a filedata dictionary-like object with
 
 import numpy as np
 import os
-import h5py
 import glob
+
+try:
+    import h5py
+except ModuleNotFoundError:
+    h5py = None
 
 
 def read_binary(filename):
@@ -1818,6 +1822,11 @@ def write_athdf(filename, fdata, varsize_bytes=4, locsize_bytes=8):
     if len(vars_only_b) > 0:
         dataset_names.append(np.array("B", dtype="|S21"))
         dataset_nvars.append(len(vars_only_b))
+
+    if h5py is None:
+        raise ModuleNotFoundError(
+            "write_athdf requires the optional h5py package"
+        )
 
     # Set Attributes
     hfp = h5py.File(filename, "w")

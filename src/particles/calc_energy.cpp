@@ -23,6 +23,7 @@
 #include "z4c/z4c.hpp"
 #include "eos/primitive-solver/geom_math.hpp"
 #include "particles.hpp"
+#include "gr_monopole.hpp"
 #include "lagrange_interp.hpp"
 
 namespace particles {
@@ -37,20 +38,60 @@ void Particles::calc_prtcl_energy() {
   // (e.g. flat-space SR tests)
   if (pmy_pack->padm == nullptr) {return;}
 
+  if (gr_boris_live_monopole) {
+    if (nprtcl_thispack == 0) {return;}
+    DvceArray5D<Real> adm_metric = pmy_pack->padm->u_adm;
+    DvceArray5D<Real> z4c_metric;
+    bool use_z4c_metric = (pmy_pack->pz4c != nullptr);
+    if (use_z4c_metric) {z4c_metric = pmy_pack->pz4c->u0;}
+    if (!gr_boris_monopole_profile_valid) {
+      BuildGRBorisMonopoleProfiles(
+          adm_metric, adm_metric, use_z4c_metric,
+          z4c_metric, z4c_metric, true);
+    }
+    auto &pr_mono = prtcl_rdata;
+    auto profile = gr_boris_monopole_profile_new;
+    int nr = gr_boris_monopole_nr;
+    Real dr = gr_boris_monopole_dr;
+    Real c0 = gr_boris_monopole_center[0];
+    Real c1 = gr_boris_monopole_center[1];
+    Real c2 = gr_boris_monopole_center[2];
+    par_for("calc_prtcl_energy_monopole", DevExeSpace(), 0, nprtcl_thispack-1,
+    KOKKOS_LAMBDA(const int p) {
+      Real xr[3] = {pr_mono(IPX,p)-c0, pr_mono(IPY,p)-c1, pr_mono(IPZ,p)-c2};
+      Real r = sqrt(xr[0]*xr[0] + xr[1]*xr[1] + xr[2]*xr[2]);
+      Real rsafe = (r > 1.0e-14) ? r : 1.0e-14;
+      Real n[3] = {xr[0]/rsafe, xr[1]/rsafe, xr[2]/rsafe};
+      Real u[3] = {pr_mono(IPVX,p), pr_mono(IPVY,p), pr_mono(IPVZ,p)};
+      Real q = n[0]*u[0] + n[1]*u[1] + n[2]*u[2];
+      Real usq = u[0]*u[0] + u[1]*u[1] + u[2]*u[2];
+      Real metric[N_GR_MONO_PROFILE];
+      InterpolateGRMonopoleProfile(profile, nr, dr, r, metric);
+      Real A = metric[MONO_GAMMA_R];
+      Real B = metric[MONO_GAMMA_T];
+      Real W = sqrt(1.0 + B*usq + (A-B)*q*q);
+      pr_mono(IPEN,p) = metric[MONO_ALPHA]*W - metric[MONO_BETA_R]*q;
+    });
+    return;
+  }
+
   auto &indcs = pmy_pack->pmesh->mb_indcs;
   int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
   auto &size = pmy_pack->pmb->mb_size;
   int gids = pmy_pack->gids;
   auto &pi = prtcl_idata;
   auto &pr = prtcl_rdata;
-  auto &adm_n = pmy_pack->padm->u_adm;
+  DvceArray5D<Real> adm_n = gr_boris_freeze_metric
+      ? adm_last : pmy_pack->padm->u_adm;
   // lapse/shift source: when Z4c is live the ADM storage drops the alpha/beta slots
   // (u_adm holds nadm-4 variables) and the gauge lives in the Z4c state vector -- the
   // same source switch as the gr_boris pusher. Reading I_ADM_ALPHA from the trimmed
   // u_adm was out of bounds (latent Stage-1 bug, first reachable with z4c+particles).
   DvceArray5D<Real> z4c_u0;
   bool use_z4c = (pmy_pack->pz4c != nullptr);
-  if (use_z4c) {z4c_u0 = pmy_pack->pz4c->u0;}
+  if (use_z4c) {
+    z4c_u0 = gr_boris_freeze_metric ? z4c_last : pmy_pack->pz4c->u0;
+  }
 
   par_for("calc_prtcl_energy", DevExeSpace(), 0, (nprtcl_thispack-1),
   KOKKOS_LAMBDA(const int p) {

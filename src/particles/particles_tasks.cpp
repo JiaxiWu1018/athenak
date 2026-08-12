@@ -151,6 +151,9 @@ TaskStatus Particles::EnergyCalculation(Driver *pdrive, int stage) {
                 << std::endl;
       std::exit(EXIT_FAILURE);
   }
+  if (pusher == ParticlesPusher::gr_boris && gr_boris_diagnostics) {
+    GRBorisDiagnostics();
+  }
   return TaskStatus::complete;
 }
 

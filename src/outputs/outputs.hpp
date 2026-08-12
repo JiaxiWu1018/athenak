@@ -367,6 +367,10 @@ class ParticleVTKOutput : public BaseTypeOutput {
   int npout_total;
   HostArray2D<Real> outpart_rdata;
   HostArray2D<int>  outpart_idata;
+  HostArray2D<Real> outpart_du_dt;
+  HostArray2D<Real> outpart_dL_dt;
+  HostArray2D<Real> outpart_raw_du_dt;
+  HostArray2D<Real> outpart_raw_dL_dt;
 };
 
 //----------------------------------------------------------------------------------------

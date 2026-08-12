@@ -61,6 +61,9 @@ void Particles::FlushDeathLog() {
   // capacity tail is stale padding and is never consumed, so the CSV is unchanged.
   std::vector<DeathRec> loc(nloc);
   if (nloc > 0) {
+    // Copy the full contiguous record arrays, then read the active prefix.  The
+    // active 2D subview (ALL, 0:nloc) is strided under some Kokkos layouts, and
+    // Cuda->Host deep_copy has no generic mechanism for non-contiguous subviews.
     auto hr = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
                                                   pbval_part->destroy_rec_r);
     auto hi = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
