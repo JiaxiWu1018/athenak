@@ -52,6 +52,7 @@ class Z4c {
     I_Z4C_THETA,
     I_Z4C_ALPHA,
     I_Z4C_BETAX, I_Z4C_BETAY, I_Z4C_BETAZ,
+    I_Z4C_BX, I_Z4C_BY, I_Z4C_BZ,
     nz4c
   };
   // Names of Z4c variables
@@ -87,6 +88,8 @@ class Z4c {
   DvceArray5D<Real> coarse_u0; // coarse representation of z4c solution
   DvceArray5D<Real> u_weyl; // weyl scalars
   DvceArray5D<Real> coarse_u_weyl; // coarse representation of weyl scalars
+  DvceArray4D<Real> spatial_damp;  // spatially dependent damping profile
+  DualArray2D<Real> damping_puncture_info;  // BH positions and masses
 
   struct ADM_vars {
     AthenaTensor<Real, TensorSymm::NONE, 3, 0> psi4;
@@ -114,6 +117,7 @@ class Z4c {
     AthenaTensor<Real, TensorSymm::NONE, 3, 0> alpha;   // lapse
     AthenaTensor<Real, TensorSymm::NONE, 3, 1> vGam_u;  // Gamma functions (BSSN)
     AthenaTensor<Real, TensorSymm::NONE, 3, 1> beta_u;  // shift
+    AthenaTensor<Real, TensorSymm::NONE, 3, 1> b_u;     // Gamma-driver auxiliary field
     AthenaTensor<Real, TensorSymm::SYM2, 3, 2> g_dd;    // conf. 3-metric
     AthenaTensor<Real, TensorSymm::SYM2, 3, 2> vA_dd;   // conf. traceless extr. curvature
   };
@@ -151,6 +155,8 @@ class Z4c {
     // Constraint damping parameters
     Real damp_kappa1;
     Real damp_kappa2;
+    bool const_damp;
+    Real m_min;          // minimum initial BH puncture mass
     // Gauge conditions for the lapse
     Real lapse_oplog;
     Real lapse_harmonicf;
@@ -167,6 +173,7 @@ class Z4c {
     Real shift_hh;
     Real shift_advect;
     Real shift_eta;
+    bool shift_use_B;    // use Gamma-driver auxiliary B^i field
     // turn on shift damping smoothly
     bool slow_roll_eta;
     Real turn_on_time;
@@ -268,6 +275,7 @@ class Z4c {
   // same for the waveform.
  private:
   MeshBlockPack* pmy_pack;  // ptr to MeshBlockPack containing this Z4c
+  std::vector<int> damping_tracker_indices;
 };
 
 } // namespace z4c

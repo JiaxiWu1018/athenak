@@ -97,6 +97,9 @@ void Z4c::ADMToZ4c(MeshBlockPack *pmbp, ParameterInput *pin) {
       z4c.vA_dd(m,a,b,k,j,i) = Kt_dd(a,b) - (1./3.) *
                                 z4c.vKhat(m,k,j,i) * z4c.g_dd(m,a,b,k,j,i);
     }
+    for(int a = 0; a < 3; ++a) {
+      z4c.b_u(m,a,k,j,i) = 0.0;
+    }
   });
   Kokkos::fence();
 

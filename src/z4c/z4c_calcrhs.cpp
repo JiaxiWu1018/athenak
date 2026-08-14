@@ -18,6 +18,7 @@
 #include "coordinates/adm.hpp"
 #include "z4c/z4c.hpp"
 #include "z4c/tmunu.hpp"
+#include "z4c/compact_object_tracker.hpp"
 #include "coordinates/cell_locations.hpp"
 
 namespace z4c {
@@ -31,18 +32,59 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
   int &is = indcs.is; int &ie = indcs.ie;
   int &js = indcs.js; int &je = indcs.je;
   int &ks = indcs.ks; int &ke = indcs.ke;
+  int &nx1 = indcs.nx1; int &nx2 = indcs.nx2; int &nx3 = indcs.nx3;
 
   int nmb = pmy_pack->nmb_thispack;
 
   auto &z4c = pmy_pack->pz4c->z4c;
   auto &rhs = pmy_pack->pz4c->rhs;
   auto &opt = pmy_pack->pz4c->opt;
+  auto spatial_damp_ = spatial_damp;
 
   Real time = pmy_pack->pmesh->time;
 
   bool is_vacuum = (pmy_pack->ptmunu == nullptr) ? true : false;
   Tmunu::Tmunu_vars tmunu;
   if (!is_vacuum) tmunu = pmy_pack->ptmunu->tmunu;
+
+  if (!opt.const_damp) {
+    // Empirical puncture-mass profile retained from the MultiBH evolutions. It
+    // scales both the shift damping eta and the Z4c damping kappa1.
+    const int npunc = static_cast<int>(damping_tracker_indices.size());
+    for (int p = 0; p < npunc; ++p) {
+      const auto *tracker = ptracker[damping_tracker_indices[p]].get();
+      for (int a = 0; a < NDIM; ++a) {
+        damping_puncture_info.h_view(p, a) = tracker->GetPos(a);
+      }
+      damping_puncture_info.h_view(p, NDIM) = tracker->GetMass();
+    }
+    damping_puncture_info.template modify<HostMemSpace>();
+    damping_puncture_info.template sync<DevExeSpace>();
+
+    auto punc_info = damping_puncture_info.d_view;
+    const Real m_min = opt.m_min;
+    par_for("spatially dependent damping", DevExeSpace(),
+    0,nmb-1,ks,ke,js,je,is,ie,
+    KOKKOS_LAMBDA(const int m, const int k, const int j, const int i) {
+      const Real x = CellCenterX(i-is, nx1,
+          size.d_view(m).x1min, size.d_view(m).x1max);
+      const Real y = CellCenterX(j-js, nx2,
+          size.d_view(m).x2min, size.d_view(m).x2max);
+      const Real z = CellCenterX(k-ks, nx3,
+          size.d_view(m).x3min, size.d_view(m).x3max);
+
+      Real sum = 1.0;
+      for (int p = 0; p < npunc; ++p) {
+        const Real dx = x - punc_info(p, 0);
+        const Real dy = y - punc_info(p, 1);
+        const Real dz = z - punc_info(p, 2);
+        const Real r2 = dx*dx + dy*dy + dz*dz;
+        const Real rhat2 = r2/(m_min*m_min);
+        sum += (1.0/punc_info(p, NDIM) - 1.0)/(1.0 + 0.25*rhat2);
+      }
+      spatial_damp_(m,k,j,i) = sum;
+    });
+  }
 
   // ===================================================================================
   // Main RHS calculation
@@ -53,6 +95,10 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
 
     // Gamma computed from the metric
     AthenaPointTensor<Real, TensorSymm::NONE, 3, 1> Gamma_u;
+    // beta^k partial_k B^i
+    AthenaPointTensor<Real, TensorSymm::NONE, 3, 1> LB_u;
+    // beta^k partial_k Gamma^i
+    AthenaPointTensor<Real, TensorSymm::NONE, 3, 1> advGam_u;
     // Covariant derivative of A
     AthenaPointTensor<Real, TensorSymm::NONE, 3, 1> DA_u;
 
@@ -162,6 +208,8 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
     Lbeta_u.ZeroClear();
     LGam_u.ZeroClear();
     Gamma_u.ZeroClear();
+    LB_u.ZeroClear();
+    advGam_u.ZeroClear();
     DA_u.ZeroClear();
     ddbeta_d.ZeroClear();
 
@@ -250,7 +298,13 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
     for(int a = 0; a < 3; ++a)
     for(int b = 0; b < 3; ++b) {
       Lbeta_u(b) += Lx<NGHOST>(a, idx, z4c.beta_u, z4c.beta_u, m,a,b,k,j,i);
-      LGam_u(b)  += Lx<NGHOST>(a, idx, z4c.beta_u, z4c.vGam_u,  m,a,b,k,j,i);
+      const Real adv_gam = Lx<NGHOST>(a, idx, z4c.beta_u, z4c.vGam_u,
+                                      m,a,b,k,j,i);
+      advGam_u(b) += adv_gam;
+      LGam_u(b) += adv_gam;
+      if (opt.shift_use_B) {
+        LB_u(b) += Lx<NGHOST>(a, idx, z4c.beta_u, z4c.b_u, m,a,b,k,j,i);
+      }
     }
 
     //
@@ -481,9 +535,11 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
     // Assemble RHS
     //
     // Khat, chi, and Theta
+    const Real damping_factor = opt.const_damp ? 1.0 : spatial_damp_(m,k,j,i);
+    const Real damp_kappa1 = opt.damp_kappa1*damping_factor;
     rhs.vKhat(m,k,j,i) = - Ddalpha + z4c.alpha(m,k,j,i)
       * (AA + (1./3.)*SQR(K)) +
-      LKhat + opt.damp_kappa1*(1 - opt.damp_kappa2)
+      LKhat + damp_kappa1*(1 - opt.damp_kappa2)
       * z4c.alpha(m,k,j,i) * z4c.vTheta(m,k,j,i);
     // Matter term
     if(!is_vacuum) {
@@ -492,7 +548,7 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
     rhs.chi(m,k,j,i) = Lchi - (1./6.) * opt.chi_psi_power *
       chi_guarded * z4c.alpha(m,k,j,i) * K;
     rhs.vTheta(m,k,j,i) = LTheta + z4c.alpha(m,k,j,i) * (
-        0.5*Ht - (2. + opt.damp_kappa2) * opt.damp_kappa1 * z4c.vTheta(m,k,j,i));
+        0.5*Ht - (2. + opt.damp_kappa2) * damp_kappa1 * z4c.vTheta(m,k,j,i));
     // Matter term
     if(!is_vacuum) {
       rhs.vTheta(m,k,j,i) -= 8.*M_PI * z4c.alpha(m,k,j,i) * tmunu.E(m,k,j,i);
@@ -502,7 +558,7 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
     // Gamma's
     for(int a = 0; a < 3; ++a) {
       rhs.vGam_u(m,a,k,j,i) = 2.*z4c.alpha(m,k,j,i)*DA_u(a) + LGam_u(a);
-      rhs.vGam_u(m,a,k,j,i) -= 2.*z4c.alpha(m,k,j,i) * opt.damp_kappa1 *
+      rhs.vGam_u(m,a,k,j,i) -= 2.*z4c.alpha(m,k,j,i) * damp_kappa1 *
           (z4c.vGam_u(m,a,k,j,i) - Gamma_u(a));
       for(int b = 0; b < 3; ++b) {
         rhs.vGam_u(m,a,k,j,i) -= 2. * A_uu(a,b) * dalpha_d(b);
@@ -547,22 +603,34 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
                             (opt.ssl_damping_time),2));
     }
 
-    // shift vector
-    for(int a = 0; a < 3; ++a) {
-      rhs.beta_u(m,a,k,j,i) = opt.shift_ggamma * z4c.vGam_u(m,a,k,j,i)
-                            + opt.shift_advect * Lbeta_u(a);
-      rhs.beta_u(m,a,k,j,i) -= opt.shift_eta * z4c.beta_u(m,a,k,j,i);
-      // FORCE beta = 0
-      //rhs.beta_u(m,a,k,j,i) = 0;
-    }
+    // Shift driver
+    const Real shift_eta = opt.shift_eta*damping_factor;
+    if (opt.shift_use_B) {
+      constexpr Real b2 = 0.75;
+      for(int a = 0; a < 3; ++a) {
+        rhs.beta_u(m,a,k,j,i) = opt.shift_advect*Lbeta_u(a)
+                              + b2*z4c.b_u(m,a,k,j,i);
+        rhs.b_u(m,a,k,j,i) = opt.shift_advect*(LB_u(a) - advGam_u(a))
+                           + rhs.vGam_u(m,a,k,j,i)
+                           - shift_eta*z4c.b_u(m,a,k,j,i);
+      }
+    } else {
+      for(int a = 0; a < 3; ++a) {
+        rhs.beta_u(m,a,k,j,i) = opt.shift_ggamma*z4c.vGam_u(m,a,k,j,i)
+                              + opt.shift_advect*Lbeta_u(a)
+                              - shift_eta*z4c.beta_u(m,a,k,j,i);
+        rhs.b_u(m,a,k,j,i) = 0.0;
+      }
 
-    // harmonic gauge terms
-    for(int a = 0; a < 3; ++a) {
-      rhs.beta_u(m,a,k,j,i) += opt.shift_alpha2ggamma *
-                          SQR(z4c.alpha(m,k,j,i)) * z4c.vGam_u(m,a,k,j,i);
-      for(int b = 0; b < 3; ++b) {
-        rhs.beta_u(m,a,k,j,i) += opt.shift_hh * z4c.alpha(m,k,j,i) *
-          chi_guarded * (0.5 * z4c.alpha(m,k,j,i) * dchi_d(b) - dalpha_d(b)) * g_uu(a,b);
+      // Harmonic gauge terms belong to the legacy shift driver.
+      for(int a = 0; a < 3; ++a) {
+        rhs.beta_u(m,a,k,j,i) += opt.shift_alpha2ggamma *
+                            SQR(z4c.alpha(m,k,j,i)) * z4c.vGam_u(m,a,k,j,i);
+        for(int b = 0; b < 3; ++b) {
+          rhs.beta_u(m,a,k,j,i) += opt.shift_hh * z4c.alpha(m,k,j,i) *
+            chi_guarded * (0.5*z4c.alpha(m,k,j,i)*dchi_d(b) - dalpha_d(b)) *
+            g_uu(a,b);
+        }
       }
     }
   });

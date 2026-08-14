@@ -57,11 +57,15 @@ class CompactObjectTracker {
     return radius;
   }
   //! Get initial mass
-  inline Real GetMass() {
+  inline Real GetMass() const {
     return mass;
   }
+  //! Check whether the tracked object is a black hole
+  inline bool IsBlackHole() const {
+    return type == BlackHole;
+  }
   //! Get CO type
-  inline CompactObjectType GetType() {
+  inline CompactObjectType GetType() const {
     return type;
   }
 
