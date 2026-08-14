@@ -5,6 +5,7 @@
 //========================================================================================
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <iostream>
 #include <limits>
@@ -36,6 +37,26 @@ Z4c_AMR::Z4c_AMR(ParameterInput *pin) {
   } else if (ref_method == "dchi") {
     method = dChi;
     dchi_thresh = pin->GetOrAddReal("z4c_amr", "dchi_max", 0.01);
+  } else if (ref_method == "loehner") {
+    method = Loehner;
+    loehner_threshold = pin->GetOrAddReal("z4c_amr", "loehner_threshold", 0.2);
+    if (loehner_threshold <= 0.0) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line "
+                << __LINE__ << std::endl;
+      std::cout << "Loehner refinement threshold must be positive" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+
+    std::string ref_var = pin->GetOrAddString(
+        "z4c_amr", "loehner_variable", "alp_psi7");
+    if (ref_var == "alp_psi7") {
+      loehner_variable = AlpPsi7;
+    } else {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line "
+                << __LINE__ << std::endl;
+      std::cout << "Unknown Loehner refinement variable: " << ref_var << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
   } else {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line "
               << __LINE__ << std::endl;
@@ -63,6 +84,8 @@ void Z4c_AMR::Refine(MeshBlockPack *pmy_pack) {
     RefineChiMin(pmy_pack);
   } else if (method == dChi) {
     RefineDchiMax(pmy_pack);
+  } else if (method == Loehner) {
+    RefineLoehner(pmy_pack);
   }
   RefineRadii(pmy_pack);
 }
@@ -220,6 +243,113 @@ void Z4c_AMR::RefineDchiMax(MeshBlockPack *pmbp) {
     });
 
   // sync host and device
+  refine_flag.template modify<DevExeSpace>();
+  refine_flag.template sync<HostMemSpace>();
+}
+
+// refine based on the dimensionless Loehner error estimator
+void Z4c_AMR::RefineLoehner(MeshBlockPack *pmbp) {
+  Mesh *pmesh       = pmbp->pmesh;
+  int nmb           = pmbp->nmb_thispack;
+  int mbs           = pmesh->gids_eachrank[global_variable::my_rank];
+  auto &refine_flag = pmesh->pmr->refine_flag;
+  auto &indcs       = pmesh->mb_indcs;
+  int &is = indcs.is, &ie = indcs.ie;
+  int &js = indcs.js, &je = indcs.je;
+  int &ks = indcs.ks, &ke = indcs.ke;
+  int nx1 = indcs.nx1, nx2 = indcs.nx2, nx3 = indcs.nx3;
+  int ng = indcs.ng;
+
+  if (ng < 2 || nx2 <= 1 || nx3 <= 1) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line "
+              << __LINE__ << std::endl;
+    std::cout << "Loehner refinement requires a 3D mesh with at least two ghost zones"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+
+  int ncell1 = nx1 + 2 * ng;
+  int ncell2 = nx2 + 2 * ng;
+  int ncell3 = nx3 + 2 * ng;
+  const int nkji = nx3 * nx2 * nx1;
+  const int nji  = nx2 * nx1;
+  auto &u0       = pmbp->pz4c->u0;
+  int I_Z4C_ALPHA = pmbp->pz4c->I_Z4C_ALPHA;
+  int I_Z4C_CHI = pmbp->pz4c->I_Z4C_CHI;
+
+  DvceArray4D<Real> refine_var("z4c loehner refinement variable",
+                               nmb, ncell3, ncell2, ncell1);
+  if (loehner_variable == AlpPsi7) {
+    par_for("Z4c_AMR::LoehnerVariable", DevExeSpace(),
+    0, nmb-1, ks-2, ke+2, js-2, je+2, is-2, ie+2,
+    KOKKOS_LAMBDA(const int m, const int k, const int j, const int i) {
+      Real alpha = u0(m, I_Z4C_ALPHA, k, j, i);
+      Real chi = u0(m, I_Z4C_CHI, k, j, i);
+      refine_var(m,k,j,i) = alpha * pow(chi, -1.75);
+    });
+  }
+
+  const Real threshold = loehner_threshold;
+  constexpr Real filter = 0.01;
+  par_for_outer(
+    "Z4c_AMR::Loehner", DevExeSpace(), 0, 0, 0, (nmb - 1),
+    KOKKOS_LAMBDA(TeamMember_t tmember, const int m) {
+      Real team_dmax;
+      Kokkos::parallel_reduce(
+        Kokkos::TeamThreadRange(tmember, nkji),
+        [=](const int idx, Real &dmax) {
+          int k = idx / nji;
+          int j = (idx - k * nji) / nx1;
+          int i = (idx - k * nji - j * nx1) + is;
+          j += js;
+          k += ks;
+
+          Real numerator = 0.0;
+          Real denominator = 0.0;
+          for (int deriv_dir = 0; deriv_dir < 3; ++deriv_dir) {
+            int di = (deriv_dir == 0);
+            int dj = (deriv_dir == 1);
+            int dk = (deriv_dir == 2);
+            for (int diff_dir = 0; diff_dir < 3; ++diff_dir) {
+              int ddi = (diff_dir == 0);
+              int ddj = (diff_dir == 1);
+              int ddk = (diff_dir == 2);
+
+              Real dvar_plus =
+                  refine_var(m,k+ddk+dk,j+ddj+dj,i+ddi+di)
+                - refine_var(m,k+ddk-dk,j+ddj-dj,i+ddi-di);
+              Real dvar_minus =
+                  refine_var(m,k-ddk+dk,j-ddj+dj,i-ddi+di)
+                - refine_var(m,k-ddk-dk,j-ddj-dj,i-ddi-di);
+              Real abs_dvar_plus =
+                  fabs(refine_var(m,k+ddk+dk,j+ddj+dj,i+ddi+di))
+                + fabs(refine_var(m,k+ddk-dk,j+ddj-dj,i+ddi-di));
+              Real abs_dvar_minus =
+                  fabs(refine_var(m,k-ddk+dk,j-ddj+dj,i-ddi+di))
+                + fabs(refine_var(m,k-ddk-dk,j-ddj-dj,i-ddi-di));
+
+              Real second_difference = dvar_plus - dvar_minus;
+              Real gradient_scale = fabs(dvar_plus) + fabs(dvar_minus);
+              Real value_scale = abs_dvar_plus + abs_dvar_minus;
+              numerator += second_difference * second_difference;
+              Real normalized_scale = gradient_scale + filter * value_scale + 1e-99;
+              denominator += normalized_scale * normalized_scale;
+            }
+          }
+
+          Real loehner_error = sqrt(numerator / denominator);
+          dmax = fmax(loehner_error, dmax);
+        },
+        Kokkos::Max<Real>(team_dmax));
+
+      if (team_dmax > threshold) {
+        refine_flag.d_view(m + mbs) = 1;
+      }
+      if (team_dmax < 0.1 * threshold) {
+        refine_flag.d_view(m + mbs) = -1;
+      }
+    });
+
   refine_flag.template modify<DevExeSpace>();
   refine_flag.template sync<HostMemSpace>();
 }

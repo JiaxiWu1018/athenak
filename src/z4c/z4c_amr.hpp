@@ -21,7 +21,8 @@ class Z4c;
 //! \class Z4c_AMR
 //  \brief managing AMR for Z4c simulations
 class Z4c_AMR {
-  enum RefinementMethod { Trivial, Tracker, Chi, dChi };
+  enum RefinementMethod { Trivial, Tracker, Chi, dChi, Loehner };
+  enum LoehnerVariable { AlpPsi7 };
 
  public:
   explicit Z4c_AMR(ParameterInput *pin);
@@ -31,9 +32,11 @@ class Z4c_AMR {
   void RefineTracker(MeshBlockPack *pmbp);      // Refine based on trackers
   void RefineChiMin(MeshBlockPack *pmbp);       // Refine based on min{chi}
   void RefineDchiMax(MeshBlockPack *pmbp);      // Refine based on max{dchi}
+  void RefineLoehner(MeshBlockPack *pmbp);      // Refine based on Loehner estimator
   void RefineRadii(MeshBlockPack *pmbp);        // Refine based on the radii
 
   RefinementMethod method;
+  LoehnerVariable loehner_variable;
 
   // Optinally set the minimum refinement level inside different radial shells
   std::vector<Real> radius;
@@ -41,6 +44,7 @@ class Z4c_AMR {
 
   Real chi_thresh;     // chi threshold for chi refinement method
   Real dchi_thresh;    // dchi threshold for dchi refinement method
+  Real loehner_threshold;  // threshold for Loehner refinement method
 };
 
 } // namespace z4c
