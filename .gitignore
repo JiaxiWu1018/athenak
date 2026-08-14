@@ -1,6 +1,5 @@
 # build directories
 build*/
-__pycache__
 
 # Temporary testing files
 tst/test_log.txt
@@ -22,5 +21,6 @@ tst/test_log.txt
 *.swp
 Lorene
 
-# python cache
+# Python cache files
 __pycache__/
+*.pyc

@@ -193,12 +193,23 @@ def main(**kwargs):
     # print(y_vals)
     # print(x_vals)
 
+    def save_frame(fig, i):
+        fname = f"{output_file}{str(i).zfill(5)}.png"
+        print(f"Saving {fname} ...")
+        fig.savefig(fname)
+
     # make single plot
     if (nfiles == 1):
-        # Plot data
-        plt.figure()
-        plt.plot(x_vals[0], y_vals[0], '.')
-        plt.show()
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        ax.plot(x_vals[0], y_vals[0], '.')
+        ax.set_title('Time=%f'%data[0]['time'])  # noqa
+        ax.set_xlabel(xvar)
+        ax.set_ylabel(yvar)
+        if output_file != 'show':
+            save_frame(fig, 0)
+        else:
+            plt.show()
 
     # make animation with multiple files
     else:
@@ -215,12 +226,19 @@ def main(**kwargs):
             ax.set_title('Time=%f'%data[i]['time'])  # noqa
             ax.set_xlabel(xvar)
             ax.set_ylabel(yvar)
-        Player(fig, update_func, maxi=(nfiles-1))
-        plt.show()
+
+        if output_file != 'show':
+            for i in range(nfiles):
+                update_func(i)
+                save_frame(fig, i)
+            print("All frames have been saved.")
+        else:
+            Player(fig, update_func, maxi=(nfiles-1))
+            plt.show()
         # to save movie as mp4 use following instead of 'Player'
         # anim=FuncAnimation(fig, update_func)
         # plt.show()
-        # FFwriter = animation.FFMpegWriter(fps=20)
+        # FFwriter = anim.FFMpegWriter(fps=20)
         # anim.save('./animation.mp4', writer = FFwriter)
 
 
@@ -231,9 +249,9 @@ if __name__ == '__main__':
                         help='name of input (tab) file')
     parser.add_argument('-o', '--output',
                         default='show',
-                        help='image filename; omit to display to screen')
+                        help='PNG filename prefix; omit to display to screen')
     parser.add_argument('-v', '--variables',
-                        help='comma-separated list of variables to be plotted')
+                        help='variable to be plotted')
     parser.add_argument('-n', '--nfiles',
                         default=1,
                         help='number of files to be plotted for animations')
