@@ -311,6 +311,22 @@ class ParticlesBoundaryValues {
   int nprtcl_send, nprtcl_recv;
   DualArray1D<ParticleLocationData> sendlist;
 
+  // Destruction machinery (Stage 3c). Particles are destroyed when they exit the mesh
+  // through a non-periodic boundary (reason 0) or trip an excision criterion
+  // (1 = sphere, 2 = lapse; session C(b)). SetNewPrtclGID only MARKS (fills destroylist
+  // + the per-event death records); the actual removal happens in the ONE merged
+  // sent-union-destroyed hole compaction in RecvAndUnpackPrtcls, which runs in serial
+  // builds too.
+  int nprtcl_destroy;               // # marked destroyed this cycle (this rank)
+  DualArray1D<int> destroylist;     // their array indices (host-sorted ascending)
+  DualArray1D<int> holelist;        // merged sent + destroyed hole indices (ascending)
+  DualArray1D<int> cpairs;          // tail-compaction (dst,src) pairs, flattened 2*npairs
+  DvceArray2D<Real> destroy_rec_r;  // death records, 7 x cap: {x,y,z,vx,vy,vz,crit}
+  DvceArray2D<int>  destroy_rec_i;  // death records, 3 x cap: {tag, gid, reason}
+  int ndest_global[3];              // this cycle's destruction census by reason, summed
+                                    // over all ranks (every rank holds it; serial: local)
+  std::vector<int> ndest_eachrank;  // per-rank destroy totals this cycle (MPI census)
+
   // Data needed to count number of messages and particles to send between ranks
   int nsends; // number of MPI sends to neighboring ranks on this rank
   int nrecvs; // number of MPI recvs from neighboring ranks on this rank

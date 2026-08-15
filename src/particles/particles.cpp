@@ -99,6 +99,64 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   nsearch_fail = 0;
   ledger_init = false;
   ledger0[0] = ledger0[1] = ledger0[2] = 0;
+  ledger_dead[0] = ledger_dead[1] = 0;
+  ndestroy_thisrank[0] = ndestroy_thisrank[1] = ndestroy_thisrank[2] = 0;
+
+  // death-record ledger (one CSV row per destroyed particle; see particles_destroy.cpp)
+  destroy_log = pin->GetOrAddBoolean("particles","destroy_log",true);
+  destroy_log_fname = pin->GetString("job","basename") + ".prtcl_destroy.csv";
+
+  // parameterized excision (see particles.hpp for semantics and the gauge note);
+  // defaults OFF -- the prototype's hardcoded rexcise=2-iff-not-Minkowski (bug B1)
+  // destroyed Schwarzschild-infall particles at r<2 and any OS-collapse core at t=0
+  excise_radius = pin->GetOrAddReal("particles","excise_radius",0.0);
+  excise_x1     = pin->GetOrAddReal("particles","excise_x1",0.0);
+  excise_x2     = pin->GetOrAddReal("particles","excise_x2",0.0);
+  excise_x3     = pin->GetOrAddReal("particles","excise_x3",0.0);
+  excise_lapse  = pin->GetOrAddReal("particles","excise_lapse",0.0);
+  excise_any    = (excise_radius > 0.0) || (excise_lapse > 0.0);
+  if (excise_lapse > 0.0 && pmy_pack->padm == nullptr) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+              << "<particles> excise_lapse requires ADM variables (<adm> or <z4c>)"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (excise_any) {
+    Kokkos::realloc(excise_flag, 1);
+    Kokkos::realloc(excise_crit, 1);
+  }
+
+  // C1 guard: dynamic AMR has no particle support anywhere (mesh_refinement.cpp and
+  // load_balance.cpp move MeshBlocks and renumber gids without touching particles, so
+  // the first regrid event leaves every PGID stale -- silent corruption). Implementation
+  // is deferred to Stage 5 (after the SMR Tmunu + OS-collapse test); static refinement
+  // (SMR) is fully supported. See stage3_communication/README.md section 5.3 C(c)7.
+  if (pmy_pack->pmesh->adaptive) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+              << "Particles do not support adaptive mesh refinement yet (PGIDs go stale"
+              << std::endl
+              << "on regrid; deferred to Stage 5). Use refinement = static instead."
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+
+  // Particles crossing any non-periodic mesh boundary are DESTROYED (Stage 3c). For
+  // outflow/diode/user faces that is the physically expected behavior; for reflect or
+  // inflow faces it is not (reflected/injected particle BCs are unimplemented), so warn
+  // once at startup (user decision 2026-06-11: destroy-with-warning, not fatal).
+  if (global_variable::my_rank == 0) {
+    for (int f=0; f<6; ++f) {
+      BoundaryFlag bc = pmy_pack->pmesh->mesh_bcs[f];
+      if (bc == BoundaryFlag::reflect || bc == BoundaryFlag::inflow) {
+        std::cout << "### WARNING in " << __FILE__ << " at line " << __LINE__ << std::endl
+                  << "reflect/inflow mesh boundaries are not implemented for particles;"
+                  << std::endl
+                  << "particles crossing them will be DESTROYED (reason=exit)."
+                  << std::endl;
+        break;
+      }
+    }
+  }
 
   // Particle real data uses the contiguous layout {IPM,IPEN,IPX,IPVX,IPY,IPVY,IPZ,IPVZ}:
   // dimension-independent scalars first, then position+velocity with the z-pair last so a

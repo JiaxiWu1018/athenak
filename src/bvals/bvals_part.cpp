@@ -61,6 +61,7 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   auto myrank = global_variable::my_rank;
   auto &nghbr = pmy_part->pmy_pack->pmb->nghbr;
   auto &mbpar = pmy_part->pmy_pack->pmb->mb_parity;
+  auto &mbbcs = pmy_part->pmy_pack->pmb->mb_bcs;
   auto &psendl = sendlist;
   // GPU-safe device send counter (the legacy code atomically incremented a HOST stack
   // address from inside the device kernel, and the host read of it had no fence)
@@ -77,30 +78,57 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   int ncycle = pmy_part->pmy_pack->pmesh->ncycle;
   DvceArray1D<int> dcnt("pdbg_cnt",4);   // zero-initialized
 
-#if MPI_PARALLEL_ENABLED
-  // Exact sendlist sizing, pass 1 of 2: count the particles that crossed a MeshBlock
-  // boundary (cheap ownership comparisons only, no neighbor lookups). Crossers bound
-  // off-rank senders from above, and both passes classify a crossing with the SAME
-  // predicate (ComputeBlockOffsets), so the capacity grown here cannot be exceeded by
-  // the pass-2 appends. The legacy guess of 0.1*npart overflowed the device atomic
-  // appends (out-of-bounds writes) whenever more than 10% of a rank's particles left
-  // in one cycle, and was zero for npart < 10. Serial builds never append (UpdateGID
-  // is MPI-only), so the count and the growth are skipped entirely.
-  int ncross = 0;
+  // destruction marking (Stage 3c): device counters {0: append slot, 1..3: per-reason
+  // counts (exit/sphere/lapse)} and the destroyed-side {sum tag, sum tag^2} checksum
+  // accumulators of the two-sided conservation ledger (written only when debug >= 1)
+  DvceArray1D<int> dstc("pdest_cnt",4);                    // zero-initialized
+  DvceArray1D<unsigned long long> dsums("pdest_sums",2);   // zero-initialized
+  auto &pdestl = destroylist;
+  auto &drr = destroy_rec_r;
+  auto &dri = destroy_rec_i;
+  // excision flags written by the MarkExcised task this cycle (C(b) criteria)
+  bool exc_any = pmy_part->excise_any;
+  auto &eflag = pmy_part->excise_flag;
+  auto &ecrit = pmy_part->excise_crit;
+
+  // Exact list sizing, pass 1 of 2: count (i) the particles that crossed a MeshBlock
+  // boundary and (ii) the particles to destroy (mesh exits through non-periodic
+  // boundaries; the C(b) excision criteria join this predicate via their flag array).
+  // Cheap ownership comparisons only, no neighbor lookups. Crossers bound off-rank
+  // senders from above, and both passes classify with the SAME predicates
+  // (ComputeBlockOffsets + ExitsMeshBoundary), so the capacities grown here cannot be
+  // exceeded by the pass-2 appends. The legacy guess of 0.1*npart overflowed the device
+  // atomic appends (out-of-bounds writes) whenever more than 10% of a rank's particles
+  // left in one cycle, and was zero for npart < 10.
+  int ncross = 0, ndest_ub = 0;
   Kokkos::parallel_reduce("part_count_cross",
     Kokkos::RangePolicy<>(DevExeSpace(), 0, npart),
-    KOKKOS_LAMBDA(const int p, int &csum) {
+    KOKKOS_LAMBDA(const int p, int &csum, int &dsum) {
       int m = pi(PGID,p) - gids;
       Real x3 = three_d ? pr(IPZ,p) : 0.0;
       int cix, ciy, ciz;
       ComputeBlockOffsets(mbsize.d_view(m), pr(IPX,p), pr(IPY,p), x3, three_d,
                           cix, ciy, ciz);
-      if ((abs(cix) + abs(ciy) + abs(ciz)) != 0) {csum += 1;}
-    }, Kokkos::Sum<int>(ncross));
+      bool crossed = ((abs(cix) + abs(ciy) + abs(ciz)) != 0);
+      if (crossed) {csum += 1;}
+      if ((crossed && ExitsMeshBoundary(mbbcs.d_view, m, cix, ciy, ciz))
+          || (exc_any && eflag(p) != 0)) {dsum += 1;}
+    }, Kokkos::Sum<int>(ncross), Kokkos::Sum<int>(ndest_ub));
+#if MPI_PARALLEL_ENABLED
+  // serial builds never append to sendlist (UpdateGID is MPI-only): skip the growth
   if (ncross > static_cast<int>(sendlist.extent(0))) {
     Kokkos::realloc(sendlist, ncross);
   }
+#else
+  (void)ncross;
 #endif
+  if (ndest_ub > static_cast<int>(destroylist.extent(0))) {
+    Kokkos::realloc(destroylist, ndest_ub);
+  }
+  if (ndest_ub > destroy_rec_r.extent_int(1)) {
+    Kokkos::realloc(destroy_rec_r, 7, ndest_ub);
+    Kokkos::realloc(destroy_rec_i, 3, ndest_ub);
+  }
   par_for("part_update",DevExeSpace(),0,(npart-1), KOKKOS_LAMBDA(const int p) {
     int m = pi(PGID,p) - gids;
     int mylevel = mblev.d_view(m);
@@ -117,6 +145,52 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
     int ix, iy, iz;
     ComputeBlockOffsets(mbsize.d_view(m), x1, x2, x3, three_d, ix, iy, iz);
 
+    bool crossed = ((abs(ix) + abs(iy) + abs(iz)) != 0);
+
+    // destruction marking (Stage 3c): a crossing that leaves the mesh through any
+    // non-periodic boundary destroys the particle (reason 0 = exit), and the C(b)
+    // excision criteria destroy via the MarkExcised flags (1 = sphere, 2 = lapse;
+    // excised particles need not have crossed anything). Exit takes precedence.
+    // Marked particles are excluded from the search, sendlist, and wrap; the actual
+    // removal is the merged hole compaction in RecvAndUnpackPrtcls.
+    int reason = -1;
+    if (crossed && ExitsMeshBoundary(mbbcs.d_view, m, ix, iy, iz)) {
+      reason = 0;
+    } else if (exc_any && eflag(p) != 0) {
+      reason = eflag(p);
+    }
+    if (reason >= 0) {
+      int slot = Kokkos::atomic_fetch_add(&dstc(0), 1);
+      Kokkos::atomic_add(&dstc(1+reason), 1);
+      pdestl.d_view(slot) = p;
+      // death record: the exact state at marking (post-push, pre-wrap -- for an exit
+      // this is the first position OUTSIDE the mesh, within one v*dt of the crossing;
+      // for excision the first position past the criterion surface)
+      drr(0,slot) = x1;
+      drr(1,slot) = x2;
+      drr(2,slot) = three_d ? x3 : 0.0;
+      drr(3,slot) = pr(IPVX,p);
+      drr(4,slot) = pr(IPVY,p);
+      drr(5,slot) = three_d ? pr(IPVZ,p) : 0.0;
+      drr(6,slot) = (reason > 0) ? ecrit(p) : 0.0;  // r or alpha at marking
+      dri(0,slot) = pi(PTAG,p);
+      dri(1,slot) = pi(PGID,p);
+      dri(2,slot) = reason;
+      if (dbg > 0) {
+        // destroyed-side checksums of the two-sided conservation ledger (cast BEFORE
+        // multiplying: int tag*tag overflows at tag >= 46341)
+        unsigned long long t = static_cast<unsigned long long>(pi(PTAG,p));
+        Kokkos::atomic_add(&dsums(0), t);
+        Kokkos::atomic_add(&dsums(1), t*t);
+      }
+      if (dbg > 1) {
+        Kokkos::printf("[prtcl-debug] rank=%d cycle=%d tag=%d gid=%d DESTROY "
+                       "reason=%d off=(%d,%d,%d) pos=(%.6e,%.6e,%.6e)\n", myrank,
+                       ncycle, pi(PTAG,p), pi(PGID,p), reason, ix, iy, iz, x1, x2, x3);
+      }
+      return;   // skip search/sendlist/wrap: this particle is gone
+    }
+
     // sublock indices for faces and edges with S/AMR
     int fx = (x1 < 0.5*(mbsize.d_view(m).x1min + mbsize.d_view(m).x1max))? 0 : 1;
     int fy = (x2 < 0.5*(mbsize.d_view(m).x2min + mbsize.d_view(m).x2max))? 0 : 1;
@@ -125,7 +199,7 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
     fz = three_d ? fz : 0;
 
     // only update particle GID if it has crossed MeshBlock boundary
-    if ((abs(ix) + abs(iy) + abs(iz)) != 0) {
+    if (crossed) {
       int oldgid = pi(PGID,p);
       // resolve the destination by direct parity-indexed lookups (bvals/prtcl_search.hpp;
       // replaces the legacy slot walk, see the Stage-3a(b) failure catalog)
@@ -144,11 +218,11 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
       } else {
         // No destination: leave the particle on its current MeshBlock rather than write
         // a dangling GID (the legacy corner path wrote gid=-1 AND rank=-1, which aborted
-        // MPI builds inside MPI_Isend). Reachable only if the particle moved more than
-        // one block width in a step, exited a non-periodic physical boundary (handled by
-        // the destruction machinery of a later Stage-3 session), or the 2:1-balance /
-        // SetNeighbors contract broke. CheckMigration (debug >= 1) makes all of these
-        // fatal via the search_fail counter and the containment check.
+        // MPI builds inside MPI_Isend). Mesh exits are destroyed BEFORE the search
+        // (Stage 3c), so this is reachable only if the particle moved more than one
+        // block width in a step or the 2:1-balance / SetNeighbors contract broke --
+        // unconditionally a logic error. CheckMigration (debug >= 1) makes it fatal via
+        // the search_fail counter and the containment check.
         Kokkos::atomic_add(&dcnt(3), 1);
         if (dbg > 0) {
           Kokkos::printf("[prtcl-debug] rank=%d cycle=%d tag=%d gid=%d SEARCH FAIL "
@@ -167,9 +241,10 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
       // reset x,y,z positions if particle crosses Mesh boundary using periodic BCs.
       // (>= at the max edge: a particle exactly on the mesh boundary has migrated, so its
       // wrapped position must land exactly on the min edge, consistent with the half-open
-      // [min,max) block-ownership convention.) NOTE: applied unconditionally; correct for
-      // the strictly-periodic meshes Stage 3a tests. Per-direction BC gating and
-      // destruction at physical boundaries is a later Stage-3 session.
+      // [min,max) block-ownership convention.) The position test alone is per-direction
+      // correct: a surviving particle can only be beyond a mesh edge in a direction
+      // whose face is periodic -- any non-periodic exit was destroyed above (Stage 3c),
+      // which is what replaced the legacy unconditional wrap (bug A5/B7).
       if (x1 < meshsize.x1min) {
         pr(IPX,p) += (meshsize.x1max - meshsize.x1min);
       } else if (x1 >= meshsize.x1max) {
@@ -207,6 +282,37 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   // sync sendlist device array with host
   sendlist.template modify<DevExeSpace>();
   sendlist.template sync<HostMemSpace>();
+
+  // read the destroy counters back and publish the per-reason counts (the census that
+  // CountSendsAndRecvs Allgathers and the count bookkeeping consumes)
+  auto hdstc = Kokkos::create_mirror_view(dstc);
+  Kokkos::deep_copy(hdstc, dstc);
+  nprtcl_destroy = hdstc(0);
+  for (int k=0; k<3; ++k) {pmy_part->ndestroy_thisrank[k] = hdstc(1+k);}
+  // same overflow contract as the sendlist: both passes use the same predicate, so
+  // appends > counted capacity means corruption -- fatal, never compact garbage
+  if (nprtcl_destroy > ndest_ub) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "destroylist overflow: " << nprtcl_destroy
+              << " destroyed > " << ndest_ub << " counted" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  Kokkos::resize(destroylist, nprtcl_destroy);
+  destroylist.template modify<DevExeSpace>();
+  destroylist.template sync<HostMemSpace>();
+  // ascending index order is required by the merged hole compaction (atomic fill order
+  // is arbitrary); only the host view is consumed downstream, so no device sync-back
+  {
+    namespace KE = Kokkos::Experimental;
+    std::sort(KE::begin(destroylist.h_view), KE::end(destroylist.h_view));
+  }
+  // accumulate the destroyed-side conservation checksums (per-rank cumulative)
+  if (dbg > 0 && nprtcl_destroy > 0) {
+    auto hds = Kokkos::create_mirror_view(dsums);
+    Kokkos::deep_copy(hds, dsums);
+    pmy_part->ledger_dead[0] += hds(0);
+    pmy_part->ledger_dead[1] += hds(1);
+  }
 
   // store the per-cycle migration counters for CheckMigration (debug mode only)
   if (dbg > 0) {
@@ -255,9 +361,22 @@ TaskStatus ParticlesBoundaryValues::CountSendsAndRecvs() {
   }
   nsends = sends_thisrank.size();
 
-  // Share number of ranks to send to amongst all ranks
-  nsends_eachrank[global_variable::my_rank] = nsends;
-  MPI_Allgather(&nsends, 1, MPI_INT, nsends_eachrank.data(), 1, MPI_INT, mpi_comm_part);
+  // Share the number of sends AND this cycle's destruction census among all ranks: one
+  // Allgather of 4 ints {nsends, ndestroy_exit, ndestroy_sphere, ndestroy_lapse} per
+  // rank (widened from the legacy 1-int gather -- zero extra collectives). The global
+  // census (i) keeps the count refresh in RecvAndUnpackPrtcls collective-free on
+  // send-quiet cycles, (ii) feeds the cumulative destroyed ledger on Mesh, and (iii)
+  // makes the death-log flush rank-consistent.
+  int cnt4[4] = {nsends, pmy_part->ndestroy_thisrank[0], pmy_part->ndestroy_thisrank[1],
+                 pmy_part->ndestroy_thisrank[2]};
+  std::vector<int> cnts4_all(4*(global_variable::nranks));
+  MPI_Allgather(cnt4, 4, MPI_INT, cnts4_all.data(), 4, MPI_INT, mpi_comm_part);
+  ndest_global[0] = ndest_global[1] = ndest_global[2] = 0;
+  for (int n=0; n<(global_variable::nranks); ++n) {
+    nsends_eachrank[n] = cnts4_all[4*n];
+    ndest_eachrank[n] = cnts4_all[4*n+1] + cnts4_all[4*n+2] + cnts4_all[4*n+3];
+    for (int k=0; k<3; ++k) {ndest_global[k] += cnts4_all[4*n+1+k];}
+  }
 
   // Now share ParticleMessageData amongst all ranks
   // First create vector of starting indices in full vector
@@ -477,20 +596,15 @@ TaskStatus ParticlesBoundaryValues::PackAndSendPrtcls() {
 //! \brief
 
 TaskStatus ParticlesBoundaryValues::RecvAndUnpackPrtcls() {
+  int npart = pmy_part->nprtcl_thispack;
 #if MPI_PARALLEL_ENABLED
-  // Sort sendlist on host by index in particle array
+  // Sort sendlist on host by index in particle array (ascending hole order, required
+  // by the merged hole list below)
   namespace KE = Kokkos::Experimental;
   std::sort(KE::begin(sendlist.h_view), KE::end(sendlist.h_view), SortByIndex);
   // sync sendlist host array with device.  This results in sorted array on device
   sendlist.template modify<HostMemSpace>();
   sendlist.template sync<DevExeSpace>();
-
-  // increase size of particle arrays if needed
-  int new_npart = pmy_part->nprtcl_thispack + (nprtcl_recv - nprtcl_send);
-  if (nprtcl_recv > nprtcl_send) {
-    Kokkos::resize(pmy_part->prtcl_idata, pmy_part->nidata, new_npart);
-    Kokkos::resize(pmy_part->prtcl_rdata, pmy_part->nrdata, new_npart);
-  }
 
   // check that particle communications have all completed
   bool bflag = false;
@@ -517,25 +631,76 @@ TaskStatus ParticlesBoundaryValues::RecvAndUnpackPrtcls() {
   }
   // exit if particle communications have not completed
   if (bflag) {return TaskStatus::incomplete;}
+#endif
 
-  // unpack particles into positions of sent particles
-  if (nprtcl_recv > 0) {
+  // ---- ONE merged hole compaction (Stage 3c). Sent and destroyed particles both
+  // leave holes; received particles fill holes first, surviving tail particles fill
+  // the rest, then a single resize shrinks the arrays. This common path runs in
+  // serial builds too (nprtcl_send = nprtcl_recv = 0 there -- destruction must work
+  // without MPI; both are ctor-zeroed so the first cycle is well-defined).
+  int nsend = nprtcl_send;
+  int nrecv = nprtcl_recv;
+  int ndest = nprtcl_destroy;
+  int nholes = nsend + ndest;
+  int new_npart = npart + nrecv - nholes;
+
+  // merge the (index-sorted) sendlist and destroylist into one ascending hole list.
+  // The two are disjoint by construction (marked-destroyed particles never enter the
+  // search or the sendlist) -- a duplicate would corrupt the compaction, so assert.
+  int ntarget = 0;   // UNFILLED holes below new_npart = the tail-fill destinations
+  if (nholes > 0) {
+    if (nholes > static_cast<int>(holelist.extent(0))) {
+      Kokkos::realloc(holelist, nholes);
+    }
+    int a = 0, b = 0, k = 0;
+    while (a < nsend && b < ndest) {
+      int sv = sendlist.h_view(a).prtcl_indx;
+      int dv = destroylist.h_view(b);
+      holelist.h_view(k++) = (sv < dv) ? sendlist.h_view(a++).prtcl_indx
+                                       : destroylist.h_view(b++);
+    }
+    while (a < nsend) {holelist.h_view(k++) = sendlist.h_view(a++).prtcl_indx;}
+    while (b < ndest) {holelist.h_view(k++) = destroylist.h_view(b++);}
+    for (int n=0; n<nholes; ++n) {
+      if (n > 0 && holelist.h_view(n) == holelist.h_view(n-1)) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "particle " << holelist.h_view(n)
+                  << " is both sent and destroyed (disjointness violated)" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      // the first nrecv (smallest) holes are filled by received particles below; only
+      // the unfilled remainder below new_npart needs a tail donor
+      if (n >= nrecv && holelist.h_view(n) < new_npart) {ntarget++;}
+    }
+    holelist.template modify<HostMemSpace>();
+    holelist.template sync<DevExeSpace>();
+  }
+
+  // increase size of particle arrays if needed (more receives than holes)
+  if (nrecv > nholes) {
+    Kokkos::resize(pmy_part->prtcl_idata, pmy_part->nidata, new_npart);
+    Kokkos::resize(pmy_part->prtcl_rdata, pmy_part->nrdata, new_npart);
+  }
+
+#if MPI_PARALLEL_ENABLED
+  // unpack received particles into the holes (merged order); excess appends at the end
+  if (nrecv > 0) {
     int nrdata = pmy_part->nrdata;
     int nidata = pmy_part->nidata;
     auto &pr = pmy_part->prtcl_rdata;
     auto &pi = pmy_part->prtcl_idata;
     auto &rrecvbuf = prtcl_rrecvbuf;
     auto &irecvbuf = prtcl_irecvbuf;
-    int &npart = pmy_part->nprtcl_thispack;
     // locals so the device lambda does not capture (and dereference) host `this`
-    auto &slist = sendlist;
-    int nsend = nprtcl_send;
+    auto &hlist = holelist;
+    int nh = nholes;
+    int npart_old = npart;
     par_for("punpack",DevExeSpace(),0,(nprtcl_recv-1), KOKKOS_LAMBDA(const int n) {
       int p;
-      if (n < nsend) {
-        p = slist.d_view(n).prtcl_indx;    // place particles in holes created by sends
+      if (n < nh) {
+        p = hlist.d_view(n);          // fill holes left by sent/destroyed particles
       } else {
-        p = npart + (n - nsend);           // place particle at end of arrays
+        p = npart_old + (n - nh);     // place particle at end of arrays
       }
       for (int i=0; i<nidata; ++i) {
         pi(i,p) = irecvbuf(nidata*n + i);
@@ -545,55 +710,108 @@ TaskStatus ParticlesBoundaryValues::RecvAndUnpackPrtcls() {
       }
     });
   }
+#endif
 
-  // At this point have filled npart_recv holes in particle arrays from sends
-  // If (nprtcl_recv < nprtcl_send), have to move particles from end of arrays to fill
-  // remaining holes
-  int nremain = nprtcl_send - nprtcl_recv;
+  // Fill the remaining holes by gathering surviving particles from the array tail:
+  // one host pass builds the (dst,src) pair list, then ONE device kernel executes
+  // every move. (The legacy host loop launched two deep_copies per moved particle and
+  // depended on undocumented orderings; the prototype's copy of it had the B2 bug --
+  // unsorted hole list + the smallest-vs-largest hole comparison -- which resurrected
+  // dead particles and dropped live ones. The pair construction below asserts its own
+  // invariants instead, and the debug=1 two-sided ledger is the end-to-end oracle.)
+  int nremain = nholes - nrecv;
   if (nremain > 0) {
-    int &npart = pmy_part->nprtcl_thispack;
-    int i_last_hole = nprtcl_send-1;
-    int i_next_hole = nprtcl_recv;
-    for (int n=1; n<=nremain; ++n) {
-      int nend = npart-n;
-      if (nend > sendlist.h_view(i_last_hole).prtcl_indx) {
-        // copy particle from end into hole
-        int next_hole = sendlist.h_view(i_next_hole).prtcl_indx;
-        auto rdest = Kokkos::subview(pmy_part->prtcl_rdata, Kokkos::ALL, next_hole);
-        auto rsrc  = Kokkos::subview(pmy_part->prtcl_rdata, Kokkos::ALL, nend);
-        Kokkos::deep_copy(rdest, rsrc);
-        auto idest = Kokkos::subview(pmy_part->prtcl_idata, Kokkos::ALL, next_hole);
-        auto isrc  = Kokkos::subview(pmy_part->prtcl_idata, Kokkos::ALL, nend);
-        Kokkos::deep_copy(idest, isrc);
-        i_next_hole += 1;
-      } else {
-        // this index contains a hole, so do nothing except find new index of last hole
-        i_last_hole -= 1;
-      }
+    if (2*nremain > static_cast<int>(cpairs.extent(0))) {
+      Kokkos::realloc(cpairs, 2*nremain);
     }
-
-    // shrink size of particle data arrays
+    int npairs = 0;
+    int i = nrecv;          // ascending: next unfilled hole (target while < new_npart)
+    int hi = nholes - 1;    // descending: skips tail slots that are themselves holes
+    for (int j=(npart-1); j>=new_npart; --j) {
+      if (hi >= nrecv && holelist.h_view(hi) == j) {--hi; continue;}  // j is a hole
+      // j holds a surviving particle: move it into the lowest unfilled hole
+      int dst = holelist.h_view(i);
+      if (i > hi || dst >= new_npart) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "compaction pairing imbalance (donor " << j
+                  << ", next hole " << dst << ", new_npart " << new_npart << ")"
+                  << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      cpairs.h_view(2*npairs) = dst;
+      cpairs.h_view(2*npairs+1) = j;
+      ++npairs; ++i;
+    }
+    // every hole below new_npart must have been paired with exactly one tail survivor
+    // (holes at/above new_npart simply fall off with the resize)
+    if (npairs != ntarget) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "compaction pairing incomplete: " << npairs
+                << " pairs != " << ntarget << " holes below new_npart" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    if (npairs > 0) {
+      cpairs.template modify<HostMemSpace>();
+      cpairs.template sync<DevExeSpace>();
+      int nrdata = pmy_part->nrdata;
+      int nidata = pmy_part->nidata;
+      auto &pr = pmy_part->prtcl_rdata;
+      auto &pi = pmy_part->prtcl_idata;
+      auto &cp = cpairs;
+      // no races: every dst < new_npart <= every src, and dst/src are each unique
+      par_for("pcompact",DevExeSpace(),0,(npairs-1), KOKKOS_LAMBDA(const int n) {
+        int dst = cp.d_view(2*n);
+        int src = cp.d_view(2*n+1);
+        for (int i=0; i<nidata; ++i) {
+          pi(i,dst) = pi(i,src);
+        }
+        for (int i=0; i<nrdata; ++i) {
+          pr(i,dst) = pr(i,src);
+        }
+      });
+    }
+    // shrink particle arrays: the single resize of the whole compaction
     Kokkos::resize(pmy_part->prtcl_idata, pmy_part->nidata, new_npart);
     Kokkos::resize(pmy_part->prtcl_rdata, pmy_part->nrdata, new_npart);
   }
 
-  // Update nparticles_thisrank.  Update cost array (use npart_thismb[nmb]?)
+  // ---- refresh the particle-count bookkeeping + the cumulative destroyed ledger ----
   pmy_part->nprtcl_thispack = new_npart;
   Mesh *pm = pmy_part->pmy_pack->pmesh;
   pm->nprtcl_thisrank = new_npart;
-  // refresh the global counts on the particle communicator (the legacy call was the lone
-  // particle collective on MPI_COMM_WORLD), and keep nprtcl_total consistent with the
-  // refreshed per-rank counts (a no-op invariant until destruction exists). If no rank
-  // sent anything this cycle the counts cannot have changed: skip the collective
-  // (sends_allranks is Allgather'd, so this branch is identical on every rank).
+#if MPI_PARALLEL_ENABLED
+  int gdest = ndest_global[0] + ndest_global[1] + ndest_global[2];
   if (!(sends_allranks.empty())) {
+    // cross-rank traffic this cycle: refresh by Allgather on the particle communicator
+    // (the authoritative path; destroys are already folded into new_npart)
     MPI_Allgather(&new_npart,1,MPI_INT,(pm->nprtcl_eachrank),1,MPI_INT,mpi_comm_part);
     pm->nprtcl_total = 0;
     for (int n=0; n<(global_variable::nranks); ++n) {
       pm->nprtcl_total += pm->nprtcl_eachrank[n];
     }
+  } else if (gdest > 0) {
+    // destruction only: every rank already knows every rank's destroy count from the
+    // census -- update the bookkeeping locally, no collective needed
+    for (int n=0; n<(global_variable::nranks); ++n) {
+      pm->nprtcl_eachrank[n] -= ndest_eachrank[n];
+    }
+    pm->nprtcl_total -= gdest;
+  }
+  // else: quiet cycle (no sends and no destroys anywhere) -- counts unchanged
+#else
+  for (int k=0; k<3; ++k) {ndest_global[k] = pmy_part->ndestroy_thisrank[k];}
+  int gdest = ndest_global[0] + ndest_global[1] + ndest_global[2];
+  if (gdest > 0) {
+    pm->nprtcl_eachrank[0] = new_npart;
+    pm->nprtcl_total = new_npart;
   }
 #endif
+  if (gdest > 0) {
+    pm->TallyDestroyedPrtcls(ndest_global);
+    // per-event death records -> <basename>.prtcl_destroy.csv. Collective in MPI
+    // builds; safe because the census makes gdest identical on every rank.
+    if (pmy_part->destroy_log) {pmy_part->FlushDeathLog();}
+  }
   return TaskStatus::complete;
 }
 
