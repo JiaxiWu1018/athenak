@@ -118,6 +118,10 @@ class Particles {
   // post-migration validation: containment/GID-range/count checks (particles_debug.cpp);
   // no-op unless <particles> debug >= 1, fatal (exit) on any violation
   TaskStatus CheckMigration(Driver *pdriver, int stage);
+  // exhaustive host-side enumeration audit of the destination search against a
+  // brute-force bbox oracle (particles_debug.cpp); fatal on any mismatch. Single-rank,
+  // strictly-periodic meshes only (test utility, invoked by the part_crossing pgen).
+  void AuditDestinationSearch();
 
   // load particle initial conditions from an HDF5 file (read_particle.cpp)
   void read_prtcl_table(const char *fname);

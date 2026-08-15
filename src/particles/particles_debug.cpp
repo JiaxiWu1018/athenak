@@ -19,6 +19,8 @@
 //! velocity, owning-block bbox), then the code exits nonzero. A per-cycle summary of
 //! face/edge/corner crossings (counted in SetNewPrtclGID) is printed when nonzero.
 
+#include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 
@@ -27,6 +29,7 @@
 #include "mesh/mesh.hpp"
 #include "driver/driver.hpp"
 #include "particles.hpp"
+#include "bvals/prtcl_search.hpp"
 
 namespace particles {
 
@@ -154,6 +157,139 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
   }
 
   return TaskStatus::complete;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void Particles::AuditDestinationSearch()
+//! \brief exhaustive host-side enumeration audit of the migration destination search.
+//! For every local MeshBlock, probe points are generated on/around every face, edge, and
+//! corner -- transverse fractions {0, 1/4, 1/2, 3/4, 1} x outward distances
+//! {0 (exactly ON the boundary), 1e-6 dx, 0.4 dx} -- and the full kernel pipeline is
+//! mirrored on the host (comparison-based offsets identical to the ownership predicates,
+//! half bits, parity -> FindDestinationIndex). The result is compared against the ground
+//! truth: a brute-force scan of every block's bbox (FindContainingMeshBlock) on the
+//! periodically wrapped probe. Any mismatch is printed
+//! and the audit is FATAL. This is a proof by enumeration of the search for the given
+//! grid, independent of particle dynamics. Single rank + strictly periodic only.
+
+void Particles::AuditDestinationSearch() {
+  Mesh *pm = pmy_pack->pmesh;
+  if (global_variable::nranks != 1 || !(pm->strictly_periodic)) {
+    std::cout << "[prtcl-audit] SKIPPED (requires 1 rank and strictly periodic mesh)"
+              << std::endl;
+    return;
+  }
+  bool three_d = pm->three_d;
+  auto &size  = pmy_pack->pmb->mb_size;
+  auto &ngh   = pmy_pack->pmb->nghbr;
+  auto &mbpar = pmy_pack->pmb->mb_parity;
+  auto &mblev = pmy_pack->pmb->mb_lev;
+  int nmb  = pmy_pack->nmb_thispack;
+  int gids = pmy_pack->gids;
+  auto &ms = pm->mesh_size;
+
+  const Real frac[5] = {0.0, 0.25, 0.5, 0.75, 1.0};
+  const int nfrac = 5, ndist = 3;
+  std::int64_t nprobe = 0;
+  int nbad = 0;
+
+  for (int m=0; m<nmb; ++m) {
+    const RegionSize &sz = size.h_view(m);
+    Real bmin[3] = {sz.x1min, sz.x2min, sz.x3min};
+    Real bmax[3] = {sz.x1max, sz.x2max, sz.x3max};
+    Real dmin = std::fmin(sz.dx1, sz.dx2);
+    if (three_d) {dmin = std::fmin(dmin, sz.dx3);}
+    const Real dist[3] = {0.0, 1.0e-6*dmin, 0.4*dmin};
+    int mylevel = mblev.h_view(m);
+    int par[3] = {mbpar.h_view(m,0), mbpar.h_view(m,1), mbpar.h_view(m,2)};
+
+    for (int iz0=-1; iz0<=1; ++iz0) {
+      if (!three_d && iz0 != 0) {continue;}
+      for (int iy0=-1; iy0<=1; ++iy0) {
+        for (int ix0=-1; ix0<=1; ++ix0) {
+          int off0[3] = {ix0, iy0, iz0};
+          if (abs(ix0) + abs(iy0) + abs(iz0) == 0) {continue;}
+          for (int kd=0; kd<ndist; ++kd) {
+            for (int kb=0; kb<nfrac; ++kb) {
+              for (int ka=0; ka<nfrac; ++ka) {
+                // probe: outward of each crossed boundary by dist; transverse dims at the
+                // fraction lattice (0 and 1 land exactly on the lateral boundaries, so a
+                // nominal face probe can legitimately become an edge/corner probe -- the
+                // classification below follows the actual position, like the kernel)
+                Real fr2[2] = {frac[ka], frac[kb]};
+                Real pos[3];
+                int kf = 0;
+                for (int dim=0; dim<3; ++dim) {
+                  Real len = bmax[dim] - bmin[dim];
+                  if (off0[dim] == 0) {
+                    Real f = (dim == 2 && !three_d) ? 0.5 : fr2[kf++];
+                    pos[dim] = bmin[dim] + f*len;
+                  } else {
+                    pos[dim] = (off0[dim] > 0) ? bmax[dim] + dist[kd]
+                                               : bmin[dim] - dist[kd];
+                  }
+                }
+                nprobe++;
+
+                // ---- mirror the SetNewPrtclGID kernel pipeline (comparison-based
+                // offsets, exactly consistent with the ownership predicates)
+                Real x3k = three_d ? pos[2] : bmin[2];
+                int ix = 0, iy = 0, iz = 0;
+                if (pos[0] <  bmin[0]) {ix = -1;} else if (pos[0] >= bmax[0]) {ix = 1;}
+                if (pos[1] <  bmin[1]) {iy = -1;} else if (pos[1] >= bmax[1]) {iy = 1;}
+                if (x3k    <  bmin[2]) {iz = -1;} else if (x3k    >= bmax[2]) {iz = 1;}
+                int got_gid;
+                if ((abs(ix) + abs(iy) + abs(iz)) == 0) {
+                  got_gid = gids + m;     // still inside: no migration
+                } else {
+                  int fx = (pos[0] < 0.5*(bmin[0] + bmax[0])) ? 0 : 1;
+                  int fy = (pos[1] < 0.5*(bmin[1] + bmax[1])) ? 0 : 1;
+                  int fz = (x3k    < 0.5*(bmin[2] + bmax[2])) ? 0 : 1;
+                  fz = three_d ? fz : 0;
+                  int indx = FindDestinationIndex(ngh.h_view, m, mylevel, ix,iy,iz,
+                                                  fx,fy,fz, par[0],par[1],par[2]);
+                  got_gid = (indx >= 0) ? ngh.h_view(m,indx).gid : -1;
+                }
+
+                // ---- ground truth: brute-force bbox scan of the wrapped probe
+                Real wx = pos[0], wy = pos[1], wz = pos[2];
+                if (wx <  ms.x1min) {wx += (ms.x1max - ms.x1min);}
+                if (wx >= ms.x1max) {wx -= (ms.x1max - ms.x1min);}
+                if (wy <  ms.x2min) {wy += (ms.x2max - ms.x2min);}
+                if (wy >= ms.x2max) {wy -= (ms.x2max - ms.x2min);}
+                if (three_d) {
+                  if (wz <  ms.x3min) {wz += (ms.x3max - ms.x3min);}
+                  if (wz >= ms.x3max) {wz -= (ms.x3max - ms.x3min);}
+                }
+                int mok = FindContainingMeshBlock(wx, wy, three_d ? wz : 0.0);
+                int want_gid = (mok >= 0) ? gids + mok : -2;
+
+                if (got_gid != want_gid) {
+                  nbad++;
+                  if (nbad <= 50) {
+                    std::cout << "[prtcl-audit] MISMATCH block gid=" << gids + m
+                              << " dir=(" << ix0 << "," << iy0 << "," << iz0 << ")"
+                              << " probe=(" << pos[0] << "," << pos[1] << "," << pos[2]
+                              << ") off=(" << ix << "," << iy << "," << iz << ")"
+                              << " got gid=" << got_gid << " want gid=" << want_gid
+                              << std::endl;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  std::cout << "[prtcl-audit] " << nprobe << " probes on " << nmb << " MeshBlocks: "
+            << nbad << " mismatches" << std::endl;
+  if (nbad > 0) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+              << "destination-search audit failed" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
 }
 
 } // namespace particles

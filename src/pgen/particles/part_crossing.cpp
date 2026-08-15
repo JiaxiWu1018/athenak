@@ -74,6 +74,11 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << "part_crossing requires a <particles> block in the input file" << std::endl;
     exit(EXIT_FAILURE);
   }
+  // exhaustive destination-search audit (independent of the particle init mode)
+  if (pin->GetOrAddBoolean("problem","audit",false)) {
+    pmbp->ppart->AuditDestinationSearch();
+  }
+
   std::string init = pin->GetOrAddString("particles","init","ppc");
   if (init.compare("file") == 0) {
     return;   // particles already loaded by the HDF5 reader (init=file cross-check path)
@@ -99,10 +104,15 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   if (mode.compare("targeted") == 0) {
     int select_gid  = pin->GetOrAddInteger("problem","select_gid",-1);
     int select_slot = pin->GetOrAddInteger("problem","select_slot",-1);
+    // inward starting offset as a fraction of the block's min cell; 0 places particles
+    // EXACTLY on the boundary (degenerate ownership test: with the half-open [min,max)
+    // convention a particle on the max edge already belongs to the neighbor, so the
+    // first migration must relabel it before the first validation)
+    Real delta_frac = pin->GetOrAddReal("problem","delta_frac",0.1);
 
     // crossing feasibility: the per-component step is vmax*cfl*dx_min/sqrt(3) (the particle
     // timestep is the light-crossing dt = cfl * smallest cell in the mesh) and must exceed
-    // the largest inward offset delta = 0.1 * (min cell of the particle's own block)
+    // the largest inward offset delta = delta_frac * (min cell of the particle's block)
     Real cfl = pin->GetReal("time","cfl_number");
     Real dxmin = std::numeric_limits<Real>::max(), delta_max = 0.0;
     for (int m=0; m<nmb; ++m) {
@@ -110,14 +120,14 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       d = std::fmin(d, mbsize.h_view(m).dx2);
       if (three_d) {d = std::fmin(d, mbsize.h_view(m).dx3);}
       dxmin = std::fmin(dxmin, d);
-      delta_max = std::fmax(delta_max, 0.1*d);
+      delta_max = std::fmax(delta_max, delta_frac*d);
     }
     Real step_min = vmax*cfl*dxmin/sqrt(3.0);
     if (step_min <= delta_max) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
                 << "targeted crossing infeasible: per-component step " << step_min
-                << " <= max inward offset " << delta_max << " (raise vmax or cfl_number)"
-                << std::endl;
+                << " <= max inward offset " << delta_max
+                << " (raise vmax/cfl_number or lower delta_frac)" << std::endl;
       exit(EXIT_FAILURE);
     }
 
@@ -132,7 +142,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       Real d = mbsize.h_view(m).dx1;
       d = std::fmin(d, mbsize.h_view(m).dx2);
       if (three_d) {d = std::fmin(d, mbsize.h_view(m).dx3);}
-      Real delta = 0.1*d;
+      Real delta = delta_frac*d;
 
       for (int iz=-1; iz<=1; ++iz) {
         if (!three_d && iz != 0) {continue;}

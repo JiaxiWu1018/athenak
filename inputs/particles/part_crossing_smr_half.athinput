@@ -67,6 +67,8 @@ debug  = 1             # fatal post-migration validation (the pass/fail criterio
 <problem>
 mode        = targeted # targeted (slot enumeration) | lattice (statistical soak)
 vmax        = 1.0      # particle speed
+audit       = true     # exhaustive destination-search audit vs bbox oracle (fatal)
+delta_frac  = 0.1      # targeted inward offset / min cell (0 = exactly ON boundary)
 select_gid  = -1       # targeted-mode isolation filters (-1 = all)
 select_slot = -1
 

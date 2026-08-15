@@ -41,6 +41,12 @@ class MeshBlock {
   DualArray1D<RegionSize> mb_size;   // physical size of each MeshBlock
   DualArray2D<BoundaryFlag> mb_bcs;  // boundary conditions at 6 faces of each MeshBlock
   DualArray2D<NeighborBlock> nghbr;  // data on all (up to 56) neighbors for each MB
+  // parity (lx&1) of each MeshBlock's logical location in each dimension, i.e. its
+  // position within its parent at the next-coarser level. This is the subblock index at
+  // which SetNeighbors stores a COARSER neighbor in the nghbr array, so device kernels
+  // that resolve nghbr slots (particle migration, bvals/prtcl_search.hpp) need it. Set in
+  // SetNeighbors so it refreshes whenever the neighbor data does (e.g. after regrids).
+  DualArray2D<int> mb_parity;
 
   // function to set data describing neighbors
   void SetNeighbors(std::unique_ptr<MeshBlockTree> &ptree, int *ranklist);

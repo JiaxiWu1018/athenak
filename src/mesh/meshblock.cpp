@@ -149,6 +149,7 @@ void MeshBlock::SetNeighbors(std::unique_ptr<MeshBlockTree> &ptree, int *ranklis
   // allocate size of DualArrays
   int nmb = pmy_pack->nmb_thispack;
   Kokkos::realloc(nghbr, nmb, nnghbr);
+  Kokkos::realloc(mb_parity, nmb, 3);
 
   // Initialize host view elements of DualViews
   for (int n=0; n<nnghbr; ++n) {
@@ -180,6 +181,11 @@ void MeshBlock::SetNeighbors(std::unique_ptr<MeshBlockTree> &ptree, int *ranklis
     myox1 = ((lloc.lx1 & 1) == 1)*2 - 1;
     if (pmy_pack->pmesh->multi_d) myox2 = ((lloc.lx2 & 1) == 1)*2 - 1;
     if (pmy_pack->pmesh->three_d) myox3 = ((lloc.lx3 & 1) == 1)*2 - 1;
+
+    // record the logical-location parity (= coarse-neighbor subblock index, see header)
+    mb_parity.h_view(b,0) = myfx1;
+    mb_parity.h_view(b,1) = myfx2;
+    mb_parity.h_view(b,2) = myfx3;
 
     // neighbors on x1face
     for (int n=-1; n<=1; n+=2) {
@@ -425,6 +431,8 @@ void MeshBlock::SetNeighbors(std::unique_ptr<MeshBlockTree> &ptree, int *ranklis
   // For each DualArray: mark host views as modified, and then sync to device array
   nghbr.template modify<HostMemSpace>();
   nghbr.template sync<DevExeSpace>();
+  mb_parity.template modify<HostMemSpace>();
+  mb_parity.template sync<DevExeSpace>();
 
   return;
 }
