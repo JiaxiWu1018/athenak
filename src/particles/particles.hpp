@@ -23,7 +23,7 @@
 enum class ParticlesPusher {drift, leap_frog, lagrangian_tracer, lagrangian_mc};
 
 // constants that enumerate ParticleTypes
-enum class ParticleType {cosmic_ray};
+enum class ParticleType {cosmic_ray, dust};
 
 //----------------------------------------------------------------------------------------
 //! \struct ParticlesTaskIDs
@@ -36,6 +36,8 @@ struct ParticlesTaskIDs {
   TaskID irecv;
   TaskID sendp;
   TaskID recvp;
+  TaskID newdt;
+  TaskID energy;
   TaskID csend;
   TaskID crecv;
 };
@@ -55,12 +57,11 @@ class Particles {
   ParticleType particle_type;
   int nprtcl_thispack;             // number of particles this MeshBlockPack
   int nrdata, nidata;
-//  DvceArray1D<int>  prtcl_gid;     // GID of MeshBlock containing each par
-//  DvceArray2D<Real> prtcl_pos;     // positions
-//  DvceArray2D<Real> prtcl_vel;     // velocities
   DvceArray2D<Real> prtcl_rdata;   // real number properties each particle (x,v,etc.)
   DvceArray2D<int>  prtcl_idata;   // integer properties each particle (gid, tag, etc.)
   Real dtnew;
+  Real mass;                       // default/scalar rest mass (per-particle override in IPM)
+  Real q_over_m;                   // charge-to-mass ratio (0 for dust)
 
   ParticlesPusher pusher;
 
@@ -81,6 +82,16 @@ class Particles {
   TaskStatus RecvP(Driver *pdriver, int stage);
   TaskStatus ClearSend(Driver *pdriver, int stage);
   TaskStatus ClearRecv(Driver *pdriver, int stage);
+  TaskStatus NewTimeStep(Driver *pdriver, int stage);
+  TaskStatus EnergyCalculation(Driver *pdriver, int stage);
+
+  // load particle initial conditions from an HDF5 file (read_particle.cpp)
+  void read_prtcl_table(const char *fname);
+  // host helper: local MeshBlock index whose bbox contains (x,y,z), or -1 (read_particle/restart)
+  int FindContainingMeshBlock(Real x, Real y, Real z) const;
+  // compute conserved specific energy -u_t into IPEN (calc_energy.cpp)
+  template <int NGHOST>
+  void calc_prtcl_energy();
 
  private:
   MeshBlockPack* pmy_pack;  // ptr to MeshBlockPack containing this Particles

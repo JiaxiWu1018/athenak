@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 #include <utility> // make_pair
+#include <vector>
 
 #include "athena.hpp"
 #include "coordinates/cell_locations.hpp"
@@ -29,6 +30,7 @@
 #include "z4c/z4c.hpp"
 #include "radiation/radiation.hpp"
 #include "srcterms/turb_driver.hpp"
+#include "particles/particles.hpp"
 //#include "outputs.hpp"
 
 //----------------------------------------------------------------------------------------
@@ -621,6 +623,68 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
     }
     offset_myrank += nout1*nout2*nout3*nadm*sizeof(Real); // adm u_adm
     myoffset = offset_myrank;
+  }
+
+  //--- STEP 5. Particle data (variable per-rank count), appended after all grid data.
+  // Written as one all-Real section in global particle order:
+  //   [total][rdata: nrdata var-major blocks of length total][idata: nidata blocks (as Real)]
+  // (int tags/gids fit exactly in Real). Read back by the ProblemGenerator restart ctor,
+  // which re-assigns particles to MeshBlocks by position (robust to a changed rank count).
+  if (pm->pmb_pack->ppart != nullptr) {
+    particles::Particles *pp = pm->pmb_pack->ppart;
+    int count = pp->nprtcl_thispack;
+    int nrd = pp->nrdata, nid = pp->nidata;
+    int total, prefix;
+    if (single_file_per_rank) {
+      total = count; prefix = 0;
+    } else {
+      total = 0; prefix = 0;
+      for (int r=0; r<global_variable::nranks; ++r) {
+        if (r < global_variable::my_rank) {prefix += pm->nprtcl_eachrank[r];}
+        total += pm->nprtcl_eachrank[r];
+      }
+    }
+    // base offset = just past all cell/face-centered MeshBlock data
+    IOWrapperSizeT grid_start = step1size + step2size + step3size + sizeof(IOWrapperSizeT);
+    IOWrapperSizeT nmb_off = single_file_per_rank ?
+        static_cast<IOWrapperSizeT>(pm->pmb_pack->nmb_thispack)
+      : static_cast<IOWrapperSizeT>(pm->nmb_total);
+    IOWrapperSizeT prtcl_base = grid_start + data_size*nmb_off;
+
+    Real total_r = static_cast<Real>(total);
+    if (global_variable::my_rank == 0 || single_file_per_rank) {
+      resfile.Write_any_type_at(&total_r, 1, prtcl_base, "Real", single_file_per_rank);
+    }
+    IOWrapperSizeT rdata_base = prtcl_base + sizeof(Real);
+    IOWrapperSizeT idata_base = rdata_base
+      + static_cast<IOWrapperSizeT>(nrd)*total*sizeof(Real);
+    if (count > 0) {
+      auto rh = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), pp->prtcl_rdata);
+      auto ih = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), pp->prtcl_idata);
+      // pack into contiguous var-major buffers (independent of the Kokkos array layout)
+      std::vector<Real> rbuf(static_cast<std::size_t>(nrd)*count);
+      std::vector<Real> ibuf(static_cast<std::size_t>(nid)*count);
+      for (int v=0; v<nrd; ++v) {
+        for (int p=0; p<count; ++p) {rbuf[static_cast<std::size_t>(v)*count+p] = rh(v,p);}
+      }
+      for (int v=0; v<nid; ++v) {
+        for (int p=0; p<count; ++p) {
+          ibuf[static_cast<std::size_t>(v)*count+p] = static_cast<Real>(ih(v,p));
+        }
+      }
+      for (int v=0; v<nrd; ++v) {
+        IOWrapperSizeT off = rdata_base
+          + (static_cast<IOWrapperSizeT>(v)*total + prefix)*sizeof(Real);
+        resfile.Write_any_type_at(&rbuf[static_cast<std::size_t>(v)*count], count, off,
+                                  "Real", single_file_per_rank);
+      }
+      for (int v=0; v<nid; ++v) {
+        IOWrapperSizeT off = idata_base
+          + (static_cast<IOWrapperSizeT>(v)*total + prefix)*sizeof(Real);
+        resfile.Write_any_type_at(&ibuf[static_cast<std::size_t>(v)*count], count, off,
+                                  "Real", single_file_per_rank);
+      }
+    }
   }
 
   // close file, clean up

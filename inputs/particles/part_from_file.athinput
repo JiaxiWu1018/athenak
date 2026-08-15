@@ -1,0 +1,72 @@
+# AthenaK input: load particles from an HDF5 file (NRPIC Stage 1 infrastructure test).
+# Generate the IC first, e.g.:
+#   python scripts/particles/gen_single_particle.py --out particle_ic.h5
+# Configure with:
+#   cmake -S . -B build -DAthena_ENABLE_HDF5=ON \
+#         -DPROBLEM=particles/part_kerr_schild
+# then run (HDF5-enabled build):
+#   ./build/src/athena -i inputs/particles/part_from_file.athinput \
+#        particles/prtcl_init_file=particle_ic.h5
+
+<comment>
+problem = ParticlesFromFile
+
+<job>
+basename = part_file
+
+<mesh>
+nghost = 2
+nx1 = 32
+x1min = -0.5
+x1max = 0.5
+ix1_bc = periodic
+ox1_bc = periodic
+
+nx2 = 32
+x2min = -0.5
+x2max = 0.5
+ix2_bc = periodic
+ox2_bc = periodic
+
+nx3 = 32
+x3min = -0.5
+x3max = 0.5
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.8
+nlim       = 5
+tlim       = 1.0
+ndiag      = 1
+
+<particles>
+particle_type     = dust
+pusher            = drift
+init              = file
+prtcl_init_file   = particle_ic.h5
+mass              = 1.0
+
+<problem>
+
+<coord>
+general_rel = true
+minkowski   = true
+
+<adm>
+
+<output1>
+file_type = pvtk        # particle VTK dump (positions, velocity, energy, mass, gid, tag)
+variable  = prtcl_all
+dt        = 0.5
+
+<output2>
+file_type = rst
+dt        = 0.5

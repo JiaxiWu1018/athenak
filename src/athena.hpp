@@ -69,7 +69,13 @@ enum BFieldIndex {IBX=0, IBY=1, IBZ=2, NMAG=3};
 enum MetricIndex {I00=0, I01=1, I02=2, I03=3, I11=4, I12=5, I13=6, I22=7, I23=8, I33=9,
                   NMETRIC=10};
 // array indices for particle arrays
-enum ParticlesIndex {PGID=0, PTAG=1, IPX=0, IPVX=1, IPY=2, IPVY=3, IPZ=4, IPVZ=5};
+// int data (prtcl_idata): PGID=parent MeshBlock gid, PTAG=globally-unique tag.
+// real data (prtcl_rdata): dimension-independent scalars first (per-particle rest mass
+// IPM, conserved specific energy IPEN=-u_t), then position + covariant spatial
+// 4-velocity u_i interleaved with the z-components LAST so a 2D build can drop them
+// (nrdata = 8 in 3D, 6 in 2D).
+enum ParticlesIndex {PGID=0, PTAG=1,
+                     IPM=0, IPEN=1, IPX=2, IPVX=3, IPY=4, IPVY=5, IPZ=6, IPVZ=7};
 
 // integer constants to specify spatial reconstruction methods
 enum ReconstructionMethod {dc, plm, ppm4, ppmx, wenoz, teno};

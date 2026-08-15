@@ -314,6 +314,7 @@ void Mesh::BuildTreeFromScratch(ParameterInput *pin) {
 
 void Mesh::BuildTreeFromRestart(ParameterInput *pin, IOWrapper &resfile,
                                                      bool single_file_per_rank) {
+  is_restart = true;
   // At this point, the restartfile is already open and the ParameterInput (input file)
   // data has already been read in main(). Thus the file pointer is set to after <par_end>
   // following must be identical to calculation of headeroffset (excluding size of

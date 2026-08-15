@@ -119,6 +119,9 @@ add_executable(
         particles/particles.cpp
         particles/particles_pushers.cpp
         particles/particles_tasks.cpp
+        particles/particles_newdt.cpp
+        particles/calc_energy.cpp
+        particles/read_particle.cpp
         outputs/pdf.cpp
 
         pgen/pgen.cpp

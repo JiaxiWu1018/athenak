@@ -22,6 +22,9 @@
 // use MPI parallelization? default=0 (false)
 #define MPI_PARALLEL_ENABLED @MPI_PARALLEL_ENABLED@
 
+// use HDF5 for particle file I/O? default=0 (false)
+#define ATHENA_HAVE_HDF5 @ATHENA_HAVE_HDF5@
+
 // use OpenMP parallelization? default=0 (false)
 #define OPENMP_PARALLEL_ENABLED @OPENMP_PARALLEL_ENABLED@
 

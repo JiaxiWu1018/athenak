@@ -1,0 +1,106 @@
+//========================================================================================
+// AthenaXXX astrophysical plasma code
+// Copyright(C) 2020 James M. Stone <jmstone@ias.edu> and the Athena code team
+// Licensed under the 3-clause BSD License (the "LICENSE")
+//========================================================================================
+//! \file calc_energy.cpp
+//! \brief compute the conserved specific energy E = -u_t for each particle. The ADM metric
+//! (lapse alpha, shift beta^i, 3-metric gamma_ij) is interpolated to the particle position
+//! and the timelike normalization g^{mu nu} u_mu u_nu = -1 is solved as a quadratic in u_t.
+//! The stored spatial velocity slots IPVX/IPVY/IPVZ hold the COVARIANT spatial 4-velocity
+//! u_i; the result -u_t (per unit mass) is written to IPEN.
+//!
+//! CAVEAT: E = -u_t is conserved only in a STATIONARY spacetime, where d_t is a Killing
+//! vector. On a dynamical / non-stationary spacetime (e.g. Oppenheimer-Snyder collapse, any
+//! live-Z4c run) -u_t is NOT conserved and is a diagnostic only; the energy definition will
+//! likely need revision in a later stage.
+
+#include <cmath>
+
+#include "athena.hpp"
+#include "mesh/mesh.hpp"
+#include "coordinates/adm.hpp"
+#include "eos/primitive-solver/geom_math.hpp"
+#include "particles.hpp"
+#include "lagrange_interp.hpp"
+
+namespace particles {
+
+//----------------------------------------------------------------------------------------
+//! \fn template<int NGHOST> void Particles::calc_prtcl_energy()
+//! \brief interpolate the metric at each particle and store -u_t into IPEN.
+
+template <int NGHOST>
+void Particles::calc_prtcl_energy() {
+  // -u_t requires a metric; no-op if no ADM variables are present (e.g. flat-space SR tests)
+  if (pmy_pack->padm == nullptr) {return;}
+
+  auto &indcs = pmy_pack->pmesh->mb_indcs;
+  int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+  auto &size = pmy_pack->pmb->mb_size;
+  int gids = pmy_pack->gids;
+  auto &pi = prtcl_idata;
+  auto &pr = prtcl_rdata;
+  auto &adm_n = pmy_pack->padm->u_adm;
+
+  par_for("calc_prtcl_energy", DevExeSpace(), 0, (nprtcl_thispack-1),
+  KOKKOS_LAMBDA(const int p) {
+    Real x[3]   = {pr(IPX,p),  pr(IPY,p),  pr(IPZ,p)};
+    Real u_d[3] = {pr(IPVX,p), pr(IPVY,p), pr(IPVZ,p)};   // covariant spatial 4-velocity u_i
+    int m = pi(PGID,p) - gids;
+    const Real mb_par[9] = {
+      size.d_view(m).x1min, size.d_view(m).x1max, size.d_view(m).dx1,
+      size.d_view(m).x2min, size.d_view(m).x2max, size.d_view(m).dx2,
+      size.d_view(m).x3min, size.d_view(m).x3max, size.d_view(m).dx3};
+
+    // stencil indices + Lagrange weights at the particle
+    int interp_indcs[4] = {m, -1, -1, -1};
+    SetInterpIndices(x, mb_par, ncell, interp_indcs);
+    Real Lx[2*NGHOST] = {0.0}, Ly[2*NGHOST] = {0.0}, Lz[2*NGHOST] = {0.0};
+    CalcInterpWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+
+    // interpolate lapse, shift, 3-metric (all physical, from ADM)
+    Real alp  = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_ALPHA, interp_indcs, Lx,Ly,Lz);
+    Real beta[3];
+    beta[0]   = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_BETAX, interp_indcs, Lx,Ly,Lz);
+    beta[1]   = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_BETAY, interp_indcs, Lx,Ly,Lz);
+    beta[2]   = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_BETAZ, interp_indcs, Lx,Ly,Lz);
+    Real g3d[6];
+    g3d[0]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXX, interp_indcs, Lx,Ly,Lz);
+    g3d[1]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXY, interp_indcs, Lx,Ly,Lz);
+    g3d[2]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXZ, interp_indcs, Lx,Ly,Lz);
+    g3d[3]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GYY, interp_indcs, Lx,Ly,Lz);
+    g3d[4]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GYZ, interp_indcs, Lx,Ly,Lz);
+    g3d[5]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GZZ, interp_indcs, Lx,Ly,Lz);
+
+    // inverse 3-metric gamma^{ij}
+    Real g3u[6];
+    Primitive::InvertMatrix(g3u, g3d, Primitive::GetDeterminant(g3d));
+
+    // Solve g^{mu nu} u_mu u_nu = -1 for u_t, with
+    //   g^{tt} = -1/alpha^2,  g^{ti} = beta^i/alpha^2,  g^{ij} = gamma^{ij} - beta^i beta^j/alpha^2.
+    // => a*u_t^2 + 2*b*u_t + c = 0, using the stored covariant u_i.
+    Real ialp2 = 1.0/(alp*alp);
+    Real a = -ialp2;                                    // g^{tt}
+    Real b = 0.0;
+    for (int i=0; i<3; ++i) {b += beta[i]*ialp2*u_d[i];}   // g^{ti} u_i
+    Real c = 1.0;                                       // g^{ij} u_i u_j + 1
+    c += (g3u[0] - beta[0]*beta[0]*ialp2)*u_d[0]*u_d[0];
+    c += (g3u[3] - beta[1]*beta[1]*ialp2)*u_d[1]*u_d[1];
+    c += (g3u[5] - beta[2]*beta[2]*ialp2)*u_d[2]*u_d[2];
+    c += 2.0*(g3u[1] - beta[0]*beta[1]*ialp2)*u_d[0]*u_d[1];
+    c += 2.0*(g3u[2] - beta[0]*beta[2]*ialp2)*u_d[0]*u_d[2];
+    c += 2.0*(g3u[4] - beta[1]*beta[2]*ialp2)*u_d[1]*u_d[2];
+
+    // future-pointing root; energy E = -u_t (=1 in flat space with u_i=0)
+    pr(IPEN,p) = -(-b + std::sqrt(b*b - a*c))/a;
+  });
+  return;
+}
+
+// explicit instantiations for the supported ghost-zone counts
+template void Particles::calc_prtcl_energy<2>();
+template void Particles::calc_prtcl_energy<3>();
+template void Particles::calc_prtcl_energy<4>();
+
+} // namespace particles

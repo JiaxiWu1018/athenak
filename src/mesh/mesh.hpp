@@ -141,6 +141,7 @@ class Mesh {
   Real time, dt, dtold, dt_last_completed, dt_parabolic_sts, sts_max_dt_ratio, cfl_no;
   parabolic::STSIntegrator sts_integrator;
   int ncycle;
+  bool is_restart=false;   // true if this run was initialized from a restart file
   EventCounters ecounter;
 
   int nmb_packs_thisrank;                  // number of MBPacks on this rank
