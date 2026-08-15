@@ -97,7 +97,8 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   nmigr_edge = 0;
   nmigr_corner = 0;
   nsearch_fail = 0;
-  nprtcl_initial = -1;
+  ledger_init = false;
+  ledger0[0] = ledger0[1] = ledger0[2] = 0;
 
   // Particle real data uses the contiguous layout {IPM,IPEN,IPX,IPVX,IPY,IPVY,IPZ,IPVZ}:
   // dimension-independent scalars first, then position+velocity with the z-pair last so a
@@ -173,6 +174,9 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
 // destructor
 
 Particles::~Particles() {
+  // ~ParticlesBoundaryValues frees the particle MPI communicator; without this delete
+  // it never ran (matches the Hydro/MHD convention of deleting their bvals)
+  delete pbval_part;
 }
 
 //----------------------------------------------------------------------------------------

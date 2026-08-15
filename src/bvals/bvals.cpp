@@ -464,4 +464,8 @@ particles::ParticlesBoundaryValues::ParticlesBoundaryValues(
 // destructor
 
 particles::ParticlesBoundaryValues::~ParticlesBoundaryValues() {
+#if MPI_PARALLEL_ENABLED
+  // ~Mesh runs before MPI_Finalize (main.cpp), so freeing the communicator here is safe
+  MPI_Comm_free(&mpi_comm_part);
+#endif
 }

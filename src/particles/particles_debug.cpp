@@ -12,12 +12,20 @@
 //!       half-open [min,max) ownership convention (a particle exactly on the max edge
 //!       belongs to the neighbor);
 //!   (3) no destination-search failures were recorded by SetNewPrtclGID;
-//!   (4) the particle count is conserved (no destruction is implemented yet, so on a
-//!       single rank the count must stay exactly equal to its initial value; the
-//!       multi-rank sum check is a Stage-3 session-B extension).
+//!   (4) the GLOBAL conservation ledger holds: {particle count, sum of tags, sum of
+//!       tag^2} (Allreduced across ranks in MPI builds) equal the values captured at the
+//!       first check -- no destruction exists yet, so all three are exact invariants.
+//!       The tag checksums catch identity corruption that the count cannot: a lost
+//!       particle replaced by a duplicate of another (the hole-compaction failure
+//!       signature);
+//!   (5) per-rank bookkeeping is consistent: this rank's count equals its published
+//!       nprtcl_eachrank entry, and the published counts sum to nprtcl_total and to the
+//!       Allreduced true total.
 //! Any violation is FATAL: every offending particle is printed (tag, gid, position,
-//! velocity, owning-block bbox), then the code exits nonzero. A per-cycle summary of
-//! face/edge/corner crossings (counted in SetNewPrtclGID) is printed when nonzero.
+//! velocity, owning-block bbox), then the job is killed -- MPI_Abort in MPI builds (a
+//! plain exit on one rank would hang the others at the next collective). A per-cycle
+//! summary of face/edge/corner crossings (counted in SetNewPrtclGID) is printed when
+//! nonzero, tagged with the rank.
 
 #include <cmath>
 #include <cstdint>
@@ -29,7 +37,12 @@
 #include "mesh/mesh.hpp"
 #include "driver/driver.hpp"
 #include "particles.hpp"
+#include "bvals/bvals.hpp"
 #include "bvals/prtcl_search.hpp"
+
+#if MPI_PARALLEL_ENABLED
+#include <mpi.h>
+#endif
 
 namespace particles {
 
@@ -40,16 +53,14 @@ namespace particles {
 TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
   if (debug_lvl < 1) {return TaskStatus::complete;}
 
-  // capture the initial particle count lazily (first call), so this works for any init
-  // path (ppc/file/pgen-filled) and across restarts
-  if (nprtcl_initial < 0) {nprtcl_initial = nprtcl_thispack;}
-
   int ncycle = pmy_pack->pmesh->ncycle;
   int npart = nprtcl_thispack;
+  int myrank = global_variable::my_rank;
 
   // per-cycle migration summary (counters filled by SetNewPrtclGID this cycle)
   if ((nmigr_face + nmigr_edge + nmigr_corner + nsearch_fail) > 0) {
-    std::cout << "[prtcl-debug] cycle=" << ncycle << " migrations: face=" << nmigr_face
+    std::cout << "[prtcl-debug] rank=" << myrank << " cycle=" << ncycle
+              << " migrations: face=" << nmigr_face
               << " edge=" << nmigr_edge << " corner=" << nmigr_corner
               << " search_fail=" << nsearch_fail << " npart=" << npart << std::endl;
   }
@@ -80,20 +91,53 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
       }
     }, Kokkos::Sum<int>(nbad_gid), Kokkos::Sum<int>(nbad_box));
 
-  // count conservation (exact, single rank only: cross-rank sends change the per-rank
-  // count legitimately; the global-sum check is added with the multi-rank session)
-  bool bad_count = (global_variable::nranks == 1) && (npart != nprtcl_initial);
+  // conservation ledger: GLOBAL {count, sum of tags, sum of tag^2}, captured lazily at
+  // the first check (works for any init path -- ppc/file/pgen -- and across restarts),
+  // recomputed and compared every cycle. Cross-rank sends change per-rank counts
+  // legitimately; these global sums are exact migration invariants.
+  unsigned long long tsum = 0, tsq = 0;
+  Kokkos::parallel_reduce("part_ledger",
+    Kokkos::RangePolicy<>(DevExeSpace(), 0, npart),
+    KOKKOS_LAMBDA(const int p, unsigned long long &s1, unsigned long long &s2) {
+      // cast BEFORE multiplying: int tag*tag overflows at tag >= 46341
+      unsigned long long t = static_cast<unsigned long long>(pi(PTAG,p));
+      s1 += t;
+      s2 += t*t;
+    }, Kokkos::Sum<unsigned long long>(tsum), Kokkos::Sum<unsigned long long>(tsq));
+  unsigned long long led[3] = {static_cast<unsigned long long>(npart), tsum, tsq};
+#if MPI_PARALLEL_ENABLED
+  // collective is safe: this task runs on every rank each cycle and debug_lvl is
+  // input-file-uniform across ranks
+  MPI_Allreduce(MPI_IN_PLACE, led, 3, MPI_UNSIGNED_LONG_LONG, MPI_SUM,
+                pbval_part->mpi_comm_part);
+#endif
+  if (!ledger_init) {
+    ledger0[0] = led[0]; ledger0[1] = led[1]; ledger0[2] = led[2];
+    ledger_init = true;
+  }
+  bool bad_ledger = (led[0] != ledger0[0]) || (led[1] != ledger0[1])
+                                          || (led[2] != ledger0[2]);
 
-  if ((nbad_gid + nbad_box + nsearch_fail) > 0 || bad_count) {
+  // per-rank bookkeeping consistency: the local count must match this rank's published
+  // nprtcl_eachrank entry, and the published counts must sum to nprtcl_total and to the
+  // Allreduced true total (validates the migration Allgather refresh)
+  Mesh *pm = pmy_pack->pmesh;
+  long long sum_each = 0;
+  for (int n=0; n<(global_variable::nranks); ++n) {sum_each += pm->nprtcl_eachrank[n];}
+  bool bad_counts = (npart != pm->nprtcl_eachrank[myrank]) ||
+                    (sum_each != static_cast<long long>(pm->nprtcl_total)) ||
+                    (static_cast<unsigned long long>(sum_each) != led[0]);
+
+  if ((nbad_gid + nbad_box + nsearch_fail) > 0 || bad_ledger || bad_counts) {
     // print every offending particle, then die
     par_for("part_check_dump",DevExeSpace(),0,(npart-1), KOKKOS_LAMBDA(const int p) {
       int gid = pi(PGID,p);
       Real x3 = three_d ? pr(IPZ,p)  : 0.0;
       Real v3 = three_d ? pr(IPVZ,p) : 0.0;
       if (gid < gids || gid > gide) {
-        Kokkos::printf("[prtcl-debug] BAD GID: tag=%d gid=%d (pack range %d..%d) "
-                       "pos=(%.16e,%.16e,%.16e) vel=(%.16e,%.16e,%.16e)\n",
-                       pi(PTAG,p), gid, gids, gide,
+        Kokkos::printf("[prtcl-debug] rank=%d BAD GID: tag=%d gid=%d (pack range %d..%d)"
+                       " pos=(%.16e,%.16e,%.16e) vel=(%.16e,%.16e,%.16e)\n",
+                       myrank, pi(PTAG,p), gid, gids, gide,
                        pr(IPX,p), pr(IPY,p), x3, pr(IPVX,p), pr(IPVY,p), v3);
       } else {
         const RegionSize &sz = size.d_view(gid - gids);
@@ -103,10 +147,10 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
           in = in && (pr(IPZ,p) >= sz.x3min) && (pr(IPZ,p) < sz.x3max);
         }
         if (!in) {
-          Kokkos::printf("[prtcl-debug] OUT OF BBOX: tag=%d gid=%d "
+          Kokkos::printf("[prtcl-debug] rank=%d OUT OF BBOX: tag=%d gid=%d "
                          "pos=(%.16e,%.16e,%.16e) vel=(%.16e,%.16e,%.16e) "
                          "bbox x1=[%.16e,%.16e) x2=[%.16e,%.16e) x3=[%.16e,%.16e)\n",
-                         pi(PTAG,p), gid,
+                         myrank, pi(PTAG,p), gid,
                          pr(IPX,p), pr(IPY,p), x3, pr(IPVX,p), pr(IPVY,p), v3,
                          sz.x1min, sz.x1max, sz.x2min, sz.x2max, sz.x3min, sz.x3max);
         }
@@ -136,10 +180,12 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
         Real z = three_d ? hr(IPZ,p) : 0.0;
         int mok = FindContainingMeshBlock(hr(IPX,p), hr(IPY,p), z);
         if (mok >= 0) {
-          std::cout << "[prtcl-debug] tag=" << hi(PTAG,p) << " has gid=" << gid
+          std::cout << "[prtcl-debug] rank=" << myrank << " tag=" << hi(PTAG,p)
+                    << " has gid=" << gid
                     << " but should be gid=" << gids + mok << std::endl;
         } else {
-          std::cout << "[prtcl-debug] tag=" << hi(PTAG,p) << " has gid=" << gid
+          std::cout << "[prtcl-debug] rank=" << myrank << " tag=" << hi(PTAG,p)
+                    << " has gid=" << gid
                     << " but no local MeshBlock contains its position" << std::endl;
         }
       }
@@ -147,13 +193,27 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
 
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
               << "particle migration check failed at cycle " << ncycle
-              << " (rank " << global_variable::my_rank << "): bad_gid=" << nbad_gid
+              << " (rank " << myrank << "): bad_gid=" << nbad_gid
               << " out_of_bbox=" << nbad_box << " search_fail=" << nsearch_fail;
-    if (bad_count) {
-      std::cout << " count=" << npart << " (initial " << nprtcl_initial << ")";
+    if (bad_ledger) {
+      std::cout << " ledger {count,tagsum,tagsq}={" << led[0] << "," << led[1] << ","
+                << led[2] << "} != initial {" << ledger0[0] << "," << ledger0[1] << ","
+                << ledger0[2] << "}";
+    }
+    if (bad_counts) {
+      std::cout << " counts: npart=" << npart << " eachrank[" << myrank << "]="
+                << pm->nprtcl_eachrank[myrank] << " sum_eachrank=" << sum_each
+                << " nprtcl_total=" << pm->nprtcl_total;
     }
     std::cout << std::endl;
+#if MPI_PARALLEL_ENABLED
+    // one failing rank must kill the whole job: a plain exit here would leave the other
+    // ranks blocked in the next cycle's collectives
+    std::cout << std::flush;
+    MPI_Abort(MPI_COMM_WORLD, 1);
+#else
     std::exit(EXIT_FAILURE);
+#endif
   }
 
   return TaskStatus::complete;
@@ -231,13 +291,12 @@ void Particles::AuditDestinationSearch() {
                 }
                 nprobe++;
 
-                // ---- mirror the SetNewPrtclGID kernel pipeline (comparison-based
-                // offsets, exactly consistent with the ownership predicates)
+                // ---- mirror the SetNewPrtclGID kernel pipeline via the SHARED offset
+                // predicate (prtcl_search.hpp::ComputeBlockOffsets -- the audit must
+                // never hand-copy the comparisons, or the two could drift apart)
                 Real x3k = three_d ? pos[2] : bmin[2];
-                int ix = 0, iy = 0, iz = 0;
-                if (pos[0] <  bmin[0]) {ix = -1;} else if (pos[0] >= bmax[0]) {ix = 1;}
-                if (pos[1] <  bmin[1]) {iy = -1;} else if (pos[1] >= bmax[1]) {iy = 1;}
-                if (x3k    <  bmin[2]) {iz = -1;} else if (x3k    >= bmax[2]) {iz = 1;}
+                int ix, iy, iz;
+                ComputeBlockOffsets(sz, pos[0], pos[1], pos[2], three_d, ix, iy, iz);
                 int got_gid;
                 if ((abs(ix) + abs(iy) + abs(iz)) == 0) {
                   got_gid = gids + m;     // still inside: no migration

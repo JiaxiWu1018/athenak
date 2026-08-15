@@ -48,9 +48,53 @@
 //! kernels (pass nghbr.d_view) and in the host enumeration audit (pass nghbr.h_view).
 
 #include "athena.hpp"
+#include "mesh/mesh.hpp"        // RegionSize
 #include "mesh/nghbr_index.hpp"
 
 namespace particles {
+
+//----------------------------------------------------------------------------------------
+//! \fn void ComputeBlockOffsets()
+//! \brief integer offset (ix,iy,iz), each in {-2,-1,0,1,2}, of position (x1,x2,x3)
+//! relative to MeshBlock bbox sz, by DIRECT COMPARISON with the same half-open [min,max)
+//! predicates that define block ownership everywhere else (FindContainingMeshBlock,
+//! CheckMigration containment). Arithmetic forms like floor((x-xmin)/lx) are NOT exactly
+//! consistent with those predicates: when x sits within half an ulp of lx BELOW a
+//! boundary, the subtraction rounds up and classifies a crossing that ownership denies
+//! (found by the Stage-3a(c) lattice soak on the nested grid, where x0 + n*dt
+//! accumulation landed at -3.5e-18 and was sent to the x>=0 block). Comparisons also
+//! DETECT a particle more than one block width away (|offset| = 2 fails the destination
+//! search) instead of mislabeling it. |offset| = 2 stands for "2 or more".
+//! This is the SINGLE definition of the crossing predicate: the migration kernel (both
+//! the counting and the search/fill passes) and the host enumeration audit must all call
+//! this -- never hand-copy the comparisons -- so they cannot drift apart.
+//! In 2D (three_d false) x3 is ignored and iz = 0 (the trimmed particle layout has no z).
+
+KOKKOS_INLINE_FUNCTION
+void ComputeBlockOffsets(const RegionSize &sz, Real x1, Real x2, Real x3, bool three_d,
+                         int &ix, int &iy, int &iz) {
+  Real lx = (sz.x1max - sz.x1min);
+  Real ly = (sz.x2max - sz.x2min);
+  Real lz = (sz.x3max - sz.x3min);
+  ix = 0; iy = 0; iz = 0;
+  if (x1 <  sz.x1min) {
+    ix = (x1 <  sz.x1min - lx) ? -2 : -1;
+  } else if (x1 >= sz.x1max) {
+    ix = (x1 >= sz.x1max + lx) ?  2 :  1;
+  }
+  if (x2 <  sz.x2min) {
+    iy = (x2 <  sz.x2min - ly) ? -2 : -1;
+  } else if (x2 >= sz.x2max) {
+    iy = (x2 >= sz.x2max + ly) ?  2 :  1;
+  }
+  if (three_d) {
+    if (x3 <  sz.x3min) {
+      iz = (x3 <  sz.x3min - lz) ? -2 : -1;
+    } else if (x3 >= sz.x3max) {
+      iz = (x3 >= sz.x3max + lz) ?  2 :  1;
+    }
+  }
+}
 
 //----------------------------------------------------------------------------------------
 //! \fn int CoarseProbe()

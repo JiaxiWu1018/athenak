@@ -159,7 +159,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
     std::size_t datasize = sizeof(float);
     std::size_t myoffset=header_offset + 3*rank_offset[global_variable::my_rank]*datasize;
     // collective writes for minimum number of particles across ranks
-    if (partfile.Write_any_type_at_all(&(data[0]),3*npout_min,myoffset,"float")
+    if (partfile.Write_any_type_at_all(data,3*npout_min,myoffset,"float")
           != static_cast<size_t>(3*npout_min)) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
           << std::endl << "particle data not written correctly to vtk particle file, "
@@ -170,7 +170,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
     myoffset += datasize*3*npout_min;
     int nremain = pm->nprtcl_thisrank - npout_min;
     if (nremain > 0) {
-      if (partfile.Write_any_type_at(&(data[3*npout_min]),3*nremain,myoffset,"float")
+      if (partfile.Write_any_type_at(data + 3*npout_min,3*nremain,myoffset,"float")
             != static_cast<size_t>(3*nremain)) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
             << std::endl << "particle data not written correctly to vtk particle file, "
@@ -184,7 +184,9 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
   // Write Part 6: scalar particle data
   bool have_written_pointdata_header = false;
 
-  // Write gid of points
+  // Write ALL integer particle data as scalars: gid (n==PGID) and ptag (n==PTAG).
+  // (Restart does not use this file -- restart.cpp dumps the full prtcl_idata table and
+  // the reader preserves PTAG, recomputing only PGID by containment.)
   for (int n=0; n<(pm->pmb_pack->ppart->nidata); ++n) {
     std::stringstream msg;
 
@@ -207,7 +209,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
 
     header_offset += msg.str().size();
 
-    // Loop over particles, load gid into data[]
+    // Loop over particles, load this integer field into data[]
     for (int p=0; p<npout_thisrank; ++p) {
       data[p] = static_cast<float>(outpart_idata(n,p));
     }
@@ -216,11 +218,11 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
       for (int i=0; i<npout_thisrank; ++i) { Swap4Bytes(&data[i]); }
     }
 
-    // calculate local data offset and write gid
+    // calculate local data offset and write this integer field
     std::size_t datasize = sizeof(float);
     std::size_t myoffset=header_offset + rank_offset[global_variable::my_rank]*datasize;
     // collective writes for minimum number of particles across ranks
-    if (partfile.Write_any_type_at_all(&(data[0]),npout_min,myoffset,"float")
+    if (partfile.Write_any_type_at_all(data,npout_min,myoffset,"float")
           != static_cast<size_t>(npout_min)) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
           << std::endl << "particle data not written correctly to vtk particle file, "
@@ -231,7 +233,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
     myoffset += datasize*npout_min;
     int nremain = pm->nprtcl_thisrank - npout_min;
     if (nremain > 0) {
-      if (partfile.Write_any_type_at(&(data[npout_min]),nremain,myoffset,"float")
+      if (partfile.Write_any_type_at(data + npout_min,nremain,myoffset,"float")
             != static_cast<size_t>(nremain)) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
             << std::endl << "particle data not written correctly to vtk particle file, "
@@ -262,8 +264,8 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
     }
     std::size_t datasize = sizeof(float);
     std::size_t myoffset=header_offset + 3*rank_offset[global_variable::my_rank]*datasize;
-    if (partfile.Write_any_type_at_all(&(data[0]),3*npout_min,myoffset,"float")
-          != 3*npout_min) {
+    if (partfile.Write_any_type_at_all(data,3*npout_min,myoffset,"float")
+          != static_cast<size_t>(3*npout_min)) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
           << std::endl << "particle data not written correctly to vtk particle file, "
           << "vtk file is broken." << std::endl;
@@ -272,8 +274,8 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
     myoffset += datasize*3*npout_min;
     int nremain = pm->nprtcl_thisrank - npout_min;
     if (nremain > 0) {
-      if (partfile.Write_any_type_at(&(data[3*npout_min]),3*nremain,myoffset,"float")
-            != 3*nremain) {
+      if (partfile.Write_any_type_at(data + 3*npout_min,3*nremain,myoffset,"float")
+            != static_cast<size_t>(3*nremain)) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
             << std::endl << "particle data not written correctly to vtk particle file, "
             << "vtk file is broken." << std::endl;
@@ -305,8 +307,8 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
       }
       std::size_t datasize = sizeof(float);
       std::size_t myoffset=header_offset + rank_offset[global_variable::my_rank]*datasize;
-      if (partfile.Write_any_type_at_all(&(data[0]),npout_min,myoffset,"float")
-            != npout_min) {
+      if (partfile.Write_any_type_at_all(data,npout_min,myoffset,"float")
+            != static_cast<size_t>(npout_min)) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
             << std::endl << "particle data not written correctly to vtk particle file, "
             << "vtk file is broken." << std::endl;
@@ -315,8 +317,8 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
       myoffset += datasize*npout_min;
       int nremain = pm->nprtcl_thisrank - npout_min;
       if (nremain > 0) {
-        if (partfile.Write_any_type_at(&(data[npout_min]),nremain,myoffset,"float")
-              != nremain) {
+        if (partfile.Write_any_type_at(data + npout_min,nremain,myoffset,"float")
+              != static_cast<size_t>(nremain)) {
           std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
               << std::endl << "particle data not written correctly to vtk particle file, "
               << "vtk file is broken." << std::endl;
