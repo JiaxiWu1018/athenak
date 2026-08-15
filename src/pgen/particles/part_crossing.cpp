@@ -268,19 +268,29 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     std::cout << "part_crossing: mode=" << mode << " placed " << pm->nprtcl_total
               << " particles (vmax=" << vmax << ")" << std::endl;
   }
-  // block map for the analysis script: gid, level, logical-location parity, bbox
-  // (parity = subslot at which SetNeighbors stores this block's coarser neighbors)
+  // block map for the analysis script: gid, owning rank, level, logical-location
+  // parity, bbox (parity = subslot at which SetNeighbors stores this block's coarser
+  // neighbors). Printed rank by rank behind barriers so the lines come out grouped --
+  // best effort only, since mpirun merges the streams asynchronously: parsers should
+  // also key on the `mpirun --tag-output` rank prefixes for hard attribution.
   auto &mblev = pmbp->pmb->mb_lev;
-  for (int m=0; m<nmb; ++m) {
-    int gid = gids + m;
-    auto &lloc = pm->lloc_eachmb[gid];
-    std::cout << "[part_crossing] block gid=" << gid << " level=" << mblev.h_view(m)
-              << " parity=(" << (lloc.lx1 & 1) << "," << (lloc.lx2 & 1) << ","
-              << (lloc.lx3 & 1) << ")"
-              << " x1=[" << mbsize.h_view(m).x1min << "," << mbsize.h_view(m).x1max << ")"
-              << " x2=[" << mbsize.h_view(m).x2min << "," << mbsize.h_view(m).x2max << ")"
-              << " x3=[" << mbsize.h_view(m).x3min << "," << mbsize.h_view(m).x3max << ")"
-              << std::endl;
+  for (int r=0; r<global_variable::nranks; ++r) {
+#if MPI_PARALLEL_ENABLED
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+    if (r != global_variable::my_rank) {continue;}
+    for (int m=0; m<nmb; ++m) {
+      int gid = gids + m;
+      auto &lloc = pm->lloc_eachmb[gid];
+      std::cout << "[part_crossing] block gid=" << gid << " rank=" << r
+                << " level=" << mblev.h_view(m)
+                << " parity=(" << (lloc.lx1 & 1) << "," << (lloc.lx2 & 1) << ","
+                << (lloc.lx3 & 1) << ")"
+                << " x1=[" << mbsize.h_view(m).x1min << "," << mbsize.h_view(m).x1max
+                << ") x2=[" << mbsize.h_view(m).x2min << "," << mbsize.h_view(m).x2max
+                << ") x3=[" << mbsize.h_view(m).x3min << "," << mbsize.h_view(m).x3max
+                << ")" << std::endl << std::flush;
+    }
   }
   return;
 }
