@@ -85,6 +85,20 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     }
   }
 
+  // migration debug instrumentation (see particles.hpp for the level semantics)
+  debug_lvl = pin->GetOrAddInteger("particles","debug",0);
+  if (debug_lvl < 0 || debug_lvl > 2) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+              << "<particles> debug = " << debug_lvl << " not recognized (use 0|1|2)"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  nmigr_face = 0;
+  nmigr_edge = 0;
+  nmigr_corner = 0;
+  nsearch_fail = 0;
+  nprtcl_initial = -1;
+
   // Particle real data uses the contiguous layout {IPM,IPEN,IPX,IPVX,IPY,IPVY,IPZ,IPVZ}:
   // dimension-independent scalars first, then position+velocity with the z-pair last so a
   // 2D problem can drop it (8 reals in 3D, 6 in 2D). int data = {PGID,PTAG}.

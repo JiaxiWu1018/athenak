@@ -43,6 +43,7 @@ struct ParticlesTaskIDs {
   TaskID energy;
   TaskID csend;
   TaskID crecv;
+  TaskID check;
 };
 
 namespace particles {
@@ -65,6 +66,21 @@ class Particles {
   Real dtnew;
   Real mass;                       // default/scalar rest mass (per-particle override in IPM)
   Real q_over_m;                   // charge-to-mass ratio (0 for dust)
+
+  // migration debug instrumentation (<particles> debug = 0|1|2, default 0):
+  //   1 = per-cycle migration summary + post-migration validation task (CheckMigration),
+  //       FATAL on any violation (GID out of pack range, particle outside its MeshBlock
+  //       bbox, destination-search failure, or particle-count change);
+  //   2 = level 1 plus a per-event migration log (cycle, tag, old->new gid, offsets)
+  int debug_lvl;
+  // per-cycle counters written by SetNewPrtclGID when debug_lvl >= 1, classified by the
+  // crossing offset |ix|+|iy|+|iz| = 1/2/3. nsearch_fail counts particles for which no
+  // destination MeshBlock was found (always fatal; stays 0 until the Stage-3a(c) search
+  // rewrite wires failure detection -- the legacy neighbor walk cannot detect failure).
+  int nmigr_face, nmigr_edge, nmigr_corner, nsearch_fail;
+  // particle count at the first CheckMigration call (-1 until then); without destruction
+  // (not yet implemented) the count must stay exactly constant on a single rank
+  int nprtcl_initial;
 
   // snapshots of the field/metric at the previous step, used by the GR pusher to evaluate
   // the implicit geodesic substep at the time midpoint. Allocated only for gr_boris. For a
@@ -99,6 +115,9 @@ class Particles {
   TaskStatus ClearRecv(Driver *pdriver, int stage);
   TaskStatus NewTimeStep(Driver *pdriver, int stage);
   TaskStatus EnergyCalculation(Driver *pdriver, int stage);
+  // post-migration validation: containment/GID-range/count checks (particles_debug.cpp);
+  // no-op unless <particles> debug >= 1, fatal (exit) on any violation
+  TaskStatus CheckMigration(Driver *pdriver, int stage);
 
   // load particle initial conditions from an HDF5 file (read_particle.cpp)
   void read_prtcl_table(const char *fname);

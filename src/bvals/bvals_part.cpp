@@ -65,13 +65,23 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   bool &multi_d = pmy_part->pmy_pack->pmesh->multi_d;
   bool &three_d = pmy_part->pmy_pack->pmesh->three_d;
 
+  // migration debug instrumentation (<particles> debug >= 1): per-cycle crossing counters
+  // {0: face, 1: edge, 2: corner, 3: destination-search failure}, accumulated on device
+  // (GPU-safe Kokkos::View, unlike the legacy host-pointer send counter) and copied back
+  // into the Particles members for CheckMigration. debug >= 2 adds a per-event log.
+  int dbg = pmy_part->debug_lvl;
+  int ncycle = pmy_part->pmy_pack->pmesh->ncycle;
+  DvceArray1D<int> dcnt("pdbg_cnt",4);   // zero-initialized
+
   Kokkos::realloc(sendlist, static_cast<int>(0.1*npart));
   par_for("part_update",DevExeSpace(),0,(npart-1), KOKKOS_LAMBDA(const int p) {
     int m = pi(PGID,p) - gids;
     int mylevel = mblev.d_view(m);
     Real x1 = pr(IPX,p);
     Real x2 = pr(IPY,p);
-    Real x3 = pr(IPZ,p);
+    // 2D problems use the trimmed 6-real layout where IPZ/IPVZ do not exist; substitute a
+    // position inside the block so all x3 logic below is a no-op (iz=0, fz=0, no wrap)
+    Real x3 = three_d ? pr(IPZ,p) : mbsize.d_view(m).x3min;
 
     // length of MeshBlock in each direction
     Real lx = (mbsize.d_view(m).x1max - mbsize.d_view(m).x1min);
@@ -92,6 +102,11 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
 
     // only update particle GID if it has crossed MeshBlock boundary
     if ((abs(ix) + abs(iy) + abs(iz)) != 0) {
+      int oldgid = pi(PGID,p);
+      if (dbg > 0) {
+        int d = abs(ix) + abs(iy) + abs(iz);   // 1: face, 2: edge, 3: corner crossing
+        Kokkos::atomic_add(&dcnt(d-1), 1);
+      }
       if (iz == 0) {
         if (iy == 0) {
           // x1 face
@@ -152,21 +167,35 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
         }
       }
 
-      // reset x,y,z positions if particle crosses Mesh boundary using periodic BCs
+      // per-event migration log (<particles> debug = 2); position is pre-wrap
+      if (dbg > 1) {
+        Kokkos::printf("[prtcl-debug] cycle=%d tag=%d gid %d -> %d off=(%d,%d,%d) "
+                       "pos=(%.6e,%.6e,%.6e)\n", ncycle, pi(PTAG,p), oldgid, pi(PGID,p),
+                       ix, iy, iz, x1, x2, x3);
+      }
+
+      // reset x,y,z positions if particle crosses Mesh boundary using periodic BCs.
+      // (>= at the max edge: a particle exactly on the mesh boundary has migrated, so its
+      // wrapped position must land exactly on the min edge, consistent with the half-open
+      // [min,max) block-ownership convention.) NOTE: applied unconditionally; correct for
+      // the strictly-periodic meshes Stage 3a tests. Per-direction BC gating and
+      // destruction at physical boundaries is a later Stage-3 session.
       if (x1 < meshsize.x1min) {
         pr(IPX,p) += (meshsize.x1max - meshsize.x1min);
-      } else if (x1 > meshsize.x1max) {
+      } else if (x1 >= meshsize.x1max) {
         pr(IPX,p) -= (meshsize.x1max - meshsize.x1min);
       }
       if (x2 < meshsize.x2min) {
         pr(IPY,p) += (meshsize.x2max - meshsize.x2min);
-      } else if (x2 > meshsize.x2max) {
+      } else if (x2 >= meshsize.x2max) {
         pr(IPY,p) -= (meshsize.x2max - meshsize.x2min);
       }
-      if (x3 < meshsize.x3min) {
-        pr(IPZ,p) += (meshsize.x3max - meshsize.x3min);
-      } else if (x3 > meshsize.x3max) {
-        pr(IPZ,p) -= (meshsize.x3max - meshsize.x3min);
+      if (three_d) {
+        if (x3 < meshsize.x3min) {
+          pr(IPZ,p) += (meshsize.x3max - meshsize.x3min);
+        } else if (x3 >= meshsize.x3max) {
+          pr(IPZ,p) -= (meshsize.x3max - meshsize.x3min);
+        }
       }
     }
   });
@@ -175,6 +204,16 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   // sync sendlist device array with host
   sendlist.template modify<DevExeSpace>();
   sendlist.template sync<HostMemSpace>();
+
+  // store the per-cycle migration counters for CheckMigration (debug mode only)
+  if (dbg > 0) {
+    auto hcnt = Kokkos::create_mirror_view(dcnt);
+    Kokkos::deep_copy(hcnt, dcnt);
+    pmy_part->nmigr_face   = hcnt(0);
+    pmy_part->nmigr_edge   = hcnt(1);
+    pmy_part->nmigr_corner = hcnt(2);
+    pmy_part->nsearch_fail = hcnt(3);
+  }
 
   return TaskStatus::complete;
 }

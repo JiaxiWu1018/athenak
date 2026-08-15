@@ -33,17 +33,20 @@ void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> t
   // per cycle with the full dt (after the fluid/Z4c stages). The full-dt Boris/GR pushers
   // therefore need no per-stage gating, and for a dynamical metric the push reads the updated
   // (n+1) metric while the *_last snapshots hold step n.
-  id.push   = tl["after_timeintegrator"]->AddTask(&Particles::Push, this, none);
-  id.newgid = tl["after_timeintegrator"]->AddTask(&Particles::NewGID, this, id.push);
-  id.count  = tl["after_timeintegrator"]->AddTask(&Particles::SendCnt, this, id.newgid);
-  id.irecv  = tl["after_timeintegrator"]->AddTask(&Particles::InitRecv, this, id.count);
-  id.sendp  = tl["after_timeintegrator"]->AddTask(&Particles::SendP, this, id.irecv);
-  id.recvp  = tl["after_timeintegrator"]->AddTask(&Particles::RecvP, this, id.sendp);
-  id.crecv  = tl["after_timeintegrator"]->AddTask(&Particles::ClearRecv, this, id.recvp);
-  id.csend  = tl["after_timeintegrator"]->AddTask(&Particles::ClearSend, this, id.crecv);
+  auto &atl = tl["after_timeintegrator"];
+  id.push   = atl->AddTask(&Particles::Push, this, none);
+  id.newgid = atl->AddTask(&Particles::NewGID, this, id.push);
+  id.count  = atl->AddTask(&Particles::SendCnt, this, id.newgid);
+  id.irecv  = atl->AddTask(&Particles::InitRecv, this, id.count);
+  id.sendp  = atl->AddTask(&Particles::SendP, this, id.irecv);
+  id.recvp  = atl->AddTask(&Particles::RecvP, this, id.sendp);
+  id.crecv  = atl->AddTask(&Particles::ClearRecv, this, id.recvp);
+  id.csend  = atl->AddTask(&Particles::ClearSend, this, id.crecv);
+  // post-migration validation (no-op unless <particles> debug >= 1; particles_debug.cpp)
+  id.check  = atl->AddTask(&Particles::CheckMigration, this, id.csend);
   // particle timestep + conserved energy, after migration so positions/gids/counts are final
-  id.newdt  = tl["after_timeintegrator"]->AddTask(&Particles::NewTimeStep, this, id.csend);
-  id.energy = tl["after_timeintegrator"]->AddTask(&Particles::EnergyCalculation, this, id.newdt);
+  id.newdt  = atl->AddTask(&Particles::NewTimeStep, this, id.check);
+  id.energy = atl->AddTask(&Particles::EnergyCalculation, this, id.newdt);
 
   return;
 }
