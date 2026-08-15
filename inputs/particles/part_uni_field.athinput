@@ -1,0 +1,85 @@
+<comment>
+problem   = NRPIC Stage-2: charged particle Larmor orbit in a uniform magnetic field
+reference = boris / gr_boris pusher validation (flat spacetime)
+
+# Single charged particle, uniform B = Bz zhat, quiescent fluid (E=0) on a Minkowski
+# background. The particle starts at (0, r_L, 0) with covariant u = (u_perp, 0, 0); with
+# r_L = u_perp/(|q/m| Bz) it orbits the origin at radius r_L. Analytic checks:
+#   gyroradius     r_L   = u_perp / (|q/m| Bz)              (= 0.1/(500*1e-3) = 0.2)
+#   gyrofrequency  w_c   = |q/m| Bz / gamma                 (gamma = sqrt(1+u_perp^2))
+# Build:  cmake -S . -B build -DAthena_ENABLE_MPI=ON -DAthena_ENABLE_HDF5=ON \
+#               -DPROBLEM=particles/uni_mag_part
+# IC:     python scripts/particles/gen_single_particle.py \
+#               --out part_uni_field_ic.h5 --x 0 --y 0.2 --z 0 --ux 0.1 --uy 0 --uz 0
+# Run boris:    ./build/src/athena -i inputs/particles/part_uni_field.athinput
+# Cross-check:  ... particles/pusher=gr_boris   (must reproduce the boris orbit)
+
+<job>
+basename = uni_field
+
+<mesh>
+nghost = 4
+nx1    = 16        # zones in X1
+x1min  = -1.25
+x1max  = 1.25
+ix1_bc = periodic
+ox1_bc = periodic
+
+nx2    = 16        # zones in X2
+x2min  = -1.25
+x2max  = 1.25
+ix2_bc = periodic
+ox2_bc = periodic
+
+nx3    = 16        # zones in X3
+x3min  = -1.25
+x3max  = 1.25
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 16           # single MeshBlock (Stage 2 is single-block / single-rank)
+nx2 = 16
+nx3 = 16
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.3
+nlim       = 100000
+tlim       = 25.3      # ~2 gyroperiods (T ~ 12.63)
+ndiag      = 100
+
+<mhd>
+eos         = ideal
+gamma       = 1.333
+dyn_eos     = ideal
+dyn_error   = reset_floor
+reconstruct = ppm4
+rsolver     = hlle
+dfloor      = 1.0e-10
+pfloor      = 0.333e-12
+tfloor      = 1.0e-12
+fofc        = true
+gamma_max   = 20.0
+
+<coord>
+minkowski = true
+
+<adm>
+
+<particles>
+particle_type     = cosmic_ray
+pusher            = boris        # override to gr_boris on the command line for the cross-check
+init              = file
+prtcl_init_file   = part_uni_field_ic.h5
+charge_mass_ratio = 500.0
+mass              = 1.0
+
+<problem>
+Bz = 1.0e-3
+
+<output1>
+file_type = pvtk          # particle VTK
+variable  = prtcl_all
+dt        = 0.2

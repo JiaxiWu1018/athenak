@@ -50,6 +50,12 @@ TaskStatus Particles::Push(Driver *pdriver, int stage) {
       });
 
     break;
+  case ParticlesPusher::boris:
+    BorisPush();
+    break;
+  case ParticlesPusher::gr_boris:
+    GR_BorisPush();
+    break;
   default:
     break;
   }

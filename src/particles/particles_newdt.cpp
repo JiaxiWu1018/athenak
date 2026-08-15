@@ -4,12 +4,16 @@
 // Licensed under the 3-clause BSD License (the "LICENSE")
 //========================================================================================
 //! \file particles_newdt.cpp
-//! \brief compute the particle timestep across all MeshBlock(s) in a MeshBlockPack as a
-//! CFL condition: dt = cfl * min_p( cell size / particle coordinate speed ). The coordinate
-//! speed is estimated from the stored covariant 4-velocity u_i via a flat Lorentz factor
-//! W = sqrt(1 + delta^{ij} u_i u_j), v^d ~ |u_d|/W (a conservative estimate adequate for a
-//! timestep; it avoids a second metric interpolation). Mesh::NewTimeStep mins in this
-//! dtnew WITHOUT a cfl_no factor, so the CFL number is baked in here.
+//! \brief compute the particle timestep across all MeshBlock(s) in a MeshBlockPack as the cell
+//! light-crossing CFL condition dt = cfl * min(dx,dy,dz). This is the robust choice for
+//! particles that ACCELERATE under gravity or the Lorentz force: a velocity-based crossing
+//! time dx/v would (a) inflate dt without bound as v->0 -- so an initially-at-rest particle
+//! (radial geodesic infall) would take a single enormous step -- and (b) under-resolve the
+//! acceleration even when v>0, since dx/v assumes constant velocity. Because the coordinate
+//! speed cannot exceed c=1, the light-crossing time dx is always the binding constraint, so no
+//! velocity factor is needed. Mesh::NewTimeStep mins in this dtnew WITHOUT a cfl_no factor, so
+//! the CFL number is baked in here. (A cyclotron limit for strongly magnetized charges, dt <=
+//! C*2*pi*gamma/(|q/m| B), can be added later; the Stage-2 tests resolve the gyro-period.)
 
 #include <cmath>
 #include <limits>
@@ -28,63 +32,25 @@ namespace particles {
 TaskStatus Particles::NewTimeStep(Driver *pdrive, int stage) {
   bool multi_d = pmy_pack->pmesh->multi_d;
   bool three_d = pmy_pack->pmesh->three_d;
-  int gids = pmy_pack->gids;
   int nmb = pmy_pack->nmb_thispack;
   auto &mbsize = pmy_pack->pmb->mb_size;
-  auto &pi = prtcl_idata;
-  auto &pr = prtcl_rdata;
   Real cfl = pmy_pack->pmesh->cfl_no;
 
   const Real big = std::numeric_limits<Real>::max();
-  Real dt_part = big;
 
-  // CFL over particles: crossing time = cell size / coordinate speed. A particle at rest in
-  // a given direction contributes a large-but-finite (geometry-tied) time so it cannot pin
-  // dt to zero.
-  if (nprtcl_thispack > 0) {
-    Kokkos::parallel_reduce("part_newdt",
-      Kokkos::RangePolicy<>(DevExeSpace(), 0, nprtcl_thispack),
-      KOKKOS_LAMBDA(const int p, Real &min_dt) {
-        int m = pi(PGID,p) - gids;
-        Real ux = pr(IPVX,p);
-        Real uy = multi_d ? pr(IPVY,p) : 0.0;
-        Real uz = three_d ? pr(IPVZ,p) : 0.0;
-        Real W = std::sqrt(1.0 + ux*ux + uy*uy + uz*uz);
+  // light-crossing CFL: dt = cfl * min cell size over all MeshBlocks (independent of the
+  // particle state, so it is robust to accelerating and initially-at-rest particles)
+  Real dgrid = big;
+  Kokkos::parallel_reduce("part_newdt",
+    Kokkos::RangePolicy<>(DevExeSpace(), 0, nmb),
+    KOKKOS_LAMBDA(const int m, Real &min_dt) {
+      Real d = mbsize.d_view(m).dx1;
+      if (multi_d) {d = fmin(d, mbsize.d_view(m).dx2);}
+      if (three_d) {d = fmin(d, mbsize.d_view(m).dx3);}
+      min_dt = fmin(min_dt, d);
+    }, Kokkos::Min<Real>(dgrid));
 
-        Real dx1 = mbsize.d_view(m).dx1;
-        Real t1 = (std::fabs(ux) > 0.0) ? dx1*W/std::fabs(ux) : 1.0e3*dx1;
-        min_dt = fmin(min_dt, t1);
-        if (multi_d) {
-          Real dx2 = mbsize.d_view(m).dx2;
-          Real t2 = (std::fabs(uy) > 0.0) ? dx2*W/std::fabs(uy) : 1.0e3*dx2;
-          min_dt = fmin(min_dt, t2);
-        }
-        if (three_d) {
-          Real dx3 = mbsize.d_view(m).dx3;
-          Real t3 = (std::fabs(uz) > 0.0) ? dx3*W/std::fabs(uz) : 1.0e3*dx3;
-          min_dt = fmin(min_dt, t3);
-        }
-      }, Kokkos::Min<Real>(dt_part));
-  }
-
-  // Fallback so dt stays finite when there are no particles on this pack (or the reduction
-  // yielded a non-finite value): tie dt to the local grid spacing, as the prototype did.
-  if (nprtcl_thispack == 0 || !std::isfinite(dt_part) || dt_part >= big) {
-    Real dgrid = big;
-    Kokkos::parallel_reduce("part_newdt_grid",
-      Kokkos::RangePolicy<>(DevExeSpace(), 0, nmb),
-      KOKKOS_LAMBDA(const int m, Real &min_dt) {
-        Real d = mbsize.d_view(m).dx1;
-        if (multi_d) {d = fmin(d, mbsize.d_view(m).dx2);}
-        if (three_d) {d = fmin(d, mbsize.d_view(m).dx3);}
-        min_dt = fmin(min_dt, d);
-      }, Kokkos::Min<Real>(dgrid));
-    dt_part = dgrid;
-  }
-
-  dtnew = cfl*dt_part;
-  // TODO(Stage 2): for charged particles also impose the cyclotron limit
-  //   dt <= C * 2*pi/Omega_c, Omega_c = |q| B / (m gamma).
+  dtnew = cfl*dgrid;
   return TaskStatus::complete;
 }
 

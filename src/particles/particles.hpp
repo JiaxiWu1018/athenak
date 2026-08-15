@@ -20,7 +20,10 @@
 // forward declarations
 
 // constants that enumerate ParticlesPusher options
-enum class ParticlesPusher {drift, leap_frog, lagrangian_tracer, lagrangian_mc};
+// (boris = special-relativistic Boris; gr_boris = general-relativistic Boris whose q=0 limit
+// is the geodesic integrator. geo_boris is intentionally NOT implemented for NRPIC.)
+enum class ParticlesPusher {drift, leap_frog, lagrangian_tracer, lagrangian_mc,
+                            boris, gr_boris};
 
 // constants that enumerate ParticleTypes
 enum class ParticleType {cosmic_ray, dust};
@@ -63,6 +66,15 @@ class Particles {
   Real mass;                       // default/scalar rest mass (per-particle override in IPM)
   Real q_over_m;                   // charge-to-mass ratio (0 for dust)
 
+  // snapshots of the field/metric at the previous step, used by the GR pusher to evaluate
+  // the implicit geodesic substep at the time midpoint. Allocated only for gr_boris. For a
+  // static background (all Stage-2 tests) these equal the current arrays; they carry real
+  // information once the metric is dynamical (Stage 4 live Z4c).
+  DvceArray5D<Real> w0_last;       // MHD primitives at step n
+  DvceArray5D<Real> bcc0_last;     // cell-centred B at step n
+  DvceArray5D<Real> adm_last;      // ADM metric at step n
+  DvceArray5D<Real> z4c_last;      // Z4c variables at step n
+
   ParticlesPusher pusher;
 
   // Boundary communication buffers and functions for particles
@@ -74,6 +86,9 @@ class Particles {
   // functions...
   void CreateParticleTags(ParameterInput *pin);
   void AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> tl);
+  // pusher kernels (particles_pushers.cpp dispatches Push() to these)
+  void BorisPush();      // special-relativistic Boris (boris_pusher.cpp)
+  void GR_BorisPush();   // general-relativistic Boris / geodesic (gr_boris.cpp)
   TaskStatus Push(Driver *pdriver, int stage);
   TaskStatus NewGID(Driver *pdriver, int stage);
   TaskStatus SendCnt(Driver *pdriver, int stage);
