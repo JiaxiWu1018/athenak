@@ -1,0 +1,94 @@
+# Focused Schwarzschild regression: a rest shell plunges through two SMR levels and
+# is excised strictly inside the horizon, while a circular ring survives.
+
+<comment>
+problem = Schwarzschild particle horizon-capture pytest fixture
+
+<job>
+basename = horizon_schw_pytest
+
+<mesh>
+nghost = 4
+nx1 = 64
+x1min = -12.0
+x1max = 12.0
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 64
+x2min = -12.0
+x2max = 12.0
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 64
+x3min = -12.0
+x3max = 12.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<mesh_refinement>
+refinement = static
+
+<refined_region1>
+level = 1
+x1min = -3.0
+x1max = 3.0
+x2min = -3.0
+x2max = 3.0
+x3min = -3.0
+x3max = 3.0
+
+<refined_region2>
+level = 2
+x1min = -1.5
+x1max = 1.5
+x2min = -1.5
+x2max = 1.5
+x3min = -1.5
+x3max = 1.5
+
+<time>
+evolution = dynamic
+integrator = rk2
+cfl_number = 0.3
+nlim = 100000
+tlim = 12.0
+ndiag = 100
+
+<coord>
+general_rel = true
+excise = false
+a = 0.0
+minkowski = false
+
+<adm>
+
+<particles>
+particle_type = dust
+pusher = gr_boris
+init = pgen
+mass = 1.0
+debug = 1
+destroy_log = true
+excise_radius = 1.0
+excise_x1 = 0.0
+excise_x2 = 0.0
+excise_x3 = 0.0
+excise_lapse = 0.0
+
+<problem>
+shell_np = 128
+shell_r0 = 5.0
+ring_np = 64
+ring_r0 = 8.0
+ring_sign = 1.0
+ring_tag0 = 128
+
+<output1>
+file_type = pvtk
+variable = prtcl_all
+dt = 1.0

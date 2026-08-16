@@ -1,0 +1,76 @@
+# Focused particle regression: a periodic 8^3 lattice crossing every parity of a
+# two-level, half-domain SMR boundary. Fatal particle debug checks are the per-cycle
+# migration and conservation oracle.
+
+<comment>
+problem = particle crossing pytest fixture (SMR half-domain)
+
+<job>
+basename = part_crossing_smr_pytest
+
+<mesh>
+nghost = 2
+nx1 = 16
+x1min = -0.5
+x1max = 0.5
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 16
+x2min = -0.5
+x2max = 0.5
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 16
+x3min = -0.5
+x3max = 0.5
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 8
+nx2 = 8
+nx3 = 8
+
+<mesh_refinement>
+refinement = static
+
+<refined_region1>
+level = 1
+x1min = -0.5
+x1max = 0.0
+x2min = -0.5
+x2max = 0.5
+x3min = -0.5
+x3max = 0.5
+
+<time>
+evolution = dynamic
+integrator = rk2
+cfl_number = 0.8
+nlim = 50
+tlim = 10.0
+ndiag = 1
+
+<particles>
+particle_type = dust
+pusher = drift
+init = pgen
+debug = 1
+
+<problem>
+mode = lattice
+vmax = 1.0
+audit = false
+delta_frac = 0.1
+select_gid = -1
+select_slot = -1
+nrand = 64
+seed = 1
+npx = 8
+npy = 8
+npz = 8
+
+<output1>
+file_type = pvtk
+variable = prtcl_all
+dt = 0.117
