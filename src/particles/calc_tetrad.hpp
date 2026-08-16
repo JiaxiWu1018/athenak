@@ -6,11 +6,12 @@
 // Licensed under the 3-clause BSD License (the "LICENSE")
 //========================================================================================
 //! \file calc_tetrad.hpp
-//! \brief build the local orthonormal tetrad (and its inverse) of the normal observer from
-//! the ADM lapse/shift/3-metric, and transform spatial 3-vectors between the coordinate basis
-//! and the tetrad frame. The GR Boris pusher applies its electromagnetic half-kicks in this
-//! locally-flat frame (FlatBorisPush) and converts back. Following eqs.(A14-A21) of
-//! Bacchini/Boyeneni et al. (CalcFaraday, used only by geo_boris, is intentionally omitted.)
+//! \brief build the local orthonormal tetrad (and its inverse) of the normal observer
+//! from the ADM lapse/shift/3-metric, and transform spatial 3-vectors between the
+//! coordinate basis and the tetrad frame. The GR Boris pusher applies its electromagnetic
+//! half-kicks in this locally-flat frame (FlatBorisPush) and converts back. Following
+//! eqs.(A14-A21) of Bacchini/Boyeneni et al. (CalcFaraday, used only by geo_boris, is
+//! intentionally omitted.)
 
 #include <cmath>
 
@@ -21,8 +22,9 @@ namespace particles {
 
 //----------------------------------------------------------------------------------------
 //! \fn void CalcTetrad
-//! \brief tetrad A^{a}_{mu} (lower-triangular spatial block) and its inverse A^{mu}_{a} from
-//! lapse alp, shift beta^i and the symmetric 3-metric g3d[6] = {gxx,gxy,gxz,gyy,gyz,gzz}.
+//! \brief tetrad A^{a}_{mu} (lower-triangular spatial block) and its inverse A^{mu}_{a}
+//! from lapse alp, shift beta^i and the symmetric 3-metric
+//! g3d[6] = {gxx,gxy,gxz,gyy,gyz,gzz}.
 
 KOKKOS_INLINE_FUNCTION
 void CalcTetrad(const Real alp, const Real beta[3], const Real g3d[6],
@@ -42,8 +44,10 @@ void CalcTetrad(const Real alp, const Real beta[3], const Real g3d[6],
   tetrad[2][2] = std::sqrt((g3d[0] * g3d[3] - g3d[1] * g3d[1])) * ig11;
   Real inv_denom = ig11 / std::sqrt(g3d[0] * g3d[3] - g3d[1] * g3d[1]);
   tetrad[2][3] = (g3d[0] * g3d[4] - g3d[1] * g3d[2]) * inv_denom;
-  tetrad[3][3] = std::sqrt((g3d[0] * g3d[5] - g3d[2] * g3d[2]) * (g3d[0] * g3d[3] - g3d[1] * g3d[1]) -
-                    (g3d[0] * g3d[4] - g3d[1] * g3d[2]) * (g3d[0] * g3d[4] - g3d[1] * g3d[2])) * inv_denom;
+  tetrad[3][3] = std::sqrt((g3d[0] * g3d[5] - g3d[2] * g3d[2]) *
+                           (g3d[0] * g3d[3] - g3d[1] * g3d[1]) -
+                           (g3d[0] * g3d[4] - g3d[1] * g3d[2]) *
+                           (g3d[0] * g3d[4] - g3d[1] * g3d[2])) * inv_denom;
   for (int i = 1; i < 4; ++i) {
     for (int j = 0; j < 3; ++j) {
       tetrad[i][0] += tetrad[i][j + 1] * beta[j];
@@ -70,8 +74,8 @@ void CalcTetrad(const Real alp, const Real beta[3], const Real g3d[6],
 
 //----------------------------------------------------------------------------------------
 //! \fn void TetradCvrtU
-//! \brief contravariant transform of a spatial 3-vector: v_out^i = A^{i}_{j} v_in^j using the
-//! spatial block of the (forward) tetrad.
+//! \brief contravariant transform of a spatial 3-vector: v_out^i = A^{i}_{j} v_in^j using
+//! the spatial block of the (forward) tetrad.
 
 KOKKOS_INLINE_FUNCTION
 void TetradCvrtU(Real v_out[3], const Real v_in[3], const Real tetrad[4][4]) {

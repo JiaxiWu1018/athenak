@@ -4,15 +4,16 @@
 Produces the NRPIC HDF5 IC contract: position (x, y, z) and covariant spatial
 four-velocity (ux, uy, uz). Two modes are supported:
 
-  rest      : particle momentarily at rest (u_i = 0) at areal radius r0 on the x-axis. In a
-              stationary spacetime -u_t is conserved, so IPEN should hold at alpha(r0); the
-              particle then falls radially inward.
-  circular  : equatorial circular geodesic at areal radius r0. Constant-r equatorial motion is
-              a circle of Cartesian radius x0 = sqrt(r0^2 + a^2) in the x-y plane, with
-              dphi/dt = Omega = sign*sqrt(M)/(r0^1.5 + sign*a*sqrt(M)). We build the coordinate
-              4-velocity direction (1,0,x0*Omega,0), normalize with the local KS 4-metric, and
-              lower indices to get u_i. r should stay constant; -u_t (energy) and u_phi (angular
-              momentum) are conserved.
+  rest      : particle momentarily at rest (u_i = 0) at areal radius r0 on the
+              x-axis. In a stationary spacetime -u_t is conserved, so IPEN should
+              hold at alpha(r0); the particle then falls radially inward.
+  circular  : equatorial circular geodesic at areal radius r0. Constant-r
+              equatorial motion is a circle of Cartesian radius
+              x0 = sqrt(r0^2 + a^2) in the x-y plane, with
+              dphi/dt = Omega = sign*sqrt(M)/(r0^1.5 + sign*a*sqrt(M)). We build
+              the coordinate 4-velocity direction (1,0,x0*Omega,0), normalize it
+              with the local KS 4-metric, and lower indices to get u_i. The radius,
+              -u_t (energy), and u_phi (angular momentum) should remain constant.
 
 The Cartesian Kerr-Schild metric uses g = eta + 2H ell ell, matching AthenaK's
 Cartesian Kerr-Schild coordinates. M=1 is the AthenaK convention.
@@ -34,7 +35,7 @@ from _prtcl_io import write_particle_table  # noqa: E402
 
 
 def ks_metric(x, y, z, M, a):
-    """Cartesian Kerr-Schild 4-metric g_{mu nu} (t,x,y,z) and the KS radius r at (x,y,z)."""
+    """Return the Cartesian Kerr-Schild metric and radius at ``(x, y, z)``."""
     rho2 = x * x + y * y + z * z
     r2 = 0.5 * ((rho2 - a * a) + np.sqrt((rho2 - a * a) ** 2 + 4.0 * a * a * z * z))
     r = np.sqrt(r2)
@@ -95,9 +96,12 @@ def main():
         E = -u_dn4[0]
         L = pos[0] * u_dn[1] - pos[1] * u_dn[0]  # u_phi = x u_y - y u_x
         print(f"[circular] r0={r0} a={a} Omega={Omega:.6f}  x0={x0:.6f}")
-        print(f"           u_i=({u_dn[0]:.6e},{u_dn[1]:.6e},{u_dn[2]:.6e})")
         print(
-            f"           conserved   E=-u_t={E:.6f}   L=u_phi={L:.6f}   gamma_t=u^t={ut:.6f}"
+            f"           u_i=({u_dn[0]:.6e},{u_dn[1]:.6e},{u_dn[2]:.6e})"
+        )
+        print(
+            f"           conserved   E=-u_t={E:.6f}   L=u_phi={L:.6f}"
+            f"   gamma_t=u^t={ut:.6f}"
         )
 
     write_particle_table(

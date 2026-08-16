@@ -654,11 +654,13 @@ ProblemGenerator::ProblemGenerator(ParameterInput *pin, Mesh *pm, IOWrapper resf
     std::vector<Real> ibuf(static_cast<std::size_t>(nid)*total);
     for (int v=0; v<nrd && total>0; ++v) {
       resfile.Read_Reals_at(&rbuf[static_cast<std::size_t>(v)*total], total,
-        rdata_base + static_cast<IOWrapperSizeT>(v)*total*sizeof(Real), single_file_per_rank);
+        rdata_base + static_cast<IOWrapperSizeT>(v)*total*sizeof(Real),
+        single_file_per_rank);
     }
     for (int v=0; v<nid && total>0; ++v) {
       resfile.Read_Reals_at(&ibuf[static_cast<std::size_t>(v)*total], total,
-        idata_base + static_cast<IOWrapperSizeT>(v)*total*sizeof(Real), single_file_per_rank);
+        idata_base + static_cast<IOWrapperSizeT>(v)*total*sizeof(Real),
+        single_file_per_rank);
     }
     // keep particles whose position lands in a local MeshBlock
     std::vector<int> kg, km;
@@ -693,7 +695,9 @@ ProblemGenerator::ProblemGenerator(ParameterInput *pin, Mesh *pm, IOWrapper resf
     MPI_Allgather(&local, 1, MPI_INT, pm->nprtcl_eachrank, 1, MPI_INT, MPI_COMM_WORLD);
 #endif
     pm->nprtcl_total = 0;
-    for (int r=0; r<global_variable::nranks; ++r) {pm->nprtcl_total += pm->nprtcl_eachrank[r];}
+    for (int r=0; r<global_variable::nranks; ++r) {
+      pm->nprtcl_total += pm->nprtcl_eachrank[r];
+    }
   }
 
   // call problem generator again to re-initialize data, fn ptrs, as needed

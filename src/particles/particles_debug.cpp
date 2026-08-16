@@ -29,6 +29,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 
@@ -107,28 +108,28 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
   // move particles between ranks and destruction moves them to the dead side; nothing
   // may appear, vanish, or change identity -- which is exactly what the tag checksums
   // verify across compaction events.
-  unsigned long long tsum = 0, tsq = 0;
+  uint64_t tsum = 0, tsq = 0;
   Kokkos::parallel_reduce("part_ledger",
     Kokkos::RangePolicy<>(DevExeSpace(), 0, npart),
-    KOKKOS_LAMBDA(const int p, unsigned long long &s1, unsigned long long &s2) {
+    KOKKOS_LAMBDA(const int p, uint64_t &s1, uint64_t &s2) {
       // cast BEFORE multiplying: int tag*tag overflows at tag >= 46341
-      unsigned long long t = static_cast<unsigned long long>(pi(PTAG,p));
+      uint64_t t = static_cast<uint64_t>(pi(PTAG,p));
       s1 += t;
       s2 += t*t;
-    }, Kokkos::Sum<unsigned long long>(tsum), Kokkos::Sum<unsigned long long>(tsq));
+    }, Kokkos::Sum<uint64_t>(tsum), Kokkos::Sum<uint64_t>(tsq));
   // led = {alive count, alive tag-sum, alive tag-sq, dead tag-sum, dead tag-sq}
-  unsigned long long led[5] = {static_cast<unsigned long long>(npart), tsum, tsq,
-                               ledger_dead[0], ledger_dead[1]};
+  uint64_t led[5] = {static_cast<uint64_t>(npart), tsum, tsq,
+                     ledger_dead[0], ledger_dead[1]};
 #if MPI_PARALLEL_ENABLED
   // collective is safe: this task runs on every rank each cycle and debug_lvl is
   // input-file-uniform across ranks
-  MPI_Allreduce(MPI_IN_PLACE, led, 5, MPI_UNSIGNED_LONG_LONG, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, led, 5, MPI_UINT64_T, MPI_SUM,
                 pbval_part->mpi_comm_part);
 #endif
   Mesh *pm = pmy_pack->pmesh;
-  unsigned long long dead_cnt = 0;
+  uint64_t dead_cnt = 0;
   for (int k=0; k<3; ++k) {
-    dead_cnt += static_cast<unsigned long long>(pm->nprtcl_destroyed_cum[k]);
+    dead_cnt += static_cast<uint64_t>(pm->nprtcl_destroyed_cum[k]);
   }
   if (!ledger_init) {
     ledger0[0] = led[0] + dead_cnt;
@@ -144,11 +145,11 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
   // nprtcl_eachrank entry, and the published counts must sum to nprtcl_total and to the
   // Allreduced true total (validates both count-refresh paths: the Allgather on send
   // cycles and the census-based local decrement on destroy-only cycles)
-  long long sum_each = 0;
+  int64_t sum_each = 0;
   for (int n=0; n<(global_variable::nranks); ++n) {sum_each += pm->nprtcl_eachrank[n];}
   bool bad_counts = (npart != pm->nprtcl_eachrank[myrank]) ||
-                    (sum_each != static_cast<long long>(pm->nprtcl_total)) ||
-                    (static_cast<unsigned long long>(sum_each) != led[0]);
+                    (sum_each != static_cast<int64_t>(pm->nprtcl_total)) ||
+                    (static_cast<uint64_t>(sum_each) != led[0]);
 
   if ((nbad_gid + nbad_box + nsearch_fail) > 0 || bad_ledger || bad_counts) {
     // print every offending particle, then die

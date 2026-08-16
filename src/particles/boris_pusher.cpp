@@ -4,16 +4,18 @@
 // Licensed under the 3-clause BSD License (the "LICENSE")
 //========================================================================================
 //! \file boris_pusher.cpp
-//! \brief special-relativistic Boris pusher (flat spacetime). One full-dt update per cycle:
-//!   drift half-step -> interpolate (B, v_fluid) from MHD at the midpoint -> form the ideal-MHD
-//!   electric field E = B x v -> relativistic Boris velocity kick -> drift half-step.
+//! \brief special-relativistic Boris pusher (flat spacetime). One full-dt update
+//! per cycle:
+//!   drift half-step -> interpolate (B, v_fluid) from MHD at the midpoint -> form the
+//!   ideal-MHD electric field E = B x v -> relativistic Boris velocity kick -> drift
+//!   half-step.
 //! Velocity slots IPVX/IPVY/IPVZ hold the spatial 4-velocity (u^i == u_i in flat space).
 //!
-//! MHD convention: the w0 velocity slots hold the spatial 4-velocity utilde^i = gamma_f v^i
-//! (both SR-MHD, see ideal_srmhd.cpp, and dyn_grmhd); the pusher divides out gamma_f before
-//! forming E = -v x B. (In flat space bcc0 is the physical B for both paths.) Newtonian-MHD
-//! caveat: there w0 holds v itself, so the division introduces only an O(v^2) relative error —
-//! negligible exactly where Newtonian MHD is valid.
+//! MHD convention: the w0 velocity slots hold the spatial 4-velocity utilde^i = gamma_f
+//! v^i (both SR-MHD, see ideal_srmhd.cpp, and dyn_grmhd); the pusher divides out gamma_f
+//! before forming E = -v x B. (In flat space bcc0 is the physical B for both paths.)
+//! Newtonian-MHD caveat: there w0 holds v itself, so the division introduces only an
+//! O(v^2) relative error — negligible exactly where Newtonian MHD is valid.
 
 #include <cmath>
 
@@ -31,8 +33,9 @@ namespace particles {
 //! \fn void Particles::BorisPush
 
 void Particles::BorisPush() {
-  // The SR Boris pusher sources its EM field from MHD. The constructor already requires an
-  // <mhd> block when pusher==boris; guard again so a misuse fails safe instead of segfaulting.
+  // The SR Boris pusher sources its EM field from MHD. The constructor already requires
+  // an <mhd> block when pusher==boris; guard again so a misuse fails safe
+  // instead of segfaulting.
   if (pmy_pack->pmhd == nullptr) {return;}
 
   auto &indcs = pmy_pack->pmesh->mb_indcs;
@@ -61,9 +64,10 @@ void Particles::BorisPush() {
     // stencil indices + Lagrange weights at the half-step position
     int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
     int mb = pi(PGID, p) - gids;
-    const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max, size.d_view(mb).dx1,
-                            size.d_view(mb).x2min, size.d_view(mb).x2max, size.d_view(mb).dx2,
-                            size.d_view(mb).x3min, size.d_view(mb).x3max, size.d_view(mb).dx3};
+    const Real mb_par[9] = {
+      size.d_view(mb).x1min, size.d_view(mb).x1max, size.d_view(mb).dx1,
+      size.d_view(mb).x2min, size.d_view(mb).x2max, size.d_view(mb).dx2,
+      size.d_view(mb).x3min, size.d_view(mb).x3max, size.d_view(mb).dx3};
     int interp_indcs[4] = {mb, -1, -1, -1};
     SetInterpIndices(x_half, mb_par, ncell, interp_indcs);
     Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
@@ -111,7 +115,8 @@ void Particles::BorisPush() {
     FlatBorisPush(u_np1, u_n, E_interp, B_interp, qom, dt_);
 
     // drift the remaining half-step with the updated velocity
-    Real gamma_np1 = std::sqrt(1.0 + u_np1[0]*u_np1[0] + u_np1[1]*u_np1[1] + u_np1[2]*u_np1[2]);
+    Real gamma_np1 = std::sqrt(1.0 + u_np1[0]*u_np1[0] + u_np1[1]*u_np1[1]
+                                   + u_np1[2]*u_np1[2]);
     Real x_np1[3] = {0.0};
     for (int i = 0; i < 3; ++i) {
       x_np1[i] = x_half[i] + 0.5*dt_/gamma_np1*u_np1[i];

@@ -6,13 +6,15 @@ cannot drift apart.
 
 Required 1-D datasets (all the same length N):
   x, y, z      particle positions
-  ux, uy, uz   COVARIANT spatial 4-velocity components u_i  (NOT coordinate velocity dx/dt)
+  ux, uy, uz   COVARIANT spatial 4-velocity components u_i
+               (NOT coordinate velocity dx/dt)
 Optional 1-D dataset:
-  mass         per-particle rest mass; if absent, the scalar ``<particles> mass`` is used.
+  mass         per-particle rest mass; if absent, the scalar ``<particles> mass``
+               is used.
 
-The reader reads with ``H5T_NATIVE_DOUBLE`` (or NATIVE_FLOAT for a single-precision build),
-so datasets are written as NATIVE-endian float64 -- do NOT byte-swap to big-endian the way
-AthenaK's ``.athdf`` mesh output does.
+The reader uses ``H5T_NATIVE_DOUBLE`` (or NATIVE_FLOAT for a single-precision
+build), so datasets are written as native-endian float64. Do not byte-swap them
+to big-endian as AthenaK does for ``.athdf`` mesh output.
 """
 import numpy as np
 import h5py

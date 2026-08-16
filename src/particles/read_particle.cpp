@@ -4,25 +4,27 @@
 // Licensed under the 3-clause BSD License (the "LICENSE")
 //========================================================================================
 //! \file read_particle.cpp
-//! \brief Particles::read_prtcl_table — load particle initial conditions from an HDF5 file.
+//! \brief Particles::read_prtcl_table — load particle initial conditions from an HDF5
+//! file.
 //!
-//! Required 1-D datasets (all length N): x,y,z (position), ux,uy,uz (the COVARIANT spatial
-//! 4-velocity u_i). Optional 1-D dataset mass (per-particle rest mass); if absent, the
-//! scalar <particles> mass is used for every particle. Each particle is assigned to the
-//! local MeshBlock whose bounding box contains it; particles outside all local MeshBlocks
-//! belong to another rank and are dropped. The particle tag is its global row index in the
-//! file, so tags are unique and identical regardless of the MPI decomposition (so a serial
-//! run and an N-rank run can be compared per-tag — see the stage README).
+//! Required 1-D datasets (all length N): x,y,z (position), ux,uy,uz (the COVARIANT
+//! spatial 4-velocity u_i). Optional 1-D dataset mass (per-particle rest mass); if
+//! absent, the scalar <particles> mass is used for every particle. Each particle is
+//! assigned to the local MeshBlock whose bounding box contains it; particles outside all
+//! local MeshBlocks belong to another rank and are dropped. The particle tag is its
+//! global row index in the file, so tags are unique and identical regardless of the MPI
+//! decomposition (so a serial run and an N-rank run can be compared per-tag — see the
+//! stage README).
 //!
-//! Guarded by ATHENA_HAVE_HDF5: in a non-HDF5 build this is a clean fatal error at runtime.
-
-#include "config.hpp"
+//! Guarded by ATHENA_HAVE_HDF5: in a non-HDF5 build this is a clean fatal error at
+//! runtime.
 
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
 
+#include "config.hpp"
 #include "athena.hpp"
 #include "globals.hpp"
 #include "mesh/mesh.hpp"
@@ -48,7 +50,8 @@ void Particles::read_prtcl_table(const char *fname) {
   hid_t file = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (file < 0) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "could not open particle initial-data file '" << fname << "'." << std::endl;
+              << "could not open particle initial-data file '" << fname << "'."
+              << std::endl;
     std::exit(EXIT_FAILURE);
   }
 
@@ -56,14 +59,16 @@ void Particles::read_prtcl_table(const char *fname) {
   auto open1d = [&](const char *name, hid_t &dset, hid_t &space) -> hsize_t {
     dset = H5Dopen2(file, name, H5P_DEFAULT);
     if (dset < 0) {
-      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
                 << "particle file '" << fname << "' is missing dataset '" << name << "'."
                 << std::endl;
       std::exit(EXIT_FAILURE);
     }
     space = H5Dget_space(dset);
     if (H5Sget_simple_extent_ndims(space) != 1) {
-      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
                 << "particle dataset '" << name << "' must be 1-D." << std::endl;
       std::exit(EXIT_FAILURE);
     }
@@ -92,7 +97,8 @@ void Particles::read_prtcl_table(const char *fname) {
     std::exit(EXIT_FAILURE);
   }
 
-  hid_t real_type = (sizeof(Real) == sizeof(double)) ? H5T_NATIVE_DOUBLE : H5T_NATIVE_FLOAT;
+  hid_t real_type = (sizeof(Real) == sizeof(double)) ? H5T_NATIVE_DOUBLE
+                                                     : H5T_NATIVE_FLOAT;
   bool multi_d = pmy_pack->pmesh->multi_d;
   bool three_d = pmy_pack->pmesh->three_d;
 

@@ -72,7 +72,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   MeshBlockPack *pmbp = pmy_mesh_->pmb_pack;
   if (pmbp->ppart == nullptr) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "part_crossing requires a <particles> block in the input file" << std::endl;
+              << "part_crossing requires a <particles> block in the input file"
+              << std::endl;
     exit(EXIT_FAILURE);
   }
   // optional <adm> block (Stage 3c(b) lapse-excision negative control: with
@@ -116,9 +117,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     // first migration must relabel it before the first validation)
     Real delta_frac = pin->GetOrAddReal("problem","delta_frac",0.1);
 
-    // crossing feasibility: the per-component step is vmax*cfl*dx_min/sqrt(3) (the particle
-    // timestep is the light-crossing dt = cfl * smallest cell in the mesh) and must exceed
-    // the largest inward offset delta = delta_frac * (min cell of the particle's block)
+    // crossing feasibility: the per-component step is vmax*cfl*dx_min/sqrt(3) (the
+    // particle timestep is the light-crossing dt = cfl * smallest cell in the mesh) and
+    // must exceed the largest inward offset delta = delta_frac * (min cell of the
+    // particle's block)
     Real cfl = pin->GetReal("time","cfl_number");
     Real dxmin = std::numeric_limits<Real>::max(), delta_max = 0.0;
     for (int m=0; m<nmb; ++m) {
@@ -130,7 +132,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     }
     Real step_min = vmax*cfl*dxmin/sqrt(3.0);
     if (step_min <= delta_max) {
-      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
                 << "targeted crossing infeasible: per-component step " << step_min
                 << " <= max inward offset " << delta_max
                 << " (raise vmax/cfl_number or lower delta_frac)" << std::endl;
@@ -211,7 +214,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
         for (int i=0; i<npx; ++i) {
           Real x = msize.x1min + (i + 0.5)*(msize.x1max - msize.x1min)/npx;
           Real y = msize.x2min + (j + 0.5)*(msize.x2max - msize.x2min)/npy;
-          Real z = three_d ? msize.x3min + (k + 0.5)*(msize.x3max - msize.x3min)/npz : 0.0;
+          Real z = three_d ? msize.x3min + (k + 0.5)*(msize.x3max - msize.x3min)/npz
+                           : 0.0;
           int m = ppart->FindContainingMeshBlock(x, y, z);
           if (m < 0) {continue;}   // belongs to another rank
           int tag = i + npx*(j + npy*k);

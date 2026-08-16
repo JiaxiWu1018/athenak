@@ -72,7 +72,7 @@ def read_particle_vtk(path):
         if start < 0:
             pytest.fail(f"{path}: missing {marker.decode()!r}")
         start = data.find(b"\n", start + len(marker)) + 1
-        return np.array(struct.unpack(f">{size}f", data[start : start + 4 * size]))
+        return np.array(struct.unpack(f">{size}f", data[start:start + 4 * size]))
 
     positions = block(points.group(0), 3 * count).reshape(count, 3)
     velocities = block(b"VECTORS prtcl_vel float", 3 * count).reshape(count, 3)

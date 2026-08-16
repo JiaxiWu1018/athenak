@@ -4,16 +4,16 @@
 // Licensed under the 3-clause BSD License (the "LICENSE")
 //========================================================================================
 //! \file calc_energy.cpp
-//! \brief compute the conserved specific energy E = -u_t for each particle. The ADM metric
-//! (lapse alpha, shift beta^i, 3-metric gamma_ij) is interpolated to the particle position
-//! and the timelike normalization g^{mu nu} u_mu u_nu = -1 is solved as a quadratic in u_t.
-//! The stored spatial velocity slots IPVX/IPVY/IPVZ hold the COVARIANT spatial 4-velocity
-//! u_i; the result -u_t (per unit mass) is written to IPEN.
+//! \brief compute the conserved specific energy E = -u_t for each particle. The ADM
+//! metric (lapse alpha, shift beta^i, 3-metric gamma_ij) is interpolated to the particle
+//! position and the timelike normalization g^{mu nu} u_mu u_nu = -1 is solved as a
+//! quadratic in u_t. The stored spatial velocity slots IPVX/IPVY/IPVZ hold the COVARIANT
+//! spatial 4-velocity u_i; the result -u_t (per unit mass) is written to IPEN.
 //!
 //! CAVEAT: E = -u_t is conserved only in a STATIONARY spacetime, where d_t is a Killing
-//! vector. On a dynamical / non-stationary spacetime (e.g. Oppenheimer-Snyder collapse, any
-//! live-Z4c run) -u_t is NOT conserved and is a diagnostic only; the energy definition will
-//! likely need revision in a later stage.
+//! vector. On a dynamical / non-stationary spacetime (e.g. Oppenheimer-Snyder collapse,
+//! any live-Z4c run) -u_t is NOT conserved and is a diagnostic only; the energy
+//! definition will likely need revision in a later stage.
 
 #include <cmath>
 
@@ -33,7 +33,8 @@ namespace particles {
 
 template <int NGHOST>
 void Particles::calc_prtcl_energy() {
-  // -u_t requires a metric; no-op if no ADM variables are present (e.g. flat-space SR tests)
+  // -u_t requires a metric; no-op if no ADM variables are present
+  // (e.g. flat-space SR tests)
   if (pmy_pack->padm == nullptr) {return;}
 
   auto &indcs = pmy_pack->pmesh->mb_indcs;
@@ -54,7 +55,8 @@ void Particles::calc_prtcl_energy() {
   par_for("calc_prtcl_energy", DevExeSpace(), 0, (nprtcl_thispack-1),
   KOKKOS_LAMBDA(const int p) {
     Real x[3]   = {pr(IPX,p),  pr(IPY,p),  pr(IPZ,p)};
-    Real u_d[3] = {pr(IPVX,p), pr(IPVY,p), pr(IPVZ,p)};   // covariant spatial 4-velocity u_i
+    Real u_d[3] = {pr(IPVX,p), pr(IPVY,p),
+                   pr(IPVZ,p)};   // covariant spatial 4-velocity u_i
     int m = pi(PGID,p) - gids;
     const Real mb_par[9] = {
       size.d_view(m).x1min, size.d_view(m).x1max, size.d_view(m).dx1,
@@ -90,19 +92,26 @@ void Particles::calc_prtcl_energy() {
                                              interp_indcs, Lx,Ly,Lz);
     }
     Real g3d[6];
-    g3d[0]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXX, interp_indcs, Lx,Ly,Lz);
-    g3d[1]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXY, interp_indcs, Lx,Ly,Lz);
-    g3d[2]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXZ, interp_indcs, Lx,Ly,Lz);
-    g3d[3]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GYY, interp_indcs, Lx,Ly,Lz);
-    g3d[4]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GYZ, interp_indcs, Lx,Ly,Lz);
-    g3d[5]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GZZ, interp_indcs, Lx,Ly,Lz);
+    g3d[0]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXX,
+                                             interp_indcs, Lx,Ly,Lz);
+    g3d[1]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXY,
+                                             interp_indcs, Lx,Ly,Lz);
+    g3d[2]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXZ,
+                                             interp_indcs, Lx,Ly,Lz);
+    g3d[3]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GYY,
+                                             interp_indcs, Lx,Ly,Lz);
+    g3d[4]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GYZ,
+                                             interp_indcs, Lx,Ly,Lz);
+    g3d[5]    = LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GZZ,
+                                             interp_indcs, Lx,Ly,Lz);
 
     // inverse 3-metric gamma^{ij}
     Real g3u[6];
     Primitive::InvertMatrix(g3u, g3d, Primitive::GetDeterminant(g3d));
 
     // Solve g^{mu nu} u_mu u_nu = -1 for u_t, with
-    //   g^{tt} = -1/alpha^2,  g^{ti} = beta^i/alpha^2,  g^{ij} = gamma^{ij} - beta^i beta^j/alpha^2.
+    //   g^{tt} = -1/alpha^2,  g^{ti} = beta^i/alpha^2,
+    //   g^{ij} = gamma^{ij} - beta^i beta^j/alpha^2.
     // => a*u_t^2 + 2*b*u_t + c = 0, using the stored covariant u_i.
     Real ialp2 = 1.0/(alp*alp);
     Real a = -ialp2;                                    // g^{tt}
