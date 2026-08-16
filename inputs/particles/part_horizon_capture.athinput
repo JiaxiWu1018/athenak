@@ -1,0 +1,116 @@
+# NRPIC Stage-3c horizon-capture test on a Cartesian Kerr-Schild background (M=1).
+#
+# The default is Schwarzschild: a rest shell at r=5 plunges through two static-refinement
+# levels and is destroyed inside the horizon, while a circular ring at r=8 survives.
+# Sphere excision is enabled by default so the example is safe to run without overrides.
+# To run the Kerr a=0.9 variant, use:
+#   coord/a=0.9 problem/shell_r0=4.0 job/basename=horizon_kerr
+# Kerr capture should use sphere excision: stationary Kerr-Schild lapse isosurfaces are
+# too aspherical for one threshold to cover the axis while remaining inside the horizon
+# at the equator. For a Schwarzschild lapse-control run, use:
+#   particles/excise_radius=0.0 particles/excise_lapse=0.6
+#
+# Build: cmake -S . -B build_gr -DAthena_ENABLE_MPI=ON \
+#              -DPROBLEM=particles/part_kerr_schild
+# Run:   mpirun -np 4 build_gr/src/athena \
+#              -i inputs/particles/part_horizon_capture.athinput
+
+<comment>
+problem = NRPIC Stage-3c: GR horizon capture of plunging particles
+
+<job>
+basename = horizon_capture
+
+<mesh>
+nghost = 4
+nx1    = 64            # 4x4x4 MeshBlocks at the root level
+x1min  = -12.0
+x1max  = 12.0
+ix1_bc = outflow
+ox1_bc = outflow
+
+nx2    = 64
+x2min  = -12.0
+x2max  = 12.0
+ix2_bc = outflow
+ox2_bc = outflow
+
+nx3    = 64
+x3min  = -12.0
+x3max  = 12.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<mesh_refinement>
+refinement = static
+
+# Each refined box spans half of its adjacent parent blocks, placing both child parities
+# on every level boundary and exercising coarse/fine migration during the plunge.
+<refined_region1>
+level = 1
+x1min = -3.0
+x1max = 3.0
+x2min = -3.0
+x2max = 3.0
+x3min = -3.0
+x3max = 3.0
+
+<refined_region2>
+level = 2
+x1min = -1.5
+x1max = 1.5
+x2min = -1.5
+x2max = 1.5
+x3min = -1.5
+x3max = 1.5
+
+<time>
+evolution  = dynamic
+integrator = rk2
+cfl_number = 0.3
+nlim       = 100000
+tlim       = 25.0
+ndiag      = 100
+
+<coord>
+general_rel = true
+excise      = false    # particle-only background; no fluid excision
+a           = 0.0      # set to 0.9 for the Kerr variant
+minkowski   = false
+
+<adm>
+
+<particles>
+particle_type = dust
+pusher        = gr_boris
+init          = pgen
+mass          = 1.0
+debug         = 1
+destroy_log   = true
+excise_radius = 1.0    # safe default for both Schwarzschild and Kerr
+excise_x1     = 0.0
+excise_x2     = 0.0
+excise_x3     = 0.0
+excise_lapse  = 0.0
+
+<problem>
+shell_np  = 128        # plunging rest shell; tags [0, shell_np)
+shell_r0  = 5.0        # use 4.0 for Kerr a=0.9
+ring_np   = 64         # surviving circular ring
+ring_r0   = 8.0
+ring_sign = 1.0        # +1 prograde, -1 retrograde
+ring_tag0 = 128        # keeps ring tags stable in survivors-only controls
+
+<output1>
+file_type = pvtk
+variable  = prtcl_all
+dt        = 1.0
+
+<output2>
+file_type = rst
+dt        = 50.0       # initial plus Driver::Finalize restart
