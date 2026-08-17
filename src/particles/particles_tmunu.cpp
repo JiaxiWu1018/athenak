@@ -1,0 +1,580 @@
+//========================================================================================
+// AthenaXXX astrophysical plasma code
+// Copyright(C) 2020 James M. Stone <jmstone@ias.edu> and the Athena code team
+// Licensed under the 3-clause BSD License (the "LICENSE")
+//========================================================================================
+//! \file particles_tmunu.cpp
+//! \brief deposit the particle stress-energy into Tmunu (NRPIC Stage 4a). For a
+//! collisionless ensemble of point masses T^{mu nu} = sum_p m_p u^mu u^nu
+//! delta^3(x-x_p) / (u^0 sqrt(-g)), so with W = -n.u = sqrt(1 + gamma^{ij} u_i u_j)
+//! the ADM matter sources consumed by z4c_calcrhs/z4c_adm are, per particle and cell:
+//!
+//!   E    += m W     S_ijk / (sqrt(gamma)_ijk dV)
+//!   S_a  += m u_a   S_ijk / (sqrt(gamma)_ijk dV)
+//!   S_ab += m u_a u_b S_ijk / (W sqrt(gamma)_ijk dV)     [b >= a: SYM2 storage]
+//!
+//! (stage4_feedback/tmunu_deposition.tex; the legacy prototype e317c931 was missing the
+//! 1/(W sqrt(gamma)) in every component -- an O(1) error in the OS interior). S_ijk is
+//! the first-order cloud-in-cell weight, dV the coordinate cell volume of the target
+//! block, and sqrt(gamma) is evaluated at the CELL CENTER (dyn_grmhd SetTmunu pattern),
+//! which makes  sum_cells E sqrt(gamma) dV == sum_p m_p W_p  an EXACT discrete identity
+//! -- the debug >= 1 diagnostic at the bottom of this file. The sources are deposited
+//! undensitized; the consumer applies the 4pi/8pi/16pi factors.
+//!
+//! GHOST-IMAGE ARCHITECTURE (user-locked 2026-06-12): the kernel writes ONLY its own
+//! MeshBlock's physical cells. The share of a boundary-band particle's cloud that falls
+//! in a neighbor is delivered by a TmunuImage record (particles.hpp) carrying the
+//! source-computed CIC stencil; because same-level neighbor index spaces align, the
+//! target cells follow from the image offset alone (no wrapped-position arithmetic --
+//! periodic wrap is exact by construction). Deposit order is deterministic production
+//! code: local particles in array order, then images in canonical
+//! (target_m, tag, off_code) order, so on a serial host the per-cell sums are
+//! independent of how blocks are distributed over ranks (the Stage-4c bitwise
+//! np-invariance criterion). Kokkos::atomic_add on every write keeps the kernel
+//! GPU-correct (harmless on serial hosts).
+//!
+//! Matter is confined to a single refinement level: if a particle's cloud touches a
+//! coarse-fine interface the run aborts with an offender dump (cross-level deposition
+//! is designed in Stage 5 together with dynamic AMR). Bands at non-periodic physical
+//! mesh boundaries generate no image; the lost share is exactly the per-dim clip
+//! factor f_p accounted by the identity diagnostic.
+
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <limits>
+
+#include "athena.hpp"
+#include "globals.hpp"
+#include "mesh/mesh.hpp"
+#include "driver/driver.hpp"
+#include "coordinates/adm.hpp"
+#include "coordinates/cell_locations.hpp"
+#include "z4c/z4c.hpp"
+#include "z4c/tmunu.hpp"
+#include "bvals/prtcl_search.hpp"
+#include "particles.hpp"
+#include "lagrange_interp.hpp"
+
+namespace particles {
+
+namespace {  // file-local device helpers
+
+//----------------------------------------------------------------------------------------
+//! \struct CicDim
+//! \brief per-dimension CIC stencil + boundary-band classification of one particle.
+
+struct CicDim {
+  int idx;      // left-center index: largest i with CellCenterX(i) <= x, in [-1, n-1]
+  Real delta;   // (x - CellCenterX(idx))/dx, clamped to the closed interval [0, 1]
+  int band;     // -1: lower half of first cell, +1: upper half of last cell, 0: interior
+  bool open;    // banded dims only: true iff the adjacent face is block|periodic
+                // (an image will deliver the out-of-block share); physical faces clip
+};
+
+//----------------------------------------------------------------------------------------
+//! \fn void CicClassify()
+//! \brief the SINGLE definition of the CIC stencil/band/clip predicates (count pass,
+//! deposit pass and the identity bookkeeping must all call this so they cannot drift --
+//! the Stage-3 shared-predicate rule). delta = 1.0 is reachable by roundoff when x sits
+//! within an ulp of the upper node; the clamp keeps both weights non-negative (band
+//! membership is decided by idx, never by delta).
+
+KOKKOS_INLINE_FUNCTION
+void CicClassify(Real x, int n, Real xmin, Real xmax,
+                 BoundaryFlag f_lo, BoundaryFlag f_hi, CicDim &c) {
+  c.idx = LeftCenterIndex(x, n, xmin, xmax);
+  Real dx = (xmax - xmin)/static_cast<Real>(n);
+  Real d = (x - CellCenterX(c.idx, n, xmin, xmax))/dx;
+  c.delta = fmin(fmax(d, 0.0), 1.0);
+  c.band = (c.idx == -1) ? -1 : ((c.idx == n-1) ? 1 : 0);
+  if (c.band == 0) {
+    c.open = true;
+  } else {
+    BoundaryFlag f = (c.band < 0) ? f_lo : f_hi;
+    c.open = (f == BoundaryFlag::block || f == BoundaryFlag::periodic);
+  }
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void TmunuAmplitudes()
+//! \brief the 10 per-particle deposit amplitudes, in the identity-sum component order
+//! {E, Sx, Sy, Sz, Sxx, Sxy, Sxz, Syy, Syz, Szz}. The ONLY place these floating-point
+//! expressions exist: the local pass, the image pass and the identity bookkeeping all
+//! consume this one helper, so their contributions are bitwise-consistent.
+
+KOKKOS_INLINE_FUNCTION
+void TmunuAmplitudes(Real mass, Real lorentz, const Real u_d[3], Real amp[10]) {
+  amp[0] = mass*lorentz;
+  amp[1] = mass*u_d[0];
+  amp[2] = mass*u_d[1];
+  amp[3] = mass*u_d[2];
+  Real moW = mass/lorentz;
+  amp[4] = moW*u_d[0]*u_d[0];
+  amp[5] = moW*u_d[0]*u_d[1];
+  amp[6] = moW*u_d[0]*u_d[2];
+  amp[7] = moW*u_d[1]*u_d[1];
+  amp[8] = moW*u_d[1]*u_d[2];
+  amp[9] = moW*u_d[2]*u_d[2];
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void DepositCloud()
+//! \brief deposit one CIC cloud (a local particle or a ghost image) into the physical
+//! cells of block tm. Per dimension the image offset off[d] selects the cells:
+//!   off ==  0 : cells {idx, idx+1} clipped to [0, n-1], weights {1-delta, delta}
+//!               (a same-level neighbor at offset 0 in d spans the identical index
+//!                range, so the rule applies verbatim to images);
+//!   off == -1 : the single target cell n-1 with weight 1-delta (the share that fell
+//!               below the source block);
+//!   off == +1 : the single target cell 0 with weight delta.
+//! The union of the local (off=0,0,0) deposit and every generated image covers each of
+//! the <= 8 stencil cells exactly once. Writes are atomic; S_dd is written for b >= a
+//! only (SYM2 aliased storage -- a full 3x3 loop double-counts the off-diagonals).
+
+KOKKOS_INLINE_FUNCTION
+void DepositCloud(const Tmunu::Tmunu_vars &tmunu,
+                  const AthenaTensor<Real, TensorSymm::SYM2, 3, 2> &g_dd,
+                  int tm, int is, int js, int ks, const int ncell[3], Real dv,
+                  const int off[3], const int idx[3], const Real delta[3],
+                  const Real amp[10]) {
+  int cells[3][2];
+  Real wght[3][2];
+  int ncl[3];
+  for (int d=0; d<3; ++d) {
+    if (off[d] == 0) {
+      ncl[d] = 0;
+      if (idx[d] >= 0) {
+        cells[d][ncl[d]] = idx[d];
+        wght[d][ncl[d]] = 1.0 - delta[d];
+        ncl[d]++;
+      }
+      if (idx[d]+1 <= ncell[d]-1) {
+        cells[d][ncl[d]] = idx[d]+1;
+        wght[d][ncl[d]] = delta[d];
+        ncl[d]++;
+      }
+    } else if (off[d] == -1) {
+      cells[d][0] = ncell[d]-1;
+      wght[d][0] = 1.0 - delta[d];
+      ncl[d] = 1;
+    } else {
+      cells[d][0] = 0;
+      wght[d][0] = delta[d];
+      ncl[d] = 1;
+    }
+  }
+  for (int kk=0; kk<ncl[2]; ++kk) {
+    for (int jj=0; jj<ncl[1]; ++jj) {
+      for (int ii=0; ii<ncl[0]; ++ii) {
+        Real s = wght[0][ii]*wght[1][jj]*wght[2][kk];
+        int ci = is + cells[0][ii];
+        int cj = js + cells[1][jj];
+        int ck = ks + cells[2][kk];
+        Real detg = adm::SpatialDet(g_dd(tm,0,0,ck,cj,ci), g_dd(tm,0,1,ck,cj,ci),
+                                    g_dd(tm,0,2,ck,cj,ci), g_dd(tm,1,1,ck,cj,ci),
+                                    g_dd(tm,1,2,ck,cj,ci), g_dd(tm,2,2,ck,cj,ci));
+        Real fac = s/(sqrt(detg)*dv);
+        Kokkos::atomic_add(&tmunu.E(tm,ck,cj,ci), amp[0]*fac);
+        for (int a=0; a<3; ++a) {
+          Kokkos::atomic_add(&tmunu.S_d(tm,a,ck,cj,ci), amp[1+a]*fac);
+          for (int b=a; b<3; ++b) {
+            int c = 4 + (a*(7-a))/2 + (b-a);   // SYM2 row-major slot {xx,xy,xz,yy,yz,zz}
+            Kokkos::atomic_add(&tmunu.S_dd(tm,a,b,ck,cj,ci), amp[c]*fac);
+          }
+        }
+      }
+    }
+  }
+}
+
+//----------------------------------------------------------------------------------------
+//! \struct SortTmunuImage
+//! \brief canonical image order (target_m, tag, off_code): per-block grouping, then a
+//! total order that makes the deposit independent of generation/arrival order.
+
+struct SortTmunuImage {
+  bool operator()(const TmunuImage &a, const TmunuImage &b) const {
+    if (a.target_m != b.target_m) {return a.target_m < b.target_m;}
+    if (a.tag != b.tag) {return a.tag < b.tag;}
+    return a.off_code < b.off_code;
+  }
+};
+
+}  // namespace
+
+//----------------------------------------------------------------------------------------
+//! \fn template<int NGHOST> void Particles::set_prtcl_tmunu()
+//! \brief zero Tmunu, deposit all local particles, generate + deposit same-rank ghost
+//! images, and (debug >= 1) verify the exact conservation identities.
+
+template <int NGHOST>
+void Particles::set_prtcl_tmunu() {
+  auto &indcs = pmy_pack->pmesh->mb_indcs;
+  auto &size = pmy_pack->pmb->mb_size;
+  auto &mblev = pmy_pack->pmb->mb_lev;
+  auto &mbbcs = pmy_pack->pmb->mb_bcs;
+  auto &nghbr = pmy_pack->pmb->nghbr;
+  auto &mbpar = pmy_pack->pmb->mb_parity;
+  int gids = pmy_pack->gids;
+  int nmb = pmy_pack->nmb_thispack;
+  int npart = nprtcl_thispack;
+  auto &pi = prtcl_idata;
+  auto &pr = prtcl_rdata;
+  auto &adm = pmy_pack->padm->adm;
+  auto &adm_n = pmy_pack->padm->u_adm;
+  auto &tmunu = pmy_pack->ptmunu->tmunu;
+  auto &u_tmunu = pmy_pack->ptmunu->u_tmunu;
+  auto &g_dd = adm.g_dd;
+  int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+  int is = indcs.is, js = indcs.js, ks = indcs.ks;
+  int dbg = debug_lvl;
+  int myrank = global_variable::my_rank;
+  int ncycle = pmy_pack->pmesh->ncycle;
+
+  // ---- (a) zero pass: full array including ghosts (the deposit below touches physical
+  // cells only and nothing else writes u_tmunu in the feedback configuration -- dyn_grmhd
+  // is fatal-guarded). Runs even with npart == 0: an all-excised ensemble must source
+  // vacuum, which is exactly the trumpet end state of the OS collapse.
+  Kokkos::deep_copy(u_tmunu, 0.0);
+
+  auto &psum = tmunu_psums;
+  if (dbg >= 1) {
+    Kokkos::deep_copy(psum, 0.0);
+  }
+
+  nimages_thispack = 0;
+  if (npart > 0) {
+    // ---- (b1) count pass: images per particle = nonempty offset subsets of the
+    // banded-and-open dims (same predicates as the deposit pass: CicClassify).
+    int nimg_need = 0;
+    Kokkos::parallel_reduce("tmunu_count_img",
+      Kokkos::RangePolicy<>(DevExeSpace(), 0, npart),
+      KOKKOS_LAMBDA(const int p, int &sum) {
+        int m = pi(PGID,p) - gids;
+        Real x[3] = {pr(IPX,p), pr(IPY,p), pr(IPZ,p)};
+        const RegionSize &sz = size.d_view(m);
+        CicDim cd[3];
+        CicClassify(x[0], ncell[0], sz.x1min, sz.x1max,
+                    mbbcs.d_view(m,0), mbbcs.d_view(m,1), cd[0]);
+        CicClassify(x[1], ncell[1], sz.x2min, sz.x2max,
+                    mbbcs.d_view(m,2), mbbcs.d_view(m,3), cd[1]);
+        CicClassify(x[2], ncell[2], sz.x3min, sz.x3max,
+                    mbbcs.d_view(m,4), mbbcs.d_view(m,5), cd[2]);
+        int nb = 0;
+        for (int d=0; d<3; ++d) {
+          if (cd[d].band != 0 && cd[d].open) {nb++;}
+        }
+        sum += (1 << nb) - 1;
+      }, Kokkos::Sum<int>(nimg_need));
+    if (nimg_need > static_cast<int>(tmunu_images.extent(0))) {
+      Kokkos::realloc(tmunu_images, nimg_need);
+    }
+    Kokkos::deep_copy(tmunu_nimg, 0);
+
+    // device error counters: {0: no-neighbor slot, 1: level mismatch (matter touched a
+    // coarse-fine interface), 2: bad rank/pack range, 3: image-list overflow}
+    DvceArray1D<int> derr("tmunu_err",4);   // zero-initialized
+
+    // ---- (b2) deposit pass: local clouds (array order) + image generation + (debug)
+    // the particle-side identity sums with the boundary-clip factor f_p.
+    auto &img = tmunu_images;
+    auto &nimg_ctr = tmunu_nimg;
+    int img_cap = static_cast<int>(tmunu_images.extent(0));
+    par_for("tmunu_deposit", DevExeSpace(), 0, (npart-1),
+    KOKKOS_LAMBDA(const int p) {
+      int m = pi(PGID,p) - gids;
+      int mylev = mblev.d_view(m);
+      Real x[3]   = {pr(IPX,p),  pr(IPY,p),  pr(IPZ,p)};
+      Real u_d[3] = {pr(IPVX,p), pr(IPVY,p), pr(IPVZ,p)};   // covariant u_i
+      Real mp = pr(IPM,p);
+      const RegionSize &sz = size.d_view(m);
+
+      // CIC stencil + band/clip classification (the shared predicate helper)
+      CicDim cd[3];
+      CicClassify(x[0], ncell[0], sz.x1min, sz.x1max,
+                  mbbcs.d_view(m,0), mbbcs.d_view(m,1), cd[0]);
+      CicClassify(x[1], ncell[1], sz.x2min, sz.x2max,
+                  mbbcs.d_view(m,2), mbbcs.d_view(m,3), cd[1]);
+      CicClassify(x[2], ncell[2], sz.x3min, sz.x3max,
+                  mbbcs.d_view(m,4), mbbcs.d_view(m,5), cd[2]);
+      int idx[3]   = {cd[0].idx, cd[1].idx, cd[2].idx};
+      Real dlt[3]  = {cd[0].delta, cd[1].delta, cd[2].delta};
+
+      // normal-frame Lorentz factor W = sqrt(1 + gamma^{ij} u_i u_j), with gamma^{ij}
+      // from the per-node inverse-metric interpolation (the gr_boris machinery); the
+      // 3-metric slots are the leading 6 of u_adm in both the full and the z4c-trimmed
+      // layouts, so this never touches the (possibly absent) gauge slots.
+      const Real mb_par[9] = {sz.x1min, sz.x1max, sz.dx1,
+                              sz.x2min, sz.x2max, sz.dx2,
+                              sz.x3min, sz.x3max, sz.dx3};
+      int interp_indcs[4] = {m, -1, -1, -1};
+      SetInterpIndices(x, mb_par, ncell, interp_indcs);
+      Real Lx[2*NGHOST] = {0.0}, Ly[2*NGHOST] = {0.0}, Lz[2*NGHOST] = {0.0};
+      CalcInterpWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+      Real g3u[6];
+      LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXX, interp_indcs,
+                                   Lx, Ly, Lz, g3u);
+      Real usq = g3u[0]*u_d[0]*u_d[0] + g3u[3]*u_d[1]*u_d[1] + g3u[5]*u_d[2]*u_d[2]
+               + 2.0*(g3u[1]*u_d[0]*u_d[1] + g3u[2]*u_d[0]*u_d[2]
+                      + g3u[4]*u_d[1]*u_d[2]);
+      Real lor = sqrt(1.0 + usq);
+
+      Real amp[10];
+      TmunuAmplitudes(mp, lor, u_d, amp);
+
+      // local deposit: own physical cells only (off = 0,0,0 clips per dim)
+      Real dv = sz.dx1*sz.dx2*sz.dx3;
+      const int off0[3] = {0, 0, 0};
+      DepositCloud(tmunu, g_dd, m, is, js, ks, ncell, dv, off0, idx, dlt, amp);
+
+      // image generation: one record per nonempty offset subset of banded-open dims
+      int beff[3];
+      for (int d=0; d<3; ++d) {
+        beff[d] = (cd[d].band != 0 && cd[d].open) ? cd[d].band : 0;
+      }
+      if (beff[0] != 0 || beff[1] != 0 || beff[2] != 0) {
+        int fx = (x[0] < 0.5*(sz.x1min + sz.x1max)) ? 0 : 1;
+        int fy = (x[1] < 0.5*(sz.x2min + sz.x2max)) ? 0 : 1;
+        int fz = (x[2] < 0.5*(sz.x3min + sz.x3max)) ? 0 : 1;
+        for (int code=1; code<8; ++code) {
+          int sx = code & 1, sy = (code >> 1) & 1, sz2 = (code >> 2) & 1;
+          if ((sx && beff[0] == 0) || (sy && beff[1] == 0) || (sz2 && beff[2] == 0)) {
+            continue;
+          }
+          int ox = sx ? beff[0] : 0;
+          int oy = sy ? beff[1] : 0;
+          int oz = sz2 ? beff[2] : 0;
+          int indx = FindDestinationIndex(nghbr.d_view, m, mylev, ox,oy,oz, fx,fy,fz,
+                                          mbpar.d_view(m,0), mbpar.d_view(m,1),
+                                          mbpar.d_view(m,2));
+          if (indx < 0) {
+            Kokkos::atomic_add(&derr(0), 1);
+            Kokkos::printf("[tmunu-debug] rank=%d cycle=%d tag=%d gid=%d NO NEIGHBOR "
+                           "off=(%d,%d,%d) pos=(%.16e,%.16e,%.16e)\n", myrank, ncycle,
+                           pi(PTAG,p), pi(PGID,p), ox, oy, oz, x[0], x[1], x[2]);
+            continue;
+          }
+          const NeighborBlock &nb = nghbr.d_view(m,indx);
+          if (nb.lev != mylev) {
+            // matter-confinement violation: the cloud touches a coarse-fine interface
+            Kokkos::atomic_add(&derr(1), 1);
+            Kokkos::printf("[tmunu-debug] rank=%d cycle=%d tag=%d gid=%d LEVEL "
+                           "INTERFACE off=(%d,%d,%d) nbr_gid=%d nbr_lev=%d my_lev=%d "
+                           "pos=(%.16e,%.16e,%.16e)\n", myrank, ncycle, pi(PTAG,p),
+                           pi(PGID,p), ox, oy, oz, nb.gid, nb.lev, mylev,
+                           x[0], x[1], x[2]);
+            continue;
+          }
+          int tm = nb.gid - gids;
+          if (nb.rank != myrank || tm < 0 || tm >= nmb) {
+            Kokkos::atomic_add(&derr(2), 1);
+            Kokkos::printf("[tmunu-debug] rank=%d cycle=%d tag=%d gid=%d BAD TARGET "
+                           "off=(%d,%d,%d) nbr_gid=%d nbr_rank=%d\n", myrank, ncycle,
+                           pi(PTAG,p), pi(PGID,p), ox, oy, oz, nb.gid, nb.rank);
+            continue;
+          }
+          int slot = Kokkos::atomic_fetch_add(&nimg_ctr(0), 1);
+          if (slot >= img_cap) {
+            Kokkos::atomic_add(&derr(3), 1);
+            continue;
+          }
+          TmunuImage rec;
+          rec.target_m = tm;
+          rec.tag = pi(PTAG,p);
+          rec.off_code = (ox+1) + 3*(oy+1) + 9*(oz+1);
+          for (int d=0; d<3; ++d) {
+            rec.idx[d] = idx[d];
+            rec.delta[d] = dlt[d];
+            rec.u_d[d] = u_d[d];
+          }
+          rec.mass = mp;
+          rec.lorentz = lor;
+          img.d_view(slot) = rec;
+        }
+      }
+
+      // particle-side identity sums with the exact boundary-clip factor
+      // f_p = prod_d s_d, s_d = 1 except at a closed (no-image) band where only the
+      // in-block weight ({delta, 1-delta}) was deposited
+      if (dbg >= 1) {
+        Real f = 1.0;
+        for (int d=0; d<3; ++d) {
+          if (cd[d].band != 0 && !cd[d].open) {
+            f *= (cd[d].band < 0) ? dlt[d] : (1.0 - dlt[d]);
+          }
+        }
+        for (int c=0; c<10; ++c) {
+          Kokkos::atomic_add(&psum(c), amp[c]*f);
+        }
+      }
+    });
+
+    // read the image counter + error counters back (deep_copy fences the kernel)
+    auto hcnt = Kokkos::create_mirror_view(tmunu_nimg);
+    Kokkos::deep_copy(hcnt, tmunu_nimg);
+    nimages_thispack = hcnt(0);
+    auto herr = Kokkos::create_mirror_view(derr);
+    Kokkos::deep_copy(herr, derr);
+    if (herr(0) + herr(1) + herr(2) + herr(3) > 0 || nimages_thispack != nimg_need) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "Tmunu deposit failed at cycle " << ncycle
+                << ": no_neighbor=" << herr(0)
+                << " level_interface=" << herr(1)
+                << " (matter must stay >= 1 cell away from coarse-fine interfaces;"
+                << std::endl
+                << "cross-level deposition is deferred to Stage 5)"
+                << " bad_target=" << herr(2) << " overflow=" << herr(3)
+                << " images=" << nimages_thispack << "/" << nimg_need
+                << " (see offender dump above)" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+
+    // ---- (c) canonical image order: sort on host by (target_m, tag, off_code). The
+    // key is total -- a duplicate means duplicate particle tags (an init=pgen contract
+    // violation) or an image-generation bug, either of which would make the deposit
+    // order ill-defined: fatal.
+    if (nimages_thispack > 0) {
+      tmunu_images.template modify<DevExeSpace>();
+      tmunu_images.template sync<HostMemSpace>();
+      TmunuImage *ibeg = tmunu_images.h_view.data();
+      std::sort(ibeg, ibeg + nimages_thispack, SortTmunuImage());
+      for (int g=1; g<nimages_thispack; ++g) {
+        if (ibeg[g-1].target_m == ibeg[g].target_m && ibeg[g-1].tag == ibeg[g].tag &&
+            ibeg[g-1].off_code == ibeg[g].off_code) {
+          std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                    << std::endl << "duplicate Tmunu image key (target_m="
+                    << ibeg[g].target_m << ", tag=" << ibeg[g].tag << ", off_code="
+                    << ibeg[g].off_code << ") at cycle " << ncycle
+                    << ": duplicate particle tags break the canonical deposit order"
+                    << std::endl;
+          std::exit(EXIT_FAILURE);
+        }
+      }
+      tmunu_images.template modify<HostMemSpace>();
+      tmunu_images.template sync<DevExeSpace>();
+
+      // ---- (d) image deposit, in canonical order (serial host RangePolicy executes
+      // in index order; on GPU the atomics keep it correct, not bitwise-reproducible)
+      auto &imgd = tmunu_images;
+      int nimg = nimages_thispack;
+      par_for("tmunu_deposit_img", DevExeSpace(), 0, (nimg-1),
+      KOKKOS_LAMBDA(const int g) {
+        const TmunuImage rec = imgd.d_view(g);
+        int tm = rec.target_m;
+        int off[3];
+        off[0] = rec.off_code % 3 - 1;
+        off[1] = (rec.off_code / 3) % 3 - 1;
+        off[2] = rec.off_code / 9 - 1;
+        Real amp[10];
+        TmunuAmplitudes(rec.mass, rec.lorentz, rec.u_d, amp);
+        const RegionSize &tsz = size.d_view(tm);
+        Real dv = tsz.dx1*tsz.dx2*tsz.dx3;
+        DepositCloud(tmunu, g_dd, tm, is, js, ks, ncell, dv, off, rec.idx, rec.delta,
+                     amp);
+      });
+    }
+  }
+
+  // ---- (e) identity diagnostics (debug >= 1): sum_cells E sqrt(gamma) dV must equal
+  // sum_p m W f_p to machine precision, and likewise the 9 S_d/S_dd combinations. The
+  // multiply-back telescopes against the deposit divisor (same SpatialDet expression at
+  // the same cell centers), so any lost/duplicated share, wrong factor or misplaced
+  // write shows as an O(weight) residual. Tolerance scales with the all-positive
+  // summation length (~eps*N), not a flat 1e-12, to avoid spurious failures at large N.
+  if (dbg >= 1) {
+    auto &csum = tmunu_csums;
+    Kokkos::deep_copy(csum, 0.0);
+    int ie = indcs.ie, je = indcs.je, ke = indcs.ke;
+    par_for("tmunu_id_cells", DevExeSpace(), 0, nmb-1, ks, ke, js, je, is, ie,
+    KOKKOS_LAMBDA(const int m, const int k, const int j, const int i) {
+      // E == 0 implies no particle deposited here (amplitudes mW are strictly positive
+      // for the supported m > 0), so every component received only exact zeros: skip
+      if (tmunu.E(m,k,j,i) == 0.0) {return;}
+      Real detg = adm::SpatialDet(g_dd(m,0,0,k,j,i), g_dd(m,0,1,k,j,i),
+                                  g_dd(m,0,2,k,j,i), g_dd(m,1,1,k,j,i),
+                                  g_dd(m,1,2,k,j,i), g_dd(m,2,2,k,j,i));
+      const RegionSize &sz = size.d_view(m);
+      Real w = sqrt(detg)*sz.dx1*sz.dx2*sz.dx3;
+      Kokkos::atomic_add(&csum(0), tmunu.E(m,k,j,i)*w);
+      for (int a=0; a<3; ++a) {
+        Kokkos::atomic_add(&csum(1+a), tmunu.S_d(m,a,k,j,i)*w);
+        for (int b=a; b<3; ++b) {
+          int c = 4 + (a*(7-a))/2 + (b-a);
+          Kokkos::atomic_add(&csum(c), tmunu.S_dd(m,a,b,k,j,i)*w);
+        }
+      }
+    });
+    auto hps = Kokkos::create_mirror_view(tmunu_psums);
+    auto hcs = Kokkos::create_mirror_view(tmunu_csums);
+    Kokkos::deep_copy(hps, tmunu_psums);
+    Kokkos::deep_copy(hcs, tmunu_csums);
+    Real scale = 0.0, resid = 0.0;
+    int cbad = -1;
+    for (int c=0; c<10; ++c) {
+      scale = fmax(scale, fabs(hps(c)));
+      Real r = fabs(hps(c) - hcs(c));
+      if (r > resid) {resid = r; cbad = c;}
+    }
+    Real eps = std::numeric_limits<Real>::epsilon();
+    Real tol = scale*fmax(1.0e-12, 32.0*eps*static_cast<Real>(npart));
+    static char const * const comp[10] = {"E","Sx","Sy","Sz","Sxx","Sxy","Sxz",
+                                          "Syy","Syz","Szz"};
+    if (resid > tol) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "Tmunu conservation identity violated at cycle "
+                << ncycle << " (rank " << myrank << "): worst component "
+                << comp[cbad] << std::endl;
+      for (int c=0; c<10; ++c) {
+        std::cout << "  " << comp[c] << ": particle-side " << hps(c)
+                  << "  cell-side " << hcs(c) << "  resid " << fabs(hps(c)-hcs(c))
+                  << std::endl;
+      }
+      std::cout << "  npart=" << npart << " nimages=" << nimages_thispack
+                << " tol=" << tol << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    std::cout << "[tmunu-debug] rank=" << myrank << " cycle=" << ncycle
+              << " npart=" << npart << " nimages=" << nimages_thispack
+              << " identity max_resid=" << resid << " (tol " << tol << ")"
+              << std::endl;
+  }
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn TaskStatus Particles::SetPrtclTmunu
+//! \brief Wrapper task that dispatches set_prtcl_tmunu<NGHOST> on the active ghost
+//! count. Queued after EnergyCalculation when <particles> feedback = true, plus one
+//! seed call from Driver::Initialize (fresh starts AND restarts -- Tmunu is derived
+//! state and is not stored in restart files).
+
+TaskStatus Particles::SetPrtclTmunu(Driver *pdrive, int stage) {
+  if (pmy_pack->ptmunu == nullptr) {   // wiring error: feedback without the container
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "SetPrtclTmunu called but no Tmunu object exists"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  int ng = pmy_pack->pmesh->mb_indcs.ng;
+  switch (ng) {
+    case 2: set_prtcl_tmunu<2>(); break;
+    case 3: set_prtcl_tmunu<3>(); break;
+    case 4: set_prtcl_tmunu<4>(); break;
+    default:
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "Tmunu deposition supports NGHOST=2,3,4 only (got " << ng << ")"
+                << std::endl;
+      std::exit(EXIT_FAILURE);
+  }
+  return TaskStatus::complete;
+}
+
+// explicit instantiations for the supported ghost-zone counts
+template void Particles::set_prtcl_tmunu<2>();
+template void Particles::set_prtcl_tmunu<3>();
+template void Particles::set_prtcl_tmunu<4>();
+
+} // namespace particles

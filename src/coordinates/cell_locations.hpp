@@ -49,4 +49,28 @@ static int CellCenterIndex(Real x, int n, Real xmin, Real xmax) {
   return static_cast<int>(((x-xmin)/(xmax-xmin))*static_cast<Real>(n));
 }
 
+//----------------------------------------------------------------------------------------
+//! \fn int LeftCenterIndex()
+// returns the largest index i with CellCenterX(i) <= x, in [-1, n-1] for any
+// x in [xmin, xmax). Unlike a pure arithmetic floor (which can disagree with the
+// comparison predicates by half an ulp -- see the migration-offset discussion in
+// bvals/prtcl_search.hpp), the float guess is corrected by direct comparison against
+// CellCenterX, so callers that branch on the SAME comparisons (CIC deposition bands,
+// weight clipping) are consistent with this index by construction.
+
+KOKKOS_INLINE_FUNCTION
+static int LeftCenterIndex(Real x, int n, Real xmin, Real xmax) {
+  Real dx = (xmax - xmin)/static_cast<Real>(n);
+  int idx = static_cast<int>(floor((x - xmin)/dx - 0.5));
+  if (idx < -1) {idx = -1;}
+  if (idx > n-1) {idx = n-1;}
+  // the guess is off by at most one cell; one comparison step each way corrects it
+  if (idx < n-1 && CellCenterX(idx+1, n, xmin, xmax) <= x) {
+    ++idx;
+  } else if (idx >= 0 && CellCenterX(idx, n, xmin, xmax) > x) {
+    --idx;
+  }
+  return idx;
+}
+
 #endif // COORDINATES_CELL_LOCATIONS_HPP_

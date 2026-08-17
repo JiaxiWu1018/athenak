@@ -494,6 +494,26 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
     if (ppart != nullptr) {
       (void) ppart->EnergyCalculation(this, 1);
     }
+
+    // Restart-file state holds physical cells only, so ghost-dependent particle data
+    // must be re-derived after the Step-1 exchange. For live Z4c, refresh ADM and the
+    // GR-pusher snapshots from the exchanged Z4c state. On fresh starts these copies
+    // reproduce the values already prepared by the problem generator.
+    if (ppart != nullptr && pz4c != nullptr &&
+        (ppart->feedback || ppart->pusher == ParticlesPusher::gr_boris)) {
+      pz4c->Z4cToADM(pmesh->pmb_pack);
+      if (ppart->pusher == ParticlesPusher::gr_boris) {
+        Kokkos::deep_copy(DevExeSpace(), ppart->adm_last,
+                          pmesh->pmb_pack->padm->u_adm);
+        Kokkos::deep_copy(DevExeSpace(), ppart->z4c_last, pz4c->u0);
+      }
+    }
+
+    // Tmunu is derived state and is not stored in restarts. Seed it after the initial
+    // ghost exchange so cycle 1 and the initial output consume a valid deposit.
+    if (ppart != nullptr && ppart->feedback) {
+      (void) ppart->SetPrtclTmunu(this, 1);
+    }
   }
 
   //---- Step 3.  Cycle through output Types and load data / write files.

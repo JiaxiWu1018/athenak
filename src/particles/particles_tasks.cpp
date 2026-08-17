@@ -55,6 +55,11 @@ void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> t
   // final
   id.newdt  = atl->AddTask(&Particles::NewTimeStep, this, id.check);
   id.energy = atl->AddTask(&Particles::EnergyCalculation, this, id.newdt);
+  // Deposit the post-migration particle state against the final t^{n+1} metric. Z4c
+  // consumes this frozen Tmunu during the following cycle's RK stages.
+  if (feedback) {
+    id.tmunu = atl->AddTask(&Particles::SetPrtclTmunu, this, id.energy);
+  }
 
   return;
 }

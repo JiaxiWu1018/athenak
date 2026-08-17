@@ -47,9 +47,25 @@ struct ParticlesTaskIDs {
   TaskID csend;
   TaskID crecv;
   TaskID check;
+  TaskID tmunu;
 };
 
 namespace particles {
+
+//----------------------------------------------------------------------------------------
+//! \struct TmunuImage
+//  \brief same-rank ghost-image record for cross-block stress-energy deposition.
+
+struct TmunuImage {
+  int target_m;     // local MeshBlock index (gid - gids) of the receiving block
+  int tag;          // source particle tag (canonical-order key)
+  int off_code;     // (bx+1) + 3*(by+1) + 9*(bz+1), in 0..26 (13 is self)
+  int idx[3];       // source-computed left-center CIC index per dimension
+  Real delta[3];    // source-computed CIC offset per dimension, clamped to [0,1]
+  Real mass;        // particle rest mass (IPM)
+  Real lorentz;     // normal-frame Lorentz factor W at the particle
+  Real u_d[3];      // covariant velocity u_i
+};
 
 //----------------------------------------------------------------------------------------
 //! \class Particles
@@ -125,6 +141,16 @@ class Particles {
   DvceArray1D<int>  excise_flag;
   DvceArray1D<Real> excise_crit;
 
+  // Stress-energy feedback. Stage 4a supports a 3D Z4c consumer without dynamical
+  // GRMHD, same-rank image transport, and matter confined to one refinement level.
+  bool feedback;
+  DualArray1D<TmunuImage> tmunu_images;
+  DvceArray1D<int> tmunu_nimg;
+  int nimages_thispack;
+  // Particle-side and cell-side sums of the ten conserved Tmunu combinations.
+  DvceArray1D<Real> tmunu_psums;
+  DvceArray1D<Real> tmunu_csums;
+
   // snapshots of the field/metric at the previous step, used by the GR pusher to evaluate
   // the implicit geodesic substep at the time midpoint. Allocated only for gr_boris. For
   // a static background (all Stage-2 tests) these equal the current arrays; they
@@ -171,6 +197,9 @@ class Particles {
   // only when a criterion is enabled; mark_excised is its NGHOST-dispatched kernel
   TaskStatus MarkExcised(Driver *pdriver, int stage);
   template <int NGHOST> void mark_excised();
+  // Stress-energy deposition, scheduled after EnergyCalculation when feedback is on.
+  TaskStatus SetPrtclTmunu(Driver *pdriver, int stage);
+  template <int NGHOST> void set_prtcl_tmunu();
   // exhaustive host-side enumeration audit of the destination search against a
   // brute-force bbox oracle (particles_debug.cpp); fatal on any mismatch. Single-rank,
   // strictly-periodic meshes only (test utility, invoked by the part_crossing pgen).

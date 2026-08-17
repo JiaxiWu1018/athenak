@@ -237,6 +237,11 @@ void MeshBlockPack::AddPhysics(ParameterInput *pin) {
   // Create particles module.  Create tasklist.
   if (pin->DoesBlockExist("particles")) {
     ppart = new particles::Particles(this, pin);
+    // Particle feedback writes the same Tmunu container consumed by Z4c. The particle
+    // constructor has already rejected configurations with another Tmunu writer.
+    if (ppart->feedback && pz4c != nullptr && ptmunu == nullptr) {
+      ptmunu = new Tmunu(this, pin);
+    }
     ppart->AssembleTasks(tl_map);
     nphysics++;
   } else {

@@ -160,7 +160,9 @@ BaseTypeOutput::BaseTypeOutput(ParameterInput *pin, Mesh *pm, OutputParameters o
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
        << "Output of Tmunu variable requested in <output> block '"
        << out_params.block_name << "' but no Tmunu object has been constructed."
-       << std::endl << "Input file is likely missing a <adm> block" << std::endl;
+       << std::endl << "Input file is likely missing a <mhd> block (dynamical GRMHD)"
+       << std::endl << "or <particles> feedback = true" << std::endl;
+    exit(EXIT_FAILURE);
   }
   if ((ivar>=151) && (ivar<153) && (pm->pmb_pack->ppart == nullptr)) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
