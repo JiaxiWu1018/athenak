@@ -61,13 +61,48 @@ struct PrtclStage {
   }
 };
 
+// Scripted, particle-independent refinement region used by the dynamic-AMR regression.
+bool amr_box_enabled = false;
+int amr_target_level = 1;
+int amr_box_axis = 0;
+Real amr_box_hw = 0.15;
+Real amr_box_amp = 0.30;
+Real amr_box_period = 1.0;
+Real amr_box_center[3] = {0.0, 0.0, 0.0};
+
 } // namespace
+
+void MovingBoxRefinement(MeshBlockPack *pmbp);
 
 //----------------------------------------------------------------------------------------
 //! \fn ProblemGenerator::UserProblem()
 //! \brief sets up the targeted (or lattice) particle crossing test
 
 void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
+  // Register before the restart return so a restarted run continues to regrid.
+  std::string amr_mode = pin->GetOrAddString("problem","amr","none");
+  if (amr_mode.compare("moving_box") == 0) {
+    auto &msize = pmy_mesh_->mesh_size;
+    amr_box_enabled = true;
+    amr_target_level = pin->GetOrAddInteger("problem","amr_target_level",1);
+    amr_box_axis = pin->GetOrAddInteger("problem","amr_box_axis",0);
+    amr_box_hw = pin->GetOrAddReal("problem","amr_box_hw",0.15);
+    amr_box_amp = pin->GetOrAddReal("problem","amr_box_amp",0.30);
+    amr_box_period = pin->GetOrAddReal("problem","amr_box_period",1.0);
+    if (amr_box_axis < 0 || amr_box_axis > 2 ||
+        amr_target_level < 0 || amr_box_hw <= 0.0) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "moving-box AMR requires axis in [0,2], target_level >= 0, and hw > 0"
+                << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    amr_box_center[0] = 0.5*(msize.x1min + msize.x1max);
+    amr_box_center[1] = 0.5*(msize.x2min + msize.x2max);
+    amr_box_center[2] = 0.5*(msize.x3min + msize.x3max);
+    user_ref_func = MovingBoxRefinement;
+  }
+
   if (restart) return;
   MeshBlockPack *pmbp = pmy_mesh_->pmb_pack;
   if (pmbp->ppart == nullptr) {
@@ -303,4 +338,49 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     }
   }
   return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void MovingBoxRefinement(MeshBlockPack *pmbp)
+//! \brief Move an axis-aligned refinement box periodically through the domain.
+
+void MovingBoxRefinement(MeshBlockPack *pmbp) {
+  if (!amr_box_enabled) {
+    return;
+  }
+  Mesh *pmesh = pmbp->pmesh;
+  auto &refine_flag = pmesh->pmr->refine_flag;
+  auto &size = pmbp->pmb->mb_size;
+  int nmb = pmbp->nmb_thispack;
+  int gids = pmbp->gids;
+  bool multi_d = pmesh->multi_d;
+  bool three_d = pmesh->three_d;
+
+  Real center[3] = {amr_box_center[0], amr_box_center[1], amr_box_center[2]};
+  Real phase = (amr_box_period > 0.0) ? 2.0*M_PI*pmesh->time/amr_box_period : 0.0;
+  center[amr_box_axis] += amr_box_amp*std::sin(phase);
+  Real box_min[3], box_max[3];
+  for (int d=0; d<3; ++d) {
+    box_min[d] = center[d] - amr_box_hw;
+    box_max[d] = center[d] + amr_box_hw;
+  }
+
+  for (int m=0; m<nmb; ++m) {
+    int level = pmesh->lloc_eachmb[gids + m].level - pmesh->root_level;
+    bool overlap = (size.h_view(m).x1max >= box_min[0]) &&
+                   (size.h_view(m).x1min <= box_max[0]);
+    if (multi_d) {
+      overlap = overlap && (size.h_view(m).x2max >= box_min[1]) &&
+                            (size.h_view(m).x2min <= box_max[1]);
+    }
+    if (three_d) {
+      overlap = overlap && (size.h_view(m).x3max >= box_min[2]) &&
+                            (size.h_view(m).x3min <= box_max[2]);
+    }
+    refine_flag.h_view(gids + m) = overlap
+        ? ((level < amr_target_level) ? 1 : 0)
+        : -1;
+  }
+  refine_flag.template modify<HostMemSpace>();
+  refine_flag.template sync<DevExeSpace>();
 }

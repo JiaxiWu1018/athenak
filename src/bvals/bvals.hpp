@@ -357,6 +357,9 @@ class ParticlesBoundaryValues {
 
   //functions
   TaskStatus SetNewPrtclGID();
+  TaskStatus SetPrtclGIDForAMR(const DualArray1D<int> &oldtonew,
+                               const DualArray1D<int> &newrank,
+                               const DualArray1D<int> &refflag, int old_gids);
   TaskStatus CountSendsAndRecvs();
   TaskStatus InitPrtclRecv();
   TaskStatus ClearPrtclRecv();

@@ -170,16 +170,15 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     Kokkos::realloc(tmunu_csums, 10);
   }
 
-  // C1 guard: dynamic AMR has no particle support anywhere (mesh_refinement.cpp and
-  // load_balance.cpp move MeshBlocks and renumber gids without touching particles, so
-  // the first regrid event leaves every PGID stale -- silent corruption). Implementation
-  // is deferred to Stage 5 (after the SMR Tmunu + OS-collapse test); static refinement
-  // (SMR) is fully supported. See stage3_communication/README.md section 5.3 C(c)7.
-  if (pmy_pack->pmesh->adaptive) {
+  // Kinematic particles are relabeled and redistributed whenever dynamic AMR changes
+  // the grid. Feedback remains guarded until cross-level Tmunu deposition is supported.
+  if (pmy_pack->pmesh->adaptive && feedback) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "Particles do not support adaptive mesh refinement yet (PGIDs go stale"
+              << "<particles> feedback = true with adaptive mesh refinement is not yet"
               << std::endl
-              << "on regrid; deferred to Stage 5). Use refinement = static instead."
+              << "supported: cross-level Tmunu deposition is deferred to Stage 5b."
+              << std::endl
+              << "Use feedback = false or refinement = static."
               << std::endl;
     std::exit(EXIT_FAILURE);
   }

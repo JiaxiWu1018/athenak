@@ -205,6 +205,12 @@ class Particles {
   // post-migration validation: containment/GID-range/count checks (particles_debug.cpp);
   // no-op unless <particles> debug >= 1, fatal (exit) on any violation
   TaskStatus CheckMigration(Driver *pdriver, int stage);
+  // Dynamic-AMR redistribution. RelabelForAMR runs while the old block geometry is
+  // available; ShipAfterAMR uses the regular migration chain after the new grid is live.
+  TaskStatus RelabelForAMR(const DualArray1D<int> &oldtonew,
+                           const DualArray1D<int> &newrank,
+                           const DualArray1D<int> &refflag, int old_gids);
+  void ShipAfterAMR();
   // death-record ledger + end-of-run accounting (particles_destroy.cpp): FlushDeathLog
   // gathers this cycle's death records to rank 0 and appends them to the CSV (collective
   // -- called on every rank whenever the global census is nonzero); PrintFinalSummary

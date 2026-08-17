@@ -1,0 +1,72 @@
+# Dynamic-AMR particle redistribution regression. A moving refinement box forces
+# deterministic refine/derefine events while a particle lattice drifts through the mesh.
+
+<comment>
+problem = particle redistribution through dynamic AMR
+
+<job>
+basename = part_crossing_amr_pytest
+
+<mesh>
+nghost = 2
+nx1 = 16
+x1min = -0.5
+x1max = 0.5
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 16
+x2min = -0.5
+x2max = 0.5
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 16
+x3min = -0.5
+x3max = 0.5
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 8
+nx2 = 8
+nx3 = 8
+
+<mesh_refinement>
+refinement = adaptive
+num_levels = 2
+max_nmb_per_rank = 512
+refinement_interval = 1
+
+<amr_criterion0>
+method = user
+
+<time>
+evolution = dynamic
+integrator = rk2
+cfl_number = 0.8
+nlim = 30
+tlim = 10.0
+ndiag = 10
+
+<particles>
+particle_type = dust
+pusher = drift
+init = pgen
+debug = 1
+
+<problem>
+mode = lattice
+vmax = 1.0
+npx = 8
+npy = 8
+npz = 8
+amr = moving_box
+amr_target_level = 1
+amr_box_axis = 0
+amr_box_hw = 0.15
+amr_box_amp = 0.30
+amr_box_period = 1.0
+
+<output1>
+file_type = pvtk
+variable = prtcl_all
+dt = 0.001

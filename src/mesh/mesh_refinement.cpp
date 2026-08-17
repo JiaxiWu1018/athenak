@@ -30,6 +30,7 @@
 #include "mhd/mhd.hpp"
 #include "radiation/radiation.hpp"
 #include "coordinates/adm.hpp"
+#include "particles/particles.hpp"
 #include "z4c/z4c.hpp"
 #include "z4c/z4c_amr.hpp"
 #include "prolongation.hpp"
@@ -179,6 +180,25 @@ void MeshRefinement::AdaptiveMeshRefinement(Driver *pdriver, ParameterInput *pin
     }
     if (pmbp->pz4c != nullptr) {
       (void) pmbp->pz4c->NewTimeStep(pdriver, pdriver->nexp_stages);
+    }
+
+    // A regrid renumbers the block-indexed previous-step snapshots used by gr_boris.
+    // Rebuild ADM from the prolonged Z4c state first, then seed every snapshot on the
+    // new layout. This intentionally makes the regrid cycle's time midpoint first order,
+    // while keeping every particle paired with the correct block geometry.
+    particles::Particles *ppart = pmbp->ppart;
+    if (ppart != nullptr && ppart->pusher == ParticlesPusher::gr_boris) {
+      if (pmbp->pz4c != nullptr) {
+        pmbp->pz4c->Z4cToADM(pmbp);
+        Kokkos::deep_copy(DevExeSpace(), ppart->z4c_last, pmbp->pz4c->u0);
+      }
+      if (pmbp->padm != nullptr) {
+        Kokkos::deep_copy(DevExeSpace(), ppart->adm_last, pmbp->padm->u_adm);
+      }
+      if (pmbp->pmhd != nullptr) {
+        Kokkos::deep_copy(DevExeSpace(), ppart->w0_last, pmbp->pmhd->w0);
+        Kokkos::deep_copy(DevExeSpace(), ppart->bcc0_last, pmbp->pmhd->bcc0);
+      }
     }
 
     nmb_created += nnew;
@@ -599,6 +619,26 @@ void MeshRefinement::RedistAndRefineMeshBlocks(ParameterInput *pin, int nnew, in
   new_to_old.template modify<HostMemSpace>();
   new_to_old.template sync<DevExeSpace>();
 
+  // Relabel particles while the old block extents and the complete old-to-new maps are
+  // still available. Cross-rank movers are shipped after the new MeshBlockPack is built.
+  particles::Particles *ppart = pm->pmb_pack->ppart;
+  bool do_prtcl_amr = (ppart != nullptr) && (!ppart->feedback);
+  if (do_prtcl_amr) {
+    DualArray1D<int> oldtonew_dev("oldtonew_amr", old_nmb);
+    DualArray1D<int> newrank_dev("newrank_amr", new_nmb_total);
+    for (int m=0; m<old_nmb; ++m) {
+      oldtonew_dev.h_view(m) = oldtonew[m];
+    }
+    for (int m=0; m<new_nmb_total; ++m) {
+      newrank_dev.h_view(m) = new_rank_eachmb[m];
+    }
+    oldtonew_dev.template modify<HostMemSpace>();
+    oldtonew_dev.template sync<DevExeSpace>();
+    newrank_dev.template modify<HostMemSpace>();
+    newrank_dev.template sync<DevExeSpace>();
+    ppart->RelabelForAMR(oldtonew_dev, newrank_dev, refine_flag, pm->pmb_pack->gids);
+  }
+
   // Step 9.
   // Coarse arrays are now up-to-date, either through copies on same rank or MPI calls
   // So prolongate (refine) evolved physics variables for all MBs flagged for refinement.
@@ -658,6 +698,10 @@ void MeshRefinement::RedistAndRefineMeshBlocks(ParameterInput *pin, int nnew, in
   pm->pmb_pack->AddMeshBlocks(pin);
   pm->pmb_pack->AddCoordinates(pin);
   pm->pmb_pack->pmb->SetNeighbors(pm->ptree, pm->rank_eachmb);
+
+  if (do_prtcl_amr) {
+    ppart->ShipAfterAMR();
+  }
 
   Kokkos::realloc(fc_amr_repair, new_nmb_total);
   for (int m=0; m<new_nmb_total; ++m) {
