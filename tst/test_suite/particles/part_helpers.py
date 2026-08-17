@@ -39,21 +39,34 @@ def rank_counts(requested):
     return [count for count in requested if count <= available]
 
 
+def run_args(args, threads=1):
+    """Run Athena with arbitrary CLI arguments and return this command's log output."""
+    command = ["mpirun", "-np", str(threads), "./athena"] + list(args)
+    start = (
+        os.path.getsize(testutils.LOG_FILE_PATH)
+        if os.path.exists(testutils.LOG_FILE_PATH)
+        else 0
+    )
+    if not testutils.run_command(command):
+        raise RuntimeError(f"particle regression failed with {threads} MPI rank(s)")
+    with open(testutils.LOG_FILE_PATH, "rb") as stream:
+        stream.seek(start)
+        return stream.read().decode(errors="replace")
+
+
 def run_case(input_file, run_dir, ranks, extra_args=None):
     if extra_args is None:
         extra_args = []
-    command = [
-        "mpirun",
-        "-np",
-        str(ranks),
-        "./athena",
-        "-i",
-        input_file,
-        "-d",
-        run_dir,
-    ] + list(extra_args)
-    if not testutils.run_command(command):
-        raise RuntimeError(f"particle regression failed with {ranks} MPI rank(s)")
+    return run_args(
+        [
+            "-i",
+            input_file,
+            "-d",
+            run_dir,
+        ]
+        + list(extra_args),
+        threads=ranks,
+    )
 
 
 def remove_dirs(*paths):
@@ -116,6 +129,114 @@ def assert_final_positions_bitwise(first_dir, second_dir):
     assert np.array_equal(
         x0[order0], x1[order1]
     ), "final positions are not bitwise equal"
+
+
+def assert_final_particle_state_bitwise(first_dir, second_dir):
+    """Compare final particle positions and velocities by persistent particle tag."""
+    first = particle_dumps(first_dir)[-1]
+    second = particle_dumps(second_dir)[-1]
+    t0, x0, v0, tag0 = read_particle_vtk(first)
+    t1, x1, v1, tag1 = read_particle_vtk(second)
+    order0, order1 = np.argsort(tag0), np.argsort(tag1)
+    assert t0 == t1, "final output times differ"
+    assert np.array_equal(tag0[order0], tag1[order1]), "final tag sets differ"
+    assert np.array_equal(x0[order0], x1[order1]), "final positions differ"
+    assert np.array_equal(v0[order0], v1[order1]), "final velocities differ"
+
+
+def _binary_header(stream):
+    """Read an Athena binary-v1.1 header, leaving the stream at its first block."""
+    stream.seek(0)
+    magic = stream.readline().split()
+    assert magic and magic[0] == b"Athena" and magic[-1].endswith(b"1.1")
+    header = {}
+    for _ in range(int(stream.readline().split(b"=")[-1]) - 1):
+        key, value = stream.readline().decode().split("=", 1)
+        header[key.strip()] = value.strip()
+    variable_count = int(stream.readline().split(b"=")[-1])
+    stream.readline()
+    stream.seek(int(stream.readline().split(b"=")[-1]), 1)
+    return (
+        float(header["time"]),
+        int(header["size of location"]),
+        int(header["size of variable"]),
+        variable_count,
+    )
+
+
+def read_binary_blocks(path):
+    """Return dump time, leaf levels, and field bytes keyed by logical location."""
+    levels = []
+    blocks = {}
+    with open(path, "rb") as stream:
+        stream.seek(0, 2)
+        file_size = stream.tell()
+        time, location_bytes, variable_bytes, variable_count = _binary_header(stream)
+        while stream.tell() < file_size:
+            index = struct.unpack("=6i", stream.read(24))
+            logical = struct.unpack("=4i", stream.read(16))
+            levels.append(logical[3])
+            stream.seek(6 * location_bytes, 1)
+            cells = (
+                (index[1] - index[0] + 1)
+                * (index[3] - index[2] + 1)
+                * (index[5] - index[4] + 1)
+            )
+            blocks[logical] = stream.read(cells * variable_count * variable_bytes)
+        assert stream.tell() == file_size, f"binary block walk misaligned in {path}"
+    return time, levels, blocks
+
+
+def tmunu_dumps(run_dir):
+    paths = sorted(glob.glob(os.path.join(run_dir, "bin", "*.tmunu.*.bin")))
+    if not paths:
+        pytest.fail(f"no Tmunu binary output in {run_dir}")
+    return paths
+
+
+def assert_final_tmunu_bitwise(first_dir, second_dir):
+    """Compare final Tmunu payloads independent of rank-dependent block write order."""
+    first = tmunu_dumps(first_dir)[-1]
+    second = tmunu_dumps(second_dir)[-1]
+    t0, _, blocks0 = read_binary_blocks(first)
+    t1, _, blocks1 = read_binary_blocks(second)
+    assert t0 == t1, "final Tmunu output times differ"
+    assert blocks0.keys() == blocks1.keys(), "final Tmunu meshes differ"
+    for logical in blocks0:
+        assert blocks0[logical] == blocks1[logical], (
+            f"final Tmunu differs at logical block {logical}"
+        )
+
+
+def assert_mixed_level_output(run_dir):
+    """Require a dump with both coarse and fine leaves, hence a real AMR seam."""
+    seen = []
+    for path in tmunu_dumps(run_dir):
+        _, levels, _ = read_binary_blocks(path)
+        unique = sorted(set(levels))
+        seen.append((os.path.basename(path), unique))
+        if len(unique) > 1:
+            return
+    pytest.fail(f"no mixed-level Tmunu dump in {run_dir}: {seen}")
+
+
+def assert_cross_level_deposition(log):
+    counts = [int(value) for value in re.findall(r"cross_level=(\d+)", log)]
+    assert counts, "run log contains no cross-level diagnostics"
+    assert max(counts) > 0, f"cross-level deposition stayed zero: {counts}"
+
+
+def assert_regridded(log):
+    changes = [
+        (int(created), int(deleted))
+        for created, deleted in re.findall(
+            r"(\d+) MeshBlocks created,\s*(\d+) deleted by AMR", log
+        )
+    ]
+    assert changes, "run log contains no AMR topology summary"
+    assert any(created or deleted for created, deleted in changes), (
+        f"AMR made no topology change: {changes}"
+    )
 
 
 def read_death_csv(path):

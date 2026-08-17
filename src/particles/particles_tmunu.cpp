@@ -30,7 +30,7 @@
 //!
 //! Conservative mode is the default and restores the exact identity across a seam.
 //! Native mode remains smooth but intentionally non-conservative, so its seam residual
-//! is reported rather than fatal. Dynamic AMR with feedback remains guarded.
+//! is reported rather than fatal. Dynamic AMR re-deposits Tmunu after every regrid.
 
 #include <algorithm>
 #include <cstdio>
@@ -402,9 +402,9 @@ void Particles::set_prtcl_tmunu() {
 #endif
     Kokkos::deep_copy(tmunu_nimg, 0);   // {0: same-rank imgs beyond npart, 1: cross-rank}
 
-    // Counters 0, 2, and 3 are fatal. Counter 1 records cross-level images for the
-    // conservation diagnostic; only native mode relaxes the exact seam identity.
-    DvceArray1D<int> derr("tmunu_err",4);   // zero-initialized
+    // Counters 0, 2, 3, and 4 are fatal. Counter 1 records cross-level images for the
+    // conservation diagnostic; counter 4 rejects an unwrapped cross-level periodic seam.
+    DvceArray1D<int> derr("tmunu_err",5);   // zero-initialized
 
     // ---- (b2) record-generation pass: emit one self record per particle (its own-block
     // cloud) into slot p, append same-rank neighbor images beyond npart, stage cross-rank
@@ -583,7 +583,23 @@ void Particles::set_prtcl_tmunu() {
               record_delta[d] = dlt[d];
             }
           }
-          if (record_level >= 0) {Kokkos::atomic_add(&derr(1), 1);}
+          if (record_level >= 0) {
+            Kokkos::atomic_add(&derr(1), 1);
+            // Absolute positions are not shifted by a domain length in cross-level
+            // records, so rebuilding a stencil in a periodic wrap neighbor would target
+            // the wrong coordinates. Reject that unsupported geometry explicitly.
+            int bx = oc % 3 - 1;
+            int by = (oc / 3) % 3 - 1;
+            int bz = oc / 9 - 1;
+            if ((bx < 0 && mbbcs.d_view(m,0) == BoundaryFlag::periodic) ||
+                (bx > 0 && mbbcs.d_view(m,1) == BoundaryFlag::periodic) ||
+                (by < 0 && mbbcs.d_view(m,2) == BoundaryFlag::periodic) ||
+                (by > 0 && mbbcs.d_view(m,3) == BoundaryFlag::periodic) ||
+                (bz < 0 && mbbcs.d_view(m,4) == BoundaryFlag::periodic) ||
+                (bz > 0 && mbbcs.d_view(m,5) == BoundaryFlag::periodic)) {
+              Kokkos::atomic_add(&derr(4), 1);
+            }
+          }
           if (nb.rank == myrank) {
             // same-rank neighbor: append into the local queue (slots beyond npart self
             // records). Its gid must map into this pack -- a violation is corruption.
@@ -678,6 +694,19 @@ void Particles::set_prtcl_tmunu() {
     auto herr = Kokkos::create_mirror_view(derr);
     Kokkos::deep_copy(herr, derr);
     n_cross_thispack = herr(1);
+    if (herr(4) > 0) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "cross-level Tmunu deposition through a periodic "
+                << "boundary is unsupported: " << herr(4) << " image(s) at cycle "
+                << ncycle << ". Keep refinement away from periodic faces or use "
+                << "non-periodic boundaries in refined directions." << std::endl
+                << std::flush;
+#if MPI_PARALLEL_ENABLED
+      MPI_Abort(MPI_COMM_WORLD, 1);
+#else
+      std::exit(EXIT_FAILURE);
+#endif
+    }
     if (herr(0) + herr(2) + herr(3) > 0 ||
         (n_local_img + n_remote_img) != nimg_need) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__

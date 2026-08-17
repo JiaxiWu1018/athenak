@@ -49,12 +49,15 @@
 #include "coordinates/adm.hpp"
 #include "coordinates/cell_locations.hpp"
 #include "z4c/z4c.hpp"
+#include "z4c/z4c_amr.hpp"
 #include "particles/particles.hpp"
 #include "pgen/pgen.hpp"
 
 #if MPI_PARALLEL_ENABLED
 #include <mpi.h>
 #endif
+
+void OSRefinementCondition(MeshBlockPack *pmbp);
 
 namespace {
 
@@ -81,6 +84,7 @@ struct PrtclStage {
 
 void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   MeshBlockPack *pmbp = pmy_mesh_->pmb_pack;
+  user_ref_func = OSRefinementCondition;
 
   if (pmbp->pz4c == nullptr) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
@@ -255,4 +259,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << std::endl;
   }
   return;
+}
+
+void OSRefinementCondition(MeshBlockPack *pmbp) {
+  pmbp->pz4c->pamr->Refine(pmbp);
 }

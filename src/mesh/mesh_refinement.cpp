@@ -182,22 +182,31 @@ void MeshRefinement::AdaptiveMeshRefinement(Driver *pdriver, ParameterInput *pin
       (void) pmbp->pz4c->NewTimeStep(pdriver, pdriver->nexp_stages);
     }
 
-    // A regrid renumbers the block-indexed previous-step snapshots used by gr_boris.
-    // Rebuild ADM from the prolonged Z4c state first, then seed every snapshot on the
-    // new layout. This intentionally makes the regrid cycle's time midpoint first order,
-    // while keeping every particle paired with the correct block geometry.
+    // A regrid renumbers block-indexed particle state. Rebuild ADM from prolonged Z4c
+    // before refreshing gr_boris snapshots or recomputing feedback on the new layout.
     particles::Particles *ppart = pmbp->ppart;
-    if (ppart != nullptr && ppart->pusher == ParticlesPusher::gr_boris) {
-      if (pmbp->pz4c != nullptr) {
+    if (ppart != nullptr) {
+      bool gr_boris = (ppart->pusher == ParticlesPusher::gr_boris);
+      if ((gr_boris || ppart->feedback) && pmbp->pz4c != nullptr) {
         pmbp->pz4c->Z4cToADM(pmbp);
-        Kokkos::deep_copy(DevExeSpace(), ppart->z4c_last, pmbp->pz4c->u0);
       }
-      if (pmbp->padm != nullptr) {
-        Kokkos::deep_copy(DevExeSpace(), ppart->adm_last, pmbp->padm->u_adm);
+      if (gr_boris) {
+        if (pmbp->pz4c != nullptr) {
+          Kokkos::deep_copy(DevExeSpace(), ppart->z4c_last, pmbp->pz4c->u0);
+        }
+        if (pmbp->padm != nullptr) {
+          Kokkos::deep_copy(DevExeSpace(), ppart->adm_last, pmbp->padm->u_adm);
+        }
+        if (pmbp->pmhd != nullptr) {
+          Kokkos::deep_copy(DevExeSpace(), ppart->w0_last, pmbp->pmhd->w0);
+          Kokkos::deep_copy(DevExeSpace(), ppart->bcc0_last, pmbp->pmhd->bcc0);
+        }
       }
-      if (pmbp->pmhd != nullptr) {
-        Kokkos::deep_copy(DevExeSpace(), ppart->w0_last, pmbp->pmhd->w0);
-        Kokkos::deep_copy(DevExeSpace(), ppart->bcc0_last, pmbp->pmhd->bcc0);
+      // Tmunu is derived state and is not remapped by AMR. Deposit it again after the
+      // particles have been relabeled/shipped so the next Z4c RHS sees the new layout.
+      if (ppart->feedback) {
+        (void) ppart->EnergyCalculation(pdriver, pdriver->nexp_stages);
+        (void) ppart->SetPrtclTmunu(pdriver, pdriver->nexp_stages);
       }
     }
 
@@ -622,7 +631,7 @@ void MeshRefinement::RedistAndRefineMeshBlocks(ParameterInput *pin, int nnew, in
   // Relabel particles while the old block extents and the complete old-to-new maps are
   // still available. Cross-rank movers are shipped after the new MeshBlockPack is built.
   particles::Particles *ppart = pm->pmb_pack->ppart;
-  bool do_prtcl_amr = (ppart != nullptr) && (!ppart->feedback);
+  bool do_prtcl_amr = (ppart != nullptr);
   if (do_prtcl_amr) {
     DualArray1D<int> oldtonew_dev("oldtonew_amr", old_nmb);
     DualArray1D<int> newrank_dev("newrank_amr", new_nmb_total);

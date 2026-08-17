@@ -1,0 +1,88 @@
+# Feedback + live chi-AMR regression with particles on both sides of the refined seam.
+
+<comment>
+problem = particle feedback through dynamic AMR
+
+<job>
+basename = op_fbamr
+
+<mesh>
+nghost = 4
+nx1 = 48
+x1min = -8.0
+x1max = 8.0
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 48
+x2min = -8.0
+x2max = 8.0
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 48
+x3min = -7.5
+x3max = 8.5
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<mesh_refinement>
+refinement = adaptive
+max_nmb_per_rank = 512
+num_levels = 2
+refinement_interval = 2
+
+<amr_criterion0>
+method = user
+
+<z4c_amr>
+method = chi
+chi_min = 0.2
+
+<z4c>
+lapse_harmonic = 0.0
+lapse_oplog = 2.0
+shift_eta = 2.0
+diss = 0.1
+chi_div_floor = 0.00001
+damp_kappa1 = 0.02
+damp_kappa2 = 0.0
+co_0_x = 0.0
+co_0_type = BH
+
+<time>
+evolution = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim = 6
+tlim = 50.0
+ndiag = 1
+
+<particles>
+particle_type = dust
+pusher = gr_boris
+init = pgen
+feedback = true
+mass = 1.0e-3
+cross_level_deposit = conservative
+debug = 1
+destroy_log = true
+
+<problem>
+punc_ADM_mass = 1.0
+prtcl_np = 16
+prtcl_r1 = 2.65
+prtcl_r2 = 5.0
+
+<output1>
+file_type = pvtk
+variable = prtcl_all
+dt = 0.25
+
+<output2>
+file_type = bin
+variable = tmunu
+dt = 0.25

@@ -185,21 +185,9 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     }
   }
 
-  // Kinematic particles are relabeled and redistributed whenever dynamic AMR changes
-  // the grid. Static cross-level Tmunu deposition is supported, but feedback remains
-  // guarded during live regrids until its deposition state can be remapped safely.
-  if (pmy_pack->pmesh->adaptive && feedback) {
-    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "<particles> feedback = true with adaptive mesh refinement is not yet"
-              << std::endl
-              << "supported: cross-level deposition works on static refinement, but"
-              << std::endl
-              << "its remap through live regrids is deferred. Use feedback = false or"
-              << std::endl
-              << "refinement = static."
-              << std::endl;
-    std::exit(EXIT_FAILURE);
-  }
+  // Dynamic AMR relabels and redistributes particles for both kinematic and feedback
+  // runs. After every topology change Tmunu is re-deposited on the new grid before the
+  // next Z4c RHS; the dynamical-GR(M)HD two-writer restriction above remains unchanged.
 
   // Particles crossing any non-periodic mesh boundary are DESTROYED (Stage 3c). For
   // outflow/diode/user faces that is the physically expected behavior; for reflect or

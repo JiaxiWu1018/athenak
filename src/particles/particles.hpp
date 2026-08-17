@@ -169,7 +169,7 @@ class Particles {
   DvceArray1D<Real> excise_crit;
 
   // Stress-energy feedback supports a 3D Z4c consumer without dynamical GRMHD. Images
-  // may cross ranks and static coarse-fine interfaces; dynamic AMR remains guarded.
+  // may cross ranks and coarse-fine interfaces, including through dynamic AMR regrids.
   bool feedback;
   CrossLevelDeposit xlevel_deposit;
   // Unified canonical queue: self records, same-rank images, then received images.
