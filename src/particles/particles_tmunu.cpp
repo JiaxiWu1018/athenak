@@ -23,13 +23,14 @@
 //!
 //! GHOST-IMAGE ARCHITECTURE: the kernel writes only its target MeshBlock's physical
 //! cells. Same-level images carry a source-computed CIC stencil and route by off_code.
-//! Cross-level images carry the absolute particle position and rebuild the CIC stencil
-//! at the target's native resolution. Every contribution deposits in canonical
-//! (target_m, tag, off_code, lev) order, preserving CPU rank-count invariance.
+//! Cross-level images additionally carry source/target levels and the source origin.
+//! Conservative mode deposits on the finest touched level and restricts fine cells over
+//! coarse leaves; native mode rebuilds the CIC stencil at each target's resolution. All
+//! contributions deposit in canonical order, preserving CPU rank-count invariance.
 //!
-//! Native-resolution cross-level deposition is smooth but intentionally non-conservative
-//! across a coarse-fine seam. The identity diagnostic therefore reports rather than
-//! aborts when such an image exists. Dynamic AMR with feedback remains guarded.
+//! Conservative mode is the default and restores the exact identity across a seam.
+//! Native mode remains smooth but intentionally non-conservative, so its seam residual
+//! is reported rather than fatal. Dynamic AMR with feedback remains guarded.
 
 #include <algorithm>
 #include <cstdio>
@@ -238,6 +239,60 @@ void DepositCloudNative(const Tmunu::Tmunu_vars &tmunu,
   }
 }
 
+// Deposit a fine-resolution stencil into the target's covering coarse cells. Each fine
+// cell contributes its integrated source exactly once, so restriction preserves the
+// particle-to-cell Tmunu identity across a balanced 2:1 refinement interface.
+KOKKOS_INLINE_FUNCTION
+void DepositCloudRestrict(const Tmunu::Tmunu_vars &tmunu,
+                          const AthenaTensor<Real, TensorSymm::SYM2, 3, 2> &g_dd,
+                          int tm, int is, int js, int ks, const int ncell[3],
+                          const RegionSize &tsz, const Real sxmin[3],
+                          const int idx[3], const Real delta[3], const Real amp[10]) {
+  Real xmin[3] = {tsz.x1min, tsz.x2min, tsz.x3min};
+  Real xmax[3] = {tsz.x1max, tsz.x2max, tsz.x3max};
+  Real dxc[3] = {tsz.dx1, tsz.dx2, tsz.dx3};
+  int coarse_cell[3][2];
+  Real weight[3][2];
+  int kept[3];
+  for (int d=0; d<3; ++d) {
+    Real dxf = 0.5*dxc[d];
+    kept[d] = 0;
+    for (int t=0; t<2; ++t) {
+      Real center = sxmin[d] + (static_cast<Real>(idx[d] + t) + 0.5)*dxf;
+      if (center < xmin[d] || center >= xmax[d]) {continue;}
+      int ic = static_cast<int>(floor((center - xmin[d])/dxc[d]));
+      if (ic < 0) {ic = 0;}
+      else if (ic >= ncell[d]) {ic = ncell[d] - 1;}
+      coarse_cell[d][kept[d]] = ic;
+      weight[d][kept[d]++] = (t == 0) ? (1.0 - delta[d]) : delta[d];
+    }
+  }
+
+  Real dv = tsz.dx1*tsz.dx2*tsz.dx3;
+  for (int kk=0; kk<kept[2]; ++kk) {
+    for (int jj=0; jj<kept[1]; ++jj) {
+      for (int ii=0; ii<kept[0]; ++ii) {
+        Real s = weight[0][ii]*weight[1][jj]*weight[2][kk];
+        int ci = is + coarse_cell[0][ii];
+        int cj = js + coarse_cell[1][jj];
+        int ck = ks + coarse_cell[2][kk];
+        Real detg = adm::SpatialDet(g_dd(tm,0,0,ck,cj,ci), g_dd(tm,0,1,ck,cj,ci),
+                                    g_dd(tm,0,2,ck,cj,ci), g_dd(tm,1,1,ck,cj,ci),
+                                    g_dd(tm,1,2,ck,cj,ci), g_dd(tm,2,2,ck,cj,ci));
+        Real fac = s/(sqrt(detg)*dv);
+        Kokkos::atomic_add(&tmunu.E(tm,ck,cj,ci), amp[0]*fac);
+        for (int a=0; a<3; ++a) {
+          Kokkos::atomic_add(&tmunu.S_d(tm,a,ck,cj,ci), amp[1+a]*fac);
+          for (int b=a; b<3; ++b) {
+            int c = 4 + (a*(7-a))/2 + (b-a);
+            Kokkos::atomic_add(&tmunu.S_dd(tm,a,b,ck,cj,ci), amp[c]*fac);
+          }
+        }
+      }
+    }
+  }
+}
+
 //----------------------------------------------------------------------------------------
 //! \struct SortTmunuImage
 //! \brief canonical image order independent of generation and arrival order.
@@ -279,6 +334,7 @@ void Particles::set_prtcl_tmunu() {
   int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
   int is = indcs.is, js = indcs.js, ks = indcs.ks;
   int dbg = debug_lvl;
+  int xl_scheme = (xlevel_deposit == CrossLevelDeposit::native) ? 1 : 0;
   int myrank = global_variable::my_rank;
   int ncycle = pmy_pack->pmesh->ncycle;
   bool multi_d = pmy_pack->pmesh->multi_d;
@@ -346,8 +402,8 @@ void Particles::set_prtcl_tmunu() {
 #endif
     Kokkos::deep_copy(tmunu_nimg, 0);   // {0: same-rank imgs beyond npart, 1: cross-rank}
 
-    // Counters 0, 2, and 3 are fatal. Counter 1 records cross-level images and switches
-    // the conservation check to the measured scheme-B diagnostic.
+    // Counters 0, 2, and 3 are fatal. Counter 1 records cross-level images for the
+    // conservation diagnostic; only native mode relaxes the exact seam identity.
     DvceArray1D<int> derr("tmunu_err",4);   // zero-initialized
 
     // ---- (b2) record-generation pass: emit one self record per particle (its own-block
@@ -402,42 +458,25 @@ void Particles::set_prtcl_tmunu() {
       Real amp[10];
       TmunuAmplitudes(mp, lor, u_d, amp);
 
-      // self record: the particle's own-block cloud (off_code 13 -> off {0,0,0}, clipped
-      // per dim). A first-class image at slot p so the local cloud and every neighbor
-      // image deposit together in the one canonical (target_m, tag, off_code) pass below.
-      {
-        TmunuImage self;
-        self.target_m = m;
-        self.tag = pi(PTAG,p);
-        self.off_code = 13;
-        self.lev = -1;
-        for (int d=0; d<3; ++d) {
-          self.idx[d] = idx[d];
-          self.delta[d] = dlt[d];
-          self.x[d] = x[d];
-          self.u_d[d] = u_d[d];
-        }
-        self.mass = mp;
-        self.lorentz = lor;
-        img.d_view(p) = self;
-      }
-
-      // image generation: one record per nonempty offset subset of banded-open dims
+      // Enumerate once so scheme A can detect whether the cloud touches a finer block.
       int beff[3];
       for (int d=0; d<3; ++d) {
         beff[d] = (cd[d].band != 0 && cd[d].open) ? cd[d].band : 0;
       }
-      if (beff[0] != 0 || beff[1] != 0 || beff[2] != 0) {
+      bool banded = (beff[0] != 0 || beff[1] != 0 || beff[2] != 0);
+      PartImageTarget target[24];
+      int ntarget = 0;
+      bool touches_finer = false;
+      if (banded) {
         int fx = (x[0] < 0.5*(sz.x1min + sz.x1max)) ? 0 : 1;
         int fy = (x[1] < 0.5*(sz.x2min + sz.x2max)) ? 0 : 1;
         int fz = (x[2] < 0.5*(sz.x3min + sz.x3max)) ? 0 : 1;
         int px = mbpar.d_view(m,0), py = mbpar.d_view(m,1), pz = mbpar.d_view(m,2);
-        PartImageTarget target[24];
         int missing = 0, overflow = 0;
-        int ntarget = EnumerateParticleTargets(nghbr.d_view, m, mylev, beff,
-                                               fx, fy, fz, px, py, pz,
-                                               multi_d, three_d, target, 24,
-                                               missing, overflow);
+        ntarget = EnumerateParticleTargets(nghbr.d_view, m, mylev, beff,
+                                           fx, fy, fz, px, py, pz,
+                                           multi_d, three_d, target, 24,
+                                           missing, overflow);
         if (missing > 0) {
           Kokkos::atomic_add(&derr(0), missing);
           Kokkos::printf("[tmunu-debug] rank=%d cycle=%d tag=%d gid=%d NO NEIGHBOR "
@@ -446,10 +485,105 @@ void Particles::set_prtcl_tmunu() {
         }
         if (overflow) {Kokkos::atomic_add(&derr(3), 1);}
         for (int s=0; s<ntarget; ++s) {
+          if (nghbr.d_view(m, target[s].slot).lev > mylev) {touches_finer = true;}
+        }
+      }
+
+      // A coarse source touching a finer neighbor represents its whole cloud on the fine
+      // sublevel. The portion remaining over coarse leaves is then restricted back.
+      bool use_fine_stencil = (xl_scheme == 0) && touches_finer;
+      int fine_idx[3] = {0, 0, 0};
+      Real fine_delta[3] = {0.0, 0.0, 0.0};
+      Real source_min[3] = {sz.x1min, sz.x2min, sz.x3min};
+      if (use_fine_stencil) {
+        Real source_max[3] = {sz.x1max, sz.x2max, sz.x3max};
+        for (int d=0; d<3; ++d) {
+          int nfine = 2*ncell[d];
+          fine_idx[d] = LeftCenterIndex(x[d], nfine, source_min[d], source_max[d]);
+          Real dxf = (source_max[d] - source_min[d])/static_cast<Real>(nfine);
+          fine_delta[d] =
+              fmin(fmax((x[d] - CellCenterX(fine_idx[d], nfine, source_min[d],
+                                            source_max[d]))/dxf, 0.0), 1.0);
+        }
+      }
+
+      // Self records normally use the same-level stencil. Under conservative c->f,
+      // restrict the fine representation back into the source block's coarse cells.
+      {
+        TmunuImage self;
+        self.target_m = m;
+        self.tag = pi(PTAG,p);
+        self.off_code = 13;
+        for (int d=0; d<3; ++d) {
+          self.x[d] = x[d];
+          self.sxmin[d] = source_min[d];
+          self.u_d[d] = u_d[d];
+        }
+        self.mass = mp;
+        self.lorentz = lor;
+        if (use_fine_stencil) {
+          self.lev = mylev;
+          self.slev = mylev + 1;
+          for (int d=0; d<3; ++d) {
+            self.idx[d] = fine_idx[d];
+            self.delta[d] = fine_delta[d];
+          }
+        } else {
+          self.lev = -1;
+          self.slev = -1;
+          for (int d=0; d<3; ++d) {
+            self.idx[d] = idx[d];
+            self.delta[d] = dlt[d];
+          }
+        }
+        img.d_view(p) = self;
+      }
+
+      // Emit one record per enumerated target. The target/source level pair selects
+      // same-level routing, target-native deposition, or conservative restriction.
+      if (banded) {
+        for (int s=0; s<ntarget; ++s) {
           const NeighborBlock &nb = nghbr.d_view(m, target[s].slot);
           int oc = target[s].oc;
-          int image_level = (nb.lev == mylev) ? -1 : nb.lev;
-          if (image_level >= 0) {Kokkos::atomic_add(&derr(1), 1);}
+          int record_level, source_level, record_idx[3];
+          Real record_delta[3];
+          if (xl_scheme == 1) {
+            record_level = (nb.lev == mylev) ? -1 : nb.lev;
+            source_level = mylev;
+            for (int d=0; d<3; ++d) {
+              record_idx[d] = idx[d];
+              record_delta[d] = dlt[d];
+            }
+          } else if (nb.lev > mylev) {
+            record_level = nb.lev;
+            source_level = mylev;
+            for (int d=0; d<3; ++d) {
+              record_idx[d] = idx[d];
+              record_delta[d] = dlt[d];
+            }
+          } else if (nb.lev < mylev) {
+            record_level = nb.lev;
+            source_level = mylev;
+            for (int d=0; d<3; ++d) {
+              record_idx[d] = idx[d];
+              record_delta[d] = dlt[d];
+            }
+          } else if (use_fine_stencil) {
+            record_level = mylev;
+            source_level = mylev + 1;
+            for (int d=0; d<3; ++d) {
+              record_idx[d] = fine_idx[d];
+              record_delta[d] = fine_delta[d];
+            }
+          } else {
+            record_level = -1;
+            source_level = -1;
+            for (int d=0; d<3; ++d) {
+              record_idx[d] = idx[d];
+              record_delta[d] = dlt[d];
+            }
+          }
+          if (record_level >= 0) {Kokkos::atomic_add(&derr(1), 1);}
           if (nb.rank == myrank) {
             // same-rank neighbor: append into the local queue (slots beyond npart self
             // records). Its gid must map into this pack -- a violation is corruption.
@@ -470,11 +604,13 @@ void Particles::set_prtcl_tmunu() {
             rec.target_m = tm;
             rec.tag = pi(PTAG,p);
             rec.off_code = oc;
-            rec.lev = image_level;
+            rec.lev = record_level;
+            rec.slev = source_level;
             for (int d=0; d<3; ++d) {
-              rec.idx[d] = idx[d];
-              rec.delta[d] = dlt[d];
+              rec.idx[d] = record_idx[d];
+              rec.delta[d] = record_delta[d];
               rec.x[d] = x[d];
+              rec.sxmin[d] = source_min[d];
               rec.u_d[d] = u_d[d];
             }
             rec.mass = mp;
@@ -493,11 +629,13 @@ void Particles::set_prtcl_tmunu() {
             w.target_gid = nb.gid;
             w.tag = pi(PTAG,p);
             w.off_code = oc;
-            w.lev = image_level;
+            w.lev = record_level;
+            w.slev = source_level;
             for (int d=0; d<3; ++d) {
-              w.idx[d] = idx[d];
-              w.delta[d] = dlt[d];
+              w.idx[d] = record_idx[d];
+              w.delta[d] = record_delta[d];
               w.x[d] = x[d];
+              w.sxmin[d] = source_min[d];
               w.u_d[d] = u_d[d];
             }
             w.mass = mp;
@@ -507,14 +645,19 @@ void Particles::set_prtcl_tmunu() {
         }
       }
 
-      // particle-side identity sums with the exact boundary-clip factor
-      // f_p = prod_d s_d, s_d = 1 except at a closed (no-image) band where only the
-      // in-block weight ({delta, 1-delta}) was deposited
+      // Closed-boundary clipping must use the same resolution as the deposited stencil.
       if (dbg >= 1) {
         Real f = 1.0;
         for (int d=0; d<3; ++d) {
           if (cd[d].band != 0 && !cd[d].open) {
-            f *= (cd[d].band < 0) ? dlt[d] : (1.0 - dlt[d]);
+            if (use_fine_stencil) {
+              int nfine = 2*ncell[d];
+              f *= (cd[d].band < 0)
+                       ? ((fine_idx[d] == -1) ? fine_delta[d] : 1.0)
+                       : ((fine_idx[d] + 1 == nfine) ? (1.0 - fine_delta[d]) : 1.0);
+            } else {
+              f *= (cd[d].band < 0) ? dlt[d] : (1.0 - dlt[d]);
+            }
           }
         }
         for (int c=0; c<10; ++c) {
@@ -616,6 +759,11 @@ void Particles::set_prtcl_tmunu() {
         Real dv = tsz.dx1*tsz.dx2*tsz.dx3;
         DepositCloud(tmunu, g_dd, tm, is, js, ks, ncell, dv, off, rec.idx, rec.delta,
                      amp);
+      } else if (xl_scheme == 1) {
+        DepositCloudNative(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.x, amp);
+      } else if (rec.slev > rec.lev) {
+        DepositCloudRestrict(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.sxmin,
+                             rec.idx, rec.delta, amp);
       } else {
         DepositCloudNative(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.x, amp);
       }
@@ -683,7 +831,8 @@ void Particles::set_prtcl_tmunu() {
     Real tol = scale*fmax(1.0e-12, 32.0*eps*static_cast<Real>(npart_tot));
     static char const * const comp[10] = {"E","Sx","Sy","Sz","Sxx","Sxy","Sxz",
                                           "Syy","Syz","Szz"};
-    if (ncross_tot == 0 && resid > tol) {
+    bool exact_regime = (xl_scheme == 0) || (ncross_tot == 0);
+    if (exact_regime && resid > tol) {
       if (myrank == 0) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
                   << std::endl << "Tmunu conservation identity violated at cycle "
@@ -703,7 +852,7 @@ void Particles::set_prtcl_tmunu() {
 #endif
     }
     if (myrank == 0) {
-      if (ncross_tot > 0) {
+      if (xl_scheme == 1 && ncross_tot > 0) {
         std::streamsize old_precision = std::cout.precision(12);
         std::cout << "[tmunu-debug] cycle=" << ncycle << " npart=" << npart_tot
                   << " cross_level=" << ncross_tot
@@ -712,6 +861,7 @@ void Particles::set_prtcl_tmunu() {
         std::cout.precision(old_precision);
       } else {
         std::cout << "[tmunu-debug] cycle=" << ncycle << " npart=" << npart_tot
+                  << " cross_level=" << ncross_tot
                   << " identity max_resid=" << resid << " (tol " << tol << ") (global)"
                   << std::endl;
       }

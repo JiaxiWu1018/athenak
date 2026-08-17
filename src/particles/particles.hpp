@@ -30,6 +30,10 @@ enum class ParticlesPusher {drift, leap_frog, lagrangian_tracer, lagrangian_mc,
 // constants that enumerate ParticleTypes
 enum class ParticleType {cosmic_ray, dust};
 
+// Cross-level Tmunu deposition: conservative restricts fine cloud cells into covering
+// coarse cells; native deposits independently at each target block's resolution.
+enum class CrossLevelDeposit {conservative, native};
+
 //----------------------------------------------------------------------------------------
 //! \struct ParticlesTaskIDs
 //  \brief container to hold TaskIDs of all particles tasks
@@ -61,9 +65,11 @@ struct TmunuImage {
   int tag;          // source particle tag (canonical-order key)
   int off_code;     // (bx+1) + 3*(by+1) + 9*(bz+1), in 0..26; 13 is self
   int lev;          // -1 for same-level routing; otherwise the target refinement level
-  int idx[3];       // source-computed left-center CIC index (same-level images)
-  Real delta[3];    // source-computed CIC offset, clamped to [0,1] (same-level images)
-  Real x[3];        // absolute position used to rebuild a target-native cross-level CIC
+  int slev;         // source stencil level; greater than lev selects conservative restrict
+  int idx[3];       // same-level stencil, or fine stencil for conservative restriction
+  Real delta[3];    // CIC offset matching idx, clamped to [0,1]
+  Real x[3];        // absolute position used to rebuild a target-native CIC
+  Real sxmin[3];    // origin of the fine stencil used for conservative restriction
   Real mass;        // particle rest mass (IPM)
   Real lorentz;     // normal-frame Lorentz factor W at the particle
   Real u_d[3];      // covariant velocity u_i
@@ -78,9 +84,11 @@ struct TmunuImageWire {
   int tag;
   int off_code;
   int lev;
+  int slev;
   int idx[3];
   Real delta[3];
   Real x[3];
+  Real sxmin[3];
   Real mass;
   Real lorentz;
   Real u_d[3];
@@ -163,6 +171,7 @@ class Particles {
   // Stress-energy feedback supports a 3D Z4c consumer without dynamical GRMHD. Images
   // may cross ranks and static coarse-fine interfaces; dynamic AMR remains guarded.
   bool feedback;
+  CrossLevelDeposit xlevel_deposit;
   // Unified canonical queue: self records, same-rank images, then received images.
   DualArray1D<TmunuImage> tmunu_images;
   DvceArray1D<int> tmunu_nimg;  // {same-rank image count, cross-rank send count}

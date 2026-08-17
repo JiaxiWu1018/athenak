@@ -130,6 +130,7 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
 
   // Stress-energy feedback deposits particle Tmunu for the Z4c matter terms.
   feedback = pin->GetOrAddBoolean("particles","feedback",false);
+  xlevel_deposit = CrossLevelDeposit::conservative;
   nimages_thispack = 0;
   nimg_send_thispack = 0;
   if (feedback) {
@@ -162,13 +163,26 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
       std::exit(EXIT_FAILURE);
     }
     // Cross-rank cloud shares are transported as ghost-image records and merged into
-    // the receiver's canonical deposit pass. Static cross-level shares rebuild their
-    // CIC stencil at the target block's native resolution.
+    // the receiver's canonical deposit pass. Static cross-level shares either restrict
+    // conservatively from the finest touched level or use target-native deposition.
     Kokkos::realloc(tmunu_images, 1);
     Kokkos::realloc(tmunu_nimg, 2);
     Kokkos::realloc(tmunu_img_send, 1);
     Kokkos::realloc(tmunu_psums, 10);
     Kokkos::realloc(tmunu_csums, 10);
+
+    std::string scheme =
+        pin->GetOrAddString("particles", "cross_level_deposit", "conservative");
+    if (scheme.compare("conservative") == 0) {
+      xlevel_deposit = CrossLevelDeposit::conservative;
+    } else if (scheme.compare("native") == 0) {
+      xlevel_deposit = CrossLevelDeposit::native;
+    } else {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "<particles> cross_level_deposit = '" << scheme
+                << "' not recognized; use 'conservative' or 'native'." << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
   }
 
   // Kinematic particles are relabeled and redistributed whenever dynamic AMR changes

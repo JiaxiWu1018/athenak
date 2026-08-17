@@ -69,6 +69,7 @@ mass = 1.0
 feedback = true
 debug = 1
 destroy_log = false
+cross_level_deposit = conservative
 
 <problem>
 mode = single
