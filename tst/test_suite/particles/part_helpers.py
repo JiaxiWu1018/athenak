@@ -39,7 +39,9 @@ def rank_counts(requested):
     return [count for count in requested if count <= available]
 
 
-def run_case(input_file, run_dir, ranks):
+def run_case(input_file, run_dir, ranks, extra_args=None):
+    if extra_args is None:
+        extra_args = []
     command = [
         "mpirun",
         "-np",
@@ -49,7 +51,7 @@ def run_case(input_file, run_dir, ranks):
         input_file,
         "-d",
         run_dir,
-    ]
+    ] + list(extra_args)
     if not testutils.run_command(command):
         raise RuntimeError(f"particle regression failed with {ranks} MPI rank(s)")
 

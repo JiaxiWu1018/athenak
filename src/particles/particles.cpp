@@ -128,11 +128,10 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     Kokkos::realloc(excise_crit, 1);
   }
 
-  // Stress-energy feedback deposits particle Tmunu for the Z4c matter terms. The
-  // Stage-4a image transport is same-rank and same-level only; later stages relax
-  // those two restrictions.
+  // Stress-energy feedback deposits particle Tmunu for the Z4c matter terms.
   feedback = pin->GetOrAddBoolean("particles","feedback",false);
   nimages_thispack = 0;
+  nimg_send_thispack = 0;
   if (feedback) {
     if (!pmy_pack->pmesh->three_d) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
@@ -162,17 +161,11 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
                 << std::endl;
       std::exit(EXIT_FAILURE);
     }
-    if (global_variable::nranks > 1) {
-      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
-                << std::endl
-                << "<particles> feedback = true supports a single rank only until the"
-                << std::endl
-                << "ghost-image MPI transport lands (Stage 4c). Run with 1 rank."
-                << std::endl;
-      std::exit(EXIT_FAILURE);
-    }
+    // Cross-rank cloud shares are transported as ghost-image records and merged into
+    // the receiver's canonical deposit pass. Cross-level deposition remains unsupported.
     Kokkos::realloc(tmunu_images, 1);
-    Kokkos::realloc(tmunu_nimg, 1);
+    Kokkos::realloc(tmunu_nimg, 2);
+    Kokkos::realloc(tmunu_img_send, 1);
     Kokkos::realloc(tmunu_psums, 10);
     Kokkos::realloc(tmunu_csums, 10);
   }

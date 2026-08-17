@@ -458,12 +458,20 @@ particles::ParticlesBoundaryValues::ParticlesBoundaryValues(
     prtcl_rrecvbuf("rrecv",1),
     prtcl_isendbuf("isend",1),
     prtcl_irecvbuf("irecv",1),
+    img_rsendbuf("img_rsend",1),
+    img_rrecvbuf("img_rrecv",1),
+    img_isendbuf("img_isend",1),
+    img_irecvbuf("img_irecv",1),
+    n_img_send_msgs(0),
+    n_img_recv_msgs(0),
+    n_img_recv(0),
 #endif
     pmy_part(pp) {
 #if MPI_PARALLEL_ENABLED
   //resize vectors over number of ranks
   nsends_eachrank.resize(global_variable::nranks);
   ndest_eachrank.resize(global_variable::nranks);
+  n_imgsend_eachrank.resize(global_variable::nranks);
 
   // create unique communicator for particles
   MPI_Comm_dup(MPI_COMM_WORLD, &mpi_comm_part);

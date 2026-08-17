@@ -341,6 +341,18 @@ class ParticlesBoundaryValues {
   std::vector<MPI_Request> rrecv_req, rsend_req;  // vectors of requests for Reals
   std::vector<MPI_Request> irecv_req, isend_req;  // vectors of requests for ints
   MPI_Comm mpi_comm_part;                       // unique MPI communicators for particles
+
+  // Cross-rank Tmunu ghost-image transport uses tags 2/3 on mpi_comm_part, after
+  // migration (tags 0/1) has drained. It has a separate per-deposit message census.
+  DvceArray1D<Real> img_rsendbuf, img_rrecvbuf;
+  DvceArray1D<int> img_isendbuf, img_irecvbuf;
+  std::vector<MPI_Request> img_rrecv_req, img_rsend_req;
+  std::vector<MPI_Request> img_irecv_req, img_isend_req;
+  int n_img_send_msgs, n_img_recv_msgs;
+  int n_img_recv;
+  std::vector<int> n_imgsend_eachrank;
+  std::vector<ParticleMessageData> imgsends_thisrank, imgrecvs_thisrank;
+  std::vector<ParticleMessageData> imgsends_allranks;
 #endif
 
   //functions
@@ -351,6 +363,7 @@ class ParticlesBoundaryValues {
   TaskStatus PackAndSendPrtcls();
   TaskStatus ClearPrtclSend();
   TaskStatus RecvAndUnpackPrtcls();
+  void ExchangeTmunuImages();
 
  protected:
   particles::Particles* pmy_part;

@@ -54,17 +54,32 @@ namespace particles {
 
 //----------------------------------------------------------------------------------------
 //! \struct TmunuImage
-//  \brief same-rank ghost-image record for cross-block stress-energy deposition.
+//  \brief local ghost-image record for cross-block stress-energy deposition.
 
 struct TmunuImage {
   int target_m;     // local MeshBlock index (gid - gids) of the receiving block
   int tag;          // source particle tag (canonical-order key)
-  int off_code;     // (bx+1) + 3*(by+1) + 9*(bz+1), in 0..26 (13 is self)
+  int off_code;     // (bx+1) + 3*(by+1) + 9*(bz+1), in 0..26; 13 is self
   int idx[3];       // source-computed left-center CIC index per dimension
   Real delta[3];    // source-computed CIC offset per dimension, clamped to [0,1]
   Real mass;        // particle rest mass (IPM)
   Real lorentz;     // normal-frame Lorentz factor W at the particle
   Real u_d[3];      // covariant velocity u_i
+};
+
+//----------------------------------------------------------------------------------------
+//! \struct TmunuImageWire
+//  \brief wire form of a Tmunu image destined for a MeshBlock on another rank.
+
+struct TmunuImageWire {
+  int target_gid;   // global id of the receiving block
+  int tag;
+  int off_code;
+  int idx[3];
+  Real delta[3];
+  Real mass;
+  Real lorentz;
+  Real u_d[3];
 };
 
 //----------------------------------------------------------------------------------------
@@ -141,12 +156,15 @@ class Particles {
   DvceArray1D<int>  excise_flag;
   DvceArray1D<Real> excise_crit;
 
-  // Stress-energy feedback. Stage 4a supports a 3D Z4c consumer without dynamical
-  // GRMHD, same-rank image transport, and matter confined to one refinement level.
+  // Stress-energy feedback supports a 3D Z4c consumer without dynamical GRMHD. Images
+  // may cross ranks, but matter must remain confined to one refinement level.
   bool feedback;
+  // Unified canonical queue: self records, same-rank images, then received images.
   DualArray1D<TmunuImage> tmunu_images;
-  DvceArray1D<int> tmunu_nimg;
+  DvceArray1D<int> tmunu_nimg;  // {same-rank image count, cross-rank send count}
   int nimages_thispack;
+  DualArray1D<TmunuImageWire> tmunu_img_send;
+  int nimg_send_thispack;
   // Particle-side and cell-side sums of the ten conserved Tmunu combinations.
   DvceArray1D<Real> tmunu_psums;
   DvceArray1D<Real> tmunu_csums;
