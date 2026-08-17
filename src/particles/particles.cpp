@@ -162,7 +162,8 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
       std::exit(EXIT_FAILURE);
     }
     // Cross-rank cloud shares are transported as ghost-image records and merged into
-    // the receiver's canonical deposit pass. Cross-level deposition remains unsupported.
+    // the receiver's canonical deposit pass. Static cross-level shares rebuild their
+    // CIC stencil at the target block's native resolution.
     Kokkos::realloc(tmunu_images, 1);
     Kokkos::realloc(tmunu_nimg, 2);
     Kokkos::realloc(tmunu_img_send, 1);
@@ -171,14 +172,17 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   }
 
   // Kinematic particles are relabeled and redistributed whenever dynamic AMR changes
-  // the grid. Feedback remains guarded until cross-level Tmunu deposition is supported.
+  // the grid. Static cross-level Tmunu deposition is supported, but feedback remains
+  // guarded during live regrids until its deposition state can be remapped safely.
   if (pmy_pack->pmesh->adaptive && feedback) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
               << "<particles> feedback = true with adaptive mesh refinement is not yet"
               << std::endl
-              << "supported: cross-level Tmunu deposition is deferred to Stage 5b."
+              << "supported: cross-level deposition works on static refinement, but"
               << std::endl
-              << "Use feedback = false or refinement = static."
+              << "its remap through live regrids is deferred. Use feedback = false or"
+              << std::endl
+              << "refinement = static."
               << std::endl;
     std::exit(EXIT_FAILURE);
   }

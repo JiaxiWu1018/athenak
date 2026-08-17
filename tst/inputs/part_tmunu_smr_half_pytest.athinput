@@ -1,0 +1,86 @@
+# Static half-domain refinement for the cross-level demotion/dedup regression. A fine
+# particle near x1=0 and a transverse fine sibling boundary can route both its face and
+# diagonal overhangs to the same coarse gid; only one native deposit must survive.
+
+<comment>
+problem = particle Tmunu cross-level demotion regression
+
+<job>
+basename = part_tmunu_smr_half
+
+<mesh>
+nghost = 2
+nx1 = 32
+x1min = -1.0
+x1max = 1.0
+ix1_bc = periodic
+ox1_bc = periodic
+
+nx2 = 32
+x2min = -1.0
+x2max = 1.0
+ix2_bc = periodic
+ox2_bc = periodic
+
+nx3 = 32
+x3min = -1.0
+x3max = 1.0
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<mesh_refinement>
+refinement = static
+
+<refined_region1>
+level = 1
+x1min = -1.0
+x1max = 0.0
+x2min = -1.0
+x2max = 1.0
+x3min = -1.0
+x3max = 1.0
+
+<coord>
+general_rel = true
+minkowski = true
+excise = false
+
+<time>
+evolution = dynamic
+integrator = rk2
+cfl_number = 0.25
+nlim = 0
+tlim = 1.0
+ndiag = 1
+
+<z4c>
+diss = 0.0
+
+<particles>
+particle_type = dust
+pusher = drift
+init = pgen
+mass = 1.0
+feedback = true
+debug = 1
+destroy_log = false
+
+<problem>
+mode = single
+px = -0.0078125
+py = 0.4921875
+pz = 0.25
+pux = 0.0
+puy = 0.0
+puz = 0.0
+pmass = 1.0
+
+<output1>
+file_type = bin
+variable = tmunu
+dt = 0.001

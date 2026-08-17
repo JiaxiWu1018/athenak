@@ -251,5 +251,99 @@ int FindDestinationIndex(const NghbrView &ngh, int m, int mylev,
   return indx;
 }
 
+// Enumerate the neighbor slots that receive one cloud overhang. A same-level or
+// coarser neighbor is a single target. A finer face/edge can expose up to four/two
+// children, all of which must clip the source cloud in their native frame.
+template <typename NghbrView>
+KOKKOS_INLINE_FUNCTION
+int EnumerateImageTargets(const NghbrView &ngh, int m, int mylev,
+                          int ox, int oy, int oz, int fx, int fy, int fz,
+                          int px, int py, int pz, bool multi_d, bool three_d,
+                          int slots[4]) {
+  int indx = FindDestinationIndex(ngh, m, mylev, ox, oy, oz, fx, fy, fz, px, py, pz);
+  if (indx < 0) {return 0;}
+  if (ngh(m, indx).lev <= mylev) {slots[0] = indx; return 1;}
+
+  int refx = 2, refy = multi_d ? 2 : 1, refz = three_d ? 2 : 1;
+  int d = abs(ox) + abs(oy) + abs(oz);
+  int ns = 0;
+  if (d == 1) {
+    int r1, r2;
+    if (ox != 0) {r1 = refy; r2 = refz;}
+    else if (oy != 0) {r1 = refx; r2 = refz;}
+    else {r1 = refx; r2 = refy;}
+    for (int s2=0; s2<r2; ++s2) {
+      for (int s1=0; s1<r1; ++s1) {
+        int sl = NeighborIndex(ox, oy, oz, s1, s2);
+        if (ngh(m, sl).gid >= 0 && ngh(m, sl).lev > mylev) {slots[ns++] = sl;}
+      }
+    }
+  } else if (d == 2) {
+    int r1 = (oz == 0) ? refz : ((oy == 0) ? refy : refx);
+    for (int s1=0; s1<r1; ++s1) {
+      int sl = NeighborIndex(ox, oy, oz, s1, 0);
+      if (ngh(m, sl).gid >= 0 && ngh(m, sl).lev > mylev) {slots[ns++] = sl;}
+    }
+  } else {
+    int sl = NeighborIndex(ox, oy, oz, 0, 0);
+    if (ngh(m, sl).gid >= 0 && ngh(m, sl).lev > mylev) {slots[ns++] = sl;}
+  }
+  return ns;
+}
+
+struct PartImageTarget {
+  int slot;
+  int oc;
+};
+
+// Build the complete per-particle target list. Same-level offsets remain distinct;
+// cross-level targets are unique by gid because a native deposit covers the whole
+// target-clipped cloud and would otherwise be counted twice after diagonal demotion.
+template <typename NghbrView>
+KOKKOS_INLINE_FUNCTION
+int EnumerateParticleTargets(const NghbrView &ngh, int m, int mylev, const int beff[3],
+                             int fx, int fy, int fz, int px, int py, int pz,
+                             bool multi_d, bool three_d, PartImageTarget *out,
+                             int out_cap, int &n_missing, int &overflow) {
+  constexpr int MAXSEEN = 24;
+  int seen[MAXSEEN];
+  int n_seen = 0;
+  int n = 0;
+  n_missing = 0;
+  overflow = 0;
+  for (int code=1; code<8; ++code) {
+    int sx = code & 1, sy = (code >> 1) & 1, sz = (code >> 2) & 1;
+    if ((sx && beff[0] == 0) || (sy && beff[1] == 0) || (sz && beff[2] == 0)) {continue;}
+    int ox = sx ? beff[0] : 0;
+    int oy = sy ? beff[1] : 0;
+    int oz = sz ? beff[2] : 0;
+    int oc = (ox + 1) + 3*(oy + 1) + 9*(oz + 1);
+    int slots[4];
+    int ns = EnumerateImageTargets(ngh, m, mylev, ox, oy, oz, fx, fy, fz, px, py, pz,
+                                   multi_d, three_d, slots);
+    if (ns == 0) {++n_missing; continue;}
+    for (int s=0; s<ns; ++s) {
+      int slot = slots[s];
+      if (ngh(m, slot).lev != mylev) {
+        int gid = ngh(m, slot).gid;
+        bool duplicate = false;
+        for (int t=0; t<n_seen; ++t) {
+          if (seen[t] == gid) {duplicate = true; break;}
+        }
+        if (duplicate) {continue;}
+        if (n_seen < MAXSEEN) {seen[n_seen++] = gid;} else {overflow = 1;}
+      }
+      if (n < out_cap) {
+        out[n].slot = slot;
+        out[n].oc = oc;
+        ++n;
+      } else {
+        overflow = 1;
+      }
+    }
+  }
+  return n;
+}
+
 } // namespace particles
 #endif // BVALS_PRTCL_SEARCH_HPP_

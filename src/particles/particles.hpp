@@ -60,8 +60,10 @@ struct TmunuImage {
   int target_m;     // local MeshBlock index (gid - gids) of the receiving block
   int tag;          // source particle tag (canonical-order key)
   int off_code;     // (bx+1) + 3*(by+1) + 9*(bz+1), in 0..26; 13 is self
-  int idx[3];       // source-computed left-center CIC index per dimension
-  Real delta[3];    // source-computed CIC offset per dimension, clamped to [0,1]
+  int lev;          // -1 for same-level routing; otherwise the target refinement level
+  int idx[3];       // source-computed left-center CIC index (same-level images)
+  Real delta[3];    // source-computed CIC offset, clamped to [0,1] (same-level images)
+  Real x[3];        // absolute position used to rebuild a target-native cross-level CIC
   Real mass;        // particle rest mass (IPM)
   Real lorentz;     // normal-frame Lorentz factor W at the particle
   Real u_d[3];      // covariant velocity u_i
@@ -75,8 +77,10 @@ struct TmunuImageWire {
   int target_gid;   // global id of the receiving block
   int tag;
   int off_code;
+  int lev;
   int idx[3];
   Real delta[3];
+  Real x[3];
   Real mass;
   Real lorentz;
   Real u_d[3];
@@ -157,7 +161,7 @@ class Particles {
   DvceArray1D<Real> excise_crit;
 
   // Stress-energy feedback supports a 3D Z4c consumer without dynamical GRMHD. Images
-  // may cross ranks, but matter must remain confined to one refinement level.
+  // may cross ranks and static coarse-fine interfaces; dynamic AMR remains guarded.
   bool feedback;
   // Unified canonical queue: self records, same-rank images, then received images.
   DualArray1D<TmunuImage> tmunu_images;
