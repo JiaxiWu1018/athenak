@@ -261,8 +261,11 @@ void DepositCloudRestrict(const Tmunu::Tmunu_vars &tmunu,
       Real center = sxmin[d] + (static_cast<Real>(idx[d] + t) + 0.5)*dxf;
       if (center < xmin[d] || center >= xmax[d]) {continue;}
       int ic = static_cast<int>(floor((center - xmin[d])/dxc[d]));
-      if (ic < 0) {ic = 0;}
-      else if (ic >= ncell[d]) {ic = ncell[d] - 1;}
+      if (ic < 0) {
+        ic = 0;
+      } else if (ic >= ncell[d]) {
+        ic = ncell[d] - 1;
+      }
       coarse_cell[d][kept[d]] = ic;
       weight[d][kept[d]++] = (t == 0) ? (1.0 - delta[d]) : delta[d];
     }
@@ -733,10 +736,11 @@ void Particles::set_prtcl_tmunu() {
 #endif
 
   // ---- (c) canonical deposit order: sort the merged queue (self records + same-rank +
-  // received cross-rank images) on host by (target_m,tag,off_code,lev). The key is total and
-  // tag is globally unique, so per-cell accumulation order is identical for every rank
-  // decomposition (the Stage-4c bitwise rank-invariance criterion). A duplicate key means
-  // duplicate particle tags (an init=pgen contract violation) or a generation bug: fatal.
+  // received cross-rank images) on host by (target_m,tag,off_code,lev). The key is total
+  // and tag is globally unique, so per-cell accumulation order is identical for every
+  // rank decomposition (the Stage-4c bitwise rank-invariance criterion). A duplicate key
+  // means duplicate particle tags (an init=pgen contract violation) or a generation bug:
+  // fatal.
   if (nimages_thispack > 0) {
     tmunu_images.template modify<DevExeSpace>();
     tmunu_images.template sync<HostMemSpace>();

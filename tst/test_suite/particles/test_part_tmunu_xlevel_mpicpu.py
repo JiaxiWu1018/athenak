@@ -24,11 +24,14 @@ SCHEMES = [
 
 CASES = [
     # Fine-to-coarse and coarse-to-fine face crossings exercise native clipping/fanout.
-    ("fine_to_coarse", SMR, ["problem/px=0.0078125", "problem/py=0.25", "problem/pz=0.25"]),
-    ("coarse_to_fine", SMR, ["problem/px=-0.0078125", "problem/py=0.25", "problem/pz=0.25"]),
+    ("fine_to_coarse", SMR,
+     ["problem/px=0.0078125", "problem/py=0.25", "problem/pz=0.25"]),
+    ("coarse_to_fine", SMR,
+     ["problem/px=-0.0078125", "problem/py=0.25", "problem/pz=0.25"]),
     # Two- and three-dimensional seams exercise distinct cross-level edge/corner targets.
     ("edge", SMR, ["problem/px=0.0078125", "problem/py=0.0078125", "problem/pz=0.25"]),
-    ("corner", SMR, ["problem/px=0.0078125", "problem/py=0.0078125", "problem/pz=0.0078125"]),
+    ("corner", SMR,
+     ["problem/px=0.0078125", "problem/py=0.0078125", "problem/pz=0.0078125"]),
     # The half-domain geometry demotes a diagonal onto an already targeted coarse face.
     ("demotion_dedup", SMR_HALF,
      ["problem/px=-0.0078125", "problem/py=0.4921875", "problem/pz=0.25"]),
@@ -74,7 +77,9 @@ def _run_rank_invariance(case, input_file, extra_args):
         helpers.remove_dirs(*run_dirs.values())
 
 
-@pytest.mark.parametrize("case,input_file,position", CASES, ids=[case[0] for case in CASES])
+@pytest.mark.parametrize(
+    "case,input_file,position", CASES, ids=[case[0] for case in CASES]
+)
 @pytest.mark.parametrize("scheme,scheme_args", SCHEMES, ids=[item[0] for item in SCHEMES])
 def test_cross_level_tmunu_is_rank_invariant(
     case, input_file, position, scheme, scheme_args
@@ -83,7 +88,9 @@ def test_cross_level_tmunu_is_rank_invariant(
     _run_rank_invariance(f"{scheme}_{case}", input_file, position + scheme_args)
 
 
-@pytest.mark.parametrize("side,position", BOUNDARY_CASES, ids=[item[0] for item in BOUNDARY_CASES])
+@pytest.mark.parametrize(
+    "side,position", BOUNDARY_CASES, ids=[item[0] for item in BOUNDARY_CASES]
+)
 def test_conservative_seam_and_closed_boundary(side, position):
     """Fine-stencil physical-boundary clipping must retain the exact identity."""
     base = ["problem/px=-0.0078125", "problem/pz=-0.25"]

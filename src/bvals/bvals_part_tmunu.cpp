@@ -14,8 +14,9 @@
 //! (nothing to overlap) and also runs as a driver-init seed OUTSIDE any task list, where
 //! the migration-style "return incomplete and re-poll" split is unavailable. Received
 //! images are appended to the SAME tmunu_images queue and deposited by the one canonical
-//! (target_m, tag, off_code, lev) pass back in set_prtcl_tmunu, so the per-cell accumulation
-//! order is identical for every rank decomposition: cross-rank feedback is bitwise
+//! (target_m, tag, off_code, lev) pass back in set_prtcl_tmunu, so the per-cell
+//! accumulation order is identical for every rank decomposition: cross-rank feedback is
+//! bitwise
 //! rank-count invariant by construction (serial-host; GPU atomics are correct but not
 //! bit-reproducible, as for the same-rank deposit).
 //!

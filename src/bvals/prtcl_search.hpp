@@ -269,9 +269,13 @@ int EnumerateImageTargets(const NghbrView &ngh, int m, int mylev,
   int ns = 0;
   if (d == 1) {
     int r1, r2;
-    if (ox != 0) {r1 = refy; r2 = refz;}
-    else if (oy != 0) {r1 = refx; r2 = refz;}
-    else {r1 = refx; r2 = refy;}
+    if (ox != 0) {
+      r1 = refy; r2 = refz;
+    } else if (oy != 0) {
+      r1 = refx; r2 = refz;
+    } else {
+      r1 = refx; r2 = refy;
+    }
     for (int s2=0; s2<r2; ++s2) {
       for (int s1=0; s1<r1; ++s1) {
         int sl = NeighborIndex(ox, oy, oz, s1, s2);

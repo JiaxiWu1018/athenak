@@ -3,10 +3,10 @@
 
 Emits the standard NRPIC particle HDF5 contract (see _prtcl_io.write_particle_table):
 positions x,y,z, covariant 4-velocity u_i = ux,uy,uz, and a PER-PARTICLE rest mass.
-The companion pgen ``src/pgen/particles/nr_pic_os.cpp`` sets the matching conformally-flat,
-time-symmetric metric from the same (M, R0) -- keep ``<problem> os_mass`` and
-``os_radius_over_mass`` IN SYNC with --mass / --radius here; a mismatch invalidates
-the t=0 Hamiltonian-constraint comparison.
+The companion pgen ``src/pgen/particles/nr_pic_os.cpp`` sets the matching
+conformally-flat, time-symmetric metric from the same (M, R0) -- keep
+``<problem> os_mass`` and ``os_radius_over_mass`` IN SYNC with --mass / --radius
+here; a mismatch invalidates the t=0 Hamiltonian-constraint comparison.
 
 Physics (geometric units G=c=1; M = ADM mass, R0 = areal surface radius):
   conformally-flat, time-symmetric (K_ij = 0) data, isotropic Cartesian coordinates,

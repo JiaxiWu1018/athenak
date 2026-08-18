@@ -65,7 +65,7 @@ struct TmunuImage {
   int tag;          // source particle tag (canonical-order key)
   int off_code;     // (bx+1) + 3*(by+1) + 9*(bz+1), in 0..26; 13 is self
   int lev;          // -1 for same-level routing; otherwise the target refinement level
-  int slev;         // source stencil level; greater than lev selects conservative restrict
+  int slev;         // source stencil level; > lev selects conservative restrict
   int idx[3];       // same-level stencil, or fine stencil for conservative restriction
   Real delta[3];    // CIC offset matching idx, clamped to [0,1]
   Real x[3];        // absolute position used to rebuild a target-native CIC

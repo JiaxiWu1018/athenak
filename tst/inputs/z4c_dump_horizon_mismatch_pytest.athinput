@@ -1,0 +1,59 @@
+# Negative control for the <z4c> horizon-dump / compact-object-tracker pairing.
+# DumpHorizons centres each dump_horizon_<n> output on the matching co_<n>_type tracker,
+# but the two lists are sized by independent input parameters. This deck deliberately
+# requests TWO horizon dumps while defining only ONE tracker, which used to index
+# ptracker out of bounds and segfault inside Z4c::DumpHorizons. It must now fail fast
+# with a clear diagnostic instead.
+
+<comment>
+problem = z4c horizon-dump pairing negative control
+
+<job>
+basename = dh_mismatch
+
+<mesh>
+nghost = 4
+nx1 = 32
+x1min = -8.0
+x1max = 8.0
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 32
+x2min = -8.0
+x2max = 8.0
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 32
+x3min = -8.0
+x3max = 8.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 16
+nx2 = 16
+nx3 = 16
+
+<time>
+evolution = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim = 1
+tlim = 10.0
+ndiag = 1
+
+<z4c>
+lapse_harmonic = 0.0
+lapse_oplog = 2.0
+shift_eta = 2.0
+diss = 0.1
+chi_div_floor = 0.00001
+damp_kappa1 = 0.02
+damp_kappa2 = 0.0
+co_0_x = 0.0
+co_0_type = BH
+dump_horizon_0 = true
+dump_horizon_1 = true
+
+<problem>
+punc_ADM_mass = 1.0
