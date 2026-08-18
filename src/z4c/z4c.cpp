@@ -272,6 +272,22 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
   n = 0;
   while (true) {
     if (pin->GetOrAddBoolean("z4c", "dump_horizon_" + std::to_string(n),false)) {
+      // DumpHorizons centres phorizon_dump[i] on ptracker[i], but the two vectors are
+      // sized by INDEPENDENT inputs: ptracker by the <z4c> co_<n>_type entries and
+      // phorizon_dump by these dump_horizon_<n> flags. Requesting a dump with no
+      // matching tracker indexed ptracker out of bounds and segfaulted inside
+      // DumpHorizons. Reject it here, before any object or output directory is created.
+      if (n >= static_cast<int>(ptracker.size())) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl
+                  << "<z4c> dump_horizon_" << n << " is requested but only "
+                  << ptracker.size() << " compact-object tracker(s) (co_<n>_type) are"
+                  << " defined." << std::endl
+                  << "Each dump_horizon_<n> is centred on the matching co_<n>_type"
+                  << " tracker; define one co_<n>_type per requested horizon dump."
+                  << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
       // phorizon_dump.emplace_back(pmy_pack, pin, n,false);
       phorizon_dump.push_back(std::make_unique<HorizonDump>(pmy_pack, pin, n, 0));
       std::string foldername = "horizon_"+std::to_string(n);
