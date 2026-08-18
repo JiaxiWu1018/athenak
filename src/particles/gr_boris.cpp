@@ -26,8 +26,10 @@
 
 #include <cmath>
 #include <cstdio>
+#include <iostream>
 
 #include "athena.hpp"
+#include "globals.hpp"
 #include "mesh/mesh.hpp"
 #include "particles.hpp"
 #include "boris_utils.hpp"
@@ -297,6 +299,9 @@ void Particles::GR_BorisPush() {
   auto dt_ = pmy_pack->pmesh->dt;
   auto qom = q_over_m;
 
+  auto nfail_ = boris_nfail;          // bounded non-convergence diagnostic counters
+  const int ndetail_ = kBorisDetail;
+
   auto &pi = prtcl_idata;
   auto &pr = prtcl_rdata;
 
@@ -489,8 +494,19 @@ void Particles::GR_BorisPush() {
     }
     }
     if (!find_root) {
-      Kokkos::printf("WARNING: gr_boris geodesic fixed-point did not converge "
-                     "(particle tag %d); forward-Euler step used\n", pi(PTAG, p));
+      // Count EVERY failure, but print at most ndetail_ detailed lines per cycle: the
+      // host emits one summary line afterwards, so the log stays O(1) per rank per cycle
+      // instead of O(N_particle). The atomic returns this failure's index, which both
+      // accumulates the count and claims a detail slot.
+      int islot = Kokkos::atomic_fetch_add(&nfail_(0), 1);
+      if (islot < ndetail_) {
+        Kokkos::printf("### WARNING gr_boris: fixed-point did not converge, "
+                       "forward-Euler fallback used | tag=%d gid=%d "
+                       "x=(% .6e,% .6e,% .6e) u_i=(% .6e,% .6e,% .6e) "
+                       "dt=%.6e\n",
+                       pi(PTAG, p), pi(PGID, p),
+                       x_n[0], x_n[1], x_n[2], u_p[0], u_p[1], u_p[2], dt_);
+      }
     }
 
     // ---- Step 4+5: second half EM kick at x^{n+1} (skipped when no MHD) ----
@@ -628,6 +644,36 @@ void Particles::GR_BorisPush() {
     pr(IPVY, p) = u_np1[1];
     pr(IPVZ, p) = u_np1[2];
   });
+
+  // ---- bounded non-convergence summary: ONE line per rank per cycle ----------------
+  // Read the device counter, report it, and reset for the next cycle. Failures are never
+  // hidden: the count is exact and the per-rank running total is included.
+  {
+    auto hfail = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), boris_nfail);
+    int nfail = hfail(0);
+    if (nfail > 0) {
+      boris_nfail_cum += static_cast<std::int64_t>(nfail);
+      if (!boris_first_fail_seen) {
+        boris_first_fail_seen = true;
+        std::cout << "### WARNING in " << __FILE__ << ": gr_boris implicit geodesic "
+                  << "substep did not converge for the first time this run (rank "
+                  << global_variable::my_rank << ", cycle " << pmy_pack->pmesh->ncycle
+                  << ", dt = " << pmy_pack->pmesh->dt << ")." << std::endl
+                  << "    The step falls back to forward Euler, which is a documented "
+                  << "first-order fallback, not a crash." << std::endl
+                  << "    It is expected at large CFL and disappears as dt is reduced; "
+                  << "if it persists, reduce <time> cfl_number." << std::endl
+                  << "    Per-particle detail is printed for at most "
+                  << kBorisDetail << " particles per cycle; every failure is counted "
+                  << "in the per-cycle summary below." << std::endl;
+      }
+      std::cout << "### gr_boris non-convergence: rank " << global_variable::my_rank
+                << " cycle " << pmy_pack->pmesh->ncycle << ": " << nfail << " of "
+                << nprtcl_thispack << " particles fell back to forward Euler"
+                << " (rank total " << boris_nfail_cum << ")" << std::endl;
+      Kokkos::deep_copy(boris_nfail, 0);
+    }
+  }
 
   // snapshot the current fields/metric as step n for the next push (for a static
   // background these copies are a no-op; they carry the time level once the metric

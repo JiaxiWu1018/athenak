@@ -168,6 +168,20 @@ class Particles {
   DvceArray1D<int>  excise_flag;
   DvceArray1D<Real> excise_crit;
 
+  // Bounded gr_boris non-convergence diagnostic. The implicit geodesic substep falls
+  // back to forward Euler when the fixed-point iteration does not converge; that is a
+  // legitimate, documented outcome (it is expected at large CFL), but warning once per
+  // particle per cycle can emit O(N_particle) lines per cycle and tens of GB of log.
+  // Instead the device kernel COUNTS every failure in boris_nfail(0) and prints a
+  // detailed line for at most kBorisDetail of them per cycle (boris_nfail(1) is the
+  // detail budget claimed so far); the host then emits ONE summary line per rank per
+  // cycle. boris_nfail_cum is the per-rank running total, reported in the summary so no
+  // failure is ever hidden. The FIRST failure of a run prints full particle state.
+  static constexpr int kBorisDetail = 3;
+  DvceArray1D<int> boris_nfail;   // {failures this cycle, detail slots claimed}
+  std::int64_t boris_nfail_cum;
+  bool boris_first_fail_seen;
+
   // Stress-energy feedback supports a 3D Z4c consumer without dynamical GRMHD. Images
   // may cross ranks and coarse-fine interfaces, including through dynamic AMR regrids.
   bool feedback;

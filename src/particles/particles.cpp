@@ -128,6 +128,14 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     Kokkos::realloc(excise_crit, 1);
   }
 
+  // bounded gr_boris non-convergence diagnostic (see particles.hpp)
+  boris_nfail_cum = 0;
+  boris_first_fail_seen = false;
+  if (pusher == ParticlesPusher::gr_boris) {
+    Kokkos::realloc(boris_nfail, 2);
+    Kokkos::deep_copy(boris_nfail, 0);
+  }
+
   // Stress-energy feedback deposits particle Tmunu for the Z4c matter terms.
   feedback = pin->GetOrAddBoolean("particles","feedback",false);
   xlevel_deposit = CrossLevelDeposit::conservative;
