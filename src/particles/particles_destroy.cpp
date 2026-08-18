@@ -51,15 +51,20 @@ const char *reason_name[3] = {"exit", "sphere", "lapse"};
 void Particles::FlushDeathLog() {
   int nloc = pbval_part->nprtcl_destroy;
 
-  // pack this rank's records from the device record arrays
+  // pack this rank's records from the device record arrays.
+  // The record arrays are (7, cap) / (3, cap) LayoutRight and cap is grow-only, so a
+  // column subview (ALL, 0:nloc) is NON-CONTIGUOUS whenever nloc < cap. Mirroring such a
+  // strided device view to the host has no available copy mechanism on a separate-memory
+  // -space backend (HIP/CUDA) and Kokkos throws
+  //   "deep_copy with no available copy mechanism ... must be contiguous".
+  // Copy the FULL (contiguous) views instead and read only the nloc active columns; the
+  // capacity tail is stale padding and is never consumed, so the CSV is unchanged.
   std::vector<DeathRec> loc(nloc);
   if (nloc > 0) {
     auto hr = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-        Kokkos::subview(pbval_part->destroy_rec_r, Kokkos::ALL,
-                        std::make_pair(0, nloc)));
+                                                  pbval_part->destroy_rec_r);
     auto hi = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-        Kokkos::subview(pbval_part->destroy_rec_i, Kokkos::ALL,
-                        std::make_pair(0, nloc)));
+                                                  pbval_part->destroy_rec_i);
     for (int n=0; n<nloc; ++n) {
       loc[n].tag    = hi(0,n);
       loc[n].gid    = hi(1,n);
