@@ -446,7 +446,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   pmbp->pz4c->Z4cToADM(pmbp);
 
   // Every rank reproduces the same seeded global draw and retains only particles owned
-  // by its local MeshBlocks. Tags therefore remain rank-count and decomposition invariant.
+  // by its local MeshBlocks. Tags therefore remain rank-count and decomposition
+  // invariant.
   particles::Particles *ppart = pmbp->ppart;
   std::mt19937_64 generator(static_cast<std::uint64_t>(seed));
   std::uniform_real_distribution<Real> uniform(0.0, 1.0);
