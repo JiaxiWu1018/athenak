@@ -131,8 +131,10 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   // bounded gr_boris non-convergence diagnostic (see particles.hpp)
   boris_nfail_cum = 0;
   boris_first_fail_seen = false;
+  boris_nreject_cum = 0;
+  boris_first_reject_seen = false;
   if (pusher == ParticlesPusher::gr_boris) {
-    Kokkos::realloc(boris_nfail, 2);
+    Kokkos::realloc(boris_nfail, 4);
     Kokkos::deep_copy(boris_nfail, 0);
   }
 
