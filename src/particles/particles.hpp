@@ -178,9 +178,25 @@ class Particles {
   // cycle. boris_nfail_cum is the per-rank running total, reported in the summary so no
   // failure is ever hidden. The FIRST failure of a run prints full particle state.
   static constexpr int kBorisDetail = 3;
-  DvceArray1D<int> boris_nfail;   // {failures this cycle, detail slots claimed}
+  // {0: non-convergence this cycle, 1: reserved detail budget, 2: REJECTED geodesic
+  //  substeps this cycle, 3: non-finite write-backs refused this cycle}
+  DvceArray1D<int> boris_nfail;
   std::int64_t boris_nfail_cum;
   bool boris_first_fail_seen;
+  // A REJECTED update is a step that was NOT TAKEN: the particle keeps its step-n
+  // position and momentum. Two disjoint causes, counted separately in boris_nfail(2)
+  // and boris_nfail(3) and summed here:
+  //   (2) the interpolated 3-metric at the particle was not positive definite
+  //       (Sylvester's criterion in GeodesicPush), or the Euler fallback was non-finite;
+  //   (3) the final write-back backstop found a non-finite position or momentum produced
+  //       anywhere else in the pusher (e.g. the EM half-kicks, which build a tetrad from
+  //       their own interpolated gamma_ij).
+  // Together these make "a non-finite particle state is never written into prtcl_rdata"
+  // an unconditional invariant of GR_BorisPush. A rejection is a genuine loss of accuracy
+  // for that particle, so it is reported ALWAYS -- never only under <particles> debug --
+  // with a per-cycle count and a running per-rank total.
+  std::int64_t boris_nreject_cum;
+  bool boris_first_reject_seen;
 
   // Stress-energy feedback supports a 3D Z4c consumer without dynamical GRMHD. Images
   // may cross ranks and coarse-fine interfaces, including through dynamic AMR regrids.

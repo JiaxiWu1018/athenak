@@ -10,7 +10,8 @@
 //!       half-dt electromagnetic Boris kick in the local orthonormal frame;
 //!   (2) implicitly advance the geodesic motion x^n -> x^{n+1}, u -> u^{+} with a
 //!       fixed-point iteration over the time-and-space midpoint metric (forward-Euler
-//!       fallback on failure);
+//!       fallback on failure; both are rejected outright if the interpolated geometry is
+//!       not a valid 3-metric, and a rejected update is NOT TAKEN);
 //!   (3) interpolate fields/metric at x^{n+1} and do the second half-dt EM kick.
 //! The q=0 / no-MHD limit is the geodesic integrator (steps 1 and 3 are skipped). The
 //! metric is read at two time levels: the *_last snapshots hold step n, the live arrays
@@ -50,7 +51,25 @@ namespace particles {
 //! operator()(xin,uin,xout,uout,Euler) returns the updated (x,u) given a trial (x,u): it
 //! interpolates the metric and its spatial derivatives at the space-time midpoint and
 //! applies the 3+1 geodesic equations. Euler=true evaluates at (x^n, step n) for the
-//! forward-Euler fallback.
+//! forward-Euler fallback. It returns FALSE when the interpolated geometry is not a
+//! valid Riemannian 3-metric, in which case (xout,uout) must not be used.
+//!
+//! Why the validity test exists. gamma_ij is positive definite by construction, but the
+//! value used here is a 2*NG-node Lagrange interpolation, and near a moving-puncture
+//! trumpet -- where gamma_ij ~ psi^4 rises steeply toward the chi floor -- a high-order
+//! interpolant overshoots into NEGATIVE diagonal components (Runge phenomenon). Measured
+//! in the near-critical y_c=0.700 collapse at t/M = 308: all eight particles that broke
+//! the run had gamma_yy, gamma_zz in [-1.86, -1.23] at r ~ 0.2 M with alpha ~ 0.17,
+//! three of them with det gamma < 0. The consequences are
+//!     usq = gamma^{ij} u_i u_j  <  -1   ==>   W = sqrt(1 + usq) = NaN
+//! for those three, and a finite but meaningless W (7.6 ... 23.2, from usq = +56 ... +539
+//! with a garbage u^i) for the other five. The NaN was then written straight into the
+//! particle array, and NaN is invisible to every comparison-based predicate downstream --
+//! ComputeBlockOffsets reports "did not cross", ExitsMeshBoundary is never consulted, and
+//! alpha < excise_lapse is false -- so the particle could neither migrate nor be excised.
+//! Note det gamma > 0 is NOT sufficient: five of the eight had two negative eigenvalues,
+//! whose signs cancel in the determinant. The test below is Sylvester's criterion on the
+//! three leading principal minors, which is exactly positive-definiteness.
 
 template <int NG>
 struct GeodesicPush {
@@ -72,7 +91,7 @@ struct GeodesicPush {
       mb(mb_), dt(dt_), use_z4c(use_z4c_) {}
 
   KOKKOS_INLINE_FUNCTION
-  void operator()(const Real xin[3], const Real uin[3], Real xout[3], Real uout[3],
+  bool operator()(const Real xin[3], const Real uin[3], Real xout[3], Real uout[3],
                   bool Euler) const {
     Real x_mid[3] = {0.0}, u_mid[3] = {0.0};
     for (int i = 0; i < 3; ++i) {
@@ -129,12 +148,22 @@ struct GeodesicPush {
       for (int i = 0; i < 6; ++i) { g3d[i] = g3d_old[i]; }
     }
     // (ii) transport velocity v^i = alp u^i / W - beta^i
-    Real g3u[6] = {0.0};
+    // Reject an interpolated 3-metric that is not positive definite (Sylvester's
+    // criterion on the leading principal minors -- see the struct docstring for the
+    // measurement that motivates it). gamma_ij storage is (xx,xy,xz,yy,yz,zz).
     Real det = Primitive::GetDeterminant(g3d);
+    Real minor1 = g3d[0];
+    Real minor2 = g3d[0]*g3d[3] - g3d[1]*g3d[1];
+    if (!(minor1 > 0.0) || !(minor2 > 0.0) || !(det > 0.0)) {return false;}
+    Real g3u[6] = {0.0};
     Primitive::InvertMatrix(g3u, g3d, det);
     Real u_mid_u[3] = {0.0};
     Primitive::RaiseForm(u_mid_u, u_mid, g3u);
-    Real Lorentz = std::sqrt(1.0 + Primitive::Contract(u_mid_u, u_mid));
+    // usq >= 0 for a positive-definite gamma; the guard costs nothing and keeps W real
+    // if round-off in the minors ever lets a marginal case through.
+    Real usq = Primitive::Contract(u_mid_u, u_mid);
+    if (!(usq >= 0.0)) {return false;}
+    Real Lorentz = std::sqrt(1.0 + usq);
     Real v[3] = {0.0};
     for (int i = 0; i < 3; ++i) { v[i] = alp * u_mid_u[i] / Lorentz - beta[i]; }
     // (iii) advance position
@@ -246,24 +275,38 @@ struct GeodesicPush {
     }
     // (iii) advance velocity
     for (int i = 0; i < 3; ++i) { uout[i] = u_old[i] + dt * g[i]; }
+    return true;
   }
 };
 
 //----------------------------------------------------------------------------------------
-//! \fn bool FixedPointIteration
-//! \brief solve the implicit geodesic substep x=f(x) by fixed-point iteration. Returns
-//! true on convergence (writes x,u); on non-finite iterates or non-convergence it falls
-//! back to a forward-Euler step f(x0,u0,...,Euler=true) and returns false.
+//! \enum GeodesicStatus
+//! \brief outcome of one implicit geodesic substep.
+//!   kConverged : the fixed point converged; (x,u) are the step-n+1 state
+//!   kEuler     : the fixed point did not converge, but the forward-Euler fallback
+//!                produced a VALID finite state -- a documented first-order step
+//!   kRejected  : neither produced a usable state (invalid interpolated geometry or a
+//!                non-finite result). (x,u) are meaningless and MUST NOT be written back.
+
+enum GeodesicStatus {kConverged = 0, kEuler = 1, kRejected = 2};
+
+//----------------------------------------------------------------------------------------
+//! \fn int FixedPointIteration
+//! \brief solve the implicit geodesic substep x=f(x) by fixed-point iteration. On
+//! non-finite iterates or non-convergence it falls back to a forward-Euler step
+//! f(x0,u0,...,Euler=true). The Euler result is itself validated: previously it was
+//! written back unchecked, which is how a NaN entered the particle array in the
+//! near-critical y_c=0.700 collapse (see the GeodesicPush docstring).
 
 template<class F>
 KOKKOS_INLINE_FUNCTION
-bool FixedPointIteration(const F& f, const Real x0[3], const Real u0[3],
-                         Real x[3], Real u[3], Real tol=1e-7, int maxIter=50) {
+int FixedPointIteration(const F& f, const Real x0[3], const Real u0[3],
+                        Real x[3], Real u[3], Real tol=1e-7, int maxIter=50) {
   Real x_new[3], u_new[3];
   for (int i = 0; i < 3; ++i) { x_new[i] = x0[i]; u_new[i] = u0[i]; }
   Real x_next[3], u_next[3];
   for (int iter = 0; iter < maxIter; ++iter) {
-    f(x_new, u_new, x_next, u_next, false);
+    if (!f(x_new, u_new, x_next, u_next, false)) { break; }
     bool to_break = false;
     for (int i = 0; i < 3; ++i) {
       if (!std::isfinite(x_next[i]) || !std::isfinite(u_next[i])) { to_break = true; }
@@ -276,12 +319,15 @@ bool FixedPointIteration(const F& f, const Real x0[3], const Real u0[3],
     }
     if (err < tol) {
       for (int i = 0; i < 3; ++i) { x[i] = x_next[i]; u[i] = u_next[i]; }
-      return true;
+      return kConverged;
     }
     for (int i = 0; i < 3; ++i) { x_new[i] = x_next[i]; u_new[i] = u_next[i]; }
   }
-  f(x0, u0, x, u, true);   // forward-Euler fallback
-  return false;
+  if (!f(x0, u0, x, u, true)) { return kRejected; }   // forward-Euler fallback
+  for (int i = 0; i < 3; ++i) {
+    if (!std::isfinite(x[i]) || !std::isfinite(u[i])) { return kRejected; }
+  }
+  return kEuler;
 }
 
 //----------------------------------------------------------------------------------------
@@ -472,28 +518,28 @@ void Particles::GR_BorisPush() {
 
     // ---- Step 3: implicit geodesic substep x^n -> x^{n+1}, u_p -> u_pp ----
     Real x_np1[3] = {0.0}, u_pp[3] = {0.0};
-    bool find_root = false;
+    int gstat = kRejected;
     switch (ng) {
     case 2: {
       GeodesicPush<2> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
                          z4c_n, z4c_np1);
-      find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+      gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
       break;
     }
     case 3: {
       GeodesicPush<3> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
                          z4c_n, z4c_np1);
-      find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+      gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
       break;
     }
     case 4: {
       GeodesicPush<4> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
                          z4c_n, z4c_np1);
-      find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+      gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
       break;
     }
     }
-    if (!find_root) {
+    if (gstat == kEuler) {
       // Count EVERY failure, but print at most ndetail_ detailed lines per cycle: the
       // host emits one summary line afterwards, so the log stays O(1) per rank per cycle
       // instead of O(N_particle). The atomic returns this failure's index, which both
@@ -507,6 +553,25 @@ void Particles::GR_BorisPush() {
                        pi(PTAG, p), pi(PGID, p),
                        x_n[0], x_n[1], x_n[2], u_p[0], u_p[1], u_p[2], dt_);
       }
+    } else if (gstat == kRejected) {
+      // Neither the fixed point nor the forward-Euler fallback produced a usable state:
+      // the interpolated 3-metric at this particle is not positive definite (a
+      // high-order interpolation overshoot at the puncture; see the GeodesicPush
+      // docstring). THE STEP IS NOT TAKEN -- the particle keeps its step-n position and
+      // velocity, which are finite and still inside its own MeshBlock, so every
+      // downstream invariant holds and the ordinary excision criterion gets to classify
+      // it on a later cycle. Writing the non-finite result instead is what broke the
+      // near-critical y_c=0.700 collapse.
+      int islot = Kokkos::atomic_fetch_add(&nfail_(2), 1);
+      if (islot < ndetail_) {
+        Kokkos::printf("### WARNING gr_boris: geodesic substep REJECTED (interpolated "
+                       "3-metric not positive definite or non-finite result); step not "
+                       "taken | tag=%d gid=%d x=(% .6e,% .6e,% .6e) "
+                       "u_i=(% .6e,% .6e,% .6e) dt=%.6e\n",
+                       pi(PTAG, p), pi(PGID, p),
+                       x_n[0], x_n[1], x_n[2], u_p[0], u_p[1], u_p[2], dt_);
+      }
+      return;   // leave pr(IPX..)/pr(IPVX..) at their step-n values
     }
 
     // ---- Step 4+5: second half EM kick at x^{n+1} (skipped when no MHD) ----
@@ -636,7 +701,35 @@ void Particles::GR_BorisPush() {
       for (int i = 0; i < 3; ++i) { u_np1[i] = u_pp[i]; }
     }
 
-    // ---- Step 6: write back ----
+    // ---- Step 6: write back -------------------------------------------------------
+    // Unconditional backstop for the invariant "a non-finite state is never written".
+    // The geodesic substep is guarded at its source (GeodesicPush validates gamma_ij by
+    // Sylvester's criterion and FixedPointIteration validates the Euler fallback), but
+    // the two EM half-kicks above are not: they interpolate their OWN gamma_ij at x^n and
+    // x^{n+1} and feed it to GetDeterminant / LowerVector / CalcTetrad -- whose
+    // tetrad[2][2] = sqrt(gxx*gyy - gxy^2), tetrad[3][3] = sqrt(gxx*det) and
+    // 1/sqrt(g3u[5]) are an unguarded Cholesky -- so the same non-positive-definite
+    // interpolant that breaks the geodesic step would produce a NaN there too. Those
+    // branches are dead for dust (q = 0, no MHD), which is every configuration this was
+    // validated against, so rather than duplicate the test into code that cannot be
+    // exercised here, the write back itself refuses a non-finite result: the particle
+    // keeps its step-n state and the rejection is counted and reported exactly like a
+    // rejected geodesic substep. The invariant therefore holds no matter which sub-step
+    // produced the NaN, including any added later.
+    bool finite_out = Kokkos::isfinite(x_np1[0]) && Kokkos::isfinite(x_np1[1])
+                   && Kokkos::isfinite(x_np1[2]) && Kokkos::isfinite(u_np1[0])
+                   && Kokkos::isfinite(u_np1[1]) && Kokkos::isfinite(u_np1[2]);
+    if (!finite_out) {
+      int islot = Kokkos::atomic_fetch_add(&nfail_(3), 1);
+      if (islot < ndetail_) {
+        Kokkos::printf("### WARNING gr_boris: non-finite state after the EM half-kicks; "
+                       "step not taken | tag=%d gid=%d x=(% .6e,% .6e,% .6e) "
+                       "u_i=(% .6e,% .6e,% .6e) dt=%.6e\n",
+                       pi(PTAG, p), pi(PGID, p),
+                       x_n[0], x_n[1], x_n[2], u_p[0], u_p[1], u_p[2], dt_);
+      }
+      return;   // leave pr(IPX..)/pr(IPVX..) at their step-n values
+    }
     pr(IPX, p) = x_np1[0];
     pr(IPY, p) = x_np1[1];
     pr(IPZ, p) = x_np1[2];
@@ -651,6 +744,34 @@ void Particles::GR_BorisPush() {
   {
     auto hfail = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), boris_nfail);
     int nfail = hfail(0);
+    int nrej_geo = hfail(2);
+    int nrej_out = hfail(3);
+    int nrej = nrej_geo + nrej_out;
+    if (nrej > 0) {
+      boris_nreject_cum += static_cast<std::int64_t>(nrej);
+      if (!boris_first_reject_seen) {
+        boris_first_reject_seen = true;
+        std::cout << "### WARNING in " << __FILE__ << ": gr_boris REJECTED a particle "
+                  << "update for the first time this run (rank "
+                  << global_variable::my_rank << ", cycle " << pmy_pack->pmesh->ncycle
+                  << ", dt = " << pmy_pack->pmesh->dt << ")." << std::endl
+                  << "    The interpolated 3-metric at the particle was not positive "
+                  << "definite, or the resulting state was non-finite, so the step was "
+                  << "NOT TAKEN and the particle kept its step-n position and momentum."
+                  << std::endl
+                  << "    This is a real loss of accuracy for that particle, not a "
+                  << "crash: it happens where a high-order interpolation of gamma_ij "
+                  << "overshoots, i.e. inside a moving-puncture trumpet." << std::endl
+                  << "    If it affects more than a negligible fraction of the "
+                  << "population, the matter there is under-resolved -- refine, or "
+                  << "excise earlier (raise <particles> excise_lapse)." << std::endl;
+      }
+      std::cout << "### gr_boris update rejected: rank " << global_variable::my_rank
+                << " cycle " << pmy_pack->pmesh->ncycle << ": " << nrej << " of "
+                << nprtcl_thispack << " particles kept their step-n state"
+                << " (geodesic " << nrej_geo << ", write-back " << nrej_out
+                << "; rank total " << boris_nreject_cum << ")" << std::endl;
+    }
     if (nfail > 0) {
       boris_nfail_cum += static_cast<std::int64_t>(nfail);
       if (!boris_first_fail_seen) {
@@ -671,8 +792,8 @@ void Particles::GR_BorisPush() {
                 << " cycle " << pmy_pack->pmesh->ncycle << ": " << nfail << " of "
                 << nprtcl_thispack << " particles fell back to forward Euler"
                 << " (rank total " << boris_nfail_cum << ")" << std::endl;
-      Kokkos::deep_copy(boris_nfail, 0);
     }
+    if (nfail > 0 || nrej > 0) {Kokkos::deep_copy(boris_nfail, 0);}
   }
 
   // snapshot the current fields/metric as step n for the next push (for a static
