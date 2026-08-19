@@ -662,6 +662,13 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
     // Shift driver
     Real shift_eta = opt.const_damp ? opt.shift_eta
                                     : opt.shift_eta * spatial_damp_(m,k,j,i);
+    // `spatial_damp_` is allocated only when const_damp=false (z4c.cpp); with the
+    // default const_damp=true it is a zero-extent View, so the blow-up diagnostics
+    // below must not dereference it -- otherwise the report that is supposed to
+    // explain a shift blow-up is itself an illegal memory access that kills the run
+    // (Release builds have no Kokkos bounds check).  1.0 is the value the damping
+    // multiplier takes in that branch, so the printed number is unchanged.
+    const Real damp_report = opt.const_damp ? 1.0 : spatial_damp_(m,k,j,i);
     if (opt.shift_use_B) {
       const Real b1 = opt.shift_advect;
       constexpr Real b2 = 0.75;
@@ -670,11 +677,11 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
         rhs.b_u(m,a,k,j,i) = b1 * (LB_u(a) - advGam_u(a))
                            + rhs.vGam_u(m,a,k,j,i)
                            - shift_eta * z4c.b_u(m,a,k,j,i);
-        if (abs(rhs.beta_u(m,a,k,j,i)) > 1e3) {
+        if (fabs(rhs.beta_u(m,a,k,j,i)) > 1e3) {
           Kokkos::printf("beta index %d %d %d %d %d is huge, "
                          "B %.5g, damp %.5g, beta %.5g\n",
                          m, a, k, j, i, z4c.b_u(m,a,k,j,i),
-                         spatial_damp_(m,k,j,i), z4c.beta_u(m,a,k,j,i));
+                         damp_report, z4c.beta_u(m,a,k,j,i));
         }
       }
     } else {
@@ -683,11 +690,11 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
                               + opt.shift_advect * Lbeta_u(a);
         rhs.beta_u(m,a,k,j,i) -= shift_eta * z4c.beta_u(m,a,k,j,i);
         rhs.b_u(m,a,k,j,i) = 0.0;
-        if (abs(rhs.beta_u(m,a,k,j,i)) > 1e3) {
+        if (fabs(rhs.beta_u(m,a,k,j,i)) > 1e3) {
           Kokkos::printf("beta index %d %d %d %d %d is huge, Gamma %.5g, "
                          "Lbeta %.5g, damp %.5g, beta %.5g\n",
                          m, a, k, j, i, z4c.vGam_u(m,a,k,j,i), Lbeta_u(a),
-                         spatial_damp_(m,k,j,i), z4c.beta_u(m,a,k,j,i));
+                         damp_report, z4c.beta_u(m,a,k,j,i));
         }
       }
       for(int a = 0; a < 3; ++a) {
