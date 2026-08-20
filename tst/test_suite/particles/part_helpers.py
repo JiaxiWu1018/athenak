@@ -39,22 +39,37 @@ def rank_counts(requested):
     return [count for count in requested if count <= available]
 
 
-def run_args(args, threads=1):
-    """Run Athena with arbitrary CLI arguments and return this command's log output."""
+ABORT_TIMEOUT = 600.0   # a run expected to abort must not be able to hang CI
+
+
+def run_args(args, threads=1, expect_failure=False):
+    """Run Athena with arbitrary CLI arguments and return this command's log output.
+
+    ``expect_failure`` inverts the exit-status assertion, for regressions whose point is
+    that the code must refuse to continue. The log is returned either way so the caller
+    can assert on the message: a nonzero exit alone would also match an unrelated crash.
+    """
     command = ["mpirun", "-np", str(threads), "./athena"] + list(args)
     start = (
         os.path.getsize(testutils.LOG_FILE_PATH)
         if os.path.exists(testutils.LOG_FILE_PATH)
         else 0
     )
-    if not testutils.run_command(command):
+    ok = testutils.run_command(
+        command, timeout=ABORT_TIMEOUT if expect_failure else None
+    )
+    if ok and expect_failure:
+        raise RuntimeError(
+            f"run completed with {threads} MPI rank(s) but was expected to abort"
+        )
+    if not ok and not expect_failure:
         raise RuntimeError(f"particle regression failed with {threads} MPI rank(s)")
     with open(testutils.LOG_FILE_PATH, "rb") as stream:
         stream.seek(start)
         return stream.read().decode(errors="replace")
 
 
-def run_case(input_file, run_dir, ranks, extra_args=None):
+def run_case(input_file, run_dir, ranks, extra_args=None, expect_failure=False):
     if extra_args is None:
         extra_args = []
     return run_args(
@@ -66,6 +81,7 @@ def run_case(input_file, run_dir, ranks, extra_args=None):
         ]
         + list(extra_args),
         threads=ranks,
+        expect_failure=expect_failure,
     )
 
 
