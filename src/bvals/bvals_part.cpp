@@ -72,13 +72,19 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   bool &multi_d = pmy_part->pmy_pack->pmesh->multi_d;
   bool &three_d = pmy_part->pmy_pack->pmesh->three_d;
 
-  // migration debug instrumentation (<particles> debug >= 1): per-cycle crossing counters
-  // {0: face, 1: edge, 2: corner, 3: destination-search failure}, accumulated on device
-  // and copied back into the Particles members for CheckMigration. debug >= 2 adds a
-  // per-event log.
+  // Per-cycle crossing counters accumulated on device. {0,1,2} classify placed crossings
+  // by face/edge/corner and are published for CheckMigration only under <particles>
+  // debug; {3} counts crossings the search could NOT place and {4} the overspeed subset
+  // of those, and both are read back and acted on unconditionally (see the fatal check
+  // after the kernel). debug >= 2 adds a per-event log.
   int dbg = pmy_part->debug_lvl;
   int ncycle = pmy_part->pmy_pack->pmesh->ncycle;
-  DvceArray1D<int> dcnt("pdbg_cnt",4);   // zero-initialized
+  Real mtime = pmy_part->pmy_pack->pmesh->time;
+  Real mdt = pmy_part->pmy_pack->pmesh->dt;
+  // Cap on per-particle detail lines per rank per cycle, so a whole population of
+  // offenders cannot bury the summary in the log.
+  const int kMigrDetail = 8;
+  DvceArray1D<int> dcnt("pdbg_cnt",5);   // zero-initialized
 
   // destruction marking (Stage 3c): device counters {0: append slot, 1..3: per-reason
   // counts (exit/sphere/lapse)} and the destroyed-side {sum tag, sum tag^2} checksum
@@ -218,18 +224,74 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
         }
         UpdateGID(pi(PGID,p), nghbr.d_view(m,indx), myrank, pcounter, psendl, p);
       } else {
-        // No destination: leave the particle on its current MeshBlock rather than write
-        // a dangling GID (the legacy corner path wrote gid=-1 AND rank=-1, which aborted
-        // MPI builds inside MPI_Isend). Mesh exits are destroyed BEFORE the search
-        // (Stage 3c), so this is reachable only if the particle moved more than one
-        // block width in a step or the 2:1-balance / SetNeighbors contract broke --
-        // unconditionally a logic error. CheckMigration (debug >= 1) makes it fatal via
-        // the search_fail counter and the containment check.
-        Kokkos::atomic_add(&dcnt(3), 1);
-        if (dbg > 0) {
-          Kokkos::printf("[prtcl-debug] rank=%d cycle=%d tag=%d gid=%d SEARCH FAIL "
-                         "off=(%d,%d,%d) pos=(%.6e,%.6e,%.6e)\n", myrank, ncycle,
-                         pi(PTAG,p), oldgid, ix, iy, iz, x1, x2, x3);
+        // No destination: unrecoverable, the host aborts below (the GID is left alone
+        // only to avoid shipping a dangling one to MPI). Mesh exits are destroyed before
+        // the search, so two causes reach here, both fatal by design and reported
+        // unconditionally: (a) overspeed -- some |offset| == 2, the particle moved
+        // beyond the 26-neighbour migration range (re-homing it would hide the broken
+        // assumption); (b) offsets within +-1 but no neighbour slot -- the mesh violates
+        // its 2:1-balance / SetNeighbors contract.
+        bool overspeed = (abs(ix) > 1 || abs(iy) > 1 || abs(iz) > 1);
+        int fslot = Kokkos::atomic_fetch_add(&dcnt(3), 1);
+        if (overspeed) {Kokkos::atomic_add(&dcnt(4), 1);}
+        if (fslot < kMigrDetail) {
+          const RegionSize &sz = mbsize.d_view(m);
+          Real bmin[3] = {sz.x1min, sz.x2min, sz.x3min};
+          Real bmax[3] = {sz.x1max, sz.x2max, sz.x3max};
+          // fmax guards the 2D case, where the z extent is unused and may be zero
+          Real bw[3]   = {fmax(sz.x1max - sz.x1min, 1.0e-300),
+                          fmax(sz.x2max - sz.x2min, 1.0e-300),
+                          fmax(sz.x3max - sz.x3min, 1.0e-300)};
+          Real dxc[3]  = {fmax(sz.dx1, 1.0e-300), fmax(sz.dx2, 1.0e-300),
+                          fmax(sz.dx3, 1.0e-300)};
+          Real xp[3]   = {x1, x2, x3};
+          // Overshoot beyond the owning block. The particle started inside [bmin,bmax),
+          // so this is a lower bound on the update's displacement, tight to within one
+          // block width. The exact step-n position is not retained on purpose.
+          Real ov[3];
+          for (int d=0; d<3; ++d) {
+            ov[d] = (xp[d] >= bmax[d]) ? (xp[d] - bmax[d])
+                  : ((xp[d] <  bmin[d]) ? (bmin[d] - xp[d]) : 0.0);
+          }
+          // Two literal format strings, not one with a "%s": the HIP device printf
+          // drops the segment carrying a %s conversion (measured on gfx90a / ROCm
+          // 6.4.1), which silently swallowed the line naming the cause.
+          if (overspeed) {
+            Kokkos::printf(
+              "### FATAL ERROR particle migration: particle moved MORE THAN ONE "
+              "MeshBlock width in one update\n"
+              "    rank=%d cycle=%d time=%.8e dt=%.8e tag=%d gid=%d\n"
+              "    x_new=(% .8e,% .8e,% .8e)  u_i/v=(% .8e,% .8e,% .8e)\n"
+              "    owning block bbox x1=[% .8e,% .8e) x2=[% .8e,% .8e) "
+              "x3=[% .8e,% .8e)\n"
+              "    block offsets=(%d,%d,%d)  [+-2 means 'two or more block widths']\n"
+              "    displacement >= (%.6f,%.6f,%.6f) MeshBlock widths"
+              " = (%.4f,%.4f,%.4f) cells\n",
+              myrank, ncycle, mtime, mdt, pi(PTAG,p), oldgid,
+              x1, x2, x3, pr(IPVX,p), pr(IPVY,p), three_d ? pr(IPVZ,p) : 0.0,
+              bmin[0], bmax[0], bmin[1], bmax[1], bmin[2], bmax[2],
+              ix, iy, iz,
+              ov[0]/bw[0], ov[1]/bw[1], ov[2]/bw[2],
+              ov[0]/dxc[0], ov[1]/dxc[1], ov[2]/dxc[2]);
+          } else {
+            Kokkos::printf(
+              "### FATAL ERROR particle migration: supported motion, but the mesh has "
+              "NO neighbour to move into\n"
+              "    rank=%d cycle=%d time=%.8e dt=%.8e tag=%d gid=%d\n"
+              "    x_new=(% .8e,% .8e,% .8e)  u_i/v=(% .8e,% .8e,% .8e)\n"
+              "    owning block bbox x1=[% .8e,% .8e) x2=[% .8e,% .8e) "
+              "x3=[% .8e,% .8e)\n"
+              "    block offsets=(%d,%d,%d)  [all within +-1: the neighbour array is "
+              "missing an entry]\n"
+              "    displacement >= (%.6f,%.6f,%.6f) MeshBlock widths"
+              " = (%.4f,%.4f,%.4f) cells\n",
+              myrank, ncycle, mtime, mdt, pi(PTAG,p), oldgid,
+              x1, x2, x3, pr(IPVX,p), pr(IPVY,p), three_d ? pr(IPVZ,p) : 0.0,
+              bmin[0], bmax[0], bmin[1], bmax[1], bmin[2], bmax[2],
+              ix, iy, iz,
+              ov[0]/bw[0], ov[1]/bw[1], ov[2]/bw[2],
+              ov[0]/dxc[0], ov[1]/dxc[1], ov[2]/dxc[2]);
+          }
         }
       }
 
@@ -316,14 +378,52 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
     pmy_part->ledger_dead[1] += hds(1);
   }
 
-  // store the per-cycle migration counters for CheckMigration (debug mode only)
-  if (dbg > 0) {
+  // Read the counters back. The face/edge/corner classification is published only under
+  // <particles> debug, but the destination failures are acted on always: neither cause
+  // (see the kernel above) may pass silently.
+  {
     auto hcnt = Kokkos::create_mirror_view(dcnt);
     Kokkos::deep_copy(hcnt, dcnt);
-    pmy_part->nmigr_face   = hcnt(0);
-    pmy_part->nmigr_edge   = hcnt(1);
-    pmy_part->nmigr_corner = hcnt(2);
-    pmy_part->nsearch_fail = hcnt(3);
+    if (dbg > 0) {
+      pmy_part->nmigr_face   = hcnt(0);
+      pmy_part->nmigr_edge   = hcnt(1);
+      pmy_part->nmigr_corner = hcnt(2);
+      pmy_part->nsearch_fail = hcnt(3);
+    }
+    int nfail_tot = hcnt(3);
+    int nfail_over = hcnt(4);
+    int nfail_nghbr = nfail_tot - nfail_over;
+    if (nfail_tot > 0) {
+      // Kokkos::printf output lands in the C stdout buffer and MPI_Abort flushes
+      // nothing, so fence and flush every stream first or the diagnostic can be lost.
+      // Inside the failure branch, so the healthy path pays nothing.
+      Kokkos::fence();
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "particle migration cannot place " << nfail_tot << " particle(s) on "
+                << "rank " << global_variable::my_rank << " at cycle " << ncycle
+                << " (time " << mtime << ", dt " << mdt << "):" << std::endl
+                << "    " << nfail_over << " moved MORE THAN ONE MeshBlock width in one "
+                << "update -- beyond the supported migration range." << std::endl
+                << "    " << nfail_nghbr << " moved within the supported range but found "
+                << "no neighbour -- the mesh's 2:1-balance / SetNeighbors contract is "
+                << "broken." << std::endl
+                << "    Per-particle detail was printed above for at most "
+                << kMigrDetail << " of them. This is not repaired automatically: a hop "
+                << "this long means an assumption broke (interpolated geometry, gauge/"
+                << "shift excursion, or a timestep the particle CFL does not bound), and "
+                << "re-homing the particle from a whole-mesh lookup would hide it."
+                << std::endl;
+      std::cout << std::flush;
+      std::fflush(nullptr);       // drains the C stdout buffer the device printf uses
+#if MPI_PARALLEL_ENABLED
+      // one failing rank must kill the whole job: a plain exit here would leave the
+      // other ranks blocked in the next cycle's collectives
+      MPI_Abort(MPI_COMM_WORLD, 1);
+#else
+      std::exit(EXIT_FAILURE);
+#endif
+    }
   }
 
   return TaskStatus::complete;

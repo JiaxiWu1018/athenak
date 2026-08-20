@@ -1,0 +1,52 @@
+# Migration-range regression: every particle travels 2 or 3 whole MeshBlock widths per
+# update, which exceeds what migration can resolve, so the run must abort. debug = 0 on
+# purpose: detection must not depend on the debug instrumentation.
+# Uniform, strictly periodic 32^3 mesh in 4x4x4 blocks of 8^3.
+# 64 blocks x 26 directions x 2 hop counts = 3328 particles.
+
+<comment>
+problem = particle multi-block hop, expected to be fatal
+
+<job>
+basename = part_crossing_farhop_pytest
+
+<mesh>
+nghost = 2
+nx1 = 32
+x1min = -0.5
+x1max = 0.5
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 32
+x2min = -0.5
+x2max = 0.5
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 32
+x3min = -0.5
+x3max = 0.5
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 8
+nx2 = 8
+nx3 = 8
+
+<time>
+evolution = dynamic
+integrator = rk2
+cfl_number = 0.8
+nlim = 1
+tlim = 10.0
+ndiag = 1
+
+<particles>
+particle_type = dust
+pusher = drift
+init = pgen
+debug = 0
+
+<problem>
+mode = farhop
+hops = 2,3

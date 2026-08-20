@@ -122,8 +122,8 @@ class Particles {
   int debug_lvl;
   // per-cycle counters written by SetNewPrtclGID when debug_lvl >= 1, classified by the
   // crossing offset |ix|+|iy|+|iz| = 1/2/3. nsearch_fail counts particles for which no
-  // destination MeshBlock was found (always fatal; stays 0 until the Stage-3a(c) search
-  // rewrite wires failure detection -- the legacy neighbor walk cannot detect failure).
+  // destination MeshBlock was found. SetNewPrtclGID now aborts at the point of detection
+  // regardless of debug, so this is always 0 here and serves only as a backstop.
   int nmigr_face, nmigr_edge, nmigr_corner, nsearch_fail;
   // migration conservation ledger (CheckMigration, debug >= 1): GLOBAL {particle count,
   // sum of tags, sum of tag^2} captured at the first check and recomputed every cycle.
