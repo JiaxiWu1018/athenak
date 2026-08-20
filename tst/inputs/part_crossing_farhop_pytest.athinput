@@ -1,0 +1,56 @@
+# Migration-RANGE regression: every particle is asked to travel EXACTLY 2 or 3 whole
+# MeshBlock widths per update along one of the 26 offset directions. That is beyond the
+# range particle migration supports -- the 56-slot neighbour array covers at most the 26
+# IMMEDIATE neighbours, i.e. one block width in each direction -- so every one of these
+# hops MUST abort the run with the fatal diagnostic in bvals/bvals_part.cpp instead of
+# being silently re-homed. <particles> debug = 0 on purpose: the detection is
+# unconditional and must not depend on the debug instrumentation.
+# Uniform, strictly periodic 32^3 mesh split into 4x4x4 blocks of 8^3.
+# 64 blocks x 26 directions x 2 hop counts = 3328 particles.
+
+<comment>
+problem = particle multi-block hop, expected to be fatal
+
+<job>
+basename = part_crossing_farhop_pytest
+
+<mesh>
+nghost = 2
+nx1 = 32
+x1min = -0.5
+x1max = 0.5
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 32
+x2min = -0.5
+x2max = 0.5
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 32
+x3min = -0.5
+x3max = 0.5
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 8
+nx2 = 8
+nx3 = 8
+
+<time>
+evolution = dynamic
+integrator = rk2
+cfl_number = 0.8
+nlim = 1
+tlim = 10.0
+ndiag = 1
+
+<particles>
+particle_type = dust
+pusher = drift
+init = pgen
+debug = 0
+
+<problem>
+mode = farhop
+hops = 2,3

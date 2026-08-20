@@ -24,9 +24,24 @@
 //! neighbor directions (plus a rest particle every 27th), tag = lattice index. A
 //! statistical multi-cycle soak complement to the targeted mode.
 //!
+//! mode=farhop: the migration-RANGE fixture. The targeted/lattice modes only ever move a
+//! particle into an IMMEDIATE neighbour, which is exactly what the 56-slot nghbr-array
+//! destination search can resolve. This mode places, for every local MeshBlock, every one
+//! of the 26 offset directions and every requested hop count K (<problem> hops, default
+//! "2,3"), one particle at the block CENTRE with the velocity that carries it EXACTLY K
+//! block widths along each active direction in one particle step (dt = cfl * smallest
+//! cell in the mesh, the light-crossing particle timestep).
+//!     tag = (gid*27 + (ix+1) + 3*(iy+1) + 9*(iz+1))*8 + K
+//! is globally unique and decodable. K = 1 is the ordinary single-neighbour crossing and
+//! must migrate cleanly; K >= 2 puts the particle more than one whole MeshBlock width
+//! outside its own block, which is beyond the supported migration range and MUST abort
+//! the run with the fatal diagnostic in bvals_part.cpp (it is deliberately NOT repaired
+//! by a whole-mesh coordinate lookup). Requires a strictly periodic mesh, so that no hop
+//! is ambiguously a mesh exit instead.
+//!
 //! <problem> options: mode, vmax (speed, default 1.0), select_gid, select_slot (targeted
 //! mode filters: place only particles matching that gid and/or slot, for isolating a
-//! single failing crossing), npx/npy/npz (lattice mode).
+//! single failing crossing), npx/npy/npz (lattice mode), hops (farhop mode).
 
 #include <array>
 #include <cmath>
@@ -141,6 +156,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
 
   std::string mode = pin->GetOrAddString("problem","mode","targeted");
   Real vmax = pin->GetOrAddReal("problem","vmax",1.0);
+  // farhop shares the targeted mode's single-block isolation filter
+  int select_gid_far = pin->GetOrAddInteger("problem","select_gid",-1);
   PrtclStage st;
 
   if (mode.compare("targeted") == 0) {
@@ -266,10 +283,87 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
         }
       }
     }
+  } else if (mode.compare("farhop") == 0) {
+    // ---- migration-range fixture (see the file docstring) ---------------------------
+    if (!pm->strictly_periodic) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "mode=farhop requires a strictly periodic mesh (a hop into a physical "
+                << "boundary destroys the particle by design, which would mask the "
+                << "migration-range check under test)" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    // hop counts, e.g. "2,3": each is a number of WHOLE MeshBlock widths travelled per
+    // particle step. K = 1 is the ordinary single-neighbour crossing (supported); K >= 2
+    // is beyond the supported migration range and must be fatal.
+    std::vector<int> hops;
+    {
+      std::string spec = pin->GetOrAddString("problem","hops","2,3");
+      std::size_t pos = 0;
+      while (pos < spec.size()) {
+        std::size_t comma = spec.find(',', pos);
+        std::string tok = spec.substr(pos, (comma == std::string::npos)
+                                           ? std::string::npos : comma - pos);
+        std::size_t b = tok.find_first_not_of(" \t");
+        std::size_t e = tok.find_last_not_of(" \t");
+        if (b != std::string::npos) {hops.push_back(std::stoi(tok.substr(b, e - b + 1)));}
+        if (comma == std::string::npos) {break;}
+        pos = comma + 1;
+      }
+    }
+    for (int k : hops) {
+      if (k < 1 || k > 7) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "<problem> hops entry " << k
+                  << " out of range (1..7, so the tag encoding stays unique)"
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+    }
+    // the particle step: dt = cfl * smallest cell in the MESH (Particles::NewTimeStep).
+    // Use the mesh-wide minimum, not this rank's, so every rank stages identical speeds.
+    Real cfl = pin->GetReal("time","cfl_number");
+    Real dxmin = std::numeric_limits<Real>::max();
+    for (int m=0; m<nmb; ++m) {
+      Real d = mbsize.h_view(m).dx1;
+      d = std::fmin(d, mbsize.h_view(m).dx2);
+      if (three_d) {d = std::fmin(d, mbsize.h_view(m).dx3);}
+      dxmin = std::fmin(dxmin, d);
+    }
+#if MPI_PARALLEL_ENABLED
+    MPI_Allreduce(MPI_IN_PLACE, &dxmin, 1, MPI_ATHENA_REAL, MPI_MIN, MPI_COMM_WORLD);
+#endif
+    Real dt = cfl*dxmin;
+
+    for (int m=0; m<nmb; ++m) {
+      int gid = gids + m;
+      if (select_gid_far >= 0 && gid != select_gid_far) {continue;}
+      Real len[3] = {mbsize.h_view(m).x1max - mbsize.h_view(m).x1min,
+                     mbsize.h_view(m).x2max - mbsize.h_view(m).x2min,
+                     mbsize.h_view(m).x3max - mbsize.h_view(m).x3min};
+      Real ctr[3] = {0.5*(mbsize.h_view(m).x1min + mbsize.h_view(m).x1max),
+                     0.5*(mbsize.h_view(m).x2min + mbsize.h_view(m).x2max),
+                     0.5*(mbsize.h_view(m).x3min + mbsize.h_view(m).x3max)};
+      for (int iz=(three_d ? -1 : 0); iz<=(three_d ? 1 : 0); ++iz) {
+        for (int iy=-1; iy<=1; ++iy) {
+          for (int ix=-1; ix<=1; ++ix) {
+            if (ix == 0 && iy == 0 && iz == 0) {continue;}
+            int off[3] = {ix, iy, iz};
+            int dircode = (ix + 1) + 3*(iy + 1) + 9*(iz + 1);
+            for (int k : hops) {
+              Real v[3] = {0.0, 0.0, 0.0};
+              for (int d=0; d<3; ++d) {v[d] = off[d]*k*len[d]/dt;}
+              st.Add(ctr[0], ctr[1], three_d ? ctr[2] : 0.0, v[0], v[1], v[2],
+                     gid, (gid*27 + dircode)*8 + k);
+            }
+          }
+        }
+      }
+    }
   } else {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "<problem> mode = '" << mode << "' not recognized (use targeted|lattice)"
-              << std::endl;
+              << "<problem> mode = '" << mode << "' not recognized "
+              << "(use targeted|lattice|farhop)" << std::endl;
     exit(EXIT_FAILURE);
   }
 

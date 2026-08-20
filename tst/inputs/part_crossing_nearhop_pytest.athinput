@@ -1,0 +1,58 @@
+# False-positive control for the migration-RANGE regression: the SAME fixture as
+# part_crossing_farhop_pytest, but with hops = 1. A one-MeshBlock-width hop lands the
+# particle in an immediate neighbour, which is exactly what migration supports, so the
+# run must complete cleanly and follow the analytic periodic drift. This is what pins the
+# fatal threshold at "more than one MeshBlock width" rather than something tighter.
+# 64 blocks x 26 directions x 1 hop count = 1664 particles.
+
+<comment>
+problem = particle one-block hop, expected to be healthy
+
+<job>
+basename = part_crossing_nearhop_pytest
+
+<mesh>
+nghost = 2
+nx1 = 32
+x1min = -0.5
+x1max = 0.5
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 32
+x2min = -0.5
+x2max = 0.5
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 32
+x3min = -0.5
+x3max = 0.5
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 8
+nx2 = 8
+nx3 = 8
+
+<time>
+evolution = dynamic
+integrator = rk2
+cfl_number = 0.8
+nlim = 6
+tlim = 10.0
+ndiag = 1
+
+<particles>
+particle_type = dust
+pusher = drift
+init = pgen
+debug = 1
+
+<problem>
+mode = farhop
+hops = 1
+
+<output1>
+file_type = pvtk
+variable = prtcl_all
+dt = 0.025

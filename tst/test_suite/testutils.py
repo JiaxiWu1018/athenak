@@ -7,7 +7,7 @@ Various utility functions used for automatic testing, including
 
 # Modules
 import os
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, TimeoutExpired
 from typing import List
 import time
 import pytest
@@ -35,13 +35,18 @@ logging.basicConfig(
 )
 
 
-def run_command(command: List[str], text: bool = False) -> bool:
+def run_command(command: List[str], text: bool = False, timeout: float = None) -> bool:
     """
     Executes a shell command and captures its output and errors.
 
     Args:
         command (list): The command to execute as a list of strings.
         text (bool): Whether to treat output and errors as text (default: False).
+        timeout (float): Optional wall-clock limit in seconds. Without one, a test that
+            drives a failure path can hang the whole suite forever if the failure ever
+            becomes rank-partial: the surviving ranks block in the next MPI collective
+            and communicate() never returns. Default None preserves the previous
+            behaviour for every existing caller.
 
     Returns:
         bool: True if the command executed successfully, False otherwise.
@@ -51,7 +56,16 @@ def run_command(command: List[str], text: bool = False) -> bool:
     process = Popen(command, stdout=PIPE, stderr=PIPE, text=True)
     # Log the output only to the file
     with open(LOG_FILE_PATH, "a") as log_file:
-        output, errors = process.communicate()
+        try:
+            output, errors = process.communicate(timeout=timeout)
+        except TimeoutExpired:
+            process.kill()
+            output, errors = process.communicate()
+            log_file.write(output)
+            log_file.write(errors)
+            log_file.write(f"\n### run_command: killed after {timeout}s timeout\n")
+            logging.error(f"Command timed out after {timeout}s and was killed")
+            return False
         log_file.write(output)
         log_file.write(errors)
 
