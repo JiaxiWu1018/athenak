@@ -179,7 +179,13 @@ class Particles {
   // failure is ever hidden. The FIRST failure of a run prints full particle state.
   static constexpr int kBorisDetail = 3;
   // {0: non-convergence this cycle, 1: reserved detail budget, 2: REJECTED geodesic
-  //  substeps this cycle, 3: non-finite write-backs refused this cycle}
+  //  substeps this cycle, 3: non-finite write-backs refused this cycle,
+  //  4: trilinear fallbacks attempted, 5: fallbacks that converged,
+  //  6: fallbacks that fell back to Euler, 7: fallbacks whose surrounding GRID metric
+  //  was already not positive definite, 8: ... and where it was non-finite}. Slots 4-8
+  //  are written only when trilinear_fallback is enabled; slot 2 then means "the
+  //  low-order retry failed too".
+  static constexpr int kBorisCounters = 9;
   DvceArray1D<int> boris_nfail;
   std::int64_t boris_nfail_cum;
   bool boris_first_fail_seen;
@@ -189,6 +195,22 @@ class Particles {
   // so it is reported always -- never only under <particles> debug.
   std::int64_t boris_nreject_cum;
   bool boris_first_reject_seen;
+
+  // EXPERIMENT (branch experiment/ST-trilinear-fallback). <particles>
+  // trilinear_fallback = none | mirror | consistent, default none: when the high-order
+  // interpolation of the geometry is not a valid 3-metric, re-solve the SAME geodesic
+  // substep with a trilinear interpolant over the eight surrounding cell centres before
+  // rejecting it. The retry is entered only for substeps production would reject, so
+  // with the flag clear -- and for every accepted push with it set -- the pusher is
+  // unchanged. "mirror" keeps the production construction of gamma^{ij} and its
+  // gradient (interpolant of the per-node inverses) and so varies interpolation ORDER
+  // alone; "consistent" instead derives both from the interpolated covariant metric.
+  // The stored value is the gr_boris InterpMode integer.
+  int trilinear_fallback;
+  std::int64_t boris_nlow_try_cum;
+  std::int64_t boris_nlow_ok_cum;
+  std::int64_t boris_nlow_badgrid_cum;
+  bool boris_first_low_seen;
 
   // Stress-energy feedback supports a 3D Z4c consumer without dynamical GRMHD. Images
   // may cross ranks and coarse-fine interfaces, including through dynamic AMR regrids.

@@ -18,6 +18,13 @@
 //! for the geodesic / Christoffel force in gr_boris) and a per-node inverse-metric
 //! vector overload of LagrangeInterpolator (interpolate gamma^{ij} by inverting the
 //! 3-metric at each stencil node). The scalar overload (Stage 1) is unchanged.
+//!
+//! The CalcTrilinearWghtAndDrv / TrilinearInterpolator trio at the end is the ORDER=1
+//! member of the same family, added for the gr_boris low-order fallback (branch
+//! experiment/ST-trilinear-fallback). It is a separate two-node loop rather than the
+//! ORDER template with zeroed weights on purpose: the point of the fallback is that a
+//! bad value further out CANNOT enter the result, and a zero weight times a non-finite
+//! nodal value is NaN, not zero.
 
 #include <math.h>
 
@@ -199,6 +206,132 @@ void LagrangeInterpolator(const DvceArray5D<Real> &u0, const int nvar,
         Primitive::InvertMatrix(g3u, g3d, Primitive::GetDeterminant(g3d));
         for (int m = 0; m < 6; ++m) { results[m] += weight * g3u[m]; }
       }
+    }
+  }
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void CalcTrilinearWghtAndDrv
+//! \brief The ORDER=1 member of the same Lagrange family: two-node (linear) basis weights
+//! over the pair of cell centres bracketing the particle in each direction, together with
+//! the exact first derivative of that same interpolant. Outputs L*[0..1] and dL*[0..1];
+//! the caller's arrays are sized for the high-order stencil, and entries >= 2 are not
+//! written and must not be read.
+//!
+//! Two properties are the reason this exists (see the gr_boris fallback):
+//!   (a) the weights are in [0,1] and sum to 1 for any particle inside its owning
+//!       MeshBlock, so the interpolated 3-metric is a CONVEX COMBINATION of the eight
+//!       corner values and inherits their positive-definiteness;
+//!   (b) the stencil reads only the eight immediately surrounding cell centres, so a bad
+//!       grid value further away cannot contaminate the result.
+//! By contrast a 2*ORDER-node Lagrange interpolant has weights of both signs and can
+//! overshoot outside the range of its nodal values.
+//!
+//! The nodes are taken from CellCenterX, exactly as CalcInterpWght(AndDrv) does, so the
+//! spacing (and hence the derivative) is the same quantity the high-order path uses.
+
+KOKKOS_INLINE_FUNCTION
+void CalcTrilinearWghtAndDrv(const Real *x0, const Real *grid, const int *ncell,
+                             const int *interp_indcs, Real *Lx, Real *Ly, Real *Lz,
+                             Real *dLx, Real *dLy, Real *dLz) {
+  const Real xlo = CellCenterX(interp_indcs[1],     ncell[0], grid[0], grid[1]);
+  const Real xhi = CellCenterX(interp_indcs[1] + 1, ncell[0], grid[0], grid[1]);
+  const Real ylo = CellCenterX(interp_indcs[2],     ncell[1], grid[3], grid[4]);
+  const Real yhi = CellCenterX(interp_indcs[2] + 1, ncell[1], grid[3], grid[4]);
+  const Real zlo = CellCenterX(interp_indcs[3],     ncell[2], grid[6], grid[7]);
+  const Real zhi = CellCenterX(interp_indcs[3] + 1, ncell[2], grid[6], grid[7]);
+  const Real hx = xhi - xlo, hy = yhi - ylo, hz = zhi - zlo;
+  Lx[0] = (xhi - x0[0]) / hx;  Lx[1] = (x0[0] - xlo) / hx;
+  Ly[0] = (yhi - x0[1]) / hy;  Ly[1] = (x0[1] - ylo) / hy;
+  Lz[0] = (zhi - x0[2]) / hz;  Lz[1] = (x0[2] - zlo) / hz;
+  dLx[0] = -1.0 / hx;  dLx[1] = 1.0 / hx;
+  dLy[0] = -1.0 / hy;  dLy[1] = 1.0 / hy;
+  dLz[0] = -1.0 / hz;  dLz[1] = 1.0 / hz;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn Real TrilinearInterpolator
+//! \brief Scalar counterpart of LagrangeInterpolator for the two-node stencil built by
+//! CalcTrilinearWghtAndDrv. The base index from SetInterpIndices is the cell-centre-
+//! relative index of the node just below the particle, so the two nodes are at relative
+//! indices idx and idx+1, i.e. ALLOCATED indices idx+NGHOST and idx+NGHOST+1 (the
+//! high-order path's "+1" is the same expression with NGHOST-ORDER+1 and ORDER==NGHOST).
+//! With SetInterpIndices clamping idx to [-1, ncell-1] the reads stay inside
+//! [0, ncell+2*NGHOST-1] for any NGHOST >= 1: at most one ghost layer is touched.
+
+template <int NGHOST>
+KOKKOS_INLINE_FUNCTION
+Real TrilinearInterpolator(const DvceArray5D<Real> &u0, const int nvar,
+                           const int *interp_indcs, const Real *Lx, const Real *Ly,
+                           const Real *Lz) {
+  Real result = 0.0;
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      for (int k = 0; k < 2; ++k) {
+        Real weight = Lx[i] * Ly[j] * Lz[k];
+        result += weight * u0(interp_indcs[0], nvar,
+                              interp_indcs[3] + NGHOST + k,
+                              interp_indcs[2] + NGHOST + j,
+                              interp_indcs[1] + NGHOST + i);
+      }
+    }
+  }
+  return result;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void TrilinearInterpolator (vector / inverse-metric overload)
+//! \brief Two-node counterpart of the LagrangeInterpolator inverse-metric overload: the
+//! stored gamma_{ij} is inverted at each of the eight corners and the inverses are
+//! combined with the weights. Passing the derivative weights gives the derivative of that
+//! same interpolated gamma^{ij} field, which is what makes the fallback RHS consistent:
+//! value and gradient come from one interpolant. Output in the geom_math symmetric order.
+
+template <int NGHOST>
+KOKKOS_INLINE_FUNCTION
+void TrilinearInterpolator(const DvceArray5D<Real> &u0, const int nvar,
+                           const int *interp_indcs, const Real *Lx, const Real *Ly,
+                           const Real *Lz, Real *results) {
+  for (int m = 0; m < 6; ++m) { results[m] = 0.0; }
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      for (int k = 0; k < 2; ++k) {
+        Real weight = Lx[i] * Ly[j] * Lz[k];
+        Real g3d[6] = {0.0};
+        for (int m = 0; m < 6; ++m) {
+          g3d[m] = u0(interp_indcs[0], nvar+m,
+                      interp_indcs[3] + NGHOST + k,
+                      interp_indcs[2] + NGHOST + j,
+                      interp_indcs[1] + NGHOST + i);
+        }
+        Real g3u[6] = {0.0};
+        Primitive::InvertMatrix(g3u, g3d, Primitive::GetDeterminant(g3d));
+        for (int m = 0; m < 6; ++m) { results[m] += weight * g3u[m]; }
+      }
+    }
+  }
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void InverseMetricGradient
+//! \brief d_i gamma^{jk} = -gamma^{ja} (d_i gamma_ab) gamma^{bk}, in the symmetric
+//! 6-component storage {S11,S12,S13,S22,S23,S33} shared by geom_math and the ADM arrays.
+
+KOKKOS_INLINE_FUNCTION
+void InverseMetricGradient(Real dgu[6], const Real gu[6], const Real dgd[6]) {
+  // symmetric-storage index of the (a,b) component: {xx,xy,xz,yy,yz,zz}, the same
+  // convention as the ADM arrays and geom_math's SpatialMetricIndex
+  const int sidx[3][3] = {{0, 1, 2}, {1, 3, 4}, {2, 4, 5}};
+  for (int j = 0; j < 3; ++j) {
+    for (int k = j; k < 3; ++k) {
+      Real sum = 0.0;
+      for (int a = 0; a < 3; ++a) {
+        for (int b = 0; b < 3; ++b) {
+          sum += gu[sidx[j][a]] * dgd[sidx[a][b]] * gu[sidx[b][k]];
+        }
+      }
+      dgu[sidx[j][k]] = -sum;
     }
   }
 }

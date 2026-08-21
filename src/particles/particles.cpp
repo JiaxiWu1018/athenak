@@ -133,8 +133,33 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   boris_first_fail_seen = false;
   boris_nreject_cum = 0;
   boris_first_reject_seen = false;
+  // experiment: low-order retry of a rejected geodesic substep (see particles.hpp).
+  // The integers match the gr_boris InterpMode enum: 0 none, 1 mirror, 2 consistent.
+  std::string lowfb = pin->GetOrAddString("particles","trilinear_fallback","none");
+  if (lowfb.compare("none") == 0) {
+    trilinear_fallback = 0;
+  } else if (lowfb.compare("mirror") == 0) {
+    trilinear_fallback = 1;
+  } else if (lowfb.compare("consistent") == 0) {
+    trilinear_fallback = 2;
+  } else {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+              << "<particles> trilinear_fallback = '" << lowfb
+              << "' not recognized (use none|mirror|consistent)" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  boris_nlow_try_cum = 0;
+  boris_nlow_ok_cum = 0;
+  boris_nlow_badgrid_cum = 0;
+  boris_first_low_seen = false;
+  if (trilinear_fallback != 0 && pusher != ParticlesPusher::gr_boris) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+              << "<particles> trilinear_fallback applies to pusher = gr_boris only"
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
   if (pusher == ParticlesPusher::gr_boris) {
-    Kokkos::realloc(boris_nfail, 4);
+    Kokkos::realloc(boris_nfail, kBorisCounters);
     Kokkos::deep_copy(boris_nfail, 0);
   }
 
