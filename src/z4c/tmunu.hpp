@@ -17,6 +17,7 @@
 
 // forward declarations
 class MeshBlockPack;
+class MeshBoundaryValuesCC;
 
 //! \class Tmunu
 class Tmunu {
@@ -46,7 +47,30 @@ class Tmunu {
 
   DvceArray5D<Real> u_tmunu;                          // Tmunu
 
+  // ---- Entity-style digital filter of the deposited sources (tmunu_filter.cpp) ----
+  // <particles>/tmunu_filter_passes (default 0 = OFF: no allocation, no communication,
+  // no kernel -- the pre-filter code path is untouched). Each pass applies the exact
+  // separable [1/4,1/2,1/4]^3 kernel of Hakobyan et al. arXiv:2511.17710 Eq. (11) to all
+  // ten RAW (undensitized) components, after a cell-centered ghost fill of u_tmunu.
+  int nfilter_passes;
+  int filter_diag_cadence;   // <time>/ndiag: cycle cadence of the conservation report
+  DvceArray5D<Real> coarse_u_tmunu;    // coarse buffer for the SMR ghost fill
+  DvceArray4D<Real> u_filt_scratch;    // ONE-component scratch (components filter
+                                       // independently; avoids a 10-component copy)
+  DvceArray1D<Real> filt_sums;         // 20 = {pre,post} x 10 proper-volume integrals
+  MeshBoundaryValuesCC *pbval_tmunu;   // dedicated bvals object (own MPI communicator)
+
+  // filter driver: ghost fill + n passes + conservation diagnostics. Called from
+  // Particles::SetPrtclTmunu so it runs on EVERY deposit path (per-cycle task,
+  // init/restart seed, post-regrid re-deposit). No-op when nfilter_passes == 0.
+  void ApplyDigitalFilter(int ncycle, int debug_lvl);
+
  private:
+  void FillTmunuGhosts();              // synchronous CC exchange (driver-init pattern)
+  void FilterOnePass();                // Eq. (11) stencil, all 10 components
+  void ComputeSourceIntegrals(int slot);  // sum q sqrt(gamma) dV -> filt_sums[slot*10+]
+  void ReportFilterDiagnostics(int ncycle, bool full);
+
   MeshBlockPack* pmy_pack;
 };
 

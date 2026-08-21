@@ -929,6 +929,13 @@ TaskStatus Particles::SetPrtclTmunu(Driver *pdrive, int stage) {
                 << std::endl;
       std::exit(EXIT_FAILURE);
   }
+  // optional Entity-style digital filtering of the deposited sources (tmunu_filter.cpp;
+  // <particles> tmunu_filter_passes, default 0 = no-op). Placed HERE, after the deposit
+  // and its conservation identity, so it covers every deposit path through this
+  // wrapper: the per-cycle task, the Driver::Initialize seed (fresh starts and
+  // restarts -- the subsequent ADMConstraints refresh then sees the filtered source),
+  // and the post-regrid re-deposit in mesh_refinement.cpp.
+  pmy_pack->ptmunu->ApplyDigitalFilter(pmy_pack->pmesh->ncycle, debug_lvl);
   return TaskStatus::complete;
 }
 

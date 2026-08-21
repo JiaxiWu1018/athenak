@@ -198,6 +198,7 @@ add_executable(
         z4c/fastflow.cpp
 	    z4c/horizon_dump.cpp
         z4c/tmunu.cpp
+        z4c/tmunu_filter.cpp
         z4c/z4c.cpp
         z4c/z4c_adm.cpp
         z4c/z4c_calcrhs.cpp
