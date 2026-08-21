@@ -103,42 +103,45 @@ enum InterpMode {kHighOrder = 0, kTriMirror = 1, kTriExact = 2};
 //! the corner values themselves can fail (see CornerMetricCensus), so the Sylvester
 //! test below still runs on both paths.
 
-template <int NG>
+template <int NG, int IMODE>
 struct GeodesicPush {
+  static constexpr bool trilinear = (IMODE != kHighOrder);
+
   const Real *x_old, *u_old, *mb_par;
   const int *ncell;
   const DvceArray5D<Real> adm_old, adm_new, z4c_old, z4c_new;
   const int mb;
   const Real dt;
   const bool use_z4c;
-  const int imode;
-  const bool trilinear;
 
   KOKKOS_INLINE_FUNCTION
   GeodesicPush(const Real x_[3], const Real u_[3], const int mb_, const Real mb_par_[9],
                const int ncell_[3], const Real dt_,
                const DvceArray5D<Real>& adm_old_, const DvceArray5D<Real>& adm_new_,
                const bool use_z4c_,
-               const DvceArray5D<Real>& z4c_old_, const DvceArray5D<Real>& z4c_new_,
-               const int imode_)
+               const DvceArray5D<Real>& z4c_old_, const DvceArray5D<Real>& z4c_new_)
     : x_old(x_), u_old(u_), mb_par(mb_par_), ncell(ncell_),
       adm_old(adm_old_), adm_new(adm_new_), z4c_old(z4c_old_), z4c_new(z4c_new_),
-      mb(mb_), dt(dt_), use_z4c(use_z4c_), imode(imode_),
-      trilinear(imode_ != kHighOrder) {}
+      mb(mb_), dt(dt_), use_z4c(use_z4c_) {}
 
-  //! The one place the interpolation order enters. Both overloads forward to the
-  //! high-order kernel unless the trilinear fallback is active, so with trilinear=false
-  //! the arithmetic below is exactly the production arithmetic.
+  //! The one place the interpolation order enters. `if constexpr`, not a runtime test:
+  //! the discarded branch is never instantiated, so the kHighOrder instantiation does
+  //! not carry the trilinear kernels at all. A runtime flag here relies on the compiler
+  //! constant-folding a member through an inlined functor passed by reference; it did
+  //! not, and the resulting kernel spilled to scratch (see GeodesicSubstep).
   KOKKOS_INLINE_FUNCTION
   Real Interp(const DvceArray5D<Real>& u0, const int nvar, const int *idcs,
               const Real *Wx, const Real *Wy, const Real *Wz) const {
-    return trilinear ? TrilinearInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz)
-                     : LagrangeInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz);
+    if constexpr (trilinear) {
+      return TrilinearInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz);
+    } else {
+      return LagrangeInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz);
+    }
   }
   KOKKOS_INLINE_FUNCTION
   void Interp(const DvceArray5D<Real>& u0, const int nvar, const int *idcs,
               const Real *Wx, const Real *Wy, const Real *Wz, Real *res) const {
-    if (trilinear) {
+    if constexpr (trilinear) {
       TrilinearInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz, res);
     } else {
       LagrangeInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz, res);
@@ -157,7 +160,7 @@ struct GeodesicPush {
     SetInterpIndices(x_mid, mb_par, ncell, interp_indcs);
     Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
     Real dLx[8] = {0.0}, dLy[8] = {0.0}, dLz[8] = {0.0};
-    if (trilinear) {
+    if constexpr (trilinear) {
       CalcTrilinearWghtAndDrv(x_mid, mb_par, ncell,
                               interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
     } else {
@@ -234,7 +237,7 @@ struct GeodesicPush {
     // the midpoint
     Real dalp_old[3] = {0.0}, dalp_new[3] = {0.0}, dalp[3] = {0.0};
     Real dbeta_old[3][3] = {0.0}, dbeta_new[3][3] = {0.0}, dbeta[3][3] = {0.0};
-    Real dg3u_old[3][6] = {0.0}, dg3u_new[3][6] = {0.0}, dg3u[3][6] = {0.0};
+    Real dg3u[3][6] = {0.0};
     if (use_z4c) {
       dalp_old[0] = Interp(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
                            interp_indcs, dLx, Ly, Lz);
@@ -297,7 +300,7 @@ struct GeodesicPush {
                             : 0.5 * (dbeta_old[i][j] + dbeta_new[i][j]);
       }
     }
-    if (imode == kTriExact) {
+    if constexpr (IMODE == kTriExact) {
       // Take the gradient of the COVARIANT metric from the same interpolant and convert
       // it, so the gamma^{ij} differentiated here is the g3u inverted above -- the matrix
       // the positive-definiteness test accepted and the one that raised u_i.
@@ -324,6 +327,7 @@ struct GeodesicPush {
         InverseMetricGradient(dg3u[i], g3u, dg3d);
       }
     } else {
+      Real dg3u_old[3][6] = {0.0}, dg3u_new[3][6] = {0.0};
       Interp(adm_old, adm::ADM::I_ADM_GXX,
              interp_indcs, dLx, Ly, Lz, dg3u_old[0]);
       Interp(adm_old, adm::ADM::I_ADM_GXX,
@@ -441,8 +445,8 @@ int GeodesicSubstep(const Real x_n[3], const Real u_p[3], const int mb,
                     const bool use_z4c,
                     const DvceArray5D<Real>& z4c_n, const DvceArray5D<Real>& z4c_np1,
                     Real x_np1[3], Real u_pp[3]) {
-  GeodesicPush<NG> gp(x_n, u_p, mb, mb_par, ncell, dt, adm_n, adm_np1, use_z4c,
-                      z4c_n, z4c_np1, IMODE);
+  GeodesicPush<NG, IMODE> gp(x_n, u_p, mb, mb_par, ncell, dt, adm_n, adm_np1, use_z4c,
+                             z4c_n, z4c_np1);
   return FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
 }
 
