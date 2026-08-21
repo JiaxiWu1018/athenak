@@ -17,6 +17,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #if MPI_PARALLEL_ENABLED
 #include <mpi.h>
@@ -170,6 +171,7 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   ah_surf_rmin = -1.0;
   ah_surf_rmax = -1.0;
   ah_surf_rmean = -1.0;
+  ah_surf_offgrid_rejects = 0;
 
   // Reallocate for the spherical harmonics.
   // The spherical grid is the same for all surfaces.
@@ -942,6 +944,48 @@ void FastFlow::UpdateFlowSpectralComponents() {
 //! integrals, so no communication is needed to make the snapshot globally consistent.
 
 void FastFlow::SnapshotSurface(Real time) {
+  // ---- ON-GRID GATE ------------------------------------------------------------------
+  // A surface is only meaningful where the metric could actually be interpolated.
+  // SurfaceIntegrals accumulates ONLY at collocation points with havepoint != 0
+  // (fastflow.cpp, the `if (havepoint_.d_view(p))` guard), so a surface poking outside
+  // the mesh is integrated over just the part that happens to be inside -- and the flow
+  // can then satisfy its |mass_prev - mass| < mass_tol acceptance test on that partial
+  // integral and report a surface that is not a horizon at all.
+  //
+  // This is not hypothetical. In the y_c=0.700 collapse the very first "converged" find
+  // had irreducible mass 3.206 (the whole cluster is 1.0), mean coordinate radius 156.9
+  // and minimum radius 28.3 in a domain of half-width 24, with mean expansion -19.0. The
+  // stock blow-up guard hmean_tol = 100 does not reject that. Excising particles inside
+  // it destroyed 99.96% of the cluster in a single cycle.
+  //
+  // So: the snapshot the excision consumer sees is gated on EVERY collocation point being
+  // on the mesh. havepoint is per-rank (a point owned by another rank reads 0 here), so
+  // it is reduced with MAX -- not SUM, which would miscount a point claimed by two ranks
+  // through their ghost zones. FastFlow's own ah_found and its .horizon_summary_0.txt
+  // output are deliberately left untouched: the finder keeps reporting what it found, and
+  // only the consumer refuses to act on it.
+  {
+    Kokkos::deep_copy(havepoint.h_view, havepoint.d_view);
+    std::vector<int> hp(nangles);
+    for (int q = 0; q < nangles; ++q) {hp[q] = havepoint.h_view(q);}
+#if MPI_PARALLEL_ENABLED
+    MPI_Allreduce(MPI_IN_PLACE, hp.data(), nangles, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+#endif
+    int noff = 0;
+    for (int q = 0; q < nangles; ++q) {if (hp[q] == 0) {++noff;}}
+    if (noff > 0) {
+      ah_surf_offgrid_rejects += 1;
+      if (ioproc && ah_surf_offgrid_rejects <= 3) {
+        std::cout << "### AH surface REJECTED for excision (horizon " << nh << ", t = "
+                  << time << "): " << noff << " of " << nangles << " collocation points "
+                  << "lie outside the mesh, so the surface integrals that accepted it "
+                  << "were partial. FastFlow still reports this find; the excision "
+                  << "criterion ignores it." << std::endl;
+      }
+      return;   // keep the previous valid snapshot, if any
+    }
+  }
+
   Kokkos::deep_copy(a0_surf.h_view, a0.h_view);
   Kokkos::deep_copy(ac_surf.h_view, ac.h_view);
   Kokkos::deep_copy(as_surf.h_view, as.h_view);

@@ -184,6 +184,14 @@ class Particles {
   bool excise_ah;
   Real excise_ah_margin;
   bool excise_ah_use_surface;
+  // Hard upper bound on the size of a horizon this criterion will act on: a snapshot
+  // whose angular MAXIMUM radius exceeds this is ignored. 0 (default) = no bound.
+  // FastFlow's acceptance test is |mass_prev - mass| < mass_tol with a very loose
+  // |hmean| < hmean_tol blow-up guard, which does not stop the flow settling on a large
+  // non-horizon surface; SnapshotSurface's on-grid gate catches the case where such a
+  // surface leaves the mesh, and this catches the case where it does not. Set it to
+  // something no real horizon in the problem can exceed.
+  Real excise_ah_rmax;
   // Per-cycle staging of the FastFlow surfaces for the device kernel (see
   // z4c/horizon_query.hpp for the layout). Refilled on the host by MarkExcised from
   // whichever surfaces are currently valid, so a horizon that appears, moves, or grows
@@ -195,6 +203,7 @@ class Particles {
   // separates "the AH criterion is on but no horizon exists yet" from "it is on and
   // live")
   int ah_nvalid_thiscycle;
+  bool ah_rmax_warned;
   // cumulative count of AH-excised particles on this rank, for the end-of-run report
   std::int64_t ah_nexcised_cum;
   // cycle/time of the first AH excision anywhere on this rank (-1 = none yet)

@@ -74,6 +74,8 @@ class FastFlow {
                            // t^n even though the geometry used is the post-final-stage
                            // t^{n+1} state)
   int  ah_surf_count;      // number of successful finds so far (snapshot generation)
+  int  ah_surf_offgrid_rejects;  // finds refused for excision because part of the surface
+                                 // was off the mesh (see SnapshotSurface)
   Real ah_surf_center[3];  // center the snapshot's radii are measured from
   Real ah_surf_rmin;       // min over collocation angles of the snapshot surface
   Real ah_surf_rmax;       // max over collocation angles of the snapshot surface

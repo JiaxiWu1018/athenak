@@ -123,6 +123,7 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   excise_ah     = pin->GetOrAddBoolean("particles","excise_ah",false);
   excise_ah_margin = pin->GetOrAddReal("particles","excise_ah_margin",0.0);
   excise_ah_use_surface = pin->GetOrAddBoolean("particles","excise_ah_use_surface",true);
+  excise_ah_rmax = pin->GetOrAddReal("particles","excise_ah_rmax",0.0);
   excise_any    = (excise_radius > 0.0) || (excise_lapse > 0.0) || excise_ah;
   if (excise_lapse > 0.0 && pmy_pack->padm == nullptr) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
@@ -134,6 +135,7 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   ah_lmax = 0;
   ah_lmpoints = 0;
   ah_nvalid_thiscycle = 0;
+  ah_rmax_warned = false;
   ah_nexcised_cum = 0;
   ah_first_excise_cycle = -1;
   ah_first_excise_time = -1.0;
@@ -186,8 +188,10 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
                 << "converged apparent horizon will be destroyed (margin "
                 << excise_ah_margin << ", "
                 << (excise_ah_use_surface ? "angular surface" : "enclosed sphere")
-                << ", " << ah_nhorizon << " horizon(s), lmax " << ah_lmax << ")."
-                << std::endl;
+                << ", " << ah_nhorizon << " horizon(s), lmax " << ah_lmax
+                << ", r_max bound "
+                << (excise_ah_rmax > 0.0 ? std::to_string(excise_ah_rmax) : "none")
+                << ")." << std::endl;
     }
   }
   if (excise_any) {

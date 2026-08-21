@@ -80,7 +80,18 @@ int Particles::StageHorizons() {
   const int lmax1 = ah_lmax + 1;
   int nvalid = 0;
   for (int h=0; h<nh; ++h) {
-    const bool ok = pff[h]->ah_surf_valid;
+    bool ok = pff[h]->ah_surf_valid;
+    // Deck-level size sanity bound, on top of SnapshotSurface's on-grid gate. Reported
+    // once per horizon so a bound that silently suppresses every horizon is visible.
+    if (ok && excise_ah_rmax > 0.0 && pff[h]->ah_surf_rmax > excise_ah_rmax) {
+      ok = false;
+      if (global_variable::my_rank == 0 && !ah_rmax_warned) {
+        ah_rmax_warned = true;
+        std::cout << "### AH excision: horizon " << h << " ignored, its maximum radius "
+                  << pff[h]->ah_surf_rmax << " exceeds <particles> excise_ah_rmax = "
+                  << excise_ah_rmax << " (reported once)." << std::endl;
+      }
+    }
     ah_par.h_view(h, IAHVALID) = ok ? 1.0 : 0.0;
     if (!ok) {continue;}
     nvalid += 1;
