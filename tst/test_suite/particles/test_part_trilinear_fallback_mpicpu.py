@@ -74,10 +74,20 @@ def _fallbacks_by_cycle(log):
 
 
 def _outer_ring(run_dir):
-    """Final position and velocity of the well-resolved ring, keyed by tag."""
+    """Final position and velocity of the well-resolved ring, keyed by tag.
+
+    Note the comparison below is at the precision of the particle VTK, which stores
+    float32; "bitwise" here means bit-for-bit in that output, not in the Real the pusher
+    computed. That is still the right check for "the flag changed nothing", because a
+    perturbed push would move a particle by far more than a float32 ulp.
+    """
     path = helpers.particle_dumps(run_dir)[-1]
     _, x, v, tag = helpers.read_particle_vtk(path)
     keep = tag >= OUTER_TAG0
+    assert keep.sum() > 0, (
+        f"{run_dir}: no particle with tag >= {OUTER_TAG0} survived, so the "
+        f"well-resolved control ring is empty and the comparison below is vacuous"
+    )
     order = np.argsort(tag[keep])
     return x[keep][order], v[keep][order], tag[keep][order]
 
@@ -118,11 +128,11 @@ def test_trilinear_fallback():
             got = _outer_ring(dirs[mode])
             assert np.array_equal(ref[2], got[2]), f"{mode}: outer-ring tags differ"
             assert np.array_equal(ref[0], got[0]), (
-                f"{mode}: outer-ring positions are not bitwise equal -- the fallback "
+                f"{mode}: outer-ring positions differ -- the fallback "
                 f"perturbed a push the high-order path accepted"
             )
             assert np.array_equal(ref[1], got[1]), (
-                f"{mode}: outer-ring velocities are not bitwise equal"
+                f"{mode}: outer-ring velocities differ"
             )
 
         if not base_rej:

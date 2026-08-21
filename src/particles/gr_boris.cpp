@@ -91,8 +91,11 @@ enum InterpMode {kHighOrder = 0, kTriMirror = 1, kTriExact = 2};
 //! gamma_ij, gamma^{ij} and all their spatial derivatives -- is built from the
 //! two-node-per-direction linear interpolant over the eight cell centres surrounding the
 //! point (CalcTrilinearWghtAndDrv / TrilinearInterpolator). The 3+1 formulae, the
-//! old/new time averaging and the Euler branch are untouched, so value and gradient come
-//! from one interpolant and the RHS stays internally consistent. The trilinear weights
+//! old/new time averaging and the Euler branch are untouched. Only kTriExact makes value
+//! and gradient descend from ONE object; kTriMirror deliberately keeps production's
+//! split -- gamma^{ij} for W from the inverse of the interpolated gamma_ij, its gradient
+//! from the interpolant of the per-node inverses -- so that interpolation order is the
+//! only variable it changes. The trilinear weights
 //! are in [0,1] and sum to one for any point inside its MeshBlock, so the interpolated
 //! gamma_ij is a CONVEX COMBINATION of the eight corner matrices and is positive
 //! definite whenever they are -- which is exactly what a 2*NG-node Lagrange interpolant,
@@ -937,7 +940,8 @@ void Particles::GR_BorisPush() {
     if (nlow_try > 0) {
       boris_nlow_try_cum += static_cast<std::int64_t>(nlow_try);
       boris_nlow_ok_cum += static_cast<std::int64_t>(nlow_ok);
-      boris_nlow_badgrid_cum += static_cast<std::int64_t>(hfail(7) + hfail(8));
+      // slot 7 only: an event can set both bits, and summing them would count it twice
+      boris_nlow_badgrid_cum += static_cast<std::int64_t>(hfail(7));
       if (!boris_first_low_seen) {
         boris_first_low_seen = true;
         std::cout << "### WARNING in " << __FILE__ << ": gr_boris used the TRILINEAR "

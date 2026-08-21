@@ -98,16 +98,25 @@ bool SylvesterPD(const Real g[6]) {
 
 template <int NG>
 bool RunChecks() {
-  const int nc = 16;                 // active cells per direction
-  const int na = nc + 2*NG;          // allocated extent
-  const Real xmin = -1.0, xmax = 1.0;
-  const Real h = (xmax - xmin)/static_cast<Real>(nc);
-  const Real mb_par[9] = {xmin, xmax, h, xmin, xmax, h, xmin, xmax, h};
-  const int ncell[3] = {nc, nc, nc};
+  // deliberately ANISOTROPIC in both cell count and extent: on an isotropic grid an
+  // x/y/z mix-up inside the weight kernel or the reader is invisible to every check
+  const int nc1 = 16, nc2 = 12, nc3 = 20;
+  const int na1 = nc1 + 2*NG, na2 = nc2 + 2*NG, na3 = nc3 + 2*NG;
+  const Real x1min = -1.0, x1max = 1.0;
+  const Real x2min = -0.5, x2max = 2.5;
+  const Real x3min = -3.0, x3max = 1.0;
+  const Real h1 = (x1max - x1min)/static_cast<Real>(nc1);
+  const Real h2 = (x2max - x2min)/static_cast<Real>(nc2);
+  const Real h3 = (x3max - x3min)/static_cast<Real>(nc3);
+  const Real mb_par[9] = {x1min, x1max, h1, x2min, x2max, h2, x3min, x3max, h3};
+  const int ncell[3] = {nc1, nc2, nc3};
+  const Real gmin[3] = {x1min, x2min, x3min};
+  const Real gmax[3] = {x1max, x2max, x3max};
+  const Real hh[3] = {h1, h2, h3};
   const int nsample = 4096;
   const Real tol = 1.0e-12;
 
-  DvceArray5D<Real> u("ut_trilinear", 1, adm::ADM::nadm, na, na, na);
+  DvceArray5D<Real> u("ut_trilinear", 1, adm::ADM::nadm, na3, na2, na1);
 
   // --- T1: weight properties ---------------------------------------------------------
   Real t1_err = 0.0;
@@ -116,7 +125,9 @@ bool RunChecks() {
   KOKKOS_LAMBDA(const int n, Real &lerr, int &lbad) {
     Real xp[3];
     for (int d = 0; d < 3; ++d) {
-      xp[d] = xmin + (xmax - xmin)*Rand01(static_cast<unsigned int>(7919*n + 13*d + 1));
+      xp[d] = gmin[d] + (gmax[d] - gmin[d])
+              *Rand01(static_cast<unsigned int>(7919u*static_cast<unsigned int>(n)
+                                                + 13u*static_cast<unsigned int>(d) + 1u));
     }
     int idcs[4] = {0, -1, -1, -1};
     particles::SetInterpIndices(xp, mb_par, ncell, idcs);
@@ -129,7 +140,7 @@ bool RunChecks() {
     for (int d = 0; d < 3; ++d) {
       lerr = fmax(lerr, fabs(w[d][0] + w[d][1] - 1.0));
       lerr = fmax(lerr, fabs(dw[d][0] + dw[d][1]));
-      lerr = fmax(lerr, fabs(dw[d][1]*h - 1.0));
+      lerr = fmax(lerr, fabs(dw[d][1]*hh[d] - 1.0));
       if (w[d][0] < -1.0e-14 || w[d][0] > 1.0 + 1.0e-14) { lbad += 1; }
       if (w[d][1] < -1.0e-14 || w[d][1] > 1.0 + 1.0e-14) { lbad += 1; }
     }
@@ -143,7 +154,7 @@ bool RunChecks() {
 
   // --- T2: stencil offset ------------------------------------------------------------
   // variable GXX+d holds its own allocated index in direction d
-  par_for("ut_tri_fill_idx", DevExeSpace(), 0, na-1, 0, na-1, 0, na-1,
+  par_for("ut_tri_fill_idx", DevExeSpace(), 0, na3-1, 0, na2-1, 0, na1-1,
   KOKKOS_LAMBDA(const int k, const int j, const int i) {
     u(0, adm::ADM::I_ADM_GXX+0, k, j, i) = static_cast<Real>(i);
     u(0, adm::ADM::I_ADM_GXX+1, k, j, i) = static_cast<Real>(j);
@@ -154,8 +165,9 @@ bool RunChecks() {
   KOKKOS_LAMBDA(const int n, Real &lerr) {
     Real xp[3];
     for (int d = 0; d < 3; ++d) {
-      xp[d] = xmin +
-              (xmax - xmin)*Rand01(static_cast<unsigned int>(104729*n + 31*d + 5));
+      xp[d] = gmin[d] + (gmax[d] - gmin[d])
+              *Rand01(static_cast<unsigned int>(104729u*static_cast<unsigned int>(n)
+                                                + 31u*static_cast<unsigned int>(d) + 5u));
     }
     int idcs[4] = {0, -1, -1, -1};
     particles::SetInterpIndices(xp, mb_par, ncell, idcs);
@@ -179,11 +191,11 @@ bool RunChecks() {
   }
 
   // --- T3: exactness on a trilinear polynomial ---------------------------------------
-  par_for("ut_tri_fill_poly", DevExeSpace(), 0, na-1, 0, na-1, 0, na-1,
+  par_for("ut_tri_fill_poly", DevExeSpace(), 0, na3-1, 0, na2-1, 0, na1-1,
   KOKKOS_LAMBDA(const int k, const int j, const int i) {
-    Real xc = CellCenterX(i-NG, nc, xmin, xmax);
-    Real yc = CellCenterX(j-NG, nc, xmin, xmax);
-    Real zc = CellCenterX(k-NG, nc, xmin, xmax);
+    Real xc = CellCenterX(i-NG, nc1, x1min, x1max);
+    Real yc = CellCenterX(j-NG, nc2, x2min, x2max);
+    Real zc = CellCenterX(k-NG, nc3, x3min, x3max);
     u(0, adm::ADM::I_ADM_ALPHA, k, j, i) = TriPoly(xc, yc, zc);
   });
   Real t3_val = 0.0, t3_grd = 0.0;
@@ -191,8 +203,11 @@ bool RunChecks() {
   KOKKOS_LAMBDA(const int n, Real &lval, Real &lgrd) {
     Real xp[3];
     for (int d = 0; d < 3; ++d) {
-      xp[d] = xmin +
-              (xmax - xmin)*Rand01(static_cast<unsigned int>(15486071*n + 17*d));
+      // unsigned throughout: 15486071*n overflows a signed int for n > 138 and the
+      // wrap is undefined behaviour, not the reproducible mix the test claims
+      xp[d] = gmin[d] + (gmax[d] - gmin[d])
+              *Rand01(15486071u*static_cast<unsigned int>(n)
+                      + 17u*static_cast<unsigned int>(d));
     }
     int idcs[4] = {0, -1, -1, -1};
     particles::SetInterpIndices(xp, mb_par, ncell, idcs);
@@ -222,9 +237,9 @@ bool RunChecks() {
   }
 
   // --- T4: positive definiteness over a random positive definite field ---------------
-  par_for("ut_tri_fill_pd", DevExeSpace(), 0, na-1, 0, na-1, 0, na-1,
+  par_for("ut_tri_fill_pd", DevExeSpace(), 0, na3-1, 0, na2-1, 0, na1-1,
   KOKKOS_LAMBDA(const int k, const int j, const int i) {
-    unsigned int s = static_cast<unsigned int>(((k*na) + j)*na + i) + 1u;
+    unsigned int s = static_cast<unsigned int>(((k*na2) + j)*na1 + i) + 1u;
     // gamma = L L^T + 0.05 I with a random lower-triangular L: positive definite by
     // construction, and independent from cell to cell, which is the hardest possible
     // field for a wide stencil
@@ -246,8 +261,9 @@ bool RunChecks() {
   KOKKOS_LAMBDA(const int n, int &ltri, int &lhi) {
     Real xp[3];
     for (int d = 0; d < 3; ++d) {
-      xp[d] = xmin +
-              (xmax - xmin)*Rand01(static_cast<unsigned int>(2654435761u*n + 19*d));
+      xp[d] = gmin[d] + (gmax[d] - gmin[d])
+              *Rand01(2654435761u*static_cast<unsigned int>(n)
+                      + 19u*static_cast<unsigned int>(d));
     }
     int idcs[4] = {0, -1, -1, -1};
     particles::SetInterpIndices(xp, mb_par, ncell, idcs);
@@ -279,6 +295,15 @@ bool RunChecks() {
               << std::endl;
     return false;
   }
+  // The theorem alone would pass on a field where the wide stencil is fine too, which
+  // would make the check vacuous. Assert the counter-example as well, for the widths
+  // where it is robust: at NGHOST=2 the 4-node stencil fails only a handful of times.
+  if (NG >= 3 && t4_hi_bad == 0) {
+    std::cout << "  T4 FAILED -- the " << 2*NG << "-node interpolant did not overshoot "
+              << "anywhere, so the test is not exercising the case the fallback exists "
+              << "for" << std::endl;
+    return false;
+  }
 
   // --- T5: InverseMetricGradient against a central difference ------------------------
   Real t5_err = 0.0;
@@ -286,7 +311,8 @@ bool RunChecks() {
   KOKKOS_LAMBDA(const int n, Real &lerr) {
     Real xp[3];
     for (int d = 0; d < 3; ++d) {
-      xp[d] = -0.8 + 1.6*Rand01(static_cast<unsigned int>(40503u*n + 23*d + 7));
+      xp[d] = -0.8 + 1.6*Rand01(40503u*static_cast<unsigned int>(n)
+                                + 23u*static_cast<unsigned int>(d) + 7u);
     }
     Real g[6];
     AnalyticMetric(xp[0], xp[1], xp[2], g);

@@ -222,7 +222,12 @@ void LagrangeInterpolator(const DvceArray5D<Real> &u0, const int nvar,
 //! Two properties are the reason this exists (see the gr_boris fallback):
 //!   (a) the weights are in [0,1] and sum to 1 for any particle inside its owning
 //!       MeshBlock, so the interpolated 3-metric is a CONVEX COMBINATION of the eight
-//!       corner values and inherits their positive-definiteness;
+//!       corner values and inherits their positive-definiteness. Two caveats, both
+//!       covered by leaving the Sylvester test in place downstream: the base index comes
+//!       from an arithmetic floor while the nodes come from CellCenterX, so a weight can
+//!       sit an ulp outside [0,1]; and if ClampInterpIndex actually clamps -- reachable
+//!       for a wild fixed-point iterate, not for an in-block particle -- the two nodes
+//!       no longer bracket the point and this becomes an extrapolation;
 //!   (b) the stencil reads only the eight immediately surrounding cell centres, so a bad
 //!       grid value further away cannot contaminate the result.
 //! By contrast a 2*ORDER-node Lagrange interpolant has weights of both signs and can
