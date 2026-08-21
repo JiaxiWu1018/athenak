@@ -179,7 +179,10 @@ class Particles {
   // failure is ever hidden. The FIRST failure of a run prints full particle state.
   static constexpr int kBorisDetail = 3;
   // {0: non-convergence this cycle, 1: reserved detail budget, 2: REJECTED geodesic
-  //  substeps this cycle, 3: non-finite write-backs refused this cycle}
+  //  substeps this cycle, 3: non-finite write-backs refused this cycle,
+  //  4: substeps handed to the trilinear retry, 5: retries that produced a usable state,
+  //  6: retries whose eight surrounding GRID gamma_ij were themselves not a 3-metric}
+  static constexpr int kBorisCounters = 7;
   DvceArray1D<int> boris_nfail;
   std::int64_t boris_nfail_cum;
   bool boris_first_fail_seen;
@@ -189,6 +192,18 @@ class Particles {
   // so it is reported always -- never only under <particles> debug.
   std::int64_t boris_nreject_cum;
   bool boris_first_reject_seen;
+
+  // A substep whose high-order geometry is invalid is re-solved with a trilinear
+  // interpolant before being rejected: its weights are non-negative and sum to one, so
+  // the interpolated 3-metric is a convex combination of the eight surrounding grid
+  // values and is positive definite whenever they are. The retry runs in its own device
+  // kernel (GRBorisRetry) over the particles the push flags here, which keeps the
+  // trilinear machinery out of the ordinary push kernel; boris_retry is that flag.
+  // Geodesic configurations only -- see GR_BorisPush.
+  DvceArray1D<int> boris_retry;
+  std::int64_t boris_nretry_cum;
+  std::int64_t boris_nrescued_cum;
+  bool boris_first_retry_seen;
 
   // Stress-energy feedback supports a 3D Z4c consumer without dynamical GRMHD. Images
   // may cross ranks and coarse-fine interfaces, including through dynamic AMR regrids.
@@ -227,6 +242,7 @@ class Particles {
   // pusher kernels (particles_pushers.cpp dispatches Push() to these)
   void BorisPush();      // special-relativistic Boris (boris_pusher.cpp)
   void GR_BorisPush();   // general-relativistic Boris / geodesic (gr_boris.cpp)
+  void GRBorisRetry();   // trilinear retry of the substeps it rejected (gr_boris.cpp)
   TaskStatus Push(Driver *pdriver, int stage);
   TaskStatus NewGID(Driver *pdriver, int stage);
   TaskStatus SendCnt(Driver *pdriver, int stage);

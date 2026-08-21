@@ -133,9 +133,14 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   boris_first_fail_seen = false;
   boris_nreject_cum = 0;
   boris_first_reject_seen = false;
+  boris_nretry_cum = 0;
+  boris_nrescued_cum = 0;
+  boris_first_retry_seen = false;
   if (pusher == ParticlesPusher::gr_boris) {
-    Kokkos::realloc(boris_nfail, 4);
+    Kokkos::realloc(boris_nfail, kBorisCounters);
     Kokkos::deep_copy(boris_nfail, 0);
+    Kokkos::realloc(boris_retry, 1);
+    Kokkos::deep_copy(boris_retry, 0);
   }
 
   // Stress-energy feedback deposits particle Tmunu for the Z4c matter terms.
