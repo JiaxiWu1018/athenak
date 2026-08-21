@@ -13,6 +13,7 @@
 #include <algorithm>
 
 #include "athena.hpp"
+#include "globals.hpp"
 #include "mesh/mesh.hpp"
 #include "driver/driver.hpp"
 #include "z4c.hpp"
@@ -56,6 +57,56 @@ TaskStatus Z4c::NewTimeStep(Driver *pdriver, int stage) {
   dtnew = dt1;
   if (pmy_pack->pmesh->multi_d) { dtnew = std::min(dtnew, dt2); }
   if (pmy_pack->pmesh->three_d) { dtnew = std::min(dtnew, dt3); }
+
+  // Parabolic timestep bound for the chi Hamiltonian-damping term:
+  //   dt <= safety * s_RK * dx_min^2 / (sigma_3D * c_H * psi_max)
+  // with s_RK = 2.7853 the 4-stage-RK4 real-axis stability edge, sigma_3D =
+  // 3x the worst-mode symbol of the Dxx stencil (4, 16/3, 272/45 per direction
+  // for nghost=2,3,4), and psi_max = chi_min^{1/p} the instantaneous maximum
+  // of the conformal factor (D = c_H*psi grows in collapse). See
+  // evidence/2026-08-17_bssn_parabolic_H_damping/derivation note, Sec. 5.
+  auto &opt = pmy_pack->pz4c->opt;
+  if (opt.hdamp_cH > 0.0) {
+    Real dx_min = dtnew;   // dtnew so far is exactly min(dx), no wavespeed factor
+    auto &chi_ = pmy_pack->pz4c->z4c.chi;
+    int &is = indcs.is; int &js = indcs.js; int &ks = indcs.ks;
+    const int nji = nx2*nx1;
+    Real chi_min = std::numeric_limits<Real>::max();
+    Kokkos::parallel_reduce("hdamp_chimin",
+        Kokkos::RangePolicy<>(DevExeSpace(), 0, nmkji),
+    KOKKOS_LAMBDA(const int &idx, Real &min_chi) {
+      int m = (idx)/nkji;
+      int k = (idx - m*nkji)/nji;
+      int j = (idx - m*nkji - k*nji)/nx1;
+      int i = (idx - m*nkji - k*nji - j*nx1) + is;
+      k += ks; j += js;
+      min_chi = fmin(chi_(m,k,j,i), min_chi);
+    }, Kokkos::Min<Real>(chi_min));
+    chi_min = fmax(chi_min, opt.chi_min_floor);
+    Real psi_max = pow(chi_min, 1.0/opt.chi_psi_power);  // p < 0: chi_min -> psi_max
+    constexpr Real s_rk = 2.7853;
+    const Real sig1d = (indcs.ng == 2) ? 4.0 :
+                       (indcs.ng == 3) ? 16.0/3.0 : 272.0/45.0;
+    Real dt_par = opt.hdamp_par_safety * s_rk * dx_min*dx_min
+                  / (3.0*sig1d * opt.hdamp_cH * psi_max);
+    Real cfl = pmy_pack->pmesh->cfl_no;
+    Real dt_hyp = cfl * dx_min;
+    if (global_variable::my_rank == 0 && pmy_pack->pmesh->ncycle == 0) {
+      std::cout << "# [z4c] hdamp dt: dt_hyp = " << dt_hyp << ", dt_par = " << dt_par
+                << " (psi_max = " << psi_max
+                << ", safety = " << opt.hdamp_par_safety << "); "
+                << ((dt_par < dt_hyp) ? "PARABOLIC" : "hyperbolic")
+                << " bound controls, dt_par/dt_hyp = " << dt_par/dt_hyp << std::endl;
+    }
+    if (dt_par < dt_hyp && !pmy_pack->pz4c->hdamp_dtwarned) {
+      pmy_pack->pz4c->hdamp_dtwarned = true;
+      std::cout << "# [z4c] NOTE (rank " << global_variable::my_rank
+                << ", cycle " << pmy_pack->pmesh->ncycle
+                << "): parabolic dt bound now controls (psi_max = " << psi_max
+                << ", dt_par = " << dt_par << " < dt_hyp = " << dt_hyp << ")" << std::endl;
+    }
+    dtnew = std::min(dtnew, dt_par/cfl);
+  }
 
   return TaskStatus::complete;
 }
