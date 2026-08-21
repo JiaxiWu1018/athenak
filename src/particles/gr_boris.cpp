@@ -61,8 +61,27 @@ namespace particles {
 //! garbage u^i. det gamma > 0 is NOT a sufficient test: two negative eigenvalues cancel
 //! in the determinant. The test is therefore Sylvester's criterion on the three leading
 //! principal minors, which is exactly positive-definiteness.
+//!
+//! TRI selects the interpolation operator and nothing else: with it set, every geometric
+//! quantity below -- lapse, shift, gamma_ij, gamma^{ij} and all their spatial derivatives
+//! -- comes from the two-node-per-direction interpolant over the eight cell centres
+//! surrounding the point instead of the 2*NG-node stencil. The 3+1 formulae, the old/new
+//! time averaging and the Euler branch are untouched, so the retry solves the same
+//! discrete problem with a different interpolation operator. Trilinear weights lie in
+//! [0,1] and sum to one, so the interpolated gamma_ij is a convex combination of the
+//! eight corner matrices and is positive definite whenever they are; that is what the
+//! wide stencil, whose weights alternate in sign, cannot promise.
+//!
+//! TRI is a TEMPLATE PARAMETER and the branches below are `if constexpr`, which is
+//! load-bearing rather than stylistic. operator() is inlined wholesale into whichever
+//! device kernel calls it, and it carries an 8-node stencil plus a per-node
+//! inverse-metric stencil over the same nodes. If one kernel has to hold both operators
+//! live the per-thread frame stops fitting in registers on gfx90a and spills to scratch;
+//! measured on 4 x MI210, a version that selected the operator at runtime ran more than
+//! three orders of magnitude slower than this one -- even on substeps that never took
+//! the fallback. Each kernel must instantiate exactly one operator.
 
-template <int NG>
+template <int NG, bool TRI>
 struct GeodesicPush {
   const Real *x_old, *u_old, *mb_par;
   const int *ncell;
@@ -81,6 +100,28 @@ struct GeodesicPush {
       adm_old(adm_old_), adm_new(adm_new_), z4c_old(z4c_old_), z4c_new(z4c_new_),
       mb(mb_), dt(dt_), use_z4c(use_z4c_) {}
 
+  //! The only place the interpolation operator enters. The discarded branch is not
+  //! instantiated, so <NG,false> carries no trilinear code and generates exactly what the
+  //! pusher generated before the fallback existed.
+  KOKKOS_INLINE_FUNCTION
+  Real Interp(const DvceArray5D<Real>& u0, const int nvar, const int *idcs,
+              const Real *Wx, const Real *Wy, const Real *Wz) const {
+    if constexpr (TRI) {
+      return TrilinearInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz);
+    } else {
+      return LagrangeInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz);
+    }
+  }
+  KOKKOS_INLINE_FUNCTION
+  void Interp(const DvceArray5D<Real>& u0, const int nvar, const int *idcs,
+              const Real *Wx, const Real *Wy, const Real *Wz, Real *res) const {
+    if constexpr (TRI) {
+      TrilinearInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz, res);
+    } else {
+      LagrangeInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz, res);
+    }
+  }
+
   KOKKOS_INLINE_FUNCTION
   bool operator()(const Real xin[3], const Real uin[3], Real xout[3], Real uout[3],
                   bool Euler) const {
@@ -93,8 +134,13 @@ struct GeodesicPush {
     SetInterpIndices(x_mid, mb_par, ncell, interp_indcs);
     Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
     Real dLx[8] = {0.0}, dLy[8] = {0.0}, dLz[8] = {0.0};
-    CalcInterpWghtAndDrv<NG>(x_mid, mb_par, ncell,
-                             interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
+    if constexpr (TRI) {
+      CalcTrilinearWghtAndDrv(x_mid, mb_par, ncell,
+                              interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
+    } else {
+      CalcInterpWghtAndDrv<NG>(x_mid, mb_par, ncell,
+                               interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
+    }
 
     // ---- Step 1: update position ----
     // (i) interpolate lapse/shift/3-metric at the midpoint (time-averaged old/new)
@@ -102,35 +148,35 @@ struct GeodesicPush {
     Real beta_old[3] = {0.0}, beta_new[3] = {0.0}, beta[3] = {0.0};
     Real g3d_old[6] = {0.0}, g3d_new[6] = {0.0}, g3d[6] = {0.0};
     if (use_z4c) {
-      alp_old = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
-                                         interp_indcs, Lx, Ly, Lz);
-      alp_new = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
-                                         interp_indcs, Lx, Ly, Lz);
+      alp_old = Interp(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
+                       interp_indcs, Lx, Ly, Lz);
+      alp_new = Interp(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
+                       interp_indcs, Lx, Ly, Lz);
       for (int i = 0; i < 3; ++i) {
-        beta_old[i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
-                                               interp_indcs, Lx, Ly, Lz);
-        beta_new[i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
-                                               interp_indcs, Lx, Ly, Lz);
+        beta_old[i] = Interp(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
+                             interp_indcs, Lx, Ly, Lz);
+        beta_new[i] = Interp(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
+                             interp_indcs, Lx, Ly, Lz);
       }
     } else {
-      alp_old = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA,
-                                         interp_indcs, Lx, Ly, Lz);
-      alp_new = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA,
-                                         interp_indcs, Lx, Ly, Lz);
+      alp_old = Interp(adm_old, adm::ADM::I_ADM_ALPHA,
+                       interp_indcs, Lx, Ly, Lz);
+      alp_new = Interp(adm_new, adm::ADM::I_ADM_ALPHA,
+                       interp_indcs, Lx, Ly, Lz);
       for (int i = 0; i < 3; ++i) {
-        beta_old[i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i,
-                                               interp_indcs, Lx, Ly, Lz);
-        beta_new[i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i,
-                                               interp_indcs, Lx, Ly, Lz);
+        beta_old[i] = Interp(adm_old, adm::ADM::I_ADM_BETAX+i,
+                             interp_indcs, Lx, Ly, Lz);
+        beta_new[i] = Interp(adm_new, adm::ADM::I_ADM_BETAX+i,
+                             interp_indcs, Lx, Ly, Lz);
       }
     }
     alp = 0.5 * (alp_old + alp_new);
     for (int i = 0; i < 3; ++i) { beta[i] = 0.5 * (beta_old[i] + beta_new[i]); }
     for (int i = 0; i < 6; ++i) {
-      g3d_old[i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX+i,
-                                            interp_indcs, Lx, Ly, Lz);
-      g3d_new[i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX+i,
-                                            interp_indcs, Lx, Ly, Lz);
+      g3d_old[i] = Interp(adm_old, adm::ADM::I_ADM_GXX+i,
+                          interp_indcs, Lx, Ly, Lz);
+      g3d_new[i] = Interp(adm_new, adm::ADM::I_ADM_GXX+i,
+                          interp_indcs, Lx, Ly, Lz);
       g3d[i] = 0.5 * (g3d_old[i] + g3d_new[i]);
     }
     if (Euler) {
@@ -167,58 +213,58 @@ struct GeodesicPush {
     Real dbeta_old[3][3] = {0.0}, dbeta_new[3][3] = {0.0}, dbeta[3][3] = {0.0};
     Real dg3u_old[3][6] = {0.0}, dg3u_new[3][6] = {0.0}, dg3u[3][6] = {0.0};
     if (use_z4c) {
-      dalp_old[0] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
-                                             interp_indcs, dLx, Ly, Lz);
-      dalp_old[1] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
-                                             interp_indcs, Lx, dLy, Lz);
-      dalp_old[2] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
-                                             interp_indcs, Lx, Ly, dLz);
-      dalp_new[0] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
-                                             interp_indcs, dLx, Ly, Lz);
-      dalp_new[1] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
-                                             interp_indcs, Lx, dLy, Lz);
-      dalp_new[2] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
-                                             interp_indcs, Lx, Ly, dLz);
+      dalp_old[0] = Interp(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
+                           interp_indcs, dLx, Ly, Lz);
+      dalp_old[1] = Interp(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
+                           interp_indcs, Lx, dLy, Lz);
+      dalp_old[2] = Interp(z4c_old, z4c::Z4c::I_Z4C_ALPHA,
+                           interp_indcs, Lx, Ly, dLz);
+      dalp_new[0] = Interp(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
+                           interp_indcs, dLx, Ly, Lz);
+      dalp_new[1] = Interp(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
+                           interp_indcs, Lx, dLy, Lz);
+      dalp_new[2] = Interp(z4c_new, z4c::Z4c::I_Z4C_ALPHA,
+                           interp_indcs, Lx, Ly, dLz);
       for (int i = 0; i < 3; ++i) {
-        dbeta_old[0][i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
-                                                   interp_indcs, dLx, Ly, Lz);
-        dbeta_old[1][i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
-                                                   interp_indcs, Lx, dLy, Lz);
-        dbeta_old[2][i] = LagrangeInterpolator<NG>(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
-                                                   interp_indcs, Lx, Ly, dLz);
-        dbeta_new[0][i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
-                                                   interp_indcs, dLx, Ly, Lz);
-        dbeta_new[1][i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
-                                                   interp_indcs, Lx, dLy, Lz);
-        dbeta_new[2][i] = LagrangeInterpolator<NG>(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
-                                                   interp_indcs, Lx, Ly, dLz);
+        dbeta_old[0][i] = Interp(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
+                                 interp_indcs, dLx, Ly, Lz);
+        dbeta_old[1][i] = Interp(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
+                                 interp_indcs, Lx, dLy, Lz);
+        dbeta_old[2][i] = Interp(z4c_old, z4c::Z4c::I_Z4C_BETAX+i,
+                                 interp_indcs, Lx, Ly, dLz);
+        dbeta_new[0][i] = Interp(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
+                                 interp_indcs, dLx, Ly, Lz);
+        dbeta_new[1][i] = Interp(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
+                                 interp_indcs, Lx, dLy, Lz);
+        dbeta_new[2][i] = Interp(z4c_new, z4c::Z4c::I_Z4C_BETAX+i,
+                                 interp_indcs, Lx, Ly, dLz);
       }
     } else {
-      dalp_old[0] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA,
-                                             interp_indcs, dLx, Ly, Lz);
-      dalp_old[1] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA,
-                                             interp_indcs, Lx, dLy, Lz);
-      dalp_old[2] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_ALPHA,
-                                             interp_indcs, Lx, Ly, dLz);
-      dalp_new[0] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA,
-                                             interp_indcs, dLx, Ly, Lz);
-      dalp_new[1] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA,
-                                             interp_indcs, Lx, dLy, Lz);
-      dalp_new[2] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_ALPHA,
-                                             interp_indcs, Lx, Ly, dLz);
+      dalp_old[0] = Interp(adm_old, adm::ADM::I_ADM_ALPHA,
+                           interp_indcs, dLx, Ly, Lz);
+      dalp_old[1] = Interp(adm_old, adm::ADM::I_ADM_ALPHA,
+                           interp_indcs, Lx, dLy, Lz);
+      dalp_old[2] = Interp(adm_old, adm::ADM::I_ADM_ALPHA,
+                           interp_indcs, Lx, Ly, dLz);
+      dalp_new[0] = Interp(adm_new, adm::ADM::I_ADM_ALPHA,
+                           interp_indcs, dLx, Ly, Lz);
+      dalp_new[1] = Interp(adm_new, adm::ADM::I_ADM_ALPHA,
+                           interp_indcs, Lx, dLy, Lz);
+      dalp_new[2] = Interp(adm_new, adm::ADM::I_ADM_ALPHA,
+                           interp_indcs, Lx, Ly, dLz);
       for (int i = 0; i < 3; ++i) {
-        dbeta_old[0][i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i,
-                                                   interp_indcs, dLx, Ly, Lz);
-        dbeta_old[1][i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i,
-                                                   interp_indcs, Lx, dLy, Lz);
-        dbeta_old[2][i] = LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_BETAX+i,
-                                                   interp_indcs, Lx, Ly, dLz);
-        dbeta_new[0][i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i,
-                                                   interp_indcs, dLx, Ly, Lz);
-        dbeta_new[1][i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i,
-                                                   interp_indcs, Lx, dLy, Lz);
-        dbeta_new[2][i] = LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_BETAX+i,
-                                                   interp_indcs, Lx, Ly, dLz);
+        dbeta_old[0][i] = Interp(adm_old, adm::ADM::I_ADM_BETAX+i,
+                                 interp_indcs, dLx, Ly, Lz);
+        dbeta_old[1][i] = Interp(adm_old, adm::ADM::I_ADM_BETAX+i,
+                                 interp_indcs, Lx, dLy, Lz);
+        dbeta_old[2][i] = Interp(adm_old, adm::ADM::I_ADM_BETAX+i,
+                                 interp_indcs, Lx, Ly, dLz);
+        dbeta_new[0][i] = Interp(adm_new, adm::ADM::I_ADM_BETAX+i,
+                                 interp_indcs, dLx, Ly, Lz);
+        dbeta_new[1][i] = Interp(adm_new, adm::ADM::I_ADM_BETAX+i,
+                                 interp_indcs, Lx, dLy, Lz);
+        dbeta_new[2][i] = Interp(adm_new, adm::ADM::I_ADM_BETAX+i,
+                                 interp_indcs, Lx, Ly, dLz);
       }
     }
     for (int i = 0; i < 3; ++i) {
@@ -227,18 +273,18 @@ struct GeodesicPush {
         dbeta[i][j] = 0.5 * (dbeta_old[i][j] + dbeta_new[i][j]);
       }
     }
-    LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX,
-                             interp_indcs, dLx, Ly, Lz, dg3u_old[0]);
-    LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX,
-                             interp_indcs, Lx, dLy, Lz, dg3u_old[1]);
-    LagrangeInterpolator<NG>(adm_old, adm::ADM::I_ADM_GXX,
-                             interp_indcs, Lx, Ly, dLz, dg3u_old[2]);
-    LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX,
-                             interp_indcs, dLx, Ly, Lz, dg3u_new[0]);
-    LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX,
-                             interp_indcs, Lx, dLy, Lz, dg3u_new[1]);
-    LagrangeInterpolator<NG>(adm_new, adm::ADM::I_ADM_GXX,
-                             interp_indcs, Lx, Ly, dLz, dg3u_new[2]);
+    Interp(adm_old, adm::ADM::I_ADM_GXX,
+           interp_indcs, dLx, Ly, Lz, dg3u_old[0]);
+    Interp(adm_old, adm::ADM::I_ADM_GXX,
+           interp_indcs, Lx, dLy, Lz, dg3u_old[1]);
+    Interp(adm_old, adm::ADM::I_ADM_GXX,
+           interp_indcs, Lx, Ly, dLz, dg3u_old[2]);
+    Interp(adm_new, adm::ADM::I_ADM_GXX,
+           interp_indcs, dLx, Ly, Lz, dg3u_new[0]);
+    Interp(adm_new, adm::ADM::I_ADM_GXX,
+           interp_indcs, Lx, dLy, Lz, dg3u_new[1]);
+    Interp(adm_new, adm::ADM::I_ADM_GXX,
+           interp_indcs, Lx, Ly, dLz, dg3u_new[2]);
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 6; ++j) {
         dg3u[i][j] = 0.5 * (dg3u_old[i][j] + dg3u_new[i][j]);
@@ -321,6 +367,58 @@ int FixedPointIteration(const F& f, const Real x0[3], const Real u0[3],
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn bool GridMetricValid
+//! \brief Sylvester-test the eight stored gamma_ij the trilinear stencil reads at x, on
+//! the step-n metric. Returns false if any of them is not positive definite or not
+//! finite.
+//!
+//! This separates the two causes of a rejected substep: a high-order interpolant
+//! overshooting between good grid values, which the fallback legitimately repairs, from
+//! grid values that are already not a Riemannian 3-metric, where a "repair" would be
+//! manufacturing a plausible number out of an invalid solution.
+//!
+//! It is a DIAGNOSTIC and deliberately does not gate the write-back. The gate is still
+//! the Sylvester test inside GeodesicPush, applied to the interpolated metric the retry
+//! actually uses; what this adds is the knowledge of whether the convexity argument
+//! applied at all. One bad corner carrying a small weight can still leave the combination
+//! positive definite, so rejecting on it would throw away sound repairs -- but a run in
+//! which this count is not zero is a run whose stored solution needs looking at, not one
+//! whose particle pusher needs looking at. Reachable because
+//! gamma_ij = chi^(4/chi_psi_power) * gammat_ij (z4c_adm.cpp) with the default
+//! chi_psi_power = -4, so one grid point with chi <= 0 flips the sign of the whole
+//! matrix, and <z4c> floor_chi defaults to false.
+//!
+//! Scope: (adm_n, x_n) is the stencil the forward-Euler evaluation reads, and it is the
+//! Euler evaluation failing that makes a substep kRejected, so this is the decisive
+//! stencil. It is not the stencil of the fixed-point iterates, which sit at moving
+//! midpoints. "One bad corner" also only voids the convexity guarantee; a bad corner
+//! carrying a small weight can still leave the combination positive definite.
+
+template <int NG>
+KOKKOS_INLINE_FUNCTION
+bool GridMetricValid(const DvceArray5D<Real>& adm, const Real x[3],
+                     const Real *mb_par, const int *ncell, const int mb) {
+  int idcs[4] = {mb, -1, -1, -1};
+  SetInterpIndices(x, mb_par, ncell, idcs);
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      for (int k = 0; k < 2; ++k) {
+        Real g[6] = {0.0};
+        for (int m = 0; m < 6; ++m) {
+          g[m] = adm(idcs[0], adm::ADM::I_ADM_GXX+m,
+                     idcs[3] + NG + k, idcs[2] + NG + j, idcs[1] + NG + i);
+          if (!Kokkos::isfinite(g[m])) {return false;}
+        }
+        Real minor2 = g[0]*g[3] - g[1]*g[1];
+        if (!(g[0] > 0.0) || !(minor2 > 0.0) ||
+            !(Primitive::GetDeterminant(g) > 0.0)) {return false;}
+      }
+    }
+  }
+  return true;
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void Particles::GR_BorisPush
 
 void Particles::GR_BorisPush() {
@@ -337,6 +435,16 @@ void Particles::GR_BorisPush() {
 
   auto nfail_ = boris_nfail;          // bounded non-convergence diagnostic counters
   const int ndetail_ = kBorisDetail;
+  // The low-order retry is geodesic-only: it runs after the push, in its own kernel, and
+  // cannot see the u^+ the first EM half-kick left in a register. With MHD that half-kick
+  // has also already consumed its own interpolated gamma_ij through CalcTetrad, so the
+  // state it would re-solve from is the poisoned one. An MHD run therefore keeps the
+  // previous behaviour exactly: a rejected substep is rejected.
+  const bool retry_on_ = (pmy_pack->pmhd == nullptr);
+  if (retry_on_ && nprtcl_thispack > static_cast<int>(boris_retry.extent(0))) {
+    Kokkos::realloc(boris_retry, nprtcl_thispack);
+  }
+  auto retry_ = boris_retry;
 
   auto &pi = prtcl_idata;
   auto &pr = prtcl_rdata;
@@ -373,6 +481,8 @@ void Particles::GR_BorisPush() {
                             size.d_view(mb).x3min, size.d_view(mb).x3max,
                             size.d_view(mb).dx3};
     int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+
+    if (retry_on_) { retry_(p) = 0; }
 
     Real x_n[3] = {pr(IPX, p), pr(IPY, p), pr(IPZ, p)};
     Real u_n[3] = {pr(IPVX, p), pr(IPVY, p), pr(IPVZ, p)};
@@ -511,23 +621,31 @@ void Particles::GR_BorisPush() {
     int gstat = kRejected;
     switch (ng) {
     case 2: {
-      GeodesicPush<2> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
-                         z4c_n, z4c_np1);
+      GeodesicPush<2, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
+                                use_z4c, z4c_n, z4c_np1);
       gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
       break;
     }
     case 3: {
-      GeodesicPush<3> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
-                         z4c_n, z4c_np1);
+      GeodesicPush<3, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
+                                use_z4c, z4c_n, z4c_np1);
       gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
       break;
     }
     case 4: {
-      GeodesicPush<4> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
-                         z4c_n, z4c_np1);
+      GeodesicPush<4, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
+                                use_z4c, z4c_n, z4c_np1);
       gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
       break;
     }
+    }
+    if (gstat == kRejected && retry_on_) {
+      // Hand this particle to the retry kernel rather than rejecting it here. The
+      // step-n state is left in place exactly as a rejection would leave it, so if the
+      // retry also fails nothing has changed.
+      retry_(p) = 1;
+      Kokkos::atomic_fetch_add(&nfail_(4), 1);
+      return;
     }
     if (gstat == kEuler) {
       // Count EVERY failure, but print at most ndetail_ detailed lines per cycle: the
@@ -543,7 +661,8 @@ void Particles::GR_BorisPush() {
                        pi(PTAG, p), pi(PGID, p),
                        x_n[0], x_n[1], x_n[2], u_p[0], u_p[1], u_p[2], dt_);
       }
-    } else if (gstat == kRejected) {
+    }
+    if (gstat == kRejected) {
       // Neither the fixed point nor the Euler fallback produced a usable state. The step
       // is NOT TAKEN: the step-n position and velocity are finite and still inside this
       // MeshBlock, so every downstream invariant holds and the ordinary excision
@@ -720,15 +839,56 @@ void Particles::GR_BorisPush() {
     pr(IPVZ, p) = u_np1[2];
   });
 
+  // ---- retry the rejected substeps, in a SEPARATE kernel ---------------------------
+  // Separate because GeodesicPush is inlined into its caller: putting both interpolation
+  // operators in one kernel overflows the register file on gfx90a and spills to scratch,
+  // which costs orders of magnitude on every push whether or not the fallback fires.
+  // Launched only when the push flagged something.
   // ---- bounded non-convergence summary: ONE line per rank per cycle ----------------
   // Read the device counter, report it, and reset for the next cycle. Failures are never
   // hidden: the count is exact and the per-rank running total is included.
   {
     auto hfail = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), boris_nfail);
+    // The retry needs the same counter, so it is launched from inside this block and the
+    // mirror is re-read only when it actually ran: a cycle with nothing to retry costs
+    // exactly the one device-to-host copy it cost before.
+    if (retry_on_ && hfail(4) > 0) {
+      GRBorisRetry();
+      hfail = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), boris_nfail);
+    }
     int nfail = hfail(0);
     int nrej_geo = hfail(2);
     int nrej_out = hfail(3);
     int nrej = nrej_geo + nrej_out;
+    int nretry = hfail(4);
+    int nrescued = hfail(5);
+    int nbadgrid = hfail(6);
+    if (nretry > 0) {
+      boris_nretry_cum += static_cast<std::int64_t>(nretry);
+      boris_nrescued_cum += static_cast<std::int64_t>(nrescued);
+      if (!boris_first_retry_seen) {
+        boris_first_retry_seen = true;
+        std::cout << "### WARNING in " << __FILE__ << ": a geodesic substep whose "
+                  << "high-order geometry was invalid was re-solved with a TRILINEAR "
+                  << "interpolant for the first time this run (rank "
+                  << global_variable::my_rank << ", cycle " << pmy_pack->pmesh->ncycle
+                  << ")." << std::endl
+                  << "    That push is first order accurate in space, not " << 2*ng
+                  << "th: it is a repair, not an improvement, and it means the metric is "
+                  << "under-resolved where that particle sits -- refine, or excise "
+                  << "earlier." << std::endl
+                  << "    'invalid grid' below counts the retries whose eight "
+                  << "surrounding STORED gamma_ij were themselves not a 3-metric. Those "
+                  << "are not an interpolation problem and are not repaired."
+                  << std::endl;
+      }
+      std::cout << "### trilinear retry: rank " << global_variable::my_rank
+                << " cycle " << pmy_pack->pmesh->ncycle << ": " << nretry
+                << " of " << nprtcl_thispack << " re-solved, " << nrescued
+                << " rescued, " << nbadgrid << " with an invalid grid metric"
+                << " (cumulative " << boris_nrescued_cum << "/" << boris_nretry_cum
+                << ")" << std::endl;
+    }
     if (nrej > 0) {
       boris_nreject_cum += static_cast<std::int64_t>(nrej);
       if (!boris_first_reject_seen) {
@@ -744,6 +904,10 @@ void Particles::GR_BorisPush() {
                   << "    This is a real loss of accuracy for that particle, not a "
                   << "crash: it happens where a high-order interpolation of gamma_ij "
                   << "overshoots, i.e. inside a moving-puncture trumpet." << std::endl
+                  << "    In a geodesic configuration the trilinear retry has already "
+                  << "been tried and also failed, so the eight surrounding grid values "
+                  << "are themselves suspect -- see the 'invalid grid metric' count."
+                  << std::endl
                   << "    If it affects more than a negligible fraction of the "
                   << "population, the matter there is under-resolved -- refine, or "
                   << "excise earlier (raise <particles> excise_lapse)." << std::endl;
@@ -775,7 +939,9 @@ void Particles::GR_BorisPush() {
                 << nprtcl_thispack << " particles fell back to forward Euler"
                 << " (rank total " << boris_nfail_cum << ")" << std::endl;
     }
-    if (nfail > 0 || nrej > 0) {Kokkos::deep_copy(boris_nfail, 0);}
+    // slots 4-6 can be non-zero on a cycle where nfail and nrej are both zero (every
+    // retry succeeded), and a counter that survives is double counted next cycle
+    if (nfail > 0 || nrej > 0 || nretry > 0) {Kokkos::deep_copy(boris_nfail, 0);}
   }
 
   // snapshot the current fields/metric as step n for the next push (for a static
@@ -790,6 +956,123 @@ void Particles::GR_BorisPush() {
     Kokkos::deep_copy(DevExeSpace(), z4c_last, pmy_pack->pz4c->u0);
   }
   Kokkos::fence();
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void Particles::GRBorisRetry
+//! \brief re-solve, with a trilinear interpolant, the geodesic substeps GR_BorisPush
+//! rejected.
+//!
+//! Runs only over the particles the push flagged, and only when it flagged at least one.
+//! A particle reaches this kernel only if BOTH the high-order fixed point and the
+//! high-order forward-Euler evaluation failed to produce a usable state, so an accepted
+//! push is bit-for-bit unaffected by the existence of this pass.
+//!
+//! Geodesic-only, and the caller enforces that by not running it under MHD (see
+//! GR_BorisPush). Every guard the push applies applies here too: the Sylvester and
+//! usq >= 0 tests inside GeodesicPush, a finiteness check before write-back, and a
+//! rejected retry that leaves the step-n state untouched.
+
+void Particles::GRBorisRetry() {
+  // correctness of this pass depends on u^+ == u^n, i.e. on there being no EM half-kick;
+  // GR_BorisPush already only calls it then, but the entry point is public so guard it
+  if (pmy_pack->pmhd != nullptr) {return;}
+  auto &indcs = pmy_pack->pmesh->mb_indcs;
+  int ng = indcs.ng;
+  auto &size = pmy_pack->pmb->mb_size;
+  int gids = pmy_pack->gids;
+  auto dt_ = pmy_pack->pmesh->dt;
+
+  auto nfail_ = boris_nfail;
+  auto retry_ = boris_retry;
+  const int ndetail_ = kBorisDetail;
+  auto &pi = prtcl_idata;
+  auto &pr = prtcl_rdata;
+  auto &adm_n = adm_last;
+  auto &adm_np1 = pmy_pack->padm->u_adm;
+
+  DvceArray5D<Real> z4c_n, z4c_np1;
+  bool use_z4c = false;
+  if (pmy_pack->pz4c != nullptr) {
+    use_z4c = true;
+    z4c_n = z4c_last;
+    z4c_np1 = pmy_pack->pz4c->u0;
+  }
+
+  par_for("gr_boris_retry", DevExeSpace(), 0, nprtcl_thispack - 1,
+  KOKKOS_LAMBDA(const int p) {
+    if (retry_(p) == 0) {return;}
+    int mb = pi(PGID, p) - gids;
+    const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max,
+                            size.d_view(mb).dx1,
+                            size.d_view(mb).x2min, size.d_view(mb).x2max,
+                            size.d_view(mb).dx2,
+                            size.d_view(mb).x3min, size.d_view(mb).x3max,
+                            size.d_view(mb).dx3};
+    int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+    Real x_n[3] = {pr(IPX, p), pr(IPY, p), pr(IPZ, p)};
+    Real u_n[3] = {pr(IPVX, p), pr(IPVY, p), pr(IPVZ, p)};
+
+    Real x_np1[3] = {0.0}, u_np1[3] = {0.0};
+    int gstat = kRejected;
+    bool grid_ok = false;
+    switch (ng) {
+    case 2: {
+      GeodesicPush<2, true> gp(x_n, u_n, mb, mb_par, ncell, dt_, adm_n, adm_np1,
+                               use_z4c, z4c_n, z4c_np1);
+      gstat = FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
+      grid_ok = GridMetricValid<2>(adm_n, x_n, mb_par, ncell, mb);
+      break;
+    }
+    case 3: {
+      GeodesicPush<3, true> gp(x_n, u_n, mb, mb_par, ncell, dt_, adm_n, adm_np1,
+                               use_z4c, z4c_n, z4c_np1);
+      gstat = FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
+      grid_ok = GridMetricValid<3>(adm_n, x_n, mb_par, ncell, mb);
+      break;
+    }
+    case 4: {
+      GeodesicPush<4, true> gp(x_n, u_n, mb, mb_par, ncell, dt_, adm_n, adm_np1,
+                               use_z4c, z4c_n, z4c_np1);
+      gstat = FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
+      grid_ok = GridMetricValid<4>(adm_n, x_n, mb_par, ncell, mb);
+      break;
+    }
+    }
+    if (!grid_ok) {Kokkos::atomic_fetch_add(&nfail_(6), 1);}
+
+    bool finite_out = gstat != kRejected
+                   && Kokkos::isfinite(x_np1[0]) && Kokkos::isfinite(x_np1[1])
+                   && Kokkos::isfinite(x_np1[2]) && Kokkos::isfinite(u_np1[0])
+                   && Kokkos::isfinite(u_np1[1]) && Kokkos::isfinite(u_np1[2]);
+    if (!finite_out) {
+      // the low-order retry failed too: reject exactly as the push would have
+      int islot = Kokkos::atomic_fetch_add(&nfail_(2), 1);
+      if (islot < ndetail_) {
+        Kokkos::printf("### WARNING gr_boris: geodesic substep REJECTED (trilinear retry "
+                       "also invalid or non-finite); step not taken | tag=%d gid=%d "
+                       "x=(% .6e,% .6e,% .6e) u_i=(% .6e,% .6e,% .6e) "
+                       "grid_metric_ok=%d\n",
+                       pi(PTAG, p), pi(PGID, p),
+                       x_n[0], x_n[1], x_n[2], u_n[0], u_n[1], u_n[2],
+                       static_cast<int>(grid_ok));
+      }
+      return;   // leave pr(IPX..)/pr(IPVX..) at their step-n values
+    }
+    Kokkos::atomic_fetch_add(&nfail_(5), 1);
+    // A retry that only converged through the Euler branch is still a first-order step,
+    // so it belongs in the same accuracy ledger as a high-order Euler fallback rather
+    // than disappearing into the rescue count.
+    if (gstat == kEuler) {Kokkos::atomic_fetch_add(&nfail_(0), 1);}
+    pr(IPX, p) = x_np1[0];
+    pr(IPY, p) = x_np1[1];
+    pr(IPZ, p) = x_np1[2];
+    pr(IPVX, p) = u_np1[0];
+    pr(IPVY, p) = u_np1[1];
+    pr(IPVZ, p) = u_np1[2];
+  });
+  return;
 }
 
 } // namespace particles
