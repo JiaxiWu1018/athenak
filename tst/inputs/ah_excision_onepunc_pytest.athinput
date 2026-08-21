@@ -1,0 +1,142 @@
+<comment>
+problem = regression fixture for <particles> excise_ah: one M=1 puncture with the shipped
+          AH-finder AMR setup, plus two equatorial rings of geodesic particles. Ring 1 at
+          r = 0.30 is inside the horizon (Brill-Lindquist isotropic AH at r = M/2 = 0.5,
+          FastFlow recovers 0.4920), ring 2 at r = 4.00 is outside. excise_lapse = 0 so the
+          horizon is the ONLY destruction channel. A uniform grid cannot be substituted:
+          at dx = 0.625 the horizon spans under a cell and FastFlow diverges every cycle.
+
+<job>
+basename  = ah_excision_onepunc_pytest
+
+<mesh>
+nghost    = 2         # Number of ghost cells
+nx1       = 32        # Number of zones in X1-direction
+x1min     = -10.0     # minimum value of X1
+x1max     = 10.0      # maximum value of X1
+ix1_bc    = outflow   # inner-X1 boundary flag
+ox1_bc    = outflow   # outer-X1 boundary flag
+
+nx2       = 32        # Number of zones in X2-direction
+x2min     = -10.0     # minimum value of X2
+x2max     = 10.0      # maximum value of X2
+ix2_bc    = outflow   # inner-X2 boundary flag
+ox2_bc    = outflow   # outer-X2 boundary flag
+
+nx3       = 32        # Number of zones in X3-direction
+x3min     = -10.0     # minimum value of X3
+x3max     = 10.0      # maximum value of X3
+ix3_bc    = outflow   # inner-X3 boundary flag
+ox3_bc    = outflow   # outer-X3 boundary flag
+
+<meshblock>
+nx1       = 8         # Number of cells in each MeshBlock, X1-dir
+nx2       = 8         # Number of cells in each MeshBlock, X2-dir
+nx3       = 8         # Number of cells in each MeshBlock, X3-dir
+
+<time>
+evolution  = dynamic    # dynamic/kinematic/static
+integrator = rk4        # time integration algorithm
+cfl_number = 0.1        # The Courant, Friedrichs, & Lewy (CFL) Number
+tlim       = 0.2        # the AH exists from t=0; a few cycles suffice
+ndiag      = 100
+
+<mesh_refinement>
+refinement = adaptive
+max_nmb_per_rank = 256
+num_levels = 4
+refinement_interval = 1
+
+<z4c_amr>
+method =tracker
+
+<amr_criterion0>
+method = user
+
+<refined_region1>
+level = 3
+x1min = -0.6
+x1max = 0.6
+x2min = -0.6
+x2max = 0.6
+x3min = -0.6
+x3max = 0.6
+
+<z4c>
+# Gauge parameters
+lapse_oplog     = 2.0
+lapse_harmonicf = 1.0
+lapse_harmonic  = 0.0
+lapse_advect    = 1.0
+shift_eta       = 2.0
+shift_advect    = 1.0
+
+# Dissipation parameters
+diss            = 0.02
+chi_div_floor   = 1e-05
+
+# Constraint damping
+damp_kappa1     = 0.02
+damp_kappa2     = 0.0
+
+# Compact object tracker
+nco = 1
+co_0_type = BH
+co_0_x = 0.0
+co_0_y = 0.0
+co_0_z = 0.0
+co_0_mass = 1.0		# needs to equal punc_ADM_mass for fastflow initial guess
+tracker_mode = ode
+
+<fastflow>
+# Number of punctures and horizons
+npunct = 1
+num_horizons = 1
+
+store_metric_drvts = false
+
+# Grid points
+ntheta = 10	# nphi = 2*ntheta 
+lmax = 6	
+
+# Puncture 0
+use_puncture_0 = 0
+initial_radius_0 = 1.0
+center_x_0 = 0.0
+center_y_0 = 0.0
+center_z_0 = 0.0
+
+# Flow parameters puncture 0
+flow_iterations_0 = 100
+flow_alpha_beta_const_0 = 1.0
+hmean_tol_0 = 100.0
+mass_tol_0 = 1e-2
+
+start_time_0 = 0.0
+stop_time_0 = 1.0e30
+
+# AHF output
+output_ylm = false	# output spherical harmonics
+output_grid = false	# output grid
+verbose = true
+
+<particles>
+particle_type = dust
+pusher = gr_boris
+init = pgen
+feedback = false
+mass = 1.0
+debug = 1
+destroy_log = true
+excise_radius = 0.0
+excise_lapse = 0.0
+excise_ah = true
+excise_ah_margin = 0.0
+excise_ah_use_surface = true
+
+<problem>
+pgen_name = z4c_one_puncture
+punc_ADM_mass = 1.	# puncture mass
+prtcl_np = 16		# particles per ring
+prtcl_r1 = 0.30		# INSIDE the horizon
+prtcl_r2 = 4.00		# OUTSIDE the horizon
