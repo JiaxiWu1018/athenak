@@ -11,6 +11,14 @@ properties worth pinning are:
 2. when a rejection does happen the retry is attempted, counted, and reported, and the
    run still finishes with a conserved ledger and no non-finite state.
 
+Note what is NOT asserted: that the TOTAL retry count over the run equals the total
+rejection count of the ``none`` run. It does not, and must not -- a rescued push moves a
+particle the production run leaves frozen, so the two trajectories separate and the later
+cycles are no longer comparable. The cross-run equality is asserted only at the FIRST
+cycle that reports anything, where it is exact by construction: the flag cannot act
+before the first rejection, so up to that cycle the two runs execute identical code on
+identical data.
+
 The deck puts one ring at r = 0.3 on a dx = 1/3 grid, i.e. inside a single cell of the
 trumpet, which is the regime that produces the rejections. Run from ``tst`` with::
 
@@ -32,6 +40,7 @@ helpers.require_problem("z4c/z4c_one_puncture")
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 INPUT = os.path.join(REPO, "tst", "inputs", "z4c_op_trilinear_pytest.athinput")
 MODES = ("none", "mirror", "consistent")
+OUTER_TAG0 = 32          # <problem> prtcl_np in the deck; the pgen tags ring 1 first
 
 REJECT_RE = re.compile(r"update rejected: rank (\d+) cycle (\d+): (\d+) of (\d+) "
                        r"particles kept their step-n state \(geodesic (\d+), "
@@ -42,28 +51,33 @@ FALLBACK_RE = re.compile(r"trilinear fallback: rank (\d+) cycle (\d+): (\d+) att
                          r"non-finite in (\d+)")
 
 
-def _rejects(log):
-    """(geodesic rejections, write-back refusals) summed over every reported cycle."""
-    geo = sum(int(m[4]) for m in REJECT_RE.findall(log))
-    out = sum(int(m[5]) for m in REJECT_RE.findall(log))
-    return geo, out
+def _rejects_by_cycle(log):
+    """cycle -> [geodesic rejections, write-back refusals], summed over ranks."""
+    out = {}
+    for m in REJECT_RE.findall(log):
+        c = int(m[1])
+        row = out.setdefault(c, [0, 0])
+        row[0] += int(m[4])
+        row[1] += int(m[5])
+    return out
 
 
-def _fallbacks(log):
-    """(attempted, succeeded, still rejected, grid-invalid, grid-non-finite)."""
-    rows = FALLBACK_RE.findall(log)
-    cols = [sum(int(r[i]) for r in rows) for i in (2, 3, 6, 7, 8)]
-    return tuple(cols)
+def _fallbacks_by_cycle(log):
+    """cycle -> [attempted, succeeded, still rejected, grid invalid, grid non-finite]."""
+    out = {}
+    for m in FALLBACK_RE.findall(log):
+        c = int(m[1])
+        row = out.setdefault(c, [0, 0, 0, 0, 0])
+        for i, g in enumerate((2, 3, 6, 7, 8)):
+            row[i] += int(m[g])
+    return out
 
 
 def _outer_ring(run_dir):
-    """Final position and velocity of the well-resolved ring, keyed by tag.
-
-    The pgen tags ring 1 first, so tags >= prtcl_np belong to the outer ring.
-    """
+    """Final position and velocity of the well-resolved ring, keyed by tag."""
     path = helpers.particle_dumps(run_dir)[-1]
     _, x, v, tag = helpers.read_particle_vtk(path)
-    keep = tag >= 32
+    keep = tag >= OUTER_TAG0
     order = np.argsort(tag[keep])
     return x[keep][order], v[keep][order], tag[keep][order]
 
@@ -84,12 +98,14 @@ def test_trilinear_fallback():
         for mode, log in runs.items():
             assert "nan" not in log.lower(), f"{mode}: nan in the log"
             assert "FATAL" not in log, f"{mode}: fatal error"
-            assert _rejects(log)[1] == 0, f"{mode}: a non-finite write-back was refused"
+            assert all(v[1] == 0 for v in _rejects_by_cycle(log).values()), (
+                f"{mode}: a non-finite write-back was refused"
+            )
 
-        base_geo, _ = _rejects(runs["none"])
+        base_rej = _rejects_by_cycle(runs["none"])
 
         # 1. mode = none must be reported as doing nothing at all
-        assert _fallbacks(runs["none"]) == (0, 0, 0, 0, 0), (
+        assert not _fallbacks_by_cycle(runs["none"]), (
             "trilinear_fallback = none must not attempt a retry"
         )
         assert "trilinear fallback" not in runs["none"], (
@@ -109,27 +125,42 @@ def test_trilinear_fallback():
                 f"{mode}: outer-ring velocities are not bitwise equal"
             )
 
-        if base_geo == 0:
+        if not base_rej:
             # no rejection anywhere: then NOTHING may change, for either mode
             for mode in ("mirror", "consistent"):
-                assert _fallbacks(runs[mode])[0] == 0, (
+                assert not _fallbacks_by_cycle(runs[mode]), (
                     f"{mode}: retried a substep the high-order path did not reject"
                 )
                 helpers.assert_final_particle_state_bitwise(dirs["none"], dirs[mode])
             return
 
-        # 3. every rejection of the production run is retried, counted and accounted for
+        first_rej_cycle = min(base_rej)
         for mode in ("mirror", "consistent"):
-            tried, ok, still, bad_grid, nonfinite_grid = _fallbacks(runs[mode])
-            assert tried == base_geo, (
-                f"{mode}: {tried} retries for {base_geo} production rejections -- the "
-                f"retry must be entered exactly once per rejected substep"
+            fb = _fallbacks_by_cycle(runs[mode])
+            rej = _rejects_by_cycle(runs[mode])
+            assert fb, f"{mode}: the production run rejected but no retry was attempted"
+
+            # 3a. per cycle, inside one run, the census must add up and must agree with
+            #     the rejection summary printed by the same run
+            for c, (tried, ok, still, bad_grid, nonfinite_grid) in fb.items():
+                assert ok + still == tried, f"{mode}: cycle {c} census does not add up"
+                assert rej.get(c, [0, 0])[0] == still, (
+                    f"{mode}: cycle {c} reports {rej.get(c, [0, 0])[0]} rejections for "
+                    f"{still} failed retries"
+                )
+                assert bad_grid <= tried and nonfinite_grid <= tried
+
+            # 3b. at the first cycle that reports anything the two runs are still
+            #     identical, so every rejection there must have been retried exactly once
+            assert min(fb) == first_rej_cycle, (
+                f"{mode}: first retry at cycle {min(fb)}, first production rejection at "
+                f"cycle {first_rej_cycle} -- the flag cannot act before the first "
+                f"rejection, so these must coincide"
             )
-            assert ok + still == tried, f"{mode}: fallback census does not add up"
-            assert _rejects(runs[mode])[0] == still, (
-                f"{mode}: reported rejections do not match the failed retries"
+            assert fb[first_rej_cycle][0] == base_rej[first_rej_cycle][0], (
+                f"{mode}: {fb[first_rej_cycle][0]} retries for "
+                f"{base_rej[first_rej_cycle][0]} rejections at the first affected cycle"
             )
-            assert bad_grid <= tried and nonfinite_grid <= tried
-            assert "trilinear geodesic fallback for the first time" in runs[mode]
+            assert "TRILINEAR geodesic fallback for the first time" in runs[mode]
     finally:
         helpers.remove_dirs(*dirs.values())

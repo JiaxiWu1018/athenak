@@ -411,40 +411,36 @@ int FixedPointIteration(const F& f, const Real x0[3], const Real u0[3],
 
 //----------------------------------------------------------------------------------------
 //! \fn int GeodesicSubstep
-//! \brief run one geodesic substep and, on the experiment branch, retry a rejected one
-//! with a trilinear interpolant.
+//! \brief solve one geodesic substep with the interpolation operator fixed at COMPILE
+//! time by IMODE.
 //!
-//! The high-order attempt is always made first and its status is returned through
-//! *hi_stat. The retry is entered on kRejected ONLY -- that is, only when neither the
-//! fixed point nor the forward-Euler evaluation of the high-order interpolant produced a
-//! usable state, which is exactly the set of pushes production would drop. Every other
-//! outcome returns the high-order result untouched, so enabling the fallback cannot
-//! perturb a push that the production code accepts.
+//! IMODE is a template parameter, not an argument, and that is load-bearing rather than
+//! cosmetic. GeodesicPush::operator() is inlined wholesale into whichever device kernel
+//! calls it, and it contains both interpolation operators plus, for kTriExact, two extra
+//! 3x6 gradient arrays. With the mode a RUNTIME value the compiler must keep all of that
+//! live in one kernel; the per-thread frame stops fitting in registers and spills to
+//! scratch, and the production push -- which never executes any of it -- slows down by
+//! orders of magnitude. Measured on 4 x MI210, gfx90a, ROCm 6.4.1: a first version that
+//! called the high-order and the low-order functor from the same kernel made the
+//! y_c = 0.700 restart fail to complete a single history row in four hours, against ten
+//! minutes for production, even with the fallback switched OFF.
 //!
-//! The retry re-runs the SAME fixed-point solve and the SAME Euler fallback from the same
-//! (x^n, u^+), with the trilinear interpolant used consistently for the geometry and for
-//! its derivatives. It can still fail -- if the eight surrounding GRID values are
-//! themselves not a positive definite 3-metric, no interpolation can produce one -- and
-//! then the substep is rejected as before.
+//! With IMODE a constant, each kernel carries exactly one operator. The production
+//! kernel instantiates <NG, kHighOrder> only, so its generated code is production's; the
+//! retry lives in a separate kernel (Particles::gr_boris_retry) launched only for the
+//! particles the production kernel rejected.
 
-template <int NG>
+template <int NG, int IMODE>
 KOKKOS_INLINE_FUNCTION
 int GeodesicSubstep(const Real x_n[3], const Real u_p[3], const int mb,
                     const Real mb_par[9], const int ncell[3], const Real dt,
                     const DvceArray5D<Real>& adm_n, const DvceArray5D<Real>& adm_np1,
                     const bool use_z4c,
                     const DvceArray5D<Real>& z4c_n, const DvceArray5D<Real>& z4c_np1,
-                    const int lowmode, Real x_np1[3], Real u_pp[3], int *hi_stat) {
+                    Real x_np1[3], Real u_pp[3]) {
   GeodesicPush<NG> gp(x_n, u_p, mb, mb_par, ncell, dt, adm_n, adm_np1, use_z4c,
-                      z4c_n, z4c_np1, kHighOrder);
-  int gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
-  *hi_stat = gstat;
-  if (gstat == kRejected && lowmode != kHighOrder) {
-    GeodesicPush<NG> gp_lo(x_n, u_p, mb, mb_par, ncell, dt, adm_n, adm_np1, use_z4c,
-                           z4c_n, z4c_np1, lowmode);
-    gstat = FixedPointIteration(gp_lo, x_n, u_p, x_np1, u_pp);
-  }
-  return gstat;
+                      z4c_n, z4c_np1, IMODE);
+  return FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
 }
 
 //----------------------------------------------------------------------------------------
@@ -453,8 +449,15 @@ int GeodesicSubstep(const Real x_n[3], const Real u_p[3], const int mb,
 //! Returns bit 0 set if any of them is not positive definite, bit 1 if any is
 //! non-finite. This is the measurement that separates the two possible causes of a
 //! rejection: a high-order interpolant overshooting between good grid values, or grid
-//! values that are already not a Riemannian 3-metric. In the second case no
-//! interpolation of them can be one, and the fallback must fail -- correctly.
+//! values that are already not a Riemannian 3-metric.
+//!
+//! Scope, stated exactly. The caller passes (adm_n, x_n), which is the stencil the
+//! forward-Euler evaluation reads -- and it is the Euler evaluation failing that makes
+//! the substep kRejected, so this is the decisive stencil. It is NOT the stencil of the
+//! fixed-point iterates, which sit at moving midpoints and use the old/new time average.
+//! "At least one corner invalid" also only voids the convexity GUARANTEE; a single bad
+//! corner carrying a small weight can still leave the combination positive definite. Read
+//! the counter as "the guarantee did not apply here", not as "the retry had to fail".
 //! Reachable because gamma_ij = chi^(4/chi_psi_power) * gammat_ij (z4c_adm.cpp) with the
 //! default chi_psi_power = -4, so a single grid point with chi <= 0 flips the sign of the
 //! whole matrix, and <z4c> floor_chi defaults to false.
@@ -506,7 +509,11 @@ void Particles::GR_BorisPush() {
 
   auto nfail_ = boris_nfail;          // bounded non-convergence diagnostic counters
   const int ndetail_ = kBorisDetail;
-  const int lowmode_ = trilinear_fallback;  // experiment: retry a rejected substep
+  const bool lowfb_ = (trilinear_fallback != kHighOrder);   // experiment: low-order retry
+  if (lowfb_ && nprtcl_thispack > static_cast<int>(boris_retry.extent(0))) {
+    Kokkos::realloc(boris_retry, nprtcl_thispack);
+  }
+  auto retry_ = boris_retry;          // per-particle "hand to the retry kernel" flag
 
   auto &pi = prtcl_idata;
   auto &pr = prtcl_rdata;
@@ -543,6 +550,8 @@ void Particles::GR_BorisPush() {
                             size.d_view(mb).x3min, size.d_view(mb).x3max,
                             size.d_view(mb).dx3};
     int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+
+    if (lowfb_) { retry_(p) = 0; }
 
     Real x_n[3] = {pr(IPX, p), pr(IPY, p), pr(IPZ, p)};
     Real u_n[3] = {pr(IPVX, p), pr(IPVY, p), pr(IPVZ, p)};
@@ -678,53 +687,33 @@ void Particles::GR_BorisPush() {
 
     // ---- Step 3: implicit geodesic substep x^n -> x^{n+1}, u_p -> u_pp ----
     Real x_np1[3] = {0.0}, u_pp[3] = {0.0};
-    int gstat = kRejected, hstat = kRejected;
+    int gstat = kRejected;
     switch (ng) {
     case 2:
-      gstat = GeodesicSubstep<2>(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
-                                 use_z4c, z4c_n, z4c_np1, lowmode_, x_np1, u_pp, &hstat);
+      gstat = GeodesicSubstep<2, kHighOrder>(x_n, u_p, mb, mb_par, ncell, dt_, adm_n,
+                                             adm_np1, use_z4c, z4c_n, z4c_np1,
+                                             x_np1, u_pp);
       break;
     case 3:
-      gstat = GeodesicSubstep<3>(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
-                                 use_z4c, z4c_n, z4c_np1, lowmode_, x_np1, u_pp, &hstat);
+      gstat = GeodesicSubstep<3, kHighOrder>(x_n, u_p, mb, mb_par, ncell, dt_, adm_n,
+                                             adm_np1, use_z4c, z4c_n, z4c_np1,
+                                             x_np1, u_pp);
       break;
     case 4:
-      gstat = GeodesicSubstep<4>(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
-                                 use_z4c, z4c_n, z4c_np1, lowmode_, x_np1, u_pp, &hstat);
+      gstat = GeodesicSubstep<4, kHighOrder>(x_n, u_p, mb, mb_par, ncell, dt_, adm_n,
+                                             adm_np1, use_z4c, z4c_n, z4c_np1,
+                                             x_np1, u_pp);
       break;
     }
-    // Fallback census: a few atomics per event and at most ndetail_ printed lines per
-    // cycle. Slot 4 counts every high-order rejection (= every attempt), 5 and 6 the
-    // trilinear retries that produced a usable state, so "rescued" is 5+6 and "still
-    // rejected" is slot 2. Slots 7 and 8 record whether the eight GRID values behind the
-    // event were themselves a valid 3-metric, which is what decides whether a low-order
-    // retry could have helped at all.
-    if (hstat == kRejected && lowmode_ != kHighOrder) {
-      int islot = Kokkos::atomic_fetch_add(&nfail_(4), 1);
-      if (gstat == kConverged) {
-        Kokkos::atomic_fetch_add(&nfail_(5), 1);
-      } else if (gstat == kEuler) {
-        Kokkos::atomic_fetch_add(&nfail_(6), 1);
-      }
-      int census = 0;
-      switch (ng) {
-      case 2: census = CornerMetricCensus<2>(adm_n, x_n, mb_par, ncell, mb); break;
-      case 3: census = CornerMetricCensus<3>(adm_n, x_n, mb_par, ncell, mb); break;
-      case 4: census = CornerMetricCensus<4>(adm_n, x_n, mb_par, ncell, mb); break;
-      }
-      if (census & 1) { Kokkos::atomic_fetch_add(&nfail_(7), 1); }
-      if (census & 2) { Kokkos::atomic_fetch_add(&nfail_(8), 1); }
-      if (islot < ndetail_) {
-        Kokkos::printf("### WARNING gr_boris: trilinear retry of a rejected geodesic "
-                       "substep | tag=%d gid=%d x=(% .6e,% .6e,% .6e) "
-                       "u_i=(% .6e,% .6e,% .6e) retry_status=%d "
-                       "grid_corners_nonpd=%d grid_corners_nonfinite=%d\n",
-                       pi(PTAG, p), pi(PGID, p),
-                       x_n[0], x_n[1], x_n[2], u_p[0], u_p[1], u_p[2],
-                       gstat, (census & 1), ((census & 2) >> 1));
-      }
+    if (gstat == kRejected && lowfb_) {
+      // Hand this particle to the retry kernel instead of rejecting it here. Slot 4
+      // counts the attempts; the retry kernel owns the outcome, the grid census and the
+      // reporting, so nothing about this rejection is decided or printed twice.
+      retry_(p) = 1;
+      Kokkos::atomic_fetch_add(&nfail_(4), 1);
+      return;   // leave pr(IPX..)/pr(IPVX..) at their step-n values for now
     }
-    if (hstat == kEuler) {
+    if (gstat == kEuler) {
       // Count EVERY failure, but print at most ndetail_ detailed lines per cycle: the
       // host emits one summary line afterwards, so the log stays O(1) per rank per cycle
       // instead of O(N_particle). The atomic returns this failure's index, which both
@@ -918,6 +907,22 @@ void Particles::GR_BorisPush() {
     pr(IPVZ, p) = u_np1[2];
   });
 
+  // ---- the low-order retry, in its OWN kernel ---------------------------------------
+  // Launched only when the push above flagged something, and templated on the mode so
+  // that this kernel carries one interpolation operator and the push kernel above
+  // carries production's. See the GeodesicSubstep docstring for why that separation is
+  // not cosmetic.
+  if (lowfb_) {
+    auto hcount = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), boris_nfail);
+    if (hcount(4) > 0) {
+      if (trilinear_fallback == kTriMirror) {
+        gr_boris_retry<kTriMirror>();
+      } else {
+        gr_boris_retry<kTriExact>();
+      }
+    }
+  }
+
   // ---- bounded non-convergence summary: ONE line per rank per cycle ----------------
   // Read the device counter, report it, and reset for the next cycle. Failures are never
   // hidden: the count is exact and the per-rank running total is included.
@@ -946,10 +951,12 @@ void Particles::GR_BorisPush() {
                   << 2*ng << "th; it is a repair, not an improvement. <particles> "
                   << "trilinear_fallback = none restores the production behaviour."
                   << std::endl
-                  << "    The per-cycle line below also reports how many of those events "
-                  << "had an invalid GRID metric in the surrounding eight cells: for "
-                  << "those, no interpolation can succeed and the retry must fail."
-                  << std::endl;
+                  << "    The per-cycle line below also reports how many of those "
+                  << "events had at least one of the eight surrounding GRID values fail "
+                  << "the same test. For those the convex-combination argument no "
+                  << "longer holds, so the retry may legitimately fail as well: the "
+                  << "stored solution there is not a 3-metric, which no interpolation "
+                  << "of it can repair." << std::endl;
       }
       std::cout << "### gr_boris trilinear fallback: rank " << global_variable::my_rank
                 << " cycle " << pmy_pack->pmesh->ncycle << ": " << nlow_try
@@ -1006,7 +1013,10 @@ void Particles::GR_BorisPush() {
                 << nprtcl_thispack << " particles fell back to forward Euler"
                 << " (rank total " << boris_nfail_cum << ")" << std::endl;
     }
-    if (nfail > 0 || nrej > 0 || nlow_try > 0) {Kokkos::deep_copy(boris_nfail, 0);}
+    // reset unconditionally: slots 1 and 4-8 can be non-zero on a cycle where nfail and
+    // nrej are both zero (every retry succeeded), and a counter that survives the cycle
+    // is double-counted in the next one.
+    Kokkos::deep_copy(boris_nfail, 0);
   }
 
   // snapshot the current fields/metric as step n for the next push (for a static
@@ -1022,5 +1032,142 @@ void Particles::GR_BorisPush() {
   }
   Kokkos::fence();
 }
+
+
+//----------------------------------------------------------------------------------------
+//! \fn template <int IMODE> void Particles::gr_boris_retry()
+//! \brief EXPERIMENT: re-solve, with a trilinear interpolant, the geodesic substeps the
+//! production push rejected.
+//!
+//! Runs only over the particles GR_BorisPush flagged, and only when at least one was
+//! flagged. Everything the production kernel already decided is left alone: this kernel
+//! sees a particle only if BOTH the high-order fixed point and the high-order
+//! forward-Euler evaluation failed to produce a usable state, so it cannot perturb a
+//! push production accepted.
+//!
+//! It is deliberately geodesic-only. <particles> trilinear_fallback is rejected at
+//! construction for an MHD configuration (particles.cpp), because there the first EM
+//! half-kick has already consumed its own interpolated gamma_ij and written u^+ into a
+//! register this kernel cannot see -- and would already have poisoned it using the very
+//! metric that made the geodesic substep fail. Re-solving the geodesic part alone would
+//! not repair that.
+//!
+//! The same safety net applies here as in the push: the Sylvester and usq tests inside
+//! GeodesicPush, a rejected retry that leaves the step-n state untouched, and a
+//! finiteness check before write-back.
+
+template <int IMODE>
+void Particles::gr_boris_retry() {
+  auto &indcs = pmy_pack->pmesh->mb_indcs;
+  int ng = indcs.ng;
+  auto &size = pmy_pack->pmb->mb_size;
+  int gids = pmy_pack->gids;
+  auto dt_ = pmy_pack->pmesh->dt;
+
+  auto nfail_ = boris_nfail;
+  auto retry_ = boris_retry;
+  const int ndetail_ = kBorisDetail;
+  auto &pi = prtcl_idata;
+  auto &pr = prtcl_rdata;
+  auto &adm_n = adm_last;
+  auto &adm_np1 = pmy_pack->padm->u_adm;
+
+  DvceArray5D<Real> z4c_n, z4c_np1;
+  bool use_z4c = false;
+  if (pmy_pack->pz4c != nullptr) {
+    use_z4c = true;
+    z4c_n = z4c_last;
+    z4c_np1 = pmy_pack->pz4c->u0;
+  }
+
+  par_for("gr_boris_retry", DevExeSpace(), 0, nprtcl_thispack - 1,
+  KOKKOS_LAMBDA(const int p) {
+    if (retry_(p) == 0) {return;}
+    int mb = pi(PGID, p) - gids;
+    const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max,
+                            size.d_view(mb).dx1,
+                            size.d_view(mb).x2min, size.d_view(mb).x2max,
+                            size.d_view(mb).dx2,
+                            size.d_view(mb).x3min, size.d_view(mb).x3max,
+                            size.d_view(mb).dx3};
+    int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+    Real x_n[3] = {pr(IPX, p), pr(IPY, p), pr(IPZ, p)};
+    Real u_n[3] = {pr(IPVX, p), pr(IPVY, p), pr(IPVZ, p)};
+
+    Real x_np1[3] = {0.0}, u_np1[3] = {0.0};
+    int gstat = kRejected;
+    switch (ng) {
+    case 2:
+      gstat = GeodesicSubstep<2, IMODE>(x_n, u_n, mb, mb_par, ncell, dt_, adm_n,
+                                        adm_np1, use_z4c, z4c_n, z4c_np1, x_np1, u_np1);
+      break;
+    case 3:
+      gstat = GeodesicSubstep<3, IMODE>(x_n, u_n, mb, mb_par, ncell, dt_, adm_n,
+                                        adm_np1, use_z4c, z4c_n, z4c_np1, x_np1, u_np1);
+      break;
+    case 4:
+      gstat = GeodesicSubstep<4, IMODE>(x_n, u_n, mb, mb_par, ncell, dt_, adm_n,
+                                        adm_np1, use_z4c, z4c_n, z4c_np1, x_np1, u_np1);
+      break;
+    }
+
+    // census of the eight GRID values behind this event: the measurement that separates
+    // "the high-order interpolant overshot" from "the stored solution is not a 3-metric"
+    int census = 0;
+    switch (ng) {
+    case 2: census = CornerMetricCensus<2>(adm_n, x_n, mb_par, ncell, mb); break;
+    case 3: census = CornerMetricCensus<3>(adm_n, x_n, mb_par, ncell, mb); break;
+    case 4: census = CornerMetricCensus<4>(adm_n, x_n, mb_par, ncell, mb); break;
+    }
+    if (census & 1) {Kokkos::atomic_fetch_add(&nfail_(7), 1);}
+    if (census & 2) {Kokkos::atomic_fetch_add(&nfail_(8), 1);}
+
+    if (gstat == kConverged) {
+      Kokkos::atomic_fetch_add(&nfail_(5), 1);
+    } else if (gstat == kEuler) {
+      Kokkos::atomic_fetch_add(&nfail_(6), 1);
+    }
+
+    bool finite_out = gstat != kRejected
+                   && Kokkos::isfinite(x_np1[0]) && Kokkos::isfinite(x_np1[1])
+                   && Kokkos::isfinite(x_np1[2]) && Kokkos::isfinite(u_np1[0])
+                   && Kokkos::isfinite(u_np1[1]) && Kokkos::isfinite(u_np1[2]);
+    if (!finite_out) {
+      // the low-order retry failed too: reject exactly as production would have
+      int islot = Kokkos::atomic_fetch_add(&nfail_(2), 1);
+      if (islot < ndetail_) {
+        Kokkos::printf("### WARNING gr_boris: geodesic substep REJECTED after the "
+                       "trilinear retry; step not taken | tag=%d gid=%d "
+                       "x=(% .6e,% .6e,% .6e) u_i=(% .6e,% .6e,% .6e) "
+                       "grid_corners_nonpd=%d grid_corners_nonfinite=%d\n",
+                       pi(PTAG, p), pi(PGID, p),
+                       x_n[0], x_n[1], x_n[2], u_n[0], u_n[1], u_n[2],
+                       (census & 1), ((census & 2) >> 1));
+      }
+      return;   // leave pr(IPX..)/pr(IPVX..) at their step-n values
+    }
+    int islot = Kokkos::atomic_fetch_add(&nfail_(1), 1);
+    if (islot < ndetail_) {
+      Kokkos::printf("### WARNING gr_boris: trilinear retry of a rejected geodesic "
+                     "substep | tag=%d gid=%d x=(% .6e,% .6e,% .6e) "
+                     "u_i=(% .6e,% .6e,% .6e) retry_status=%d "
+                     "grid_corners_nonpd=%d grid_corners_nonfinite=%d\n",
+                     pi(PTAG, p), pi(PGID, p),
+                     x_n[0], x_n[1], x_n[2], u_n[0], u_n[1], u_n[2],
+                     gstat, (census & 1), ((census & 2) >> 1));
+    }
+    pr(IPX, p) = x_np1[0];
+    pr(IPY, p) = x_np1[1];
+    pr(IPZ, p) = x_np1[2];
+    pr(IPVX, p) = u_np1[0];
+    pr(IPVY, p) = u_np1[1];
+    pr(IPVZ, p) = u_np1[2];
+  });
+  return;
+}
+
+// explicit instantiations for the two low-order modes
+template void Particles::gr_boris_retry<kTriMirror>();
+template void Particles::gr_boris_retry<kTriExact>();
 
 } // namespace particles

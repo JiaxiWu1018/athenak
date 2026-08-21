@@ -178,8 +178,9 @@ class Particles {
   // cycle. boris_nfail_cum is the per-rank running total, reported in the summary so no
   // failure is ever hidden. The FIRST failure of a run prints full particle state.
   static constexpr int kBorisDetail = 3;
-  // {0: non-convergence this cycle, 1: reserved detail budget, 2: REJECTED geodesic
-  //  substeps this cycle, 3: non-finite write-backs refused this cycle,
+  // {0: non-convergence this cycle, 2: REJECTED geodesic substeps this cycle,
+  //  3: non-finite write-backs refused this cycle,
+  //  1: detail budget for the retry kernel's per-particle lines,
   //  4: trilinear fallbacks attempted, 5: fallbacks that converged,
   //  6: fallbacks that fell back to Euler, 7: fallbacks whose surrounding GRID metric
   //  was already not positive definite, 8: ... and where it was non-finite}. Slots 4-8
@@ -207,6 +208,12 @@ class Particles {
   // alone; "consistent" instead derives both from the interpolated covariant metric.
   // The stored value is the gr_boris InterpMode integer.
   int trilinear_fallback;
+  // Which particles the push kernel handed to the retry kernel. Sized with the
+  // population, written only when the fallback is enabled.
+  DvceArray1D<int> boris_retry;
+  // the retry kernel; IMODE fixes the interpolation operator at compile time so that the
+  // production push kernel does not have to carry it (see gr_boris.cpp GeodesicSubstep)
+  template <int IMODE> void gr_boris_retry();
   std::int64_t boris_nlow_try_cum;
   std::int64_t boris_nlow_ok_cum;
   std::int64_t boris_nlow_badgrid_cum;

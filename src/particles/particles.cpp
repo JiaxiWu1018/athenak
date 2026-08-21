@@ -152,11 +152,27 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   boris_nlow_ok_cum = 0;
   boris_nlow_badgrid_cum = 0;
   boris_first_low_seen = false;
-  if (trilinear_fallback != 0 && pusher != ParticlesPusher::gr_boris) {
-    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "<particles> trilinear_fallback applies to pusher = gr_boris only"
-              << std::endl;
-    std::exit(EXIT_FAILURE);
+  if (trilinear_fallback != 0) {
+    if (pusher != ParticlesPusher::gr_boris) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "<particles> trilinear_fallback applies to pusher = gr_boris only"
+                << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    // Geodesic-only by construction: the retry runs in its own kernel, after the push,
+    // and cannot see the u^+ the first EM half-kick produced. With MHD it would also be
+    // pointless -- that half-kick has already consumed the same interpolated gamma_ij
+    // through CalcTetrad, so the state it would re-solve from is the poisoned one.
+    if (pmy_pack->pmhd != nullptr) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl
+                << "<particles> trilinear_fallback is implemented for the geodesic "
+                << "(no-MHD) configuration only" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    Kokkos::realloc(boris_retry, 1);
+    Kokkos::deep_copy(boris_retry, 0);
   }
   if (pusher == ParticlesPusher::gr_boris) {
     Kokkos::realloc(boris_nfail, kBorisCounters);
