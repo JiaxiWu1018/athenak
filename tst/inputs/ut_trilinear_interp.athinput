@@ -1,0 +1,45 @@
+# AthenaK input file for the trilinear particle-interpolation unit tests.
+# The pgen builds its own synthetic grid, so the mesh here only has to be legal and
+# small: nothing is evolved (nlim = 0, tlim = 0).
+
+<comment>
+problem   = trilinear particle-interpolation unit tests (gr_boris low-order fallback)
+
+<job>
+basename  = ut_trilinear_interp
+
+<mesh>
+nghost    = 4          # the ST production value; the pgen tests NGHOST = 2, 3 and 4
+nx1       = 8
+x1min     = -1.0
+x1max     = 1.0
+ix1_bc    = outflow
+ox1_bc    = outflow
+
+nx2       = 8
+x2min     = -1.0
+x2max     = 1.0
+ix2_bc    = outflow
+ox2_bc    = outflow
+
+nx3       = 8
+x3min     = -1.0
+x3max     = 1.0
+ix3_bc    = outflow
+ox3_bc    = outflow
+
+<meshblock>
+nx1       = 8
+nx2       = 8
+nx3       = 8
+
+<time>
+evolution  = static
+integrator = rk2
+cfl_number = 0.1
+nlim       = 0
+tlim       = 0.0
+ndiag      = 1
+
+<problem>
+pgen_name = trilinear_interp
