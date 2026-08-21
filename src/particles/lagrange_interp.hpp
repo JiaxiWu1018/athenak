@@ -320,18 +320,20 @@ void TrilinearInterpolator(const DvceArray5D<Real> &u0, const int nvar,
 
 KOKKOS_INLINE_FUNCTION
 void InverseMetricGradient(Real dgu[6], const Real gu[6], const Real dgd[6]) {
-  // symmetric-storage index of the (a,b) component: {xx,xy,xz,yy,yz,zz}, the same
-  // convention as the ADM arrays and geom_math's SpatialMetricIndex
-  const int sidx[3][3] = {{0, 1, 2}, {1, 3, 4}, {2, 4, 5}};
+  // symmetric-storage index of the (a,b) component, row-major: {xx,xy,xz,yy,yz,zz},
+  // the same convention as the ADM arrays and geom_math's SpatialMetricIndex
+  const int sidx[9] = {0, 1, 2,
+                       1, 3, 4,
+                       2, 4, 5};
   for (int j = 0; j < 3; ++j) {
     for (int k = j; k < 3; ++k) {
       Real sum = 0.0;
       for (int a = 0; a < 3; ++a) {
         for (int b = 0; b < 3; ++b) {
-          sum += gu[sidx[j][a]] * dgd[sidx[a][b]] * gu[sidx[b][k]];
+          sum += gu[sidx[3*j+a]] * dgd[sidx[3*a+b]] * gu[sidx[3*b+k]];
         }
       }
-      dgu[sidx[j][k]] = -sum;
+      dgu[sidx[3*j+k]] = -sum;
     }
   }
 }

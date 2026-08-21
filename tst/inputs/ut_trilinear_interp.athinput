@@ -34,12 +34,17 @@ nx2       = 8
 nx3       = 8
 
 <time>
-evolution  = static
-integrator = rk2
+evolution  = dynamic
+integrator = rk3
 cfl_number = 0.1
 nlim       = 0
 tlim       = 0.0
 ndiag      = 1
+
+# a physics module must be present for the MeshBlockPack to build (meshblock_pack.cpp);
+# nothing is evolved (nlim = 0) and the pgen allocates its own array, so the choice is
+# immaterial -- this mirrors tst/inputs/ut_gauss_legendre.athinput
+<z4c>
 
 <problem>
 pgen_name = trilinear_interp
