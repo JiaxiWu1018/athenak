@@ -185,9 +185,19 @@ class Z4c {
     int extrap_order;
     // Value of chi to specify the excision region for constraint evaluation
     Real excise_chi;
+    // Parabolic Hamiltonian-constraint damping on chi
+    // (Raithel & Paschalidis arXiv:2204.00698 Eq. 4, transformed to chi = psi^p):
+    //   d_t chi += -(p c_H/8) psi^{p+5} (Ht - 16 pi E)
+    // hdamp_cH = c_H in units of M (length); 0 disables (stock code path).
+    Real hdamp_cH;
+    // Safety factor applied to the parabolic timestep bound in NewTimeStep
+    Real hdamp_par_safety;
   };
   Options opt;
   Real diss;              // Dissipation parameter
+  Real hdamp_coeff;       // -(chi_psi_power * hdamp_cH)/8, precomputed
+  Real hdamp_expo;        // (chi_psi_power + 5)/chi_psi_power, precomputed
+  bool hdamp_dtwarned;    // one-shot warning: parabolic dt bound became binding
 
   // Boundary communication buffers and functions for u
   MeshBoundaryValuesCC *pbval_u;

@@ -20,6 +20,7 @@
 #include <Kokkos_Core.hpp>
 
 #include "athena.hpp"
+#include "globals.hpp"
 #include "parameter_input.hpp"
 #include "mesh/mesh.hpp"
 #include "bvals/bvals.hpp"
@@ -171,6 +172,34 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
   }
 
   opt.use_z4c = pin->GetOrAddBoolean("z4c", "use_z4c", true);
+
+  // Parabolic Hamiltonian-constraint damping on chi (RP22 Eq. 4 in chi form).
+  opt.hdamp_cH = pin->GetOrAddReal("z4c", "hdamp_cH", 0.0);
+  opt.hdamp_par_safety = pin->GetOrAddReal("z4c", "hdamp_par_safety", 0.5);
+  hdamp_coeff = -(opt.chi_psi_power * opt.hdamp_cH)/8.0;
+  hdamp_expo  = (opt.chi_psi_power + 5.0)/opt.chi_psi_power;
+  hdamp_dtwarned = false;
+  if (opt.hdamp_cH != 0.0 && opt.chi_psi_power >= 0.0) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+              << "hdamp_cH != 0 requires chi_psi_power < 0 (chi = psi^p, p < 0): "
+              << "the parabolic dt bound uses psi_max = chi_min^(1/p)." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (global_variable::my_rank == 0) {
+    std::cout << "# [z4c] formulation: "
+              << (opt.use_z4c ? "Z4c" : "BSSN (Theta frozen at 0; kappa damping disabled)")
+              << std::endl;
+    if (!opt.use_z4c && (opt.damp_kappa1 != 0.0 || opt.damp_kappa2 != 0.0)) {
+      std::cout << "# [z4c] WARNING: BSSN mode ignores damp_kappa1=" << opt.damp_kappa1
+                << " damp_kappa2=" << opt.damp_kappa2 << std::endl;
+    }
+    if (opt.hdamp_cH != 0.0) {
+      std::cout << "# [z4c] parabolic H-damping ON: c_H = " << opt.hdamp_cH
+                << " M, chi-term coeff = " << hdamp_coeff
+                << ", chi exponent = " << hdamp_expo
+                << ", par_safety = " << opt.hdamp_par_safety << std::endl;
+    }
+  }
 
   opt.user_Sbc = pin->GetOrAddBoolean("z4c", "user_Sbc", false);
 

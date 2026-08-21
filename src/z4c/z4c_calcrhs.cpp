@@ -43,6 +43,12 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
 
   Real time = pmy_pack->pmesh->time;
 
+  // Parabolic Hamiltonian-constraint damping on chi (RP22 Eq. 4 in chi form);
+  // hdamp_on=false leaves the stock code path untouched (bitwise).
+  const bool hdamp_on = (opt.hdamp_cH != 0.0);
+  const Real hdamp_coeff_ = pmy_pack->pz4c->hdamp_coeff;
+  const Real hdamp_expo_ = pmy_pack->pz4c->hdamp_expo;
+
   bool is_vacuum = (pmy_pack->ptmunu == nullptr) ? true : false;
   Tmunu::Tmunu_vars tmunu;
   if (!is_vacuum) tmunu = pmy_pack->ptmunu->tmunu;
@@ -536,7 +542,11 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
     //
     // Khat, chi, and Theta
     const Real damping_factor = opt.const_damp ? 1.0 : spatial_damp_(m,k,j,i);
-    const Real damp_kappa1 = opt.damp_kappa1*damping_factor;
+    Real damp_kappa1 = opt.damp_kappa1*damping_factor;
+    // BSSN mode (use_z4c=false): all kappa damping terms are Z4c-specific.
+    // This also disables the Gamma-damping term below, which is the only kappa
+    // term not proportional to Theta.
+    damp_kappa1 *= opt.use_z4c;
     rhs.vKhat(m,k,j,i) = - Ddalpha + z4c.alpha(m,k,j,i)
       * (AA + (1./3.)*SQR(K)) +
       LKhat + damp_kappa1*(1 - opt.damp_kappa2)
@@ -547,6 +557,18 @@ TaskStatus Z4c::CalcRHS(Driver *pdriver, int stage) {
     }
     rhs.chi(m,k,j,i) = Lchi - (1./6.) * opt.chi_psi_power *
       chi_guarded * z4c.alpha(m,k,j,i) * K;
+    // Parabolic Hamiltonian-constraint damping (RP22 arXiv:2204.00698 Eq. 4,
+    // transformed to chi = psi^p):  d_t chi += -(p c_H/8) psi^{p+5} H_ADM with
+    // H_ADM = Ht - 16 pi E.  For p=-4 the coefficient is +c_H/2 and the term
+    // diffuses constraint violations with diffusivity D = c_H psi (verified:
+    // evidence/2026-08-17_bssn_parabolic_H_damping/derivation, checks A1-A4).
+    if (hdamp_on) {
+      Real H_adm = Ht;
+      if (!is_vacuum) {
+        H_adm -= 16.*M_PI*tmunu.E(m,k,j,i);
+      }
+      rhs.chi(m,k,j,i) += hdamp_coeff_ * pow(chi_guarded, hdamp_expo_) * H_adm;
+    }
     rhs.vTheta(m,k,j,i) = LTheta + z4c.alpha(m,k,j,i) * (
         0.5*Ht - (2. + opt.damp_kappa2) * damp_kappa1 * z4c.vTheta(m,k,j,i));
     // Matter term
