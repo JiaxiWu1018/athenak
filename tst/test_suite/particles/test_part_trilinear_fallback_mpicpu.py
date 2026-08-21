@@ -19,8 +19,13 @@ cycle that reports anything, where it is exact by construction: the flag cannot 
 before the first rejection, so up to that cycle the two runs execute identical code on
 identical data.
 
-The deck puts one ring at r = 0.3 on a dx = 1/3 grid, i.e. inside a single cell of the
-trumpet, which is the regime that produces the rejections. Run from ``tst`` with::
+The deck puts one ring at r = 0.3 on a dx = 1/3 grid, inside the first cell of the
+trumpet. Measured: it does NOT in fact produce a rejection -- see the deck's own header
+for the three configurations tried -- so on this fixture the test takes the "no rejection
+anywhere, therefore nothing may change" branch and asserts the whole ensemble is bitwise
+identical across all three modes. The rescue path is exercised by the y_c = 0.700
+acceptance run, not here; the branch below is written and kept so that the day a fixture
+does reject, the assertions are already in place. Run from ``tst`` with::
 
     python3 run_test_suite.py \
         --mpicpu "-D PROBLEM=z4c/z4c_one_puncture" \

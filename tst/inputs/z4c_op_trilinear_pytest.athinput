@@ -1,10 +1,20 @@
 # GR-Boris low-order geodesic fallback regression (experiment/ST-trilinear-fallback).
 #
-# One moving-puncture BH on a deliberately coarse uniform grid (dx = 1/3, so a ring at
-# r = 0.3 sits inside a single cell of the trumpet) plus a well-resolved outer ring. The
-# inner ring is the regime the fallback exists for; the outer ring is the control that
-# must be unaffected. Excision is OFF so nothing is removed before it can be pushed, and
-# feedback is OFF so the only thing under test is the pusher.
+# One moving-puncture BH on a deliberately coarse uniform grid plus a well-resolved outer
+# ring. The inner ring is meant to be the regime the fallback exists for; the outer ring
+# is the control that must be unaffected. Excision is OFF so nothing is removed before it
+# can be pushed, and feedback is OFF so the only thing under test is the pusher.
+#
+# MEASURED, and worth knowing: this fixture does NOT produce a rejection. Three
+# configurations were tried on 4 x MI210 (session 04a) -- r = 0.3 at dx = 1/3 for 24
+# cycles, r = 0.12 at dx = 1/3 for 40 cycles, and r = 0.12 at dx = 2/3 for 40 cycles --
+# and all three gave zero rejected substeps, so the fallback never fires and all three
+# modes agree bitwise. A 2*NGHOST-node interpolant copes with a STATIONARY trumpet at
+# every resolution tried; the failure the fallback repairs needs the dynamical,
+# under-resolved collapse, where chi falls faster than the grid can follow. This deck
+# therefore pins the "changes nothing when nothing is rejected" half of the contract, and
+# the test asserts exactly that in this branch; the rescue itself is covered by the
+# y_c = 0.700 acceptance run.
 #
 # <particles> trilinear_fallback is listed here because the athinput command line can
 # override an existing key but cannot add one (parameter_input.cpp ModifyFromCmdline).
