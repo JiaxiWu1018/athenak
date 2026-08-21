@@ -29,6 +29,7 @@
 #include "coordinates/coordinates.hpp"
 #include "compact_object_tracker.hpp"
 #include "utils/spherical_harm.hpp"
+#include "horizon_query.hpp"
 #include "utils/lagrange_interpolator.hpp"
 #include "z4c.hpp"
 #include "coordinates/cell_locations.hpp"
@@ -973,6 +974,48 @@ void FastFlow::SnapshotSurface(Real time) {
   ah_surf_time = time;
   ah_surf_count += 1;
   ah_surf_valid = true;
+
+  // ---- one-shot self-check of the off-grid surface evaluation ------------------------
+  // A consumer of this snapshot evaluates R(theta,phi) at arbitrary angles by summing the
+  // coefficients itself (z4c/horizon_query.hpp). That sum must agree with the `rr` this
+  // class just produced, or the consumer is looking at a different surface -- a
+  // normalization or (l,m)-packing mismatch would be silent and would misclassify
+  // particles near the horizon. So on the FIRST converged find, re-evaluate the surface
+  // through exactly the consumer's code path (including its packed layout) at every
+  // Gauss-Legendre collocation angle and report the worst relative deviation. One extra
+  // reduction over `nangles`, once per run.
+  if (ah_surf_count == 1) {
+    const int lmax1 = lmax + 1;
+    DualArray2D<Real> coef("ah_selfcheck_coef", 1, lmax1 + 2*lmpoints);
+    for (int l = 0; l < lmax1; ++l) {coef.h_view(0, l) = a0_surf.h_view(l);}
+    for (int i = 0; i < lmpoints; ++i) {
+      coef.h_view(0, lmax1 + i) = ac_surf.h_view(i);
+      coef.h_view(0, lmax1 + lmpoints + i) = as_surf.h_view(i);
+    }
+    coef.template modify<HostMemSpace>();
+    coef.template sync<DevExeSpace>();
+    Real worst = 0.0;
+    auto &polar = gl_grid->polar_pos;
+    auto cd = coef.d_view;
+    const int lmax_ = lmax, lmpts_ = lmpoints;
+    Kokkos::parallel_reduce("FastFlow_selfcheck",
+    Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles-1),
+    KOKKOS_LAMBDA(const int &p, Real &wmax) {
+      const Real th = polar.d_view(p,0);
+      const Real ph = polar.d_view(p,1);
+      const Real rq = AHSurfaceRadius(cd, 0, lmax_, lmpts_, th, ph);
+      const Real rf = rr_(p);
+      const Real d = (rf != 0.0) ? Kokkos::fabs(rq - rf)/Kokkos::fabs(rf)
+                                 : Kokkos::fabs(rq - rf);
+      wmax = Kokkos::max(wmax, d);
+    }, Kokkos::Max<Real>(worst));
+    if (ioproc) {
+      std::cout << "### AH surface self-check (horizon " << nh << ", t = " << time
+                << "): off-grid spectral evaluation vs FastFlow radii over " << nangles
+                << " collocation angles, worst relative deviation = " << worst
+                << std::endl;
+    }
+  }
 }
 
 //----------------------------------------------------------------------------------------
