@@ -132,7 +132,7 @@ class Mesh {
   // nprtcl_total(t) + sum(nprtcl_destroyed_cum) == nprtcl_initial at every cycle and
   // across restart segments. nprtcl_initial is captured at the start of Driver::Execute
   // (= restored total + restored cums on restart) for the end-of-run verdict.
-  int nprtcl_destroyed_cum[3];
+  int nprtcl_destroyed_cum[NPRTCL_DEATH_REASON];
   int nprtcl_initial;
 
   // following 3x arrays allocated with length [nmb_total] in BuildTreeFromXXXX()
@@ -168,8 +168,10 @@ class Mesh {
   void AddCoordinatesAndPhysics(ParameterInput *pinput);
   // add one cycle's global destruction census (per reason) to the cumulative ledger;
   // called once per cycle from the particle compaction, identically on every rank
-  void TallyDestroyedPrtcls(const int ndest_global[3]) {
-    for (int k=0; k<3; ++k) {nprtcl_destroyed_cum[k] += ndest_global[k];}
+  void TallyDestroyedPrtcls(const int ndest_global[NPRTCL_DEATH_REASON]) {
+    for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {
+      nprtcl_destroyed_cum[k] += ndest_global[k];
+    }
   }
   BoundaryFlag GetBoundaryFlag(const std::string& input_string);
   std::string GetBoundaryString(BoundaryFlag input_flag);

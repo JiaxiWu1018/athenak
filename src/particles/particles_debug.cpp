@@ -49,9 +49,40 @@ namespace particles {
 
 //----------------------------------------------------------------------------------------
 //! \fn TaskStatus Particles::CheckMigration
-//! \brief validate the post-migration particle state (no-op unless debug >= 1)
+//! \brief report the apparent-horizon excision milestones (always), then validate the
+//! post-migration particle state (no-op unless debug >= 1)
 
 TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
+  // ---- experimental AH-excision milestones -----------------------------------------
+  // Runs unconditionally: an AH excision changes which particles exist, so -- like the
+  // gr_boris rejection summary -- it is reported whether or not <particles> debug is on.
+  // ndest_global is this cycle's GLOBAL census, filled by CountSendsAndRecvs and already
+  // consumed by the compaction, so it is identical on every rank here; only rank 0
+  // prints. The time reported is the post-push instant the criterion was evaluated at,
+  // matching the death-record CSV.
+  if (excise_ah) {
+    const int nah = pbval_part->ndest_global[PrtclDeathHorizon];
+    if (nah > 0) {
+      ah_nexcised_cum += static_cast<std::int64_t>(nah);
+      Mesh *pmm = pmy_pack->pmesh;
+      if (ah_first_excise_cycle < 0) {
+        ah_first_excise_cycle = pmm->ncycle;
+        ah_first_excise_time = pmm->time + pmm->dt;
+        if (global_variable::my_rank == 0) {
+          std::cout << "### AH excision: FIRST horizon-excised particle(s) at cycle "
+                    << ah_first_excise_cycle << ", t = " << ah_first_excise_time
+                    << " (" << nah << " this cycle)." << std::endl;
+        }
+      }
+      if (global_variable::my_rank == 0) {
+        std::cout << "### AH excision: cycle " << pmm->ncycle << " t = "
+                  << (pmm->time + pmm->dt) << ": " << nah
+                  << " particles inside the apparent horizon destroyed (run total "
+                  << ah_nexcised_cum << ")" << std::endl;
+      }
+    }
+  }
+
   if (debug_lvl < 1) {return TaskStatus::complete;}
 
   int ncycle = pmy_pack->pmesh->ncycle;
@@ -59,15 +90,19 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
   int myrank = global_variable::my_rank;
 
   // per-cycle migration/destruction summary (counters filled by SetNewPrtclGID)
-  int ndest_cycle = ndestroy_thisrank[0] + ndestroy_thisrank[1] + ndestroy_thisrank[2];
+  int ndest_cycle = 0;
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {ndest_cycle += ndestroy_thisrank[k];}
   if ((nmigr_face + nmigr_edge + nmigr_corner + nsearch_fail + ndest_cycle) > 0) {
     std::cout << "[prtcl-debug] rank=" << myrank << " cycle=" << ncycle
               << " migrations: face=" << nmigr_face
               << " edge=" << nmigr_edge << " corner=" << nmigr_corner
               << " search_fail=" << nsearch_fail;
     if (ndest_cycle > 0) {
-      std::cout << " destroyed={" << ndestroy_thisrank[0] << ","
-                << ndestroy_thisrank[1] << "," << ndestroy_thisrank[2] << "}";
+      std::cout << " destroyed={" << ndestroy_thisrank[0];
+      for (int k=1; k<NPRTCL_DEATH_REASON; ++k) {
+        std::cout << "," << ndestroy_thisrank[k];
+      }
+      std::cout << "}";
     }
     std::cout << " npart=" << npart << std::endl;
   }
@@ -128,7 +163,7 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
 #endif
   Mesh *pm = pmy_pack->pmesh;
   uint64_t dead_cnt = 0;
-  for (int k=0; k<3; ++k) {
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {
     dead_cnt += static_cast<uint64_t>(pm->nprtcl_destroyed_cum[k]);
   }
   if (!ledger_init) {

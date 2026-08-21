@@ -46,6 +46,7 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   dYsdth2("dYsdth2",1,1), dYsdthdph("dYsdthdph",1,1),
   dYcdph2("dYcdph2",1,1), dYsdph2("dYsdph2",1,1),
   a0("a0",1), ac("ac",1), as("as",1),
+  a0_surf("a0_surf",1), ac_surf("ac_surf",1), as_surf("as_surf",1),
   rr("rr",1), rr_dth("rr_dth",1), rr_dph("rr_dph",1),
   rho("rho",1), dg("dg",1,1,1,1,1), g_interp("g_interp",1,1),
   K_interp("K_interp",1,1), dg_interp("dg_interp",1,1),
@@ -144,6 +145,30 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   Kokkos::realloc(a0, lmax1);
   Kokkos::realloc(ac, lmpoints);
   Kokkos::realloc(as, lmpoints);
+
+  // Snapshot of the last converged surface (see fastflow.hpp). Deliberately NOT seeded
+  // from the restart parameter dump: the dump carries only last_a0/ah_found/
+  // time_first_found, so a restored `ah_found` describes a surface whose shape is gone.
+  // ah_surf_valid stays false until a Find in THIS run converges.
+  Kokkos::realloc(a0_surf, lmax1);
+  Kokkos::realloc(ac_surf, lmpoints);
+  Kokkos::realloc(as_surf, lmpoints);
+  Kokkos::deep_copy(a0_surf.h_view, 0.0);
+  Kokkos::deep_copy(ac_surf.h_view, 0.0);
+  Kokkos::deep_copy(as_surf.h_view, 0.0);
+  a0_surf.template modify<HostMemSpace>();
+  a0_surf.template sync<DevExeSpace>();
+  ac_surf.template modify<HostMemSpace>();
+  ac_surf.template sync<DevExeSpace>();
+  as_surf.template modify<HostMemSpace>();
+  as_surf.template sync<DevExeSpace>();
+  ah_surf_valid = false;
+  ah_surf_time = std::numeric_limits<Real>::quiet_NaN();
+  ah_surf_count = 0;
+  ah_surf_center[0] = ah_surf_center[1] = ah_surf_center[2] = 0.0;
+  ah_surf_rmin = -1.0;
+  ah_surf_rmax = -1.0;
+  ah_surf_rmean = -1.0;
 
   // Reallocate for the spherical harmonics.
   // The spherical grid is the same for all surfaces.
@@ -429,6 +454,12 @@ void FastFlow::Find(int iter, Real time) {
 
   InitialGuess();
   FastFlowLoop();
+
+  // Publish the converged surface for in-run consumers (particle excision). Done here,
+  // not in FastFlowLoop, so the snapshot only ever reflects a completed Find.
+  if (ah_found) {
+    SnapshotSurface(time);
+  }
 
   // Retain `last_a0` in restart: this serves as primary ini. guess.
   if (ah_found) {
@@ -893,6 +924,55 @@ void FastFlow::UpdateFlowSpectralComponents() {
   ac.template sync<DevExeSpace>();
   as.template modify<HostMemSpace>();
   as.template sync<DevExeSpace>();
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void FastFlow::SnapshotSurface(Real time)
+//! \brief copy the just-converged surface into the sticky snapshot members.
+//!
+//! Called from Find() only when the flow converged. At that point a0/ac/as are the
+//! coefficients whose RadiiFromSphericalHarmonics() produced the accepted `rr` (the
+//! convergence test breaks BEFORE UpdateFlowSpectralComponents), so the coefficients,
+//! `rr`, and rr_min are mutually consistent. The angular extrema are recomputed here
+//! rather than taken from rr_min alone because a consumer needs BOTH bounds to skip the
+//! spherical-harmonic sum for points that are trivially inside or outside.
+//!
+//! The surface is rank-replicated: every rank runs the same flow on MPI-reduced surface
+//! integrals, so no communication is needed to make the snapshot globally consistent.
+
+void FastFlow::SnapshotSurface(Real time) {
+  Kokkos::deep_copy(a0_surf.h_view, a0.h_view);
+  Kokkos::deep_copy(ac_surf.h_view, ac.h_view);
+  Kokkos::deep_copy(as_surf.h_view, as.h_view);
+  a0_surf.template modify<HostMemSpace>();
+  a0_surf.template sync<DevExeSpace>();
+  ac_surf.template modify<HostMemSpace>();
+  ac_surf.template sync<DevExeSpace>();
+  as_surf.template modify<HostMemSpace>();
+  as_surf.template sync<DevExeSpace>();
+
+  // Angular extrema of the accepted surface over the Gauss-Legendre collocation set.
+  // rr_min is already this minimum (RadiiFromSphericalHarmonics), recomputed here so the
+  // pair is guaranteed to come from the same reduction pass.
+  Real rmin = std::numeric_limits<Real>::infinity();
+  Real rmax = -std::numeric_limits<Real>::infinity();
+  auto &rr_ = rr;
+  Kokkos::parallel_reduce("FastFlow_snapshot_extrema",
+  Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles-1),
+  KOKKOS_LAMBDA(const int &p, Real &lmin, Real &lmax_r) {
+    lmin = Kokkos::min(lmin, rr_(p));
+    lmax_r = Kokkos::max(lmax_r, rr_(p));
+  }, Kokkos::Min<Real>(rmin), Kokkos::Max<Real>(rmax));
+
+  ah_surf_rmin = rmin;
+  ah_surf_rmax = rmax;
+  ah_surf_rmean = a0.h_view(0) / Kokkos::sqrt(4.0*M_PI);
+  ah_surf_center[0] = center[0];
+  ah_surf_center[1] = center[1];
+  ah_surf_center[2] = center[2];
+  ah_surf_time = time;
+  ah_surf_count += 1;
+  ah_surf_valid = true;
 }
 
 //----------------------------------------------------------------------------------------

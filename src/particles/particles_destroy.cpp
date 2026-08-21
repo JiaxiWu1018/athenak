@@ -6,8 +6,9 @@
 //! \file particles_destroy.cpp
 //! \brief death-record ledger and end-of-run accounting for destroyed particles
 //! (NRPIC Stage 3c). Every destroyed particle gets one CSV row with its exact state at
-//! the marking step -- cycle, time, tag, reason (exit|sphere|lapse), position, velocity,
-//! owning gid/rank, and the criterion value -- so destruction events are never lost
+//! the marking step -- cycle, time, tag, reason (exit|sphere|lapse|horizon), position,
+//! velocity, owning gid/rank, and the criterion value -- so destruction events are never
+//! lost
 //! between (possibly widely spaced) particle output dumps. The record is exact AT
 //! marking: the first state that violates the criterion, i.e. within one dt of the true
 //! crossing; the pre-violation state is reconstructible as x - v*dt (exact for the
@@ -41,7 +42,11 @@ struct DeathRec {
   int tag, gid, reason;
   Real r[7];   // {x, y, z, vx, vy, vz, crit}
 };
-const char *reason_name[3] = {"exit", "sphere", "lapse"};
+// indexed by ParticlesDeathReason. Adding a name here EXTENDS the set of values the
+// `reason` column of <basename>.prtcl_destroy.csv can take; the column set, the header
+// line, and the meaning of every existing value are unchanged, so readers that switch on
+// the known names keep working and only need a new case for the new one.
+const char *reason_name[NPRTCL_DEATH_REASON] = {"exit", "sphere", "lapse", "horizon"};
 } // namespace
 
 //----------------------------------------------------------------------------------------
@@ -128,7 +133,8 @@ void Particles::FlushDeathLog() {
       std::fprintf(pfile,
           "%d,%.17g,%d,%s,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%d,%d,%.17g\n",
           cycle, tdeath, d.tag,
-          (d.reason >= 0 && d.reason < 3) ? reason_name[d.reason] : "unknown",
+          (d.reason >= 0 && d.reason < NPRTCL_DEATH_REASON) ? reason_name[d.reason]
+                                                            : "unknown",
           d.r[0], d.r[1], d.r[2], d.r[3], d.r[4], d.r[5], d.gid, r, d.r[6]);
     }
   }
@@ -146,14 +152,17 @@ void Particles::FlushDeathLog() {
 void Particles::PrintFinalSummary() {
   Mesh *pm = pmy_pack->pmesh;
   int64_t dtot = 0;
-  for (int k=0; k<3; ++k) {dtot += pm->nprtcl_destroyed_cum[k];}
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {dtot += pm->nprtcl_destroyed_cum[k];}
   bool ok = (static_cast<int64_t>(pm->nprtcl_total) + dtot ==
              static_cast<int64_t>(pm->nprtcl_initial));
+  // The horizon field is appended AFTER lapse and BEFORE the verdict, so the existing
+  // "exit=/sphere=/lapse=" fields keep their names, order and meaning.
   std::cout << std::endl << "particles: initial=" << pm->nprtcl_initial
             << " final=" << pm->nprtcl_total
-            << " destroyed: exit=" << pm->nprtcl_destroyed_cum[0]
-            << " sphere=" << pm->nprtcl_destroyed_cum[1]
-            << " lapse=" << pm->nprtcl_destroyed_cum[2]
+            << " destroyed: exit=" << pm->nprtcl_destroyed_cum[PrtclDeathExit]
+            << " sphere=" << pm->nprtcl_destroyed_cum[PrtclDeathSphere]
+            << " lapse=" << pm->nprtcl_destroyed_cum[PrtclDeathLapse]
+            << " horizon=" << pm->nprtcl_destroyed_cum[PrtclDeathHorizon]
             << (ok ? "  [conservation OK]" : "  [conservation VIOLATED]") << std::endl;
   return;
 }

@@ -640,13 +640,18 @@ ProblemGenerator::ProblemGenerator(ParameterInput *pin, Mesh *pm, IOWrapper resf
         static_cast<IOWrapperSizeT>(nmb) : static_cast<IOWrapperSizeT>(pm->nmb_total);
     IOWrapperSizeT prtcl_base = headeroffset + data_size*nmb_off;
     // 4-Real header {total, cum destroyed exit/sphere/lapse}: restore the cumulative
-    // destroyed ledger so conservation accounting spans restart segments (Stage 3c)
+    // destroyed ledger so conservation accounting spans restart segments (Stage 3c).
+    // This record is deliberately still 4 Reals -- see outputs/restart.cpp. The fourth
+    // reason (horizon) rides in the embedded parameter dump and defaults to 0, so a
+    // restart file written before AH excision existed restores an exactly correct ledger.
     Real hdr[4] = {0.0, 0.0, 0.0, 0.0};
     resfile.Read_Reals_at(hdr, 4, prtcl_base, single_file_per_rank);
     int total = static_cast<int>(std::round(hdr[0]));
     for (int k=0; k<3; ++k) {
       pm->nprtcl_destroyed_cum[k] = static_cast<int>(std::round(hdr[1+k]));
     }
+    pm->nprtcl_destroyed_cum[PrtclDeathHorizon] =
+      pin->GetOrAddInteger("particles", "ndestroy_horizon_cum", 0);
     IOWrapperSizeT rdata_base = prtcl_base + 4*sizeof(Real);
     IOWrapperSizeT idata_base = rdata_base
       + static_cast<IOWrapperSizeT>(nrd)*total*sizeof(Real);

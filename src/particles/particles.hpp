@@ -138,10 +138,10 @@ class Particles {
   bool ledger_init;
   uint64_t ledger0[3];
   uint64_t ledger_dead[2];
-  // per-cycle destruction counters by reason {0=exit, 1=sphere, 2=lapse}, set by
-  // SetNewPrtclGID's readback each cycle (this rank only; the global census lives in
-  // ParticlesBoundaryValues::ndest_global)
-  int ndestroy_thisrank[3];
+  // per-cycle destruction counters by reason (ParticlesDeathReason: exit/sphere/lapse/
+  // horizon), set by SetNewPrtclGID's readback each cycle (this rank only; the global
+  // census lives in ParticlesBoundaryValues::ndest_global)
+  int ndestroy_thisrank[NPRTCL_DEATH_REASON];
   // death-record ledger: every destruction appends one row to <basename>.prtcl_destroy
   // .csv (exact cycle/time/position/velocity/reason at marking), flushed collectively
   // on every destroy-cycle; <particles> destroy_log = true|false (default true)
@@ -163,8 +163,48 @@ class Particles {
   Real excise_x1, excise_x2, excise_x3;
   Real excise_lapse;
   bool excise_any;
-  // per-cycle marking written by MarkExcised, consumed by SetNewPrtclGID:
-  // flag 0 = keep, 1 = sphere, 2 = lapse; crit = criterion value at marking (r or alpha)
+
+  // EXPERIMENTAL third criterion: apparent-horizon excision, default OFF.
+  //   excise_ah = true: once the FastFlow AH finder has converged at least once IN THIS
+  //     RUN, destroy every particle that is inside any such horizon. Before the first
+  //     successful find nothing is destroyed by this criterion, and a later failed find
+  //     does not retract the last good surface (FastFlow::ah_surf_valid is sticky, unlike
+  //     FastFlow::ah_found -- see fastflow.hpp for why the difference matters, especially
+  //     across restart). Requires <z4c> and a <fastflow> block with num_horizons > 0.
+  //   excise_ah_margin in [0,1): shrink the surface by this fraction before testing, so a
+  //     particle must be that much further in than the horizon to count as inside. 0 is
+  //     the horizon itself. A margin buys immunity to horizon-finder noise exactly on the
+  //     surface at the price of pushing particles a little deeper before removing them.
+  //   excise_ah_use_surface: true (default) tests the real angular surface
+  //     R(theta,phi); false falls back to the largest enclosed sphere (radius rr_min),
+  //     which is strictly more conservative and is the comparison case for "does the
+  //     shape actually matter".
+  // This is INDEPENDENT of excise_radius/excise_lapse: all enabled criteria are checked,
+  // in the precedence order exit > sphere > lapse > horizon.
+  bool excise_ah;
+  Real excise_ah_margin;
+  bool excise_ah_use_surface;
+  // Per-cycle staging of the FastFlow surfaces for the device kernel (see
+  // z4c/horizon_query.hpp for the layout). Refilled on the host by MarkExcised from
+  // whichever surfaces are currently valid, so a horizon that appears, moves, or grows
+  // mid-run needs no reallocation.
+  DualArray2D<Real> ah_par;    // (nhorizon, NAH_PAR)
+  DualArray2D<Real> ah_coef;   // (nhorizon, (lmax+1) + 2*lmpoints)
+  int ah_nhorizon, ah_lmax, ah_lmpoints;
+  // number of horizons that were valid at the last MarkExcised (diagnostic: this is what
+  // separates "the AH criterion is on but no horizon exists yet" from "it is on and
+  // live")
+  int ah_nvalid_thiscycle;
+  // cumulative count of AH-excised particles on this rank, for the end-of-run report
+  std::int64_t ah_nexcised_cum;
+  // cycle/time of the first AH excision anywhere on this rank (-1 = none yet)
+  int ah_first_excise_cycle;
+  Real ah_first_excise_time;
+
+  // per-cycle marking written by MarkExcised, consumed by SetNewPrtclGID: excise_flag is
+  // a ParticlesDeathReason (0 = keep, since PrtclDeathExit is handled separately);
+  // excise_crit is the criterion value at marking -- r for sphere, alpha for lapse, and
+  // the containment ratio r/R_horizon (< 1 inside) for horizon
   DvceArray1D<int>  excise_flag;
   DvceArray1D<Real> excise_crit;
 
@@ -256,6 +296,9 @@ class Particles {
   // only when a criterion is enabled; mark_excised is its NGHOST-dispatched kernel
   TaskStatus MarkExcised(Driver *pdriver, int stage);
   template <int NGHOST> void mark_excised();
+  // host-side refresh of ah_par/ah_coef from the live FastFlow snapshots; returns the
+  // number of currently-valid horizons (0 => the AH branch of the kernel is skipped)
+  int StageHorizons();
   // Stress-energy deposition, scheduled after EnergyCalculation when feedback is on.
   TaskStatus SetPrtclTmunu(Driver *pdriver, int stage);
   template <int NGHOST> void set_prtcl_tmunu();

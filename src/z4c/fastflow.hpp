@@ -55,6 +55,38 @@ class FastFlow {
   void UpdateFlowSpectralComponents();
   void SurfaceIntegrals();
 
+  // ---- Latest SUCCESSFULLY FOUND surface, retained across later failed or skipped
+  // finds ------------------------------------------------------------------------------
+  //! `ah_found` is the status of the MOST RECENT Find only: FastFlowLoop resets it to
+  //! false on entry, and Find is a no-op outside [start_time, stop_time], so `ah_found`
+  //! flickers. Worse, it is ALSO restored from the restart parameter dump while the l>0
+  //! shape coefficients and rr_min are NOT (see the FastFlow constructor), so immediately
+  //! after a restart `ah_found == true` can coexist with rr_min == -1 and ac/as == 0.
+  //! `ah_found` must therefore never be used on its own to mean "a usable surface
+  //! exists".
+  //!
+  //! The members below are written ONLY by SnapshotSurface(), which is called at the end
+  //! of a Find that actually converged in THIS run. `ah_surf_valid` is sticky: once true
+  //! it stays true, and the coefficients keep describing the last horizon this run really
+  //! found. That is the surface a consumer (e.g. particle excision) should query.
+  bool ah_surf_valid;      // a Find in this run has converged at least once
+  Real ah_surf_time;       // Mesh time reported for that find (see FindHorizon: this is
+                           // t^n even though the geometry used is the post-final-stage
+                           // t^{n+1} state)
+  int  ah_surf_count;      // number of successful finds so far (snapshot generation)
+  Real ah_surf_center[3];  // center the snapshot's radii are measured from
+  Real ah_surf_rmin;       // min over collocation angles of the snapshot surface
+  Real ah_surf_rmax;       // max over collocation angles of the snapshot surface
+  Real ah_surf_rmean;      // a0(0)/sqrt(4 pi) of the snapshot surface
+  // Spectral coefficients of the snapshot, same packing as a0/ac/as (lmindex(l,m,lmax)).
+  DualArray1D<Real> a0_surf, ac_surf, as_surf;
+  //! Copy the just-converged surface into the snapshot members (host + device).
+  void SnapshotSurface(Real time);
+  //! Multipole cutoff, needed by consumers that evaluate the snapshot off-grid.
+  int GetLmax() const {return lmax;}
+  //! Length of ac_surf/as_surf.
+  int GetLmpoints() const {return lmpoints;}
+
   // Some of the main parameters in the fast-flow algorithm
   bool ah_found; // Horizon found
   Real time_first_found; // Time, when horizon first found
