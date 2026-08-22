@@ -138,10 +138,10 @@ class Particles {
   bool ledger_init;
   uint64_t ledger0[3];
   uint64_t ledger_dead[2];
-  // per-cycle destruction counters by reason {0=exit, 1=sphere, 2=lapse}, set by
+  // per-cycle destruction counters by reason (ParticlesDeathReason), set by
   // SetNewPrtclGID's readback each cycle (this rank only; the global census lives in
   // ParticlesBoundaryValues::ndest_global)
-  int ndestroy_thisrank[3];
+  int ndestroy_thisrank[NPRTCL_DEATH_REASON];
   // death-record ledger: every destruction appends one row to <basename>.prtcl_destroy
   // .csv (exact cycle/time/position/velocity/reason at marking), flushed collectively
   // on every destroy-cycle; <particles> destroy_log = true|false (default true)
@@ -162,9 +162,21 @@ class Particles {
   Real excise_radius;
   Real excise_x1, excise_x2, excise_x3;
   Real excise_lapse;
+  //   excise_ah: destroy particles inside a converged FastFlow apparent horizon. Inert
+  //     until a find in this run converges AND passes FastFlow's on-grid test, and a
+  //     later failed find does not retract the last good surface. Requires <z4c> and a
+  //     <fastflow> block with num_horizons > 0. Independent of the two above: with both
+  //     on, the lapse threshold covers the phase before any horizon exists.
+  bool excise_ah;
   bool excise_any;
-  // per-cycle marking written by MarkExcised, consumed by SetNewPrtclGID:
-  // flag 0 = keep, 1 = sphere, 2 = lapse; crit = criterion value at marking (r or alpha)
+  // per-cycle staging of the FastFlow surfaces for the device kernel (layout in
+  // z4c/horizon_query.hpp), refilled by MarkExcised from whichever snapshots are valid
+  DualArray2D<Real> ah_par;    // (nhorizon, NAH_PAR)
+  DualArray2D<Real> ah_coef;   // (nhorizon, (lmax+1) + 2*lmpoints)
+  int ah_nhorizon, ah_lmax, ah_lmpoints, ah_nvalid;
+  // per-cycle marking written by MarkExcised, consumed by SetNewPrtclGID: excise_flag is
+  // a ParticlesDeathReason (0 = keep); crit is the criterion value at marking -- r for
+  // sphere, alpha for lapse, the containment ratio r/R_horizon (< 1 inside) for horizon
   DvceArray1D<int>  excise_flag;
   DvceArray1D<Real> excise_crit;
 
@@ -272,6 +284,9 @@ class Particles {
   // only when a criterion is enabled; mark_excised is its NGHOST-dispatched kernel
   TaskStatus MarkExcised(Driver *pdriver, int stage);
   template <int NGHOST> void mark_excised();
+  // host-side refresh of ah_par/ah_coef from the live FastFlow snapshots; returns the
+  // number of valid horizons (0 => the kernel's AH branch is skipped)
+  int StageHorizons();
   // Stress-energy deposition, scheduled after EnergyCalculation when feedback is on.
   TaskStatus SetPrtclTmunu(Driver *pdriver, int stage);
   template <int NGHOST> void set_prtcl_tmunu();

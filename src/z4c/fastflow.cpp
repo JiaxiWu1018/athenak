@@ -17,6 +17,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #if MPI_PARALLEL_ENABLED
 #include <mpi.h>
@@ -46,6 +47,7 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   dYsdth2("dYsdth2",1,1), dYsdthdph("dYsdthdph",1,1),
   dYcdph2("dYcdph2",1,1), dYsdph2("dYsdph2",1,1),
   a0("a0",1), ac("ac",1), as("as",1),
+  a0_surf("a0_surf",1), ac_surf("ac_surf",1), as_surf("as_surf",1),
   rr("rr",1), rr_dth("rr_dth",1), rr_dph("rr_dph",1),
   rho("rho",1), dg("dg",1,1,1,1,1), g_interp("g_interp",1,1),
   K_interp("K_interp",1,1), dg_interp("dg_interp",1,1),
@@ -144,6 +146,18 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   Kokkos::realloc(a0, lmax1);
   Kokkos::realloc(ac, lmpoints);
   Kokkos::realloc(as, lmpoints);
+
+  // Snapshot for consumers. Deliberately NOT seeded from the restart parameter dump,
+  // which carries ah_found but not the shape: ah_surf_valid stays false until a find in
+  // THIS run converges and passes the on-grid test in SnapshotSurface.
+  Kokkos::realloc(a0_surf, lmax1);
+  Kokkos::realloc(ac_surf, lmpoints);
+  Kokkos::realloc(as_surf, lmpoints);
+  ah_surf_valid = false;
+  ah_surf_center[0] = ah_surf_center[1] = ah_surf_center[2] = 0.0;
+  ah_surf_rmin = -1.0;
+  ah_surf_rmax = -1.0;
+  ah_surf_warned = false;
 
   // Reallocate for the spherical harmonics.
   // The spherical grid is the same for all surfaces.
@@ -429,6 +443,10 @@ void FastFlow::Find(int iter, Real time) {
 
   InitialGuess();
   FastFlowLoop();
+
+  if (ah_found) {
+    SnapshotSurface();
+  }
 
   // Retain `last_a0` in restart: this serves as primary ini. guess.
   if (ah_found) {
@@ -893,6 +911,73 @@ void FastFlow::UpdateFlowSpectralComponents() {
   ac.template sync<DevExeSpace>();
   as.template modify<HostMemSpace>();
   as.template sync<DevExeSpace>();
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void FastFlow::SnapshotSurface()
+//! \brief publish the just-converged surface for consumers, unless part of it is off-grid
+//!
+//! Called from Find() on a converged flow, where a0/ac/as, `rr` and rr_min are mutually
+//! consistent (the convergence test breaks before UpdateFlowSpectralComponents). The
+//! surface is rank-replicated -- every rank flows on MPI-reduced integrals -- so this is
+//! local.
+//!
+//! ON-GRID GATE. SurfaceIntegrals accumulates only where havepoint != 0, so a surface
+//! reaching past the mesh is accepted on a PARTIAL integral, and the flow can satisfy its
+//! |mass_prev - mass| < mass_tol test on it -- seen in a collapsing cluster as a
+//! converged "horizon" of mean radius 157 in a domain of half-width 24, with 198 of 200
+//! points off the mesh. Excising against that removes matter nowhere near a horizon.
+//! FastFlow's own ah_found and summary output are unchanged; only the snapshot refuses.
+//! havepoint is per-rank, so reduce with MAX -- SUM would miscount a point claimed by
+//! two ranks through their ghost zones.
+
+void FastFlow::SnapshotSurface() {
+  Kokkos::deep_copy(havepoint.h_view, havepoint.d_view);
+  std::vector<int> hp(nangles);
+  for (int q = 0; q < nangles; ++q) {hp[q] = havepoint.h_view(q);}
+#if MPI_PARALLEL_ENABLED
+  MPI_Allreduce(MPI_IN_PLACE, hp.data(), nangles, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+#endif
+  int noff = 0;
+  for (int q = 0; q < nangles; ++q) {if (hp[q] == 0) {++noff;}}
+  if (noff > 0) {
+    if (ioproc && !ah_surf_warned) {
+      ah_surf_warned = true;
+      std::cout << "### WARNING: horizon " << nh << " not published to consumers: "
+                << noff
+                << " of " << nangles << " collocation points are off the mesh, so the "
+                << "surface integrals that accepted it were partial." << std::endl;
+    }
+    return;   // keep the previous valid snapshot, if any
+  }
+
+  Kokkos::deep_copy(a0_surf.h_view, a0.h_view);
+  Kokkos::deep_copy(ac_surf.h_view, ac.h_view);
+  Kokkos::deep_copy(as_surf.h_view, as.h_view);
+  a0_surf.template modify<HostMemSpace>();
+  a0_surf.template sync<DevExeSpace>();
+  ac_surf.template modify<HostMemSpace>();
+  ac_surf.template sync<DevExeSpace>();
+  as_surf.template modify<HostMemSpace>();
+  as_surf.template sync<DevExeSpace>();
+
+  // Angular extrema of the accepted surface, for the consumer's inside/outside bracket.
+  Real rmin = std::numeric_limits<Real>::infinity();
+  Real rmax = -std::numeric_limits<Real>::infinity();
+  auto &rr_ = rr;
+  Kokkos::parallel_reduce("FastFlow_snapshot_extrema",
+  Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles),
+  KOKKOS_LAMBDA(const int &p, Real &lmin, Real &lmax_r) {
+    lmin = Kokkos::min(lmin, rr_(p));
+    lmax_r = Kokkos::max(lmax_r, rr_(p));
+  }, Kokkos::Min<Real>(rmin), Kokkos::Max<Real>(rmax));
+
+  ah_surf_rmin = rmin;
+  ah_surf_rmax = rmax;
+  ah_surf_center[0] = center[0];
+  ah_surf_center[1] = center[1];
+  ah_surf_center[2] = center[2];
+  ah_surf_valid = true;
 }
 
 //----------------------------------------------------------------------------------------

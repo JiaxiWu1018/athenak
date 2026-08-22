@@ -41,8 +41,8 @@ TaskStatus ParticlesBoundaryValues::SetPrtclGIDForAMR(
   // A regrid does not destroy particles. Clear the per-cycle state consumed by the
   // regular migration compaction, census, and debug validator before reusing that chain.
   nprtcl_destroy = 0;
-  ndest_global[0] = ndest_global[1] = ndest_global[2] = 0;
-  for (int n=0; n<3; ++n) {
+  for (int n=0; n<NPRTCL_DEATH_REASON; ++n) {
+    ndest_global[n] = 0;
     pmy_part->ndestroy_thisrank[n] = 0;
   }
   pmy_part->nmigr_face = 0;
