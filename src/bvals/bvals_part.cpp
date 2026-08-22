@@ -86,10 +86,11 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   const int kMigrDetail = 8;
   DvceArray1D<int> dcnt("pdbg_cnt",5);   // zero-initialized
 
-  // destruction marking (Stage 3c): device counters {0: append slot, 1..3: per-reason
-  // counts (exit/sphere/lapse)} and the destroyed-side {sum tag, sum tag^2} checksum
-  // accumulators of the two-sided conservation ledger (written only when debug >= 1)
-  DvceArray1D<int> dstc("pdest_cnt",4);                    // zero-initialized
+  // destruction marking: device counters {0: append slot, 1..N: per-reason counts,
+  // indexed by ParticlesDeathReason} and the destroyed-side {sum tag, sum tag^2} checksum
+  // accumulators of the two-sided conservation ledger (written only when debug >= 1).
+  // The kernel does atomic_add(&dstc(1+reason)), so this must be 1+NPRTCL_DEATH_REASON.
+  DvceArray1D<int> dstc("pdest_cnt",1+NPRTCL_DEATH_REASON);   // zero-initialized
   DvceArray1D<uint64_t> dsums("pdest_sums",2);             // zero-initialized
   auto &pdestl = destroylist;
   auto &drr = destroy_rec_r;
@@ -155,15 +156,15 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
 
     bool crossed = ((abs(ix) + abs(iy) + abs(iz)) != 0);
 
-    // destruction marking (Stage 3c): a crossing that leaves the mesh through any
-    // non-periodic boundary destroys the particle (reason 0 = exit), and the C(b)
-    // excision criteria destroy via the MarkExcised flags (1 = sphere, 2 = lapse;
-    // excised particles need not have crossed anything). Exit takes precedence.
+    // destruction marking: a crossing that leaves the mesh through any non-periodic
+    // boundary destroys the particle (PrtclDeathExit), and the excision criteria destroy
+    // via the MarkExcised flags (sphere/lapse/horizon; excised particles need not have
+    // crossed anything). Exit takes precedence.
     // Marked particles are excluded from the search, sendlist, and wrap; the actual
     // removal is the merged hole compaction in RecvAndUnpackPrtcls.
     int reason = -1;
     if (crossed && ExitsMeshBoundary(mbbcs.d_view, m, ix, iy, iz)) {
-      reason = 0;
+      reason = PrtclDeathExit;
     } else if (exc_any && eflag(p) != 0) {
       reason = eflag(p);
     }
@@ -352,7 +353,9 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   auto hdstc = Kokkos::create_mirror_view(dstc);
   Kokkos::deep_copy(hdstc, dstc);
   nprtcl_destroy = hdstc(0);
-  for (int k=0; k<3; ++k) {pmy_part->ndestroy_thisrank[k] = hdstc(1+k);}
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {
+    pmy_part->ndestroy_thisrank[k] = hdstc(1+k);
+  }
   // same overflow contract as the sendlist: both passes use the same predicate, so
   // appends > counted capacity means corruption -- fatal, never compact garbage
   if (nprtcl_destroy > ndest_ub) {
@@ -464,20 +467,25 @@ TaskStatus ParticlesBoundaryValues::CountSendsAndRecvs() {
   nsends = sends_thisrank.size();
 
   // Share the number of sends AND this cycle's destruction census among all ranks: one
-  // Allgather of 4 ints {nsends, ndestroy_exit, ndestroy_sphere, ndestroy_lapse} per
-  // rank (widened from the legacy 1-int gather -- zero extra collectives). The global
-  // census (i) keeps the count refresh in RecvAndUnpackPrtcls collective-free on
-  // send-quiet cycles, (ii) feeds the cumulative destroyed ledger on Mesh, and (iii)
-  // makes the death-log flush rank-consistent.
-  int cnt4[4] = {nsends, pmy_part->ndestroy_thisrank[0], pmy_part->ndestroy_thisrank[1],
-                 pmy_part->ndestroy_thisrank[2]};
-  std::vector<int> cnts4_all(4*(global_variable::nranks));
-  MPI_Allgather(cnt4, 4, MPI_INT, cnts4_all.data(), 4, MPI_INT, mpi_comm_part);
-  ndest_global[0] = ndest_global[1] = ndest_global[2] = 0;
+  // Allgather of (1 + NPRTCL_DEATH_REASON) ints {nsends, ndestroy per reason} per rank
+  // (widened from the legacy 1-int gather -- zero extra collectives). The global census
+  // (i) keeps the count refresh in RecvAndUnpackPrtcls collective-free on send-quiet
+  // cycles, (ii) feeds the cumulative destroyed ledger on Mesh, and (iii) makes the
+  // death-log flush rank-consistent.
+  const int ncnt = 1 + NPRTCL_DEATH_REASON;
+  std::vector<int> cnt(ncnt);
+  cnt[0] = nsends;
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {cnt[1+k] = pmy_part->ndestroy_thisrank[k];}
+  std::vector<int> cnts_all(ncnt*(global_variable::nranks));
+  MPI_Allgather(cnt.data(), ncnt, MPI_INT, cnts_all.data(), ncnt, MPI_INT, mpi_comm_part);
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {ndest_global[k] = 0;}
   for (int n=0; n<(global_variable::nranks); ++n) {
-    nsends_eachrank[n] = cnts4_all[4*n];
-    ndest_eachrank[n] = cnts4_all[4*n+1] + cnts4_all[4*n+2] + cnts4_all[4*n+3];
-    for (int k=0; k<3; ++k) {ndest_global[k] += cnts4_all[4*n+1+k];}
+    nsends_eachrank[n] = cnts_all[ncnt*n];
+    ndest_eachrank[n] = 0;
+    for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {
+      ndest_eachrank[n] += cnts_all[ncnt*n+1+k];
+      ndest_global[k] += cnts_all[ncnt*n+1+k];
+    }
   }
 
   // Now share ParticleMessageData amongst all ranks
@@ -883,7 +891,8 @@ TaskStatus ParticlesBoundaryValues::RecvAndUnpackPrtcls() {
   Mesh *pm = pmy_part->pmy_pack->pmesh;
   pm->nprtcl_thisrank = new_npart;
 #if MPI_PARALLEL_ENABLED
-  int gdest = ndest_global[0] + ndest_global[1] + ndest_global[2];
+  int gdest = 0;
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {gdest += ndest_global[k];}
   if (!(sends_allranks.empty())) {
     // cross-rank traffic this cycle: refresh by Allgather on the particle communicator
     // (the authoritative path; destroys are already folded into new_npart)
@@ -902,8 +911,11 @@ TaskStatus ParticlesBoundaryValues::RecvAndUnpackPrtcls() {
   }
   // else: quiet cycle (no sends and no destroys anywhere) -- counts unchanged
 #else
-  for (int k=0; k<3; ++k) {ndest_global[k] = pmy_part->ndestroy_thisrank[k];}
-  int gdest = ndest_global[0] + ndest_global[1] + ndest_global[2];
+  int gdest = 0;
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {
+    ndest_global[k] = pmy_part->ndestroy_thisrank[k];
+    gdest += ndest_global[k];
+  }
   if (gdest > 0) {
     pm->nprtcl_eachrank[0] = new_npart;
     pm->nprtcl_total = new_npart;

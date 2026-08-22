@@ -570,9 +570,10 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
     // on restart the restored cumulative destroyed counts reconstruct the original
     // total, so the verdict spans restart segments
     if (pmesh->pmb_pack->ppart != nullptr) {
-      pmesh->nprtcl_initial = pmesh->nprtcl_total
-        + pmesh->nprtcl_destroyed_cum[0] + pmesh->nprtcl_destroyed_cum[1]
-        + pmesh->nprtcl_destroyed_cum[2];
+      pmesh->nprtcl_initial = pmesh->nprtcl_total;
+      for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {
+        pmesh->nprtcl_initial += pmesh->nprtcl_destroyed_cum[k];
+      }
     }
     Real elapsed_time = -1.;
     if (wall_time > 0.) {

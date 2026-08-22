@@ -55,6 +55,20 @@ class FastFlow {
   void UpdateFlowSpectralComponents();
   void SurfaceIntegrals();
 
+  // ---- Snapshot of the last surface that converged IN THIS RUN -----------------------
+  //! Consumers (particle excision) must key off `ah_surf_valid`, not `ah_found`: the
+  //! latter is restored from the restart dump WITHOUT its shape coefficients, so it can
+  //! be true while ac/as are uninitialised. `ah_surf_valid` is sticky and set only by
+  //! SnapshotSurface(), which also refuses a surface not wholly on the mesh.
+  bool ah_surf_valid;
+  Real ah_surf_center[3];
+  Real ah_surf_rmin, ah_surf_rmax;   // angular extrema, for the consumer's bracket
+  bool ah_surf_warned;               // the off-grid warning is printed once
+  DualArray1D<Real> a0_surf, ac_surf, as_surf;   // packing as a0/ac/as
+  void SnapshotSurface();
+  int GetLmax() const {return lmax;}
+  int GetLmpoints() const {return lmpoints;}
+
   // Some of the main parameters in the fast-flow algorithm
   bool ah_found; // Horizon found
   Real time_first_found; // Time, when horizon first found

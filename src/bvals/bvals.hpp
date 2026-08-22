@@ -323,8 +323,8 @@ class ParticlesBoundaryValues {
   DualArray1D<int> cpairs;          // tail-compaction (dst,src) pairs, flattened 2*npairs
   DvceArray2D<Real> destroy_rec_r;  // death records, 7 x cap: {x,y,z,vx,vy,vz,crit}
   DvceArray2D<int>  destroy_rec_i;  // death records, 3 x cap: {tag, gid, reason}
-  int ndest_global[3];              // this cycle's destruction census by reason, summed
-                                    // over all ranks (every rank holds it; serial: local)
+  int ndest_global[NPRTCL_DEATH_REASON];  // this cycle's destruction census by reason,
+                                    // summed over all ranks (every rank holds it)
   std::vector<int> ndest_eachrank;  // per-rank destroy totals this cycle (MPI census)
 
   // Data needed to count number of messages and particles to send between ranks

@@ -59,15 +59,19 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
   int myrank = global_variable::my_rank;
 
   // per-cycle migration/destruction summary (counters filled by SetNewPrtclGID)
-  int ndest_cycle = ndestroy_thisrank[0] + ndestroy_thisrank[1] + ndestroy_thisrank[2];
+  int ndest_cycle = 0;
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {ndest_cycle += ndestroy_thisrank[k];}
   if ((nmigr_face + nmigr_edge + nmigr_corner + nsearch_fail + ndest_cycle) > 0) {
     std::cout << "[prtcl-debug] rank=" << myrank << " cycle=" << ncycle
               << " migrations: face=" << nmigr_face
               << " edge=" << nmigr_edge << " corner=" << nmigr_corner
               << " search_fail=" << nsearch_fail;
     if (ndest_cycle > 0) {
-      std::cout << " destroyed={" << ndestroy_thisrank[0] << ","
-                << ndestroy_thisrank[1] << "," << ndestroy_thisrank[2] << "}";
+      std::cout << " destroyed={" << ndestroy_thisrank[0];
+      for (int k=1; k<NPRTCL_DEATH_REASON; ++k) {
+        std::cout << "," << ndestroy_thisrank[k];
+      }
+      std::cout << "}";
     }
     std::cout << " npart=" << npart << std::endl;
   }
@@ -128,7 +132,7 @@ TaskStatus Particles::CheckMigration(Driver *pdrive, int stage) {
 #endif
   Mesh *pm = pmy_pack->pmesh;
   uint64_t dead_cnt = 0;
-  for (int k=0; k<3; ++k) {
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {
     dead_cnt += static_cast<uint64_t>(pm->nprtcl_destroyed_cum[k]);
   }
   if (!ledger_init) {

@@ -77,6 +77,13 @@ enum MetricIndex {I00=0, I01=1, I02=2, I03=3, I11=4, I12=5, I13=6, I22=7, I23=8,
 enum ParticlesIndex {PGID=0, PTAG=1,
                      IPM=0, IPEN=1, IPX=2, IPVX=3, IPY=4, IPVY=5, IPZ=6, IPVZ=7};
 
+// Reasons a particle can be destroyed, in precedence order. The value indexes every
+// per-reason counter in the ledger chain and encodes the death-CSV `reason` column;
+// widening it means widening all of those, but NOT the restart file's fixed 4-Real
+// particle header (see outputs/restart.cpp).
+enum ParticlesDeathReason {PrtclDeathExit=0, PrtclDeathSphere=1, PrtclDeathLapse=2,
+                           PrtclDeathHorizon=3, NPRTCL_DEATH_REASON=4};
+
 // integer constants to specify spatial reconstruction methods
 enum ReconstructionMethod {dc, plm, ppm4, ppmx, wenoz, teno};
 
