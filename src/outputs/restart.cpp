@@ -201,6 +201,17 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
   pin->SetInteger(out_params.block_name, "file_number", out_params.file_number);
   pin->SetReal(out_params.block_name, "last_time", out_params.last_time);
 
+  // Cumulative horizon-excised particle count. The binary particle header written in
+  // STEP 5 is a FIXED 4-Real record at a fixed offset with the particle table immediately
+  // after it, so widening it would shift every particle byte and make restart files
+  // unreadable in both directions. Carry the fourth reason in the embedded parameter dump
+  // instead -- the mechanism FastFlow already uses for last_a0 -- which is append-only
+  // text: a file written before this existed simply lacks the key and reads back as 0.
+  if (pm->pmb_pack->ppart != nullptr) {
+    pin->SetInteger("particles", "ndestroy_horizon_cum",
+                    pm->nprtcl_destroyed_cum[PrtclDeathHorizon]);
+  }
+
   // create string holding input parameters (copy of input file)
   std::stringstream ost;
   pin->ParameterDump(ost);
@@ -656,10 +667,11 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
       : static_cast<IOWrapperSizeT>(pm->nmb_total);
     IOWrapperSizeT prtcl_base = grid_start + data_size*nmb_off;
 
+    // FIXED WIDTH, DO NOT EXTEND: rdata_base below is prtcl_base + 4*sizeof(Real).
     Real hdr[4] = {static_cast<Real>(total),
-                   static_cast<Real>(pm->nprtcl_destroyed_cum[0]),
-                   static_cast<Real>(pm->nprtcl_destroyed_cum[1]),
-                   static_cast<Real>(pm->nprtcl_destroyed_cum[2])};
+                   static_cast<Real>(pm->nprtcl_destroyed_cum[PrtclDeathExit]),
+                   static_cast<Real>(pm->nprtcl_destroyed_cum[PrtclDeathSphere]),
+                   static_cast<Real>(pm->nprtcl_destroyed_cum[PrtclDeathLapse])};
     if (global_variable::my_rank == 0 || single_file_per_rank) {
       resfile.Write_any_type_at(hdr, 4, prtcl_base, "Real", single_file_per_rank);
     }

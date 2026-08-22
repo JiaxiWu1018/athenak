@@ -18,7 +18,9 @@
 #include "particles.hpp"
 #include "mhd/mhd.hpp"            // MHD::nmhd/nscalars for gr_boris snapshot sizing
 #include "coordinates/adm.hpp"   // ADM::nadm
-#include "z4c/z4c.hpp"           // Z4c::nz4c
+#include "z4c/z4c.hpp"           // Z4c::nz4c, Z4c::pfastflow
+#include "z4c/fastflow.hpp"      // FastFlow::GetLmax/GetLmpoints
+#include "z4c/horizon_query.hpp" // NAH_PAR staging layout
 
 namespace particles {
 //----------------------------------------------------------------------------------------
@@ -102,7 +104,7 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   ledger_init = false;
   ledger0[0] = ledger0[1] = ledger0[2] = 0;
   ledger_dead[0] = ledger_dead[1] = 0;
-  ndestroy_thisrank[0] = ndestroy_thisrank[1] = ndestroy_thisrank[2] = 0;
+  for (int k=0; k<NPRTCL_DEATH_REASON; ++k) {ndestroy_thisrank[k] = 0;}
 
   // death-record ledger (one CSV row per destroyed particle; see particles_destroy.cpp)
   destroy_log = pin->GetOrAddBoolean("particles","destroy_log",true);
@@ -116,12 +118,43 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   excise_x2     = pin->GetOrAddReal("particles","excise_x2",0.0);
   excise_x3     = pin->GetOrAddReal("particles","excise_x3",0.0);
   excise_lapse  = pin->GetOrAddReal("particles","excise_lapse",0.0);
-  excise_any    = (excise_radius > 0.0) || (excise_lapse > 0.0);
+  excise_ah     = pin->GetOrAddBoolean("particles","excise_ah",false);
+  excise_any    = (excise_radius > 0.0) || (excise_lapse > 0.0) || excise_ah;
   if (excise_lapse > 0.0 && pmy_pack->padm == nullptr) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
               << "<particles> excise_lapse requires ADM variables (<adm> or <z4c>)"
               << std::endl;
     std::exit(EXIT_FAILURE);
+  }
+  ah_nhorizon = 0;
+  ah_lmax = 0;
+  ah_lmpoints = 0;
+  ah_nvalid = 0;
+  if (excise_ah) {
+    // fail at construction rather than silently never excising
+    if (pmy_pack->pz4c == nullptr || pmy_pack->pz4c->pfastflow.empty()) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "<particles> excise_ah requires <z4c> and a <fastflow> "
+                << "block with num_horizons > 0" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    ah_nhorizon = static_cast<int>(pmy_pack->pz4c->pfastflow.size());
+    ah_lmax = pmy_pack->pz4c->pfastflow[0]->GetLmax();
+    ah_lmpoints = pmy_pack->pz4c->pfastflow[0]->GetLmpoints();
+    // <fastflow> lmax is global, so one staging extent serves every surface; assert it
+    for (int h=1; h<ah_nhorizon; ++h) {
+      if (pmy_pack->pz4c->pfastflow[h]->GetLmax() != ah_lmax) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "<particles> excise_ah requires every <fastflow> "
+                  << "horizon to share lmax" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+    }
+    Kokkos::realloc(ah_par, ah_nhorizon, NAH_PAR);
+    Kokkos::realloc(ah_coef, ah_nhorizon, (ah_lmax + 1) + 2*ah_lmpoints);
+    Kokkos::deep_copy(ah_par.h_view, 0.0);
+    ah_par.template modify<HostMemSpace>();
+    ah_par.template sync<DevExeSpace>();
   }
   if (excise_any) {
     Kokkos::realloc(excise_flag, 1);
