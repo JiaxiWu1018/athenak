@@ -10,8 +10,8 @@
 //!       half-dt electromagnetic Boris kick in the local orthonormal frame;
 //!   (2) implicitly advance the geodesic motion x^n -> x^{n+1}, u -> u^{+} with a
 //!       fixed-point iteration over the time-and-space midpoint metric (forward-Euler
-//!       fallback on failure; both are rejected outright if the interpolated geometry is
-//!       not a valid 3-metric, and a rejected update is NOT TAKEN);
+//!       fallback on failure; a substep whose interpolated geometry is invalid is
+//!       rejected and not taken);
 //!   (3) interpolate fields/metric at x^{n+1} and do the second half-dt EM kick.
 //! The q=0 / no-MHD limit is the geodesic integrator (steps 1 and 3 are skipped). The
 //! metric is read at two time levels: the *_last snapshots hold step n, the live arrays
@@ -54,22 +54,13 @@ namespace particles {
 //! forward-Euler fallback. It returns FALSE when the interpolated geometry is not a
 //! valid Riemannian 3-metric, in which case (xout,uout) must not be used.
 //!
-//! Why the validity test exists. gamma_ij is positive definite by construction, but the
-//! value used here is a 2*NG-node Lagrange interpolation, and near a moving-puncture
-//! trumpet -- where gamma_ij ~ psi^4 rises steeply toward the chi floor -- a high-order
-//! interpolant overshoots into NEGATIVE diagonal components (Runge phenomenon). Measured
-//! in the near-critical y_c=0.700 collapse at t/M = 308: all eight particles that broke
-//! the run had gamma_yy, gamma_zz in [-1.86, -1.23] at r ~ 0.2 M with alpha ~ 0.17,
-//! three of them with det gamma < 0. The consequences are
-//!     usq = gamma^{ij} u_i u_j  <  -1   ==>   W = sqrt(1 + usq) = NaN
-//! for those three, and a finite but meaningless W (7.6 ... 23.2, from usq = +56 ... +539
-//! with a garbage u^i) for the other five. The NaN was then written straight into the
-//! particle array, and NaN is invisible to every comparison-based predicate downstream --
-//! ComputeBlockOffsets reports "did not cross", ExitsMeshBoundary is never consulted, and
-//! alpha < excise_lapse is false -- so the particle could neither migrate nor be excised.
-//! Note det gamma > 0 is NOT sufficient: five of the eight had two negative eigenvalues,
-//! whose signs cancel in the determinant. The test below is Sylvester's criterion on the
-//! three leading principal minors, which is exactly positive-definiteness.
+//! gamma_ij is positive definite by construction, but the value used here is a 2*NG-node
+//! Lagrange interpolation, which can overshoot into negative diagonal components where
+//! gamma_ij varies steeply (inside a moving-puncture trumpet). Such a gamma yields
+//! usq = gamma^{ij} u_i u_j < -1 and hence a NaN W, or a finite but meaningless W from a
+//! garbage u^i. det gamma > 0 is NOT a sufficient test: two negative eigenvalues cancel
+//! in the determinant. The test is therefore Sylvester's criterion on the three leading
+//! principal minors, which is exactly positive-definiteness.
 
 template <int NG>
 struct GeodesicPush {
@@ -148,9 +139,9 @@ struct GeodesicPush {
       for (int i = 0; i < 6; ++i) { g3d[i] = g3d_old[i]; }
     }
     // (ii) transport velocity v^i = alp u^i / W - beta^i
-    // Reject an interpolated 3-metric that is not positive definite (Sylvester's
-    // criterion on the leading principal minors -- see the struct docstring for the
-    // measurement that motivates it). gamma_ij storage is (xx,xy,xz,yy,yz,zz).
+    // Reject a non-positive-definite interpolant by Sylvester's criterion on the
+    // leading principal minors (see the struct docstring for why det > 0 is not
+    // enough). gamma_ij storage is (xx,xy,xz,yy,yz,zz).
     Real det = Primitive::GetDeterminant(g3d);
     Real minor1 = g3d[0];
     Real minor2 = g3d[0]*g3d[3] - g3d[1]*g3d[1];
@@ -159,8 +150,8 @@ struct GeodesicPush {
     Primitive::InvertMatrix(g3u, g3d, det);
     Real u_mid_u[3] = {0.0};
     Primitive::RaiseForm(u_mid_u, u_mid, g3u);
-    // usq >= 0 for a positive-definite gamma; the guard costs nothing and keeps W real
-    // if round-off in the minors ever lets a marginal case through.
+    // usq >= 0 for a positive-definite gamma; belt-and-braces in case round-off in the
+    // minors lets a marginal case through, so W stays real.
     Real usq = Primitive::Contract(u_mid_u, u_mid);
     if (!(usq >= 0.0)) {return false;}
     Real Lorentz = std::sqrt(1.0 + usq);
@@ -294,9 +285,8 @@ enum GeodesicStatus {kConverged = 0, kEuler = 1, kRejected = 2};
 //! \fn int FixedPointIteration
 //! \brief solve the implicit geodesic substep x=f(x) by fixed-point iteration. On
 //! non-finite iterates or non-convergence it falls back to a forward-Euler step
-//! f(x0,u0,...,Euler=true). The Euler result is itself validated: previously it was
-//! written back unchecked, which is how a NaN entered the particle array in the
-//! near-critical y_c=0.700 collapse (see the GeodesicPush docstring).
+//! f(x0,u0,...,Euler=true). The Euler result is validated too: an unchecked fallback is
+//! how a NaN reaches the particle array.
 
 template<class F>
 KOKKOS_INLINE_FUNCTION
@@ -554,14 +544,13 @@ void Particles::GR_BorisPush() {
                        x_n[0], x_n[1], x_n[2], u_p[0], u_p[1], u_p[2], dt_);
       }
     } else if (gstat == kRejected) {
-      // Neither the fixed point nor the forward-Euler fallback produced a usable state:
-      // the interpolated 3-metric at this particle is not positive definite (a
-      // high-order interpolation overshoot at the puncture; see the GeodesicPush
-      // docstring). THE STEP IS NOT TAKEN -- the particle keeps its step-n position and
-      // velocity, which are finite and still inside its own MeshBlock, so every
-      // downstream invariant holds and the ordinary excision criterion gets to classify
-      // it on a later cycle. Writing the non-finite result instead is what broke the
-      // near-critical y_c=0.700 collapse.
+      // Neither the fixed point nor the Euler fallback produced a usable state. The step
+      // is NOT TAKEN: the step-n position and velocity are finite and still inside this
+      // MeshBlock, so every downstream invariant holds and the ordinary excision
+      // criterion can classify the particle on a later cycle. Writing the invalid result
+      // instead lets a NaN into the particle array, where it is invisible to every
+      // comparison-based predicate (migration, mesh-exit and excision all silently
+      // decline to act on it).
       int islot = Kokkos::atomic_fetch_add(&nfail_(2), 1);
       if (islot < ndetail_) {
         Kokkos::printf("### WARNING gr_boris: geodesic substep REJECTED (interpolated "
@@ -702,20 +691,13 @@ void Particles::GR_BorisPush() {
     }
 
     // ---- Step 6: write back -------------------------------------------------------
-    // Unconditional backstop for the invariant "a non-finite state is never written".
-    // The geodesic substep is guarded at its source (GeodesicPush validates gamma_ij by
-    // Sylvester's criterion and FixedPointIteration validates the Euler fallback), but
-    // the two EM half-kicks above are not: they interpolate their OWN gamma_ij at x^n and
-    // x^{n+1} and feed it to GetDeterminant / LowerVector / CalcTetrad -- whose
-    // tetrad[2][2] = sqrt(gxx*gyy - gxy^2), tetrad[3][3] = sqrt(gxx*det) and
-    // 1/sqrt(g3u[5]) are an unguarded Cholesky -- so the same non-positive-definite
-    // interpolant that breaks the geodesic step would produce a NaN there too. Those
-    // branches are dead for dust (q = 0, no MHD), which is every configuration this was
-    // validated against, so rather than duplicate the test into code that cannot be
-    // exercised here, the write back itself refuses a non-finite result: the particle
-    // keeps its step-n state and the rejection is counted and reported exactly like a
-    // rejected geodesic substep. The invariant therefore holds no matter which sub-step
-    // produced the NaN, including any added later.
+    // Backstop making "a non-finite state is never written" hold whatever produced it.
+    // The geodesic substep is guarded at its source, but the two EM half-kicks are not:
+    // they interpolate their own gamma_ij and feed it to CalcTetrad, whose
+    // sqrt(gxx*gyy - gxy^2) and 1/sqrt(g3u[5]) are an unguarded Cholesky. Guarding here
+    // rather than duplicating the Sylvester test into those branches keeps the invariant
+    // total, including for sub-steps added later. Unreachable unless the old code would
+    // have written a NaN, so it cannot change a finite result.
     bool finite_out = Kokkos::isfinite(x_np1[0]) && Kokkos::isfinite(x_np1[1])
                    && Kokkos::isfinite(x_np1[2]) && Kokkos::isfinite(u_np1[0])
                    && Kokkos::isfinite(u_np1[1]) && Kokkos::isfinite(u_np1[2]);

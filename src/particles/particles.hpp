@@ -122,10 +122,8 @@ class Particles {
   int debug_lvl;
   // per-cycle counters written by SetNewPrtclGID when debug_lvl >= 1, classified by the
   // crossing offset |ix|+|iy|+|iz| = 1/2/3. nsearch_fail counts particles for which no
-  // destination MeshBlock was found. Since SetNewPrtclGID aborts the run at the point of
-  // detection -- unconditionally, whatever <particles> debug is -- nsearch_fail is always
-  // 0 by the time CheckMigration reads it; the check below is kept as a second line of
-  // defence, not as the primary detector.
+  // destination MeshBlock was found. SetNewPrtclGID now aborts at the point of detection
+  // regardless of debug, so this is always 0 here and serves only as a backstop.
   int nmigr_face, nmigr_edge, nmigr_corner, nsearch_fail;
   // migration conservation ledger (CheckMigration, debug >= 1): GLOBAL {particle count,
   // sum of tags, sum of tag^2} captured at the first check and recomputed every cycle.
@@ -185,18 +183,10 @@ class Particles {
   DvceArray1D<int> boris_nfail;
   std::int64_t boris_nfail_cum;
   bool boris_first_fail_seen;
-  // A REJECTED update is a step that was NOT TAKEN: the particle keeps its step-n
-  // position and momentum. Two disjoint causes, counted separately in boris_nfail(2)
-  // and boris_nfail(3) and summed here:
-  //   (2) the interpolated 3-metric at the particle was not positive definite
-  //       (Sylvester's criterion in GeodesicPush), or the Euler fallback was non-finite;
-  //   (3) the final write-back backstop found a non-finite position or momentum produced
-  //       anywhere else in the pusher (e.g. the EM half-kicks, which build a tetrad from
-  //       their own interpolated gamma_ij).
-  // Together these make "a non-finite particle state is never written into prtcl_rdata"
-  // an unconditional invariant of GR_BorisPush. A rejection is a genuine loss of accuracy
-  // for that particle, so it is reported ALWAYS -- never only under <particles> debug --
-  // with a per-cycle count and a running per-rank total.
+  // A REJECTED update was NOT TAKEN: the particle keeps its step-n position and
+  // momentum. Together, slots 2 and 3 make "a non-finite state is never written into
+  // prtcl_rdata" an invariant of GR_BorisPush. A rejection costs that particle accuracy,
+  // so it is reported always -- never only under <particles> debug.
   std::int64_t boris_nreject_cum;
   bool boris_first_reject_seen;
 
