@@ -46,6 +46,19 @@
 //!   - <z4c> block
 //!   - <particles> init=pgen, particle_type=dust, pusher=gr_boris, feedback=true
 //!
+//! Mesh refinement. Static refinement (<mesh_refinement> refinement = static plus
+//! <refined_region*> blocks) needs nothing from the pgen: the ADM fill loops over
+//! nmb_thispack and takes every coordinate from that block's own mb_size, all the
+//! normalization integrals are 1D radial quadratures, and particle placement goes
+//! through the level-agnostic FindContainingMeshBlock. For ADAPTIVE refinement the
+//! Mesh needs a criterion, and none of the built-in <amr_criterion> variables exist in
+//! a Z4c + particle run (they are all hydro/MHD/radiation fields). RefinementCondition
+//! below therefore forwards to the shared Z4c refinement module, exactly as the vacuum
+//! Z4c pgens do, so that <z4c_amr> method = tracker | chi | dchi | loehner and the
+//! radius_<n>_rad / radius_<n>_reflevel shells drive the hierarchy. Enable it with
+//!     <mesh_refinement>  refinement = adaptive
+//!     <amr_criterion1>   method = user
+//!
 //! <problem> parameters:
 //!   gi_m0               envelope gravitational mass M0 (default 0.61)
 //!   gi_r0               envelope areal surface radius R0 (default 30.0)
@@ -80,6 +93,7 @@
 #include "coordinates/adm.hpp"
 #include "coordinates/cell_locations.hpp"
 #include "z4c/z4c.hpp"
+#include "z4c/z4c_amr.hpp"
 #include "particles/particles.hpp"
 #include "pgen/pgen.hpp"
 
@@ -490,11 +504,21 @@ Real InterpolateCDF(const std::vector<Real> &cdf, const std::vector<Real> &value
 }  // namespace
 
 //----------------------------------------------------------------------------------------
+//! \fn RefinementCondition
+//! \brief adaptive-refinement criterion: delegate to the shared Z4c module.
+
+void RefinementCondition(MeshBlockPack *pmbp);
+
+//----------------------------------------------------------------------------------------
 //! \fn ProblemGenerator::UserProblem
 
 void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   MeshBlockPack *pmbp = pmy_mesh_->pmb_pack;
   auto &indcs = pmy_mesh_->mb_indcs;
+
+  // Enrolled unconditionally and before the early restart return: Mesh only calls it when
+  // an <amr_criterion> asks for method = user, and a restarted adaptive run needs it too.
+  user_ref_func = RefinementCondition;
 
   if (pmbp->pz4c == nullptr || pmbp->padm == nullptr) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
@@ -1004,4 +1028,12 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       }
     }
   }
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn RefinementCondition
+//! \brief set the per-MeshBlock refine/derefine flags from <z4c_amr>.
+
+void RefinementCondition(MeshBlockPack *pmbp) {
+  pmbp->pz4c->pamr->Refine(pmbp);
 }
