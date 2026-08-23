@@ -27,14 +27,27 @@
 //!   cluster_seed       random seed (default 1)
 //!   cluster_profile_dx dimensionless ODE step in x (default 1e-4)
 //!   cluster_center_x1, cluster_center_x2, cluster_center_x3 (default 0)
+//!
+//! Outward radial-sign bias (the ST-migration experiment).  These parameters leave the
+//! equilibrium metric, the sampled positions, the per-particle rest mass and the
+//! per-particle momentum MAGNITUDE |u_i| untouched; they only change how many particles
+//! move outward rather than inward.  eps_out = 0 reproduces the unperturbed pgen bit for
+//! bit (the whole bias block is skipped).  See section "Outward radial-sign bias" below.
+//!   cluster_eps_out    outward-bias amplitude eps_out in [0,1] (default 0)
+//!   cluster_bias_mode  "stratified" (default) or "bernoulli"
+//!   cluster_bias_seed  salt for the bernoulli-mode per-tag hash (default 0)
+//!   cluster_t0_dump    if non-empty, rank 0 writes the full global t=0 particle sample
+//!                      to this file in double precision (default "", i.e. off)
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <random>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "athena.hpp"
@@ -292,6 +305,169 @@ Real InterpolateCDF(const std::vector<Real> &cdf, const std::vector<Real> &value
   return values[lo] + frac*(values[hi] - values[lo]);
 }
 
+//----------------------------------------------------------------------------------------
+// Outward radial-sign bias
+// ------------------------
+// The equilibrium sample of Eq. (A23) draws the momentum DIRECTION isotropically and
+// fixes its magnitude from the local y:  |p_hat|/m0 = sqrt(1/y - 1).  Writing the unit
+// radial direction at the particle as n_hat and mu = (u_i n^i)/|u|, an isotropic sample
+// has mu uniform on [-1,1], hence <mu> = 0 (no net radial current) and <mu^2> = 1/3.
+//
+// The perturbation reflects the radial component of the momentum outward for a controlled
+// subset of the inward movers,
+//
+//     u_i  ->  u_i - 2 (u_j n^j) n_i    for the selected particles with u_j n^j < 0,
+//
+// which maps mu -> |mu| and leaves |u_i| (hence -u_t, hence the monoenergetic particle
+// energy) unchanged particle by particle.  If a fraction eps_out of the inward movers is
+// selected then, in the continuum limit,
+//
+//     P(sign = +1) = (1 + eps_out)/2,   <mu> = eps_out/2,   <mu^2> = 1/3 (unchanged),
+//     <v_hat_r>(r) = (eps_out/2) sqrt(1 - y(r)).
+//
+// So every EVEN velocity moment - and therefore the energy density and the pressure the
+// Hamiltonian constraint sees - is preserved, while the odd radial moment is dialled
+// linearly in eps_out.  The momentum constraint is NOT preserved; that is the deliberate,
+// measured cost of this experiment.
+//
+// Two selection rules are provided, both a deterministic function of the globally unique
+// particle tag alone, so the realization is independent of the MPI decomposition, the
+// rank count and the GPU execution order:
+//
+//   "stratified" (default) -- the inward movers are ordered by (isotropic radius, tag)
+//       and the particle at rank j in that order is selected iff the base-2 radical
+//       inverse (van der Corput) of j is < eps_out. Because the radical-inverse sequence
+//       is low-discrepancy, the selected fraction is eps_out + O(log K / K) GLOBALLY and,
+//       more usefully, in every contiguous window of radii: the induced radial current
+//       profile carries essentially no extra shot noise. For eps_out = 1/2 the rule
+//       reduces to "flip every other inward mover in radius order", for eps_out = 1/4
+//       to "every fourth", and so on. The selected sets are nested in eps_out, so the
+//       runs of an eps_out sweep differ only by the particles that the larger eps_out
+//       adds.
+//
+//   "bernoulli" -- a tag is selected iff a SplitMix64 hash of the tag is < eps_out.
+//       Independent per particle, giving the binomial shot noise the stratified rule
+//       removes; retained as a cross-check that the stratification introduces no bias.
+//       These sets are nested in eps_out as well.
+//----------------------------------------------------------------------------------------
+
+//! \brief base-2 radical inverse (van der Corput) of j, in [0,1).
+Real RadicalInverse2(std::uint64_t j) {
+  j = (j << 32) | (j >> 32);
+  j = ((j & 0x0000ffff0000ffffULL) << 16) | ((j & 0xffff0000ffff0000ULL) >> 16);
+  j = ((j & 0x00ff00ff00ff00ffULL) << 8) | ((j & 0xff00ff00ff00ff00ULL) >> 8);
+  j = ((j & 0x0f0f0f0f0f0f0f0fULL) << 4) | ((j & 0xf0f0f0f0f0f0f0f0ULL) >> 4);
+  j = ((j & 0x3333333333333333ULL) << 2) | ((j & 0xccccccccccccccccULL) >> 2);
+  j = ((j & 0x5555555555555555ULL) << 1) | ((j & 0xaaaaaaaaaaaaaaaaULL) >> 1);
+  return static_cast<Real>(j >> 11)*(1.0/9007199254740992.0);
+}
+
+//! \brief SplitMix64 finalizer mapped to [0,1); a deterministic per-tag uniform draw.
+Real SplitMixUniform(std::uint64_t key) {
+  std::uint64_t z = key + 0x9e3779b97f4a7c15ULL;
+  z = (z ^ (z >> 30))*0xbf58476d1ce4e5b9ULL;
+  z = (z ^ (z >> 27))*0x94d049bb133111ebULL;
+  z = z ^ (z >> 31);
+  return static_cast<Real>(z >> 11)*(1.0/9007199254740992.0);
+}
+
+//! \struct DrawnParticle
+//! \brief one realization of the equilibrium sample for a single tag.
+
+struct DrawnParticle {
+  Real px, py, pz;     // position, including the cluster-center offset
+  Real ux, uy, uz;     // covariant spatial 4-velocity u_i per unit rest mass
+  Real riso;           // isotropic radius measured from the cluster center
+  Real ylocal;         // equilibrium y at the particle
+  Real conf_a;         // conformal factor A at the particle (gamma_ij = A^2 delta_ij)
+  Real umag;           // |u_i| = A |p_hat|/m0
+  Real nx, ny, nz;     // unit radial direction at the particle
+};
+
+//! \fn DrawParticle
+//! \brief consume the five uniform deviates of one particle and build its sample.
+//! The position and momentum expressions are written exactly as in the unperturbed pgen
+//! so that eps_out = 0 reproduces the historical realization bit for bit.
+
+DrawnParticle DrawParticle(std::mt19937_64 *generator,
+                           std::uniform_real_distribution<Real> *uniform,
+                           const ClusterProfile &profile, Real total_mass,
+                           const Real center[3]) {
+  DrawnParticle d;
+  Real ur = (*uniform)(*generator);
+  std::size_t hi = CDFIndex(profile.cdf, ur);
+  Real riso = total_mass*InterpolateCDF(profile.cdf, profile.riso_over_m, hi, ur);
+  Real y = InterpolateCDF(profile.cdf, profile.y, hi, ur);
+  Real conformal_a = InterpolateCDF(profile.cdf, profile.conformal_a, hi, ur);
+
+  Real cos_theta = 2.0*(*uniform)(*generator) - 1.0;
+  Real sin_theta = std::sqrt(std::max(static_cast<Real>(1.0) - cos_theta*cos_theta,
+                                      static_cast<Real>(0.0)));
+  Real phi = 2.0*M_PI*(*uniform)(*generator);
+  d.px = center[0] + riso*sin_theta*std::cos(phi);
+  d.py = center[1] + riso*sin_theta*std::sin(phi);
+  d.pz = center[2] + riso*cos_theta;
+
+  Real cos_vtheta = 2.0*(*uniform)(*generator) - 1.0;
+  Real sin_vtheta = std::sqrt(std::max(static_cast<Real>(1.0) -
+                                       cos_vtheta*cos_vtheta,
+                                       static_cast<Real>(0.0)));
+  Real vphi = 2.0*M_PI*(*uniform)(*generator);
+  Real phat_over_m =
+      std::sqrt(std::max(static_cast<Real>(1.0)/y - static_cast<Real>(1.0),
+                         static_cast<Real>(0.0)));
+  // Appendix A gives p^i = p^(hat i)/A. AthenaK stores covariant u_i, so for
+  // gamma_ij=A^2 delta_ij: u_i = gamma_ij p^j/m0 = A p^(hat i)/m0.
+  Real umag = conformal_a*phat_over_m;
+  d.ux = umag*sin_vtheta*std::cos(vphi);
+  d.uy = umag*sin_vtheta*std::sin(vphi);
+  d.uz = umag*cos_vtheta;
+
+  d.riso = riso;
+  d.ylocal = y;
+  d.conf_a = conformal_a;
+  d.umag = umag;
+  d.nx = sin_theta*std::cos(phi);
+  d.ny = sin_theta*std::sin(phi);
+  d.nz = cos_theta;
+  return d;
+}
+
+//! \brief signed radial component u_i n^i of the sampled momentum.
+Real RadialMomentum(const DrawnParticle &d) {
+  return d.ux*d.nx + d.uy*d.ny + d.uz*d.nz;
+}
+
+//! \brief reflect an inward radial momentum outward; a no-op if already outward.
+//! |u_i| is preserved exactly in exact arithmetic (|n_hat| = 1) and to a few ulp in
+//! floating point, so -u_t is unchanged.  Returns true if the reflection was applied.
+bool ReflectRadialOutward(DrawnParticle *d) {
+  Real udotn = RadialMomentum(*d);
+  if (udotn >= 0.0) { return false; }
+  d->ux -= 2.0*udotn*d->nx;
+  d->uy -= 2.0*udotn*d->ny;
+  d->uz -= 2.0*udotn*d->nz;
+  return true;
+}
+
+//! \struct BiasStats
+//! \brief t=0 bookkeeping for the outward bias, accumulated over ALL tags (every rank
+//! reproduces the same global draw, so rank 0 can report them without any reduction).
+
+struct BiasStats {
+  std::int64_t n_inward_base = 0;    // particles with u_i n^i < 0 in the base sample
+  std::int64_t n_reflected = 0;      // reflections actually applied
+  std::int64_t n_selected = 0;       // tags selected by the bias rule
+  Real sum_mu_base = 0.0;            // sum of mu = (u_i n^i)/|u| before the bias
+  Real sum_mu = 0.0;                 // ... and after
+  Real sum_vr_base = 0.0;            // sum of the local radial 3-velocity before
+  Real sum_vr = 0.0;                 // ... and after
+  Real sum_pr = 0.0;                 // sum of m0 (u_i n^i)/A  (radial momentum)
+  Real p_tot[3] = {0.0, 0.0, 0.0};   // sum of m0 u_i/A        (linear momentum)
+  Real j_tot[3] = {0.0, 0.0, 0.0};   // sum of m0 (x cross u)_i (angular momentum)
+  Real max_rel_dumag = 0.0;          // max |(|u'| - |u|)|/|u| over all reflections
+};
+
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -351,11 +527,28 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     pin->GetOrAddReal("problem", "cluster_center_x2", 0.0),
     pin->GetOrAddReal("problem", "cluster_center_x3", 0.0)
   };
+  Real eps_out = pin->GetOrAddReal("problem", "cluster_eps_out", 0.0);
+  std::string bias_mode = pin->GetOrAddString("problem", "cluster_bias_mode",
+                                              "stratified");
+  int bias_seed = pin->GetOrAddInteger("problem", "cluster_bias_seed", 0);
+  std::string t0_dump = pin->GetOrAddString("problem", "cluster_t0_dump", "");
   if (npart_total <= 0 || yc <= 0.0 || yc >= 1.0 || total_mass <= 0.0 ||
       profile_dx <= 0.0) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
               << std::endl << "Require cluster_n>0, 0<cluster_yc<1, cluster_mass>0, "
               << "and cluster_profile_dx>0." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (eps_out < 0.0 || eps_out > 1.0) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "Require 0 <= cluster_eps_out <= 1 (got " << eps_out
+              << ")." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (bias_mode.compare("stratified") != 0 && bias_mode.compare("bernoulli") != 0) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "cluster_bias_mode must be 'stratified' or 'bernoulli' "
+              << "(got '" << bias_mode << "')." << std::endl;
     std::exit(EXIT_FAILURE);
   }
 
@@ -449,46 +642,111 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   // by its local MeshBlocks. Tags therefore remain rank-count and decomposition
   // invariant.
   particles::Particles *ppart = pmbp->ppart;
+  Real particle_mass = total_mass*profile.rest_mass_over_m/
+                       static_cast<Real>(npart_total);
+
+  // Pass 1 (skipped entirely for eps_out = 0): decide, for every globally unique tag,
+  // whether its radial momentum is to be reflected outward.  The decision is a pure
+  // function of the tag, so it is identical on every rank and for every decomposition.
+  std::vector<unsigned char> select;
+  if (eps_out > 0.0) {
+    select.assign(npart_total, 0);
+    if (bias_mode.compare("bernoulli") == 0) {
+      std::uint64_t salt = 0x9e3779b97f4a7c15ULL*static_cast<std::uint64_t>(bias_seed);
+      for (int tag = 0; tag < npart_total; ++tag) {
+        if (SplitMixUniform(static_cast<std::uint64_t>(tag) + salt) < eps_out) {
+          select[tag] = 1;
+        }
+      }
+    } else {
+      // Replay the same seeded global draw, collect the inward movers, order them by
+      // (isotropic radius, tag) and select a low-discrepancy eps_out-fraction of that
+      // ordering.  The ordering is a global, decomposition-independent total order and
+      // the selected sets are nested in eps_out.
+      std::mt19937_64 scan_generator(static_cast<std::uint64_t>(seed));
+      std::uniform_real_distribution<Real> scan_uniform(0.0, 1.0);
+      std::vector<std::pair<Real, int>> inward;
+      inward.reserve(static_cast<std::size_t>(npart_total)/2 + 16);
+      for (int tag = 0; tag < npart_total; ++tag) {
+        DrawnParticle d = DrawParticle(&scan_generator, &scan_uniform, profile,
+                                       total_mass, center);
+        if (RadialMomentum(d) < 0.0) { inward.emplace_back(d.riso, tag); }
+      }
+      std::sort(inward.begin(), inward.end());
+      for (std::size_t j = 0; j < inward.size(); ++j) {
+        if (RadicalInverse2(static_cast<std::uint64_t>(j)) < eps_out) {
+          select[inward[j].second] = 1;
+        }
+      }
+    }
+  }
+
+  // Pass 2: the actual realization.
   std::mt19937_64 generator(static_cast<std::uint64_t>(seed));
   std::uniform_real_distribution<Real> uniform(0.0, 1.0);
   PrtclStage stage;
-  Real particle_mass = total_mass*profile.rest_mass_over_m/
-                       static_cast<Real>(npart_total);
+  BiasStats bias;
+  std::vector<double> dump;
+  bool want_dump = (!t0_dump.empty() && global_variable::my_rank == 0);
+  if (want_dump) { dump.reserve(static_cast<std::size_t>(npart_total)*8); }
   for (int tag = 0; tag < npart_total; ++tag) {
-    Real ur = uniform(generator);
-    std::size_t hi = CDFIndex(profile.cdf, ur);
-    Real riso = total_mass*InterpolateCDF(
-        profile.cdf, profile.riso_over_m, hi, ur);
-    Real y = InterpolateCDF(profile.cdf, profile.y, hi, ur);
-    Real conformal_a = InterpolateCDF(
-        profile.cdf, profile.conformal_a, hi, ur);
+    DrawnParticle d = DrawParticle(&generator, &uniform, profile, total_mass, center);
 
-    Real cos_theta = 2.0*uniform(generator) - 1.0;
-    Real sin_theta = std::sqrt(std::max(static_cast<Real>(1.0) - cos_theta*cos_theta,
-                                        static_cast<Real>(0.0)));
-    Real phi = 2.0*M_PI*uniform(generator);
-    Real px = center[0] + riso*sin_theta*std::cos(phi);
-    Real py = center[1] + riso*sin_theta*std::sin(phi);
-    Real pz = center[2] + riso*cos_theta;
+    // t=0 bookkeeping of the UNPERTURBED sample
+    Real udotn_base = RadialMomentum(d);
+    Real mu_base = (d.umag > 0.0) ? udotn_base/d.umag : 0.0;
+    Real speed = std::sqrt(std::max(static_cast<Real>(1.0) - d.ylocal,
+                                    static_cast<Real>(0.0)));
+    if (udotn_base < 0.0) { ++bias.n_inward_base; }
+    bias.sum_mu_base += mu_base;
+    bias.sum_vr_base += mu_base*speed;
 
-    Real cos_vtheta = 2.0*uniform(generator) - 1.0;
-    Real sin_vtheta = std::sqrt(std::max(static_cast<Real>(1.0) -
-                                         cos_vtheta*cos_vtheta,
-                                         static_cast<Real>(0.0)));
-    Real vphi = 2.0*M_PI*uniform(generator);
-    Real phat_over_m =
-        std::sqrt(std::max(static_cast<Real>(1.0)/y - static_cast<Real>(1.0),
-                           static_cast<Real>(0.0)));
-    // Appendix A gives p^i = p^(hat i)/A. AthenaK stores covariant u_i, so for
-    // gamma_ij=A^2 delta_ij: u_i = gamma_ij p^j/m0 = A p^(hat i)/m0.
-    Real umag = conformal_a*phat_over_m;
-    Real ux = umag*sin_vtheta*std::cos(vphi);
-    Real uy = umag*sin_vtheta*std::sin(vphi);
-    Real uz = umag*cos_vtheta;
+    bool reflected = false;
+    if (!select.empty() && select[tag]) {
+      ++bias.n_selected;
+      Real umag_before = std::sqrt(d.ux*d.ux + d.uy*d.uy + d.uz*d.uz);
+      reflected = ReflectRadialOutward(&d);
+      if (reflected) {
+        ++bias.n_reflected;
+        Real umag_after = std::sqrt(d.ux*d.ux + d.uy*d.uy + d.uz*d.uz);
+        if (umag_before > 0.0) {
+          bias.max_rel_dumag = std::max(bias.max_rel_dumag,
+                                        std::abs(umag_after - umag_before)/umag_before);
+        }
+      }
+    }
 
-    int m = ppart->FindContainingMeshBlock(px, py, pz);
+    // t=0 bookkeeping of the PERTURBED sample.  The orthonormal-frame momentum per unit
+    // rest mass is p^(hat i)/m0 = u_i/A, so the physical sums below carry the 1/A factor.
+    Real udotn = RadialMomentum(d);
+    Real mu = (d.umag > 0.0) ? udotn/d.umag : 0.0;
+    bias.sum_mu += mu;
+    bias.sum_vr += mu*speed;
+    Real w = particle_mass/d.conf_a;
+    bias.sum_pr += w*udotn;
+    bias.p_tot[0] += w*d.ux;
+    bias.p_tot[1] += w*d.uy;
+    bias.p_tot[2] += w*d.uz;
+    Real rx = d.px - center[0], ry = d.py - center[1], rz = d.pz - center[2];
+    bias.j_tot[0] += particle_mass*(ry*d.uz - rz*d.uy);
+    bias.j_tot[1] += particle_mass*(rz*d.ux - rx*d.uz);
+    bias.j_tot[2] += particle_mass*(rx*d.uy - ry*d.ux);
+
+    if (want_dump) {
+      dump.push_back(static_cast<double>(tag));
+      dump.push_back(reflected ? 1.0 : 0.0);
+      dump.push_back(d.px);
+      dump.push_back(d.py);
+      dump.push_back(d.pz);
+      dump.push_back(d.ux);
+      dump.push_back(d.uy);
+      dump.push_back(d.uz);
+    }
+
+    int m = ppart->FindContainingMeshBlock(d.px, d.py, d.pz);
     if (m >= 0) {
-      stage.Add(px, py, pz, ux, uy, uz, particle_mass, pmbp->gids + m, tag);
+      stage.Add(d.px, d.py, d.pz, d.ux, d.uy, d.uz, particle_mass,
+                pmbp->gids + m, tag);
     }
   }
 
@@ -539,5 +797,63 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << ", Riso/M=" << profile.riso_over_m_surface
               << ", M0/M=" << profile.rest_mass_over_m
               << ", m0=" << particle_mass << ", seed=" << seed << std::endl;
+
+    // t=0 bias bookkeeping.  These sums run over ALL tags on every rank, so they are
+    // global by construction and need no MPI reduction.
+    Real inv_n = 1.0/static_cast<Real>(npart_total);
+    Real f_out_base = 1.0 - static_cast<Real>(bias.n_inward_base)*inv_n;
+    Real f_out = f_out_base + static_cast<Real>(bias.n_reflected)*inv_n;
+    Real frac_reflected = (bias.n_inward_base > 0)
+        ? static_cast<Real>(bias.n_reflected)/static_cast<Real>(bias.n_inward_base)
+        : 0.0;
+    std::cout << "Cluster outward bias: eps_out=" << eps_out
+              << ", mode=" << bias_mode
+              << ", n_inward_base=" << bias.n_inward_base
+              << ", n_selected=" << bias.n_selected
+              << ", n_reflected=" << bias.n_reflected
+              << ", reflected/inward=" << frac_reflected
+              << " (target " << eps_out << ")" << std::endl;
+    std::cout << "Cluster outward bias: f_outward " << f_out_base << " -> " << f_out
+              << " (target " << 0.5*(1.0 + eps_out) << ")"
+              << ", <mu> " << bias.sum_mu_base*inv_n << " -> " << bias.sum_mu*inv_n
+              << " (target " << 0.5*eps_out << ")"
+              << ", <v_r> " << bias.sum_vr_base*inv_n << " -> " << bias.sum_vr*inv_n
+              << std::endl;
+    std::cout << "Cluster outward bias: P_r=" << bias.sum_pr
+              << ", P=(" << bias.p_tot[0] << "," << bias.p_tot[1] << ","
+              << bias.p_tot[2] << ")"
+              << ", J=(" << bias.j_tot[0] << "," << bias.j_tot[1] << ","
+              << bias.j_tot[2] << ")"
+              << ", max|d|u||/|u|=" << bias.max_rel_dumag << std::endl;
+  }
+
+  if (want_dump) {
+    // Self-describing dump of the complete GLOBAL t=0 sample in double precision: one
+    // ASCII header line, then npart_total records of 8 little-endian doubles
+    // (tag, reflected, x, y, z, u_x, u_y, u_z).  Written by rank 0 only; every rank
+    // holds the identical global draw, so this is the full realization, not a subset.
+    std::ofstream fh(t0_dump.c_str(), std::ios::out | std::ios::binary);
+    if (!fh) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "Could not open cluster_t0_dump file '" << t0_dump
+                << "'." << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    fh.precision(17);
+    fh << "STMIGP01 npart=" << npart_total << " nfield=8"
+       << " fields=tag,reflected,x,y,z,ux,uy,uz"
+       << " yc=" << yc << " eps_out=" << eps_out << " bias_mode=" << bias_mode
+       << " bias_seed=" << bias_seed << " seed=" << seed
+       << " mass=" << total_mass << " m0=" << particle_mass
+       << " R_over_M=" << profile.r_over_m
+       << " Riso_over_M=" << profile.riso_over_m_surface
+       << " M0_over_M=" << profile.rest_mass_over_m
+       << " center=" << center[0] << "," << center[1] << "," << center[2]
+       << " profile_dx=" << profile_dx << "\n";
+    fh.write(reinterpret_cast<const char*>(dump.data()),
+             static_cast<std::streamsize>(dump.size()*sizeof(double)));
+    fh.close();
+    std::cout << "Cluster outward bias: wrote t=0 sample to '" << t0_dump << "' ("
+              << npart_total << " records)" << std::endl;
   }
 }
