@@ -28,11 +28,13 @@
 //!   cluster_profile_dx dimensionless ODE step in x (default 1e-4)
 //!   cluster_center_x1, cluster_center_x2, cluster_center_x3 (default 0)
 //!
-//! Outward radial-sign bias (the ST-migration experiment).  These parameters leave the
+//! Velocity-angle perturbations (the ST-migration experiment). These parameters leave the
 //! equilibrium metric, the sampled positions, the per-particle rest mass and the
-//! per-particle momentum MAGNITUDE |u_i| untouched; they only change how many particles
-//! move outward rather than inward.  eps_out = 0 reproduces the unperturbed pgen bit for
-//! bit (the whole bias block is skipped).  See section "Outward radial-sign bias" below.
+//! per-particle momentum MAGNITUDE |u_i| untouched. lambda_tan rotates every momentum
+//! toward the local tangential plane while eps_out changes how many particles move
+//! outward rather than inward. lambda_tan = eps_out = 0 reproduces the previous pgen path
+//! bit for bit (both perturbation blocks are skipped). See the sections below.
+//!   cluster_lambda_tan tangential reorientation amplitude in [0,1] (default 0)
 //!   cluster_eps_out    outward-bias amplitude eps_out in [0,1] (default 0)
 //!   cluster_bias_mode  "stratified" (default) or "bernoulli"
 //!   cluster_bias_seed  salt for the bernoulli-mode per-tag hash (default 0)
@@ -57,12 +59,15 @@
 #include "coordinates/adm.hpp"
 #include "coordinates/cell_locations.hpp"
 #include "z4c/z4c.hpp"
+#include "z4c/z4c_amr.hpp"
 #include "particles/particles.hpp"
 #include "pgen/pgen.hpp"
 
 #if MPI_PARALLEL_ENABLED
 #include <mpi.h>
 #endif
+
+void STRefinementCondition(MeshBlockPack *pmbp);
 
 namespace {
 
@@ -306,14 +311,23 @@ Real InterpolateCDF(const std::vector<Real> &cdf, const std::vector<Real> &value
 }
 
 //----------------------------------------------------------------------------------------
-// Outward radial-sign bias
-// ------------------------
+// Velocity-angle perturbations
+// ----------------------------
 // The equilibrium sample of Eq. (A23) draws the momentum DIRECTION isotropically and
 // fixes its magnitude from the local y:  |p_hat|/m0 = sqrt(1/y - 1).  Writing the unit
 // radial direction at the particle as n_hat and mu = (u_i n^i)/|u|, an isotropic sample
 // has mu uniform on [-1,1], hence <mu> = 0 (no net radial current) and <mu^2> = 1/3.
 //
-// The perturbation reflects the radial component of the momentum outward for a controlled
+// Tangential reorientation maps
+//
+//     mu -> (1 - lambda_tan) mu
+//
+// for every particle and rescales the existing tangential component to preserve |u_i|.
+// It therefore preserves -u_t particle by particle, converts radial motion into
+// tangential motion, raises |L|, and does not create a coherent radial flux. The
+// lambda_tan = 0 block is skipped exactly.
+//
+// The independent outward radial-sign bias reflects the radial component for a controlled
 // subset of the inward movers,
 //
 //     u_i  ->  u_i - 2 (u_j n^j) n_i    for the selected particles with u_j n^j < 0,
@@ -450,22 +464,92 @@ bool ReflectRadialOutward(DrawnParticle *d) {
   return true;
 }
 
+//! \brief map mu -> (1-lambda_tan) mu at fixed |u_i|.
+//! The existing tangential azimuth is retained. The measure-zero exactly radial case uses
+//! a deterministic orthogonal direction, avoiding any new random draw or tag dependence.
+void ReorientTangential(DrawnParticle *d, Real lambda_tan) {
+  Real umag = std::sqrt(d->ux*d->ux + d->uy*d->uy + d->uz*d->uz);
+  if (umag == 0.0) { return; }
+
+  // Normalize the analytically unit radial vector once so the decomposition is an
+  // orthogonal one even at floating-point precision.
+  Real nmag = std::sqrt(d->nx*d->nx + d->ny*d->ny + d->nz*d->nz);
+  Real nx = d->nx/nmag, ny = d->ny/nmag, nz = d->nz/nmag;
+  Real ur = d->ux*nx + d->uy*ny + d->uz*nz;
+  Real tx = d->ux - ur*nx;
+  Real ty = d->uy - ur*ny;
+  Real tz = d->uz - ur*nz;
+  Real tmag = std::sqrt(std::max(tx*tx + ty*ty + tz*tz,
+                                 static_cast<Real>(0.0)));
+
+  Real ur_new = (1.0 - lambda_tan)*ur;
+  Real tmag_new = std::sqrt(std::max(umag*umag - ur_new*ur_new,
+                                     static_cast<Real>(0.0)));
+  if (tmag > 0.0) {
+    Real scale = tmag_new/tmag;
+    tx *= scale;
+    ty *= scale;
+    tz *= scale;
+  } else {
+    // Pick the coordinate axis least aligned with n and project it into the tangent
+    // plane. This branch is only a robustness guard; an isotropic random draw reaches it
+    // with probability zero.
+    if (std::abs(nx) <= std::abs(ny) && std::abs(nx) <= std::abs(nz)) {
+      tx = 0.0;
+      ty = -nz;
+      tz = ny;
+    } else if (std::abs(ny) <= std::abs(nz)) {
+      tx = nz;
+      ty = 0.0;
+      tz = -nx;
+    } else {
+      tx = -ny;
+      ty = nx;
+      tz = 0.0;
+    }
+    Real inv_tmag = 1.0/std::sqrt(tx*tx + ty*ty + tz*tz);
+    tx *= tmag_new*inv_tmag;
+    ty *= tmag_new*inv_tmag;
+    tz *= tmag_new*inv_tmag;
+  }
+
+  d->ux = ur_new*nx + tx;
+  d->uy = ur_new*ny + ty;
+  d->uz = ur_new*nz + tz;
+
+  // Remove the last rounding error in the constructed magnitude. This scalar rescaling
+  // leaves the intended direction unchanged and makes the energy-neutral invariant as
+  // sharp as floating point permits.
+  Real umag_after = std::sqrt(d->ux*d->ux + d->uy*d->uy + d->uz*d->uz);
+  if (umag_after > 0.0) {
+    Real scale = umag/umag_after;
+    d->ux *= scale;
+    d->uy *= scale;
+    d->uz *= scale;
+  }
+}
+
 //! \struct BiasStats
 //! \brief t=0 bookkeeping for the outward bias, accumulated over ALL tags (every rank
 //! reproduces the same global draw, so rank 0 can report them without any reduction).
 
 struct BiasStats {
   std::int64_t n_inward_base = 0;    // particles with u_i n^i < 0 in the base sample
+  std::int64_t n_reoriented = 0;     // particles receiving the tangential map
   std::int64_t n_reflected = 0;      // reflections actually applied
   std::int64_t n_selected = 0;       // tags selected by the bias rule
   Real sum_mu_base = 0.0;            // sum of mu = (u_i n^i)/|u| before the bias
   Real sum_mu = 0.0;                 // ... and after
+  Real sum_mu2_base = 0.0;           // sum of mu^2 before the perturbations
+  Real sum_mu2 = 0.0;                // ... and after
+  Real sum_abs_l_base = 0.0;         // sum of |(x-center) cross u| before
+  Real sum_abs_l = 0.0;              // ... and after
   Real sum_vr_base = 0.0;            // sum of the local radial 3-velocity before
   Real sum_vr = 0.0;                 // ... and after
   Real sum_pr = 0.0;                 // sum of m0 (u_i n^i)/A  (radial momentum)
   Real p_tot[3] = {0.0, 0.0, 0.0};   // sum of m0 u_i/A        (linear momentum)
   Real j_tot[3] = {0.0, 0.0, 0.0};   // sum of m0 (x cross u)_i (angular momentum)
-  Real max_rel_dumag = 0.0;          // max |(|u'| - |u|)|/|u| over all reflections
+  Real max_rel_dumag = 0.0;          // max |(|u'| - |u|)|/|u| over all perturbations
 };
 
 }  // namespace
@@ -475,6 +559,9 @@ struct BiasStats {
 
 void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   MeshBlockPack *pmbp = pmy_mesh_->pmb_pack;
+  // The hook is inert on uniform/static meshes. Adaptive Session-02 decks use the
+  // standard Z4c chi/radius criteria, following the proven OS particle-AMR pattern.
+  user_ref_func = STRefinementCondition;
   auto &indcs = pmy_mesh_->mb_indcs;
 
   if (pmbp->pz4c == nullptr || pmbp->padm == nullptr) {
@@ -527,6 +614,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     pin->GetOrAddReal("problem", "cluster_center_x2", 0.0),
     pin->GetOrAddReal("problem", "cluster_center_x3", 0.0)
   };
+  Real lambda_tan = pin->GetOrAddReal("problem", "cluster_lambda_tan", 0.0);
   Real eps_out = pin->GetOrAddReal("problem", "cluster_eps_out", 0.0);
   std::string bias_mode = pin->GetOrAddString("problem", "cluster_bias_mode",
                                               "stratified");
@@ -537,6 +625,12 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
               << std::endl << "Require cluster_n>0, 0<cluster_yc<1, cluster_mass>0, "
               << "and cluster_profile_dx>0." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (lambda_tan < 0.0 || lambda_tan > 1.0) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "Require 0 <= cluster_lambda_tan <= 1 (got "
+              << lambda_tan << ")." << std::endl;
     std::exit(EXIT_FAILURE);
   }
   if (eps_out < 0.0 || eps_out > 1.0) {
@@ -699,21 +793,35 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
                                     static_cast<Real>(0.0)));
     if (udotn_base < 0.0) { ++bias.n_inward_base; }
     bias.sum_mu_base += mu_base;
+    bias.sum_mu2_base += mu_base*mu_base;
     bias.sum_vr_base += mu_base*speed;
+    Real rx = d.px - center[0], ry = d.py - center[1], rz = d.pz - center[2];
+    Real lx_base = ry*d.uz - rz*d.uy;
+    Real ly_base = rz*d.ux - rx*d.uz;
+    Real lz_base = rx*d.uy - ry*d.ux;
+    bias.sum_abs_l_base += std::sqrt(lx_base*lx_base + ly_base*ly_base +
+                                    lz_base*lz_base);
 
+    Real umag_before = 0.0;
+    if (lambda_tan > 0.0 || (!select.empty() && select[tag])) {
+      umag_before = std::sqrt(d.ux*d.ux + d.uy*d.uy + d.uz*d.uz);
+    }
+    if (lambda_tan > 0.0) {
+      ReorientTangential(&d, lambda_tan);
+      ++bias.n_reoriented;
+    }
     bool reflected = false;
     if (!select.empty() && select[tag]) {
       ++bias.n_selected;
-      Real umag_before = std::sqrt(d.ux*d.ux + d.uy*d.uy + d.uz*d.uz);
       reflected = ReflectRadialOutward(&d);
       if (reflected) {
         ++bias.n_reflected;
-        Real umag_after = std::sqrt(d.ux*d.ux + d.uy*d.uy + d.uz*d.uz);
-        if (umag_before > 0.0) {
-          bias.max_rel_dumag = std::max(bias.max_rel_dumag,
-                                        std::abs(umag_after - umag_before)/umag_before);
-        }
       }
+    }
+    if (umag_before > 0.0) {
+      Real umag_after = std::sqrt(d.ux*d.ux + d.uy*d.uy + d.uz*d.uz);
+      bias.max_rel_dumag = std::max(bias.max_rel_dumag,
+                                    std::abs(umag_after - umag_before)/umag_before);
     }
 
     // t=0 bookkeeping of the PERTURBED sample.  The orthonormal-frame momentum per unit
@@ -721,16 +829,20 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     Real udotn = RadialMomentum(d);
     Real mu = (d.umag > 0.0) ? udotn/d.umag : 0.0;
     bias.sum_mu += mu;
+    bias.sum_mu2 += mu*mu;
     bias.sum_vr += mu*speed;
     Real w = particle_mass/d.conf_a;
     bias.sum_pr += w*udotn;
     bias.p_tot[0] += w*d.ux;
     bias.p_tot[1] += w*d.uy;
     bias.p_tot[2] += w*d.uz;
-    Real rx = d.px - center[0], ry = d.py - center[1], rz = d.pz - center[2];
-    bias.j_tot[0] += particle_mass*(ry*d.uz - rz*d.uy);
-    bias.j_tot[1] += particle_mass*(rz*d.ux - rx*d.uz);
-    bias.j_tot[2] += particle_mass*(rx*d.uy - ry*d.ux);
+    Real lx = ry*d.uz - rz*d.uy;
+    Real ly = rz*d.ux - rx*d.uz;
+    Real lz = rx*d.uy - ry*d.ux;
+    bias.sum_abs_l += std::sqrt(lx*lx + ly*ly + lz*lz);
+    bias.j_tot[0] += particle_mass*lx;
+    bias.j_tot[1] += particle_mass*ly;
+    bias.j_tot[2] += particle_mass*lz;
 
     if (want_dump) {
       dump.push_back(static_cast<double>(tag));
@@ -806,6 +918,19 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     Real frac_reflected = (bias.n_inward_base > 0)
         ? static_cast<Real>(bias.n_reflected)/static_cast<Real>(bias.n_inward_base)
         : 0.0;
+    Real mean_mu2_base = bias.sum_mu2_base*inv_n;
+    Real mean_mu2 = bias.sum_mu2*inv_n;
+    Real beta_base = (mean_mu2_base > 0.0)
+        ? 1.0 - (1.0 - mean_mu2_base)/(2.0*mean_mu2_base) : 0.0;
+    Real beta = (mean_mu2 > 0.0)
+        ? 1.0 - (1.0 - mean_mu2)/(2.0*mean_mu2) : 0.0;
+    std::cout << "Cluster tangential bias: lambda_tan=" << lambda_tan
+              << ", n_reoriented=" << bias.n_reoriented
+              << ", <|L|> " << bias.sum_abs_l_base*inv_n << " -> "
+              << bias.sum_abs_l*inv_n
+              << ", ratio=" << bias.sum_abs_l/bias.sum_abs_l_base << std::endl;
+    std::cout << "Cluster tangential bias: <mu^2> " << mean_mu2_base << " -> "
+              << mean_mu2 << ", beta " << beta_base << " -> " << beta << std::endl;
     std::cout << "Cluster outward bias: eps_out=" << eps_out
               << ", mode=" << bias_mode
               << ", n_inward_base=" << bias.n_inward_base
@@ -842,7 +967,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     fh.precision(17);
     fh << "STMIGP01 npart=" << npart_total << " nfield=8"
        << " fields=tag,reflected,x,y,z,ux,uy,uz"
-       << " yc=" << yc << " eps_out=" << eps_out << " bias_mode=" << bias_mode
+       << " yc=" << yc << " lambda_tan=" << lambda_tan
+       << " eps_out=" << eps_out << " bias_mode=" << bias_mode
        << " bias_seed=" << bias_seed << " seed=" << seed
        << " mass=" << total_mass << " m0=" << particle_mass
        << " R_over_M=" << profile.r_over_m
@@ -856,4 +982,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     std::cout << "Cluster outward bias: wrote t=0 sample to '" << t0_dump << "' ("
               << npart_total << " records)" << std::endl;
   }
+}
+
+//----------------------------------------------------------------------------------------
+//! \brief apply the standard Z4c AMR criterion selected by <z4c_amr>.
+void STRefinementCondition(MeshBlockPack *pmbp) {
+  pmbp->pz4c->pamr->Refine(pmbp);
 }
