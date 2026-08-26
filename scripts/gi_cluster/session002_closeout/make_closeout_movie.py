@@ -281,6 +281,7 @@ def render_frame(task: tuple[int, str, str]) -> dict:
     levels = sorted(segments)
     finest = int(np.max(logical[:, 3]))
     dx = float(np.min((geometry[:, 1] - geometry[:, 0]) / nxb))
+    projection_dx = float(abs(x[1] - x[0]))
     tracker = np.asarray(config["event"]["tracker"])
     center = nearest_tracker(td, tracker)
     surfaces = config["surfaces"]
@@ -335,8 +336,9 @@ def render_frame(task: tuple[int, str, str]) -> dict:
     fig.suptitle(
         f"GI single-clump collapse — g2_L128     t={td:6.2f}     "
         f"{phase_label(td, config['event'])}\n"
-        f"active leaf MeshBlocks={len(logical)}   finest=L{finest}, "
-        f"dx={dx:.7f}=1/{round(1/dx)}   {ah_text}",
+        f"active leaf MeshBlocks={len(logical)}   display=L{level}, "
+        f"dx={projection_dx:.7f}=1/{round(1/projection_dx)}   "
+        f"finest=L{finest}, dx={dx:.7f}=1/{round(1/dx)}   {ah_text}",
         fontsize=13, fontweight="semibold", y=0.985
     )
     fig.tight_layout(rect=[0.012, 0.065, 0.995, 0.92], w_pad=1.3)
@@ -351,6 +353,8 @@ def render_frame(task: tuple[int, str, str]) -> dict:
         "constraint_file": h_path,
         "active_leaf_blocks": int(len(logical)),
         "levels_in_view": levels,
+        "projection_level": level,
+        "projection_dx": projection_dx,
         "finest_level": finest,
         "finest_dx": dx,
         "tracker_center": center.tolist(),
@@ -380,7 +384,13 @@ def main() -> int:
     parser.add_argument("--h-vmax", type=float, default=0.0)
     parser.add_argument("--fps", type=int, default=10)
     parser.add_argument("--processes", type=int, default=8)
+    parser.add_argument(
+        "--batch-size", type=int, default=0,
+        help="restart the process pool after this many frames; 0 renders in one batch",
+    )
     args = parser.parse_args()
+    if args.processes < 1 or args.batch_size < 0:
+        raise ValueError("processes must be positive and batch-size must be non-negative")
 
     run_dir = os.path.abspath(args.run_dir)
     output_root = os.path.abspath(args.output_root)
@@ -413,10 +423,18 @@ def main() -> int:
         "event": event,
     }
     tasks = list(zip(range(len(density_files)), density_files, h_files))
-    print(f"rendering {len(tasks)} paired frames with {args.processes} processes")
-    with concurrent.futures.ProcessPoolExecutor(
-            max_workers=args.processes, initializer=init_worker, initargs=(config,)) as pool:
-        metadata = list(pool.map(render_frame, tasks))
+    batch_size = args.batch_size or len(tasks)
+    print(f"rendering {len(tasks)} paired frames with {args.processes} processes "
+          f"in batches of {batch_size}")
+    metadata = []
+    for batch_start in range(0, len(tasks), batch_size):
+        batch = tasks[batch_start:batch_start + batch_size]
+        batch_stop = batch_start + len(batch)
+        print(f"render batch [{batch_start}, {batch_stop})", flush=True)
+        with concurrent.futures.ProcessPoolExecutor(
+                max_workers=min(args.processes, len(batch)),
+                initializer=init_worker, initargs=(config,)) as pool:
+            metadata.extend(pool.map(render_frame, batch))
     metadata.sort(key=lambda row: row["index"])
 
     movie_path = os.path.join(output_root, args.output_name)
@@ -466,12 +484,15 @@ def main() -> int:
         "render_contract": {
             "plane": "z=0",
             "window": {"x": config["xlim"], "y": config["ylim"]},
+            "projection_level": args.level,
             "density_field": "tmunu_E (deposited particle energy density)",
             "density_log10_limits": [args.dens_vmin, args.dens_vmax],
             "constraint_field": "con_H (Hamiltonian constraint)",
             "constraint_log10_abs_limits": [args.h_vmin, args.h_vmax],
             "mesh_boundaries": "all active z=0 leaf MeshBlocks in window, colored by level",
             "center_marker": "walking co_0 tracker",
+            "render_processes": args.processes,
+            "render_batch_size": batch_size,
             "ah_overlay": "reconstructed shape coefficients after the first persistence "
                           "gate, with every retained surface independently valid; never "
                           "a lapse contour",

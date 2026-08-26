@@ -12,7 +12,9 @@ the GI-in-cluster Session-002 single-clump campaign.
 - plot_closeout_figures.py builds the two final PNG/PDF summary figures from
   the reduced tables.
 - make_closeout_movie.py renders the fixed-window density/constraint movie
-  with AMR boundaries, tracker centre, and validated shape contours.
+  with AMR boundaries, tracker centre, and validated shape contours. Wide
+  views may select a display-appropriate projection level and use
+  --batch-size to restart worker pools before Matplotlib memory accumulates.
 
 The scripts are campaign-specific and require the preserved Session-002 file
 layout. Full-data reduction and rendering must run through Slurm on a compute
