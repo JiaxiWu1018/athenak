@@ -126,6 +126,7 @@ add_executable(
         particles/particles_debug.cpp
         particles/particles_destroy.cpp
         particles/particles_excise.cpp
+        particles/particles_mood.cpp
         particles/particles_tmunu.cpp
         particles/calc_energy.cpp
         particles/boris_pusher.cpp

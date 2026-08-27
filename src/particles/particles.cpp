@@ -216,6 +216,27 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   // Stress-energy feedback deposits particle Tmunu for the Z4c matter terms.
   feedback = pin->GetOrAddBoolean("particles","feedback",false);
   xlevel_deposit = CrossLevelDeposit::conservative;
+  deposit_shape = DepositShape::cic;
+  deposit_renorm = true;
+  deposit_generic_cic = false;
+  mood_on = false;
+  mood_monitor = false;
+  mood_nlevels = 1;
+  mood_hier[0] = DepositShape::cic;
+  mood_hier[1] = DepositShape::cic;
+  mood_hier[2] = DepositShape::cic;
+  mood_max_sweeps = 0;
+  mood_detector = 0;
+  mood_tol = 1.0e-12;
+  mood_neg_frac = 0.0;
+  mood_diag_cadence = 1;
+  mood_nbin = 0;
+  mood_rmax = 0.0;
+  mood_center[0] = 0.0;
+  mood_center[1] = 0.0;
+  mood_center[2] = 0.0;
+  mood_log_open = false;
+  pbval_mood = nullptr;
   nimages_thispack = 0;
   nimg_send_thispack = 0;
   if (feedback) {
@@ -268,6 +289,8 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
                 << "' not recognized; use 'conservative' or 'native'." << std::endl;
       std::exit(EXIT_FAILURE);
     }
+
+    MoodAllocate(pin);
   }
 
   // Dynamic AMR relabels and redistributes particles for both kinematic and feedback
@@ -370,6 +393,7 @@ Particles::~Particles() {
   // ~ParticlesBoundaryValues frees the particle MPI communicator; without this delete
   // it never ran (matches the Hydro/MHD convention of deleting their bvals)
   delete pbval_part;
+  if (pbval_mood != nullptr) {delete pbval_mood;}
 }
 
 //----------------------------------------------------------------------------------------

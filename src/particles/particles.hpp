@@ -14,6 +14,7 @@
 #include <string>
 
 #include "athena.hpp"
+#include "deposit_shape.hpp"
 #include "parameter_input.hpp"
 #include "tasklist/task_list.hpp"
 #include "bvals/bvals.hpp"
@@ -66,8 +67,16 @@ struct TmunuImage {
   int off_code;     // (bx+1) + 3*(by+1) + 9*(bz+1), in 0..26; 13 is self
   int lev;          // -1 for same-level routing; otherwise the target refinement level
   int slev;         // source stencil level; > lev selects conservative restrict
+  int order;        // MOOD hierarchy level of the SOURCE PARTICLE (0 = highest order).
+                    // Must be identical on every record of a particle -- the weights of
+                    // one kernel sum to one over the WHOLE cloud, so mixing kernels
+                    // within a particle would break the conservation identity. Decided on
+                    // the source rank and shipped; refreshed each MOOD sweep.
+  int src_p;        // source-rank particle index for records generated here, else -1
+  int aux;          // receive-buffer index for records that arrived over MPI, else -1
+                    // (survives the canonical sort, so the order refresh can find them)
   int idx[3];       // same-level stencil, or fine stencil for conservative restriction
-  Real delta[3];    // CIC offset matching idx, clamped to [0,1]
+  Real delta[3];    // shape-function offset matching idx, clamped to [0,1]
   Real x[3];        // absolute position used to rebuild a target-native CIC
   Real sxmin[3];    // origin of the fine stencil used for conservative restriction
   Real mass;        // particle rest mass (IPM)
@@ -85,6 +94,8 @@ struct TmunuImageWire {
   int off_code;
   int lev;
   int slev;
+  int order;        // MOOD hierarchy level of the source particle (see TmunuImage)
+  int src_p;        // source-rank particle index (local bookkeeping; not on the wire)
   int idx[3];
   Real delta[3];
   Real x[3];
@@ -196,6 +207,50 @@ class Particles {
   DvceArray1D<Real> tmunu_psums;
   DvceArray1D<Real> tmunu_csums;
 
+  // ---- higher-order particle->mesh deposition (deposit_shape.hpp, particles_mood.cpp)
+  // --
+  // <particles> deposit_shape = cic | m4 | lambda22 | lambda44 (default cic = the
+  // historical kernel, reproduced bit for bit through its own untouched code path).
+  // deposit_shape names the TOP of the MOOD hierarchy; the cascade below it is fixed
+  // (lambda44 -> lambda22 -> m4), exactly as in Diener, Rosswog & Torsello (2022) Sec.
+  // 2.1.3, with the positive-definite m4 as the untested "parachute".
+  DepositShape deposit_shape;
+  bool deposit_renorm;       // divide the W weights by their sum (partition of unity to
+                             // 1 ulp); structural no-op for cic
+  bool deposit_generic_cic;  // TEST KNOB: route cic through the generalised kernel so a
+                             // single run can assert the two paths agree bitwise
+  // MOOD ("repeat-until-valid") fallback. mood_nlevels == 1 disables the cascade.
+  bool mood_on;
+  bool mood_monitor;   // detect + report, never demote (pure higher-order runs)
+  int  mood_nlevels;
+  DepositShape mood_hier[3];
+  int  mood_max_sweeps;
+  int  mood_detector;        // 0 = off, 1 = E >= 0 only, 2 = order-1+2 principal minors
+  Real mood_tol;             // relative slack, scaled by the global max E
+  Real mood_neg_frac;        // extra bar, as a fraction of the peak E (0 = strict)
+  int  mood_diag_cadence;
+  // per-particle hierarchy level (0 = top). Sized to the local particle count each cycle.
+  DvceArray1D<int> deposit_order_p;
+  // one-component ghosted inadmissibility flag + its dedicated CC boundary machinery.
+  // Ghost-filling the flag lets the SOURCE rank see a particle's entire stencil, which is
+  // what makes the demotion decision identical on every record of that particle.
+  DvceArray5D<Real> u_mood;
+  DvceArray5D<Real> coarse_u_mood;
+  MeshBoundaryValuesCC *pbval_mood;
+  DvceArray1D<int>  mood_ncell;    // per-criterion inadmissible-cell census (5 entries)
+  DvceArray1D<int>  mood_level_ct; // {n at level 0, 1, 2}
+  DvceArray1D<int>  mood_radial;   // radial histogram of demoted particles
+  int mood_nbin;
+  Real mood_rmax;
+  Real mood_center[3];
+  std::string mood_log_fname;
+  bool mood_log_open;
+  // recv-buffer index -> canonical-queue slot, rebuilt after each cycle's sort
+  DvceArray1D<int> tmunu_recv_slot;
+  // per-particle scratch reused by the deferred identity bookkeeping
+  DvceArray1D<Real> tmunu_lor;          // normal-frame Lorentz factor W
+    DvceArray1D<int>  tmunu_finestencil;  // 1 iff the fine sublevel was used
+
   // snapshots of the field/metric at the previous step, used by the GR pusher to evaluate
   // the implicit geodesic substep at the time midpoint. Allocated only for gr_boris. For
   // a static background (all Stage-2 tests) these equal the current arrays; they
@@ -286,6 +341,14 @@ class Particles {
   // Stress-energy deposition, scheduled after EnergyCalculation when feedback is on.
   TaskStatus SetPrtclTmunu(Driver *pdriver, int stage);
   template <int NGHOST> void set_prtcl_tmunu();
+  void DepositAllRecords();
+  // ---- MOOD (particles_mood.cpp) ----
+  void MoodAllocate(ParameterInput *pin);
+  int  MoodDetect();                 // fill u_mood on physical cells; global bad count
+  void MoodFillGhosts();             // synchronous CC ghost fill of u_mood
+  int  MoodDemote();                 // bump deposit_order_p where a stencil is flagged
+  void MoodStampRecords();           // copy per-particle orders onto the local records
+  void MoodReport(int ncycle, Real time, int nsweep, int nbad0, int nbad1);
   // exhaustive host-side enumeration audit of the destination search against a
   // brute-force bbox oracle (particles_debug.cpp); fatal on any mismatch. Single-rank,
   // strictly-periodic meshes only (test utility, invoked by the part_crossing pgen).

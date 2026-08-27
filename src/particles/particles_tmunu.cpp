@@ -48,6 +48,7 @@
 #include "z4c/tmunu.hpp"
 #include "bvals/prtcl_search.hpp"
 #include "particles.hpp"
+#include "deposit_shape.hpp"
 #include "lagrange_interp.hpp"
 
 #if MPI_PARALLEL_ENABLED
@@ -59,38 +60,259 @@ namespace particles {
 namespace {  // file-local device helpers
 
 //----------------------------------------------------------------------------------------
-//! \struct CicDim
-//! \brief per-dimension CIC stencil + boundary-band classification of one particle.
+//! \struct ShapeDim
+//! \brief per-dimension stencil anchor + band/clip classification for a shape function of
+//! ANY width. The strict generalisation of CicDim: with W = 2, s0 = 0 the band predicate
+//! below reduces to (idx == -1) / (idx == n-1), i.e. exactly CicClassify.
 
-struct CicDim {
-  int idx;      // left-center index: largest i with CellCenterX(i) <= x, in [-1, n-1]
-  Real delta;   // (x - CellCenterX(idx))/dx, clamped to the closed interval [0, 1]
-  int band;     // -1: lower half of first cell, +1: upper half of last cell, 0: interior
+struct ShapeDim {
+  int idx;      // left-center anchor; stencil cells are idx + s0 + s, s = 0..W-1
+  Real delta;   // (x - CellCenterX(idx))/dx, clamped to [0,1]
+  int band;     // -1: stencil overhangs the low face, +1: the high face, 0: interior
   bool open;    // banded dims only: true iff the adjacent face is block|periodic
-                // (an image will deliver the out-of-block share); physical faces clip
 };
 
 //----------------------------------------------------------------------------------------
-//! \fn void CicClassify()
-//! \brief the SINGLE definition of the CIC stencil/band/clip predicates (count pass,
-//! deposit pass and the identity bookkeeping must all call this so they cannot drift --
-//! the Stage-3 shared-predicate rule). delta = 1.0 is reachable by roundoff when x sits
-//! within an ulp of the upper node; the clamp keeps both weights non-negative (band
-//! membership is decided by idx, never by delta).
+//! \fn void ShapeClassify()
+//! \brief the SINGLE definition of the stencil/band/clip predicates for a general shape
+//! function. A stencil can overhang at most ShapeHalf = W/2 cells, and beff[3] in
+//! prtcl_search.hpp carries one signed direction per axis, so a stencil must never
+//! overhang both faces of one axis -- guaranteed by the nx >= W check in MoodAllocate.
 
 KOKKOS_INLINE_FUNCTION
-void CicClassify(Real x, int n, Real xmin, Real xmax,
-                 BoundaryFlag f_lo, BoundaryFlag f_hi, CicDim &c) {
+void ShapeClassify(Real x, int n, Real xmin, Real xmax,
+                   BoundaryFlag f_lo, BoundaryFlag f_hi, DepositShape shape,
+                   ShapeDim &c) {
   c.idx = LeftCenterIndex(x, n, xmin, xmax);
   Real dx = (xmax - xmin)/static_cast<Real>(n);
   Real d = (x - CellCenterX(c.idx, n, xmin, xmax))/dx;
   c.delta = fmin(fmax(d, 0.0), 1.0);
-  c.band = (c.idx == -1) ? -1 : ((c.idx == n-1) ? 1 : 0);
+  int s0 = ShapeOffset(shape);
+  int W = ShapeWidth(shape);
+  c.band = (c.idx + s0 < 0) ? -1 : ((c.idx + s0 + W - 1 > n-1) ? 1 : 0);
   if (c.band == 0) {
     c.open = true;
   } else {
     BoundaryFlag f = (c.band < 0) ? f_lo : f_hi;
     c.open = (f == BoundaryFlag::block || f == BoundaryFlag::periodic);
+  }
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn Real ShapeClipFactor()
+//! \brief the fraction of the 1D weight retained when the out-of-block share is CLIPPED
+//! (a closed physical mesh face, where no image is generated). Generalises the CIC
+//! expressions delta / (1-delta).
+
+KOKKOS_INLINE_FUNCTION
+Real ShapeClipFactor(DepositShape shape, bool renorm, int idx, Real delta, int n) {
+  Real w[kMaxShapeWidth];
+  ShapeWeights(shape, delta, renorm, w);
+  int W = ShapeWidth(shape);
+  int s0 = ShapeOffset(shape);
+  Real acc = 0.0;
+  for (int s=0; s<W; ++s) {
+    int c = idx + s0 + s;
+    if (c >= 0 && c <= n-1) {acc += w[s];}
+  }
+  return acc;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void DepositCloudShape()
+//! \brief general-width same-level deposit. Per dimension the image offset off[d] selects
+//! which part of the stencil this target owns:
+//!   off ==  0 : stencil cells inside [0, n-1]
+//!   off == -1 : cells below 0, delivered to target cell c + n
+//!   off == +1 : cells above n-1, delivered to target cell c - n
+//! The union over the local (off = 0,0,0) deposit and every generated image covers each
+//! stencil cell exactly once, so sum_s w_s = 1 is preserved across block faces.
+//! With W = 2, s0 = 0 this is cell-for-cell and weight-for-weight the CIC kernel above.
+
+KOKKOS_INLINE_FUNCTION
+void DepositCloudShape(const Tmunu::Tmunu_vars &tmunu,
+                       const AthenaTensor<Real, TensorSymm::SYM2, 3, 2> &g_dd,
+                       int tm, int is, int js, int ks, const int ncell[3], Real dv,
+                       const int off[3], const int idx[3], const Real delta[3],
+                       const Real amp[10], DepositShape shape, bool renorm) {
+  int W = ShapeWidth(shape);
+  int s0 = ShapeOffset(shape);
+  int cells[3][kMaxShapeWidth];
+  Real wght[3][kMaxShapeWidth];
+  int ncl[3];
+  for (int d=0; d<3; ++d) {
+    Real w[kMaxShapeWidth];
+    ShapeWeights(shape, delta[d], renorm, w);
+    ncl[d] = 0;
+    for (int s=0; s<W; ++s) {
+      int c = idx[d] + s0 + s;
+      int tc;
+      if (off[d] == 0) {
+        if (c < 0 || c > ncell[d]-1) {continue;}
+        tc = c;
+      } else if (off[d] < 0) {
+        if (c >= 0) {continue;}
+        tc = c + ncell[d];
+      } else {
+        if (c <= ncell[d]-1) {continue;}
+        tc = c - ncell[d];
+      }
+      cells[d][ncl[d]] = tc;
+      wght[d][ncl[d]] = w[s];
+      ncl[d]++;
+    }
+  }
+  for (int kk=0; kk<ncl[2]; ++kk) {
+    for (int jj=0; jj<ncl[1]; ++jj) {
+      for (int ii=0; ii<ncl[0]; ++ii) {
+        Real s = wght[0][ii]*wght[1][jj]*wght[2][kk];
+        int ci = is + cells[0][ii];
+        int cj = js + cells[1][jj];
+        int ck = ks + cells[2][kk];
+        Real detg = adm::SpatialDet(g_dd(tm,0,0,ck,cj,ci), g_dd(tm,0,1,ck,cj,ci),
+                                    g_dd(tm,0,2,ck,cj,ci), g_dd(tm,1,1,ck,cj,ci),
+                                    g_dd(tm,1,2,ck,cj,ci), g_dd(tm,2,2,ck,cj,ci));
+        Real fac = s/(sqrt(detg)*dv);
+        Kokkos::atomic_add(&tmunu.E(tm,ck,cj,ci), amp[0]*fac);
+        for (int a=0; a<3; ++a) {
+          Kokkos::atomic_add(&tmunu.S_d(tm,a,ck,cj,ci), amp[1+a]*fac);
+          for (int b=a; b<3; ++b) {
+            int c = 4 + (a*(7-a))/2 + (b-a);   // SYM2 row-major slot {xx,xy,xz,yy,yz,zz}
+            Kokkos::atomic_add(&tmunu.S_dd(tm,a,b,ck,cj,ci), amp[c]*fac);
+          }
+        }
+      }
+    }
+  }
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void DepositCloudNativeShape()
+//! \brief general-width cross-level deposit at the target block's own resolution.
+//! Uses LeftCenterIndexWide, NOT LeftCenterIndex: the latter clamps its result to
+//! [-1, n-1], which is harmless for a 2-point stencil (whose delta also clamps, to zero
+//! weight) but would place spurious deposits in cells 0 / n-1 for a particle up to
+//! ShapeHalf cells outside the target block.
+
+KOKKOS_INLINE_FUNCTION
+void DepositCloudNativeShape(const Tmunu::Tmunu_vars &tmunu,
+                             const AthenaTensor<Real, TensorSymm::SYM2, 3, 2> &g_dd,
+                             int tm, int is, int js, int ks, const int ncell[3],
+                             const RegionSize &tsz, const Real x[3], const Real amp[10],
+                             DepositShape shape, bool renorm) {
+  Real xmin[3] = {tsz.x1min, tsz.x2min, tsz.x3min};
+  Real xmax[3] = {tsz.x1max, tsz.x2max, tsz.x3max};
+  int W = ShapeWidth(shape);
+  int s0 = ShapeOffset(shape);
+  int cells[3][kMaxShapeWidth];
+  Real wght[3][kMaxShapeWidth];
+  int kept[3];
+  for (int d=0; d<3; ++d) {
+    int idx = LeftCenterIndexWide(x[d], ncell[d], xmin[d], xmax[d]);
+    Real dx = (xmax[d] - xmin[d])/static_cast<Real>(ncell[d]);
+    Real delta = fmin(fmax((x[d] - CellCenterX(idx, ncell[d], xmin[d], xmax[d]))/dx,
+                           0.0), 1.0);
+    Real w[kMaxShapeWidth];
+    ShapeWeights(shape, delta, renorm, w);
+    kept[d] = 0;
+    for (int s=0; s<W; ++s) {
+      int c = idx + s0 + s;
+      if (c < 0 || c >= ncell[d]) {continue;}
+      cells[d][kept[d]] = c;
+      wght[d][kept[d]] = w[s];
+      kept[d]++;
+    }
+  }
+  Real dv = tsz.dx1*tsz.dx2*tsz.dx3;
+  for (int kk=0; kk<kept[2]; ++kk) {
+    for (int jj=0; jj<kept[1]; ++jj) {
+      for (int ii=0; ii<kept[0]; ++ii) {
+        Real s = wght[0][ii]*wght[1][jj]*wght[2][kk];
+        int ci = is + cells[0][ii];
+        int cj = js + cells[1][jj];
+        int ck = ks + cells[2][kk];
+        Real detg = adm::SpatialDet(g_dd(tm,0,0,ck,cj,ci), g_dd(tm,0,1,ck,cj,ci),
+                                    g_dd(tm,0,2,ck,cj,ci), g_dd(tm,1,1,ck,cj,ci),
+                                    g_dd(tm,1,2,ck,cj,ci), g_dd(tm,2,2,ck,cj,ci));
+        Real fac = s/(sqrt(detg)*dv);
+        Kokkos::atomic_add(&tmunu.E(tm,ck,cj,ci), amp[0]*fac);
+        for (int a=0; a<3; ++a) {
+          Kokkos::atomic_add(&tmunu.S_d(tm,a,ck,cj,ci), amp[1+a]*fac);
+          for (int b=a; b<3; ++b) {
+            int c = 4 + (a*(7-a))/2 + (b-a);
+            Kokkos::atomic_add(&tmunu.S_dd(tm,a,b,ck,cj,ci), amp[c]*fac);
+          }
+        }
+      }
+    }
+  }
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void DepositCloudRestrictShape()
+//! \brief general-width conservative restriction of a fine-resolution stencil into the
+//! target's covering coarse cells. Each of the W fine cells contributes its integrated
+//! source into whichever coarse cell of tm contains its EXACT centre, and is deposited
+//! exactly once across the whole mesh, so the identity survives a 2:1 seam. Several fine
+//! cells may land in the same coarse cell; the accumulation handles that naturally.
+
+KOKKOS_INLINE_FUNCTION
+void DepositCloudRestrictShape(const Tmunu::Tmunu_vars &tmunu,
+                               const AthenaTensor<Real, TensorSymm::SYM2, 3, 2> &g_dd,
+                               int tm, int is, int js, int ks, const int ncell[3],
+                               const RegionSize &tsz, const Real sxmin[3],
+                               const int idx[3], const Real delta[3], const Real amp[10],
+                               DepositShape shape, bool renorm) {
+  Real xmin[3] = {tsz.x1min, tsz.x2min, tsz.x3min};
+  Real xmax[3] = {tsz.x1max, tsz.x2max, tsz.x3max};
+  Real dxc[3] = {tsz.dx1, tsz.dx2, tsz.dx3};
+  int W = ShapeWidth(shape);
+  int s0 = ShapeOffset(shape);
+  int coarse_cell[3][kMaxShapeWidth];
+  Real wght[3][kMaxShapeWidth];
+  int kept[3];
+  for (int d=0; d<3; ++d) {
+    Real dxf = 0.5*dxc[d];
+    Real w[kMaxShapeWidth];
+    ShapeWeights(shape, delta[d], renorm, w);
+    kept[d] = 0;
+    for (int s=0; s<W; ++s) {
+      int fc = idx[d] + s0 + s;
+      Real center = sxmin[d] + (static_cast<Real>(fc) + 0.5)*dxf;
+      if (center < xmin[d] || center >= xmax[d]) {continue;}
+      int ic = static_cast<int>(floor((center - xmin[d])/dxc[d]));
+      if (ic < 0) {
+        ic = 0;
+      } else if (ic >= ncell[d]) {
+        ic = ncell[d] - 1;
+      }
+      coarse_cell[d][kept[d]] = ic;
+      wght[d][kept[d]] = w[s];
+      kept[d]++;
+    }
+  }
+  Real dv = tsz.dx1*tsz.dx2*tsz.dx3;
+  for (int kk=0; kk<kept[2]; ++kk) {
+    for (int jj=0; jj<kept[1]; ++jj) {
+      for (int ii=0; ii<kept[0]; ++ii) {
+        Real s = wght[0][ii]*wght[1][jj]*wght[2][kk];
+        int ci = is + coarse_cell[0][ii];
+        int cj = js + coarse_cell[1][jj];
+        int ck = ks + coarse_cell[2][kk];
+        Real detg = adm::SpatialDet(g_dd(tm,0,0,ck,cj,ci), g_dd(tm,0,1,ck,cj,ci),
+                                    g_dd(tm,0,2,ck,cj,ci), g_dd(tm,1,1,ck,cj,ci),
+                                    g_dd(tm,1,2,ck,cj,ci), g_dd(tm,2,2,ck,cj,ci));
+        Real fac = s/(sqrt(detg)*dv);
+        Kokkos::atomic_add(&tmunu.E(tm,ck,cj,ci), amp[0]*fac);
+        for (int a=0; a<3; ++a) {
+          Kokkos::atomic_add(&tmunu.S_d(tm,a,ck,cj,ci), amp[1+a]*fac);
+          for (int b=a; b<3; ++b) {
+            int c = 4 + (a*(7-a))/2 + (b-a);
+            Kokkos::atomic_add(&tmunu.S_dd(tm,a,b,ck,cj,ci), amp[c]*fac);
+          }
+        }
+      }
+    }
   }
 }
 
@@ -338,6 +560,12 @@ void Particles::set_prtcl_tmunu() {
   int is = indcs.is, js = indcs.js, ks = indcs.ks;
   int dbg = debug_lvl;
   int xl_scheme = (xlevel_deposit == CrossLevelDeposit::native) ? 1 : 0;
+  // The image band and the carried stencil are built for the WIDEST kernel any particle
+  // can use -- the TOP of the MOOD hierarchy. Demotion only narrows the support, so a
+  // record generated for the wide band that a demoted particle no longer reaches simply
+  // contributes zero cells. Safe superset, one enumeration per cycle.
+  DepositShape top_shape = mood_hier[0];
+  bool renorm = deposit_renorm;
   int myrank = global_variable::my_rank;
   int ncycle = pmy_pack->pmesh->ncycle;
   bool multi_d = pmy_pack->pmesh->multi_d;
@@ -359,7 +587,7 @@ void Particles::set_prtcl_tmunu() {
   int n_cross_thispack = 0;
   if (npart > 0) {
     // ---- (b1) count pass: cross-block images per particle = nonempty offset subsets of
-    // the banded-and-open dims (same predicates as the deposit pass: CicClassify). The
+    // the banded-and-open dims (same predicates as the deposit pass: ShapeClassify). The
     // per-particle self record (own-block cloud) is generated below, so it
     // is NOT counted here -- the queue is sized for npart self records plus these.
     int nimg_need = 0;
@@ -369,13 +597,13 @@ void Particles::set_prtcl_tmunu() {
         int m = pi(PGID,p) - gids;
         Real x[3] = {pr(IPX,p), pr(IPY,p), pr(IPZ,p)};
         const RegionSize &sz = size.d_view(m);
-        CicDim cd[3];
-        CicClassify(x[0], ncell[0], sz.x1min, sz.x1max,
-                    mbbcs.d_view(m,0), mbbcs.d_view(m,1), cd[0]);
-        CicClassify(x[1], ncell[1], sz.x2min, sz.x2max,
-                    mbbcs.d_view(m,2), mbbcs.d_view(m,3), cd[1]);
-        CicClassify(x[2], ncell[2], sz.x3min, sz.x3max,
-                    mbbcs.d_view(m,4), mbbcs.d_view(m,5), cd[2]);
+        ShapeDim cd[3];
+        ShapeClassify(x[0], ncell[0], sz.x1min, sz.x1max,
+                    mbbcs.d_view(m,0), mbbcs.d_view(m,1), top_shape, cd[0]);
+        ShapeClassify(x[1], ncell[1], sz.x2min, sz.x2max,
+                    mbbcs.d_view(m,2), mbbcs.d_view(m,3), top_shape, cd[1]);
+        ShapeClassify(x[2], ncell[2], sz.x3min, sz.x3max,
+                    mbbcs.d_view(m,4), mbbcs.d_view(m,5), top_shape, cd[2]);
         int beff[3];
         for (int d=0; d<3; ++d) {
           beff[d] = (cd[d].band != 0 && cd[d].open) ? cd[d].band : 0;
@@ -398,6 +626,16 @@ void Particles::set_prtcl_tmunu() {
     if (npart + nimg_need > static_cast<int>(tmunu_images.extent(0))) {
       Kokkos::realloc(tmunu_images, npart + nimg_need);
     }
+    // per-particle scratch consumed by the deferred identity pass
+    if (npart > static_cast<int>(tmunu_lor.extent(0))) {
+      Kokkos::realloc(tmunu_lor, npart);
+      Kokkos::realloc(tmunu_finestencil, npart);
+    }
+    // the per-particle hierarchy level is written by the generation pass (below) so the
+    // closed-physical-face rule can force the positive parachute before anything deposits
+    if (npart > static_cast<int>(deposit_order_p.extent(0))) {
+      Kokkos::realloc(deposit_order_p, npart);
+    }
 #if MPI_PARALLEL_ENABLED
     if (nimg_need > static_cast<int>(tmunu_img_send.extent(0))) {
       Kokkos::realloc(tmunu_img_send, nimg_need);
@@ -417,6 +655,10 @@ void Particles::set_prtcl_tmunu() {
     auto &img = tmunu_images;
     auto &img_send = tmunu_img_send;
     auto &nimg_ctr = tmunu_nimg;
+    auto &plor = tmunu_lor;
+    auto &pfine = tmunu_finestencil;
+    auto &porder0 = deposit_order_p;
+    int nlev = mood_nlevels;
     int img_cap = static_cast<int>(tmunu_images.extent(0));
     int send_cap = static_cast<int>(tmunu_img_send.extent(0));
     par_for("tmunu_gen_records", DevExeSpace(), 0, (npart-1),
@@ -429,13 +671,13 @@ void Particles::set_prtcl_tmunu() {
       const RegionSize &sz = size.d_view(m);
 
       // CIC stencil + band/clip classification (the shared predicate helper)
-      CicDim cd[3];
-      CicClassify(x[0], ncell[0], sz.x1min, sz.x1max,
-                  mbbcs.d_view(m,0), mbbcs.d_view(m,1), cd[0]);
-      CicClassify(x[1], ncell[1], sz.x2min, sz.x2max,
-                  mbbcs.d_view(m,2), mbbcs.d_view(m,3), cd[1]);
-      CicClassify(x[2], ncell[2], sz.x3min, sz.x3max,
-                  mbbcs.d_view(m,4), mbbcs.d_view(m,5), cd[2]);
+      ShapeDim cd[3];
+      ShapeClassify(x[0], ncell[0], sz.x1min, sz.x1max,
+                  mbbcs.d_view(m,0), mbbcs.d_view(m,1), top_shape, cd[0]);
+      ShapeClassify(x[1], ncell[1], sz.x2min, sz.x2max,
+                  mbbcs.d_view(m,2), mbbcs.d_view(m,3), top_shape, cd[1]);
+      ShapeClassify(x[2], ncell[2], sz.x3min, sz.x3max,
+                  mbbcs.d_view(m,4), mbbcs.d_view(m,5), top_shape, cd[2]);
       int idx[3]   = {cd[0].idx, cd[1].idx, cd[2].idx};
       Real dlt[3]  = {cd[0].delta, cd[1].delta, cd[2].delta};
 
@@ -460,6 +702,26 @@ void Particles::set_prtcl_tmunu() {
 
       Real amp[10];
       TmunuAmplitudes(mp, lor, u_d, amp);
+      plor(p) = lor;    // reused by the identity bookkeeping after the MOOD cascade
+
+      // A stencil clipped at a CLOSED physical mesh face keeps only part of its weight.
+      // For CIC and M4 every weight is non-negative, so the retained fraction is in [0,1]
+      // and the clipped share is simply lost -- the documented f_p. For Lambda_{2,2} and
+      // which would deposit MORE than the particle's rest-mass energy and momentum,
+      // and the identity check cannot see it because both sides use that factor.
+      // EXCEED one: up to 1.083 (Lambda_{2,2}) and 1.109 (Lambda_{4,4}) per dimension,
+      // which would deposit MORE than the particle's rest-mass energy and momentum, and
+      // the identity check cannot see it because both of its sides use the same factor.
+      // Force such particles onto the positive-definite parachute. The decision uses only
+      // the source block's own face flags, so it is identical on every record of the
+      // particle and conservation is untouched.
+      int lev0 = 0;
+      if (nlev > 1) {
+        for (int d=0; d<3; ++d) {
+          if (cd[d].band != 0 && !cd[d].open) {lev0 = nlev - 1;}
+        }
+      }
+      porder0(p) = lev0;
 
       // Enumerate once so scheme A can detect whether the cloud touches a finer block.
       int beff[3];
@@ -517,6 +779,9 @@ void Particles::set_prtcl_tmunu() {
         self.target_m = m;
         self.tag = pi(PTAG,p);
         self.off_code = 13;
+        self.order = lev0;
+        self.src_p = p;
+        self.aux = -1;
         for (int d=0; d<3; ++d) {
           self.x[d] = x[d];
           self.sxmin[d] = source_min[d];
@@ -625,6 +890,9 @@ void Particles::set_prtcl_tmunu() {
             rec.off_code = oc;
             rec.lev = record_level;
             rec.slev = source_level;
+            rec.order = lev0;
+            rec.src_p = p;
+            rec.aux = -1;
             for (int d=0; d<3; ++d) {
               rec.idx[d] = record_idx[d];
               rec.delta[d] = record_delta[d];
@@ -650,6 +918,8 @@ void Particles::set_prtcl_tmunu() {
             w.off_code = oc;
             w.lev = record_level;
             w.slev = source_level;
+            w.order = lev0;
+            w.src_p = p;
             for (int d=0; d<3; ++d) {
               w.idx[d] = record_idx[d];
               w.delta[d] = record_delta[d];
@@ -664,25 +934,10 @@ void Particles::set_prtcl_tmunu() {
         }
       }
 
-      // Closed-boundary clipping must use the same resolution as the deposited stencil.
-      if (dbg >= 1) {
-        Real f = 1.0;
-        for (int d=0; d<3; ++d) {
-          if (cd[d].band != 0 && !cd[d].open) {
-            if (use_fine_stencil) {
-              int nfine = 2*ncell[d];
-              f *= (cd[d].band < 0)
-                       ? ((fine_idx[d] == -1) ? fine_delta[d] : 1.0)
-                       : ((fine_idx[d] + 1 == nfine) ? (1.0 - fine_delta[d]) : 1.0);
-            } else {
-              f *= (cd[d].band < 0) ? dlt[d] : (1.0 - dlt[d]);
-            }
-          }
-        }
-        for (int c=0; c<10; ++c) {
-          Kokkos::atomic_add(&psum(c), amp[c]*f);
-        }
-      }
+      // The particle-side identity sum is accumulated in its own pass AFTER the MOOD
+      // cascade, because the closed-boundary clip factor depends on which kernel the
+      // particle ended up using. Record here only what that pass cannot recompute.
+      pfine(p) = use_fine_stencil ? 1 : 0;
     });
 
     // read the image counters + error counters back (deep_copy fences the kernel). The
@@ -772,33 +1027,125 @@ void Particles::set_prtcl_tmunu() {
     tmunu_images.template modify<HostMemSpace>();
     tmunu_images.template sync<DevExeSpace>();
 
-    // ---- (d) one unified deposit pass over every record (self + same-rank images +
-    // received cross-rank images), in canonical order (serial RangePolicy executes in
-    // index order; on GPU the atomics keep it correct, not bitwise-reproducible).
-    auto &imgd = tmunu_images;
-    int nimg = nimages_thispack;
-    par_for("tmunu_deposit", DevExeSpace(), 0, (nimg-1),
-    KOKKOS_LAMBDA(const int g) {
-      const TmunuImage rec = imgd.d_view(g);
-      int tm = rec.target_m;
+    // The canonical sort permutes the queue, so record where each RECEIVED record ended
+    // up. RefreshTmunuImageOrders() needs that map to write the returning per-image MOOD
+    // levels into the right slots without re-sorting.
+    if (mood_on) {
+      int nrecv = nimages_thispack;
+      if (nrecv > static_cast<int>(tmunu_recv_slot.extent(0))) {
+        Kokkos::realloc(tmunu_recv_slot, nrecv);
+      }
+      auto &rslot = tmunu_recv_slot;
+      auto &imgm = tmunu_images;
+      int nq = nimages_thispack;
+      par_for("tmunu_recv_slot_map", DevExeSpace(), 0, (nq-1),
+      KOKKOS_LAMBDA(const int g) {
+        int a = imgm.d_view(g).aux;
+        if (a >= 0) {rslot(a) = g;}
+      });
+    }
+  }
+
+  // ---- (d) deposit, with the MOOD "repeat-until-valid" cascade.
+  // Record generation, the canonical sort and the MPI transport above run ONCE per cycle;
+  // only the deposit and the detector repeat, plus a 1-int-per-image order refresh.
+  int mood_nsweep = 0, mood_nbad0 = 0, mood_nbad1 = 0;
+  // deposit_order_p was written by the generation pass: 0 (highest order) for every
+  // particle except those clipped at a closed physical face, which start on the
+  // parachute.
+  // MOOD only ever demotes further, so that floor is preserved.
+  DepositAllRecords();
+
+  if (mood_on) {
+    mood_nbad1 = -1;
+    for (int sw=0; sw<mood_max_sweeps; ++sw) {
+      int nbad = MoodDetect();
+      if (sw == 0) {mood_nbad0 = nbad;}
+      mood_nbad1 = nbad;
+      if (nbad == 0) {break;}
+      MoodFillGhosts();
+      int ndem = MoodDemote();
+      if (ndem == 0) {break;}                  // everything reachable is on the parachute
+      MoodStampRecords();
+#if MPI_PARALLEL_ENABLED
+      pbval_part->RefreshTmunuImageOrders();
+#endif
+      Kokkos::deep_copy(u_tmunu, 0.0);
+      DepositAllRecords();
+      mood_nsweep = sw + 1;
+      mood_nbad1 = -1;                         // stale until the next detect
+    }
+    bool report = (dbg >= 1) ||
+                  (mood_diag_cadence > 0 && (ncycle % mood_diag_cadence) == 0);
+    // a final detect costs a full-mesh pass and two reductions; only pay for it if the
+    // number is going to be reported
+    if (mood_nbad1 < 0 && report) {mood_nbad1 = MoodDetect();}
+    if (report) {
+      MoodReport(ncycle, pmy_pack->pmesh->time, mood_nsweep, mood_nbad0, mood_nbad1);
+    }
+    if (mood_nbad1 > 0 && myrank == 0 && report) {
+      std::cout << "[mood] cycle=" << ncycle << " sweeps=" << mood_nsweep
+                << " residual inadmissible cells=" << mood_nbad1
+                << " (cascade exhausted at max_sweeps=" << mood_max_sweeps
+                << "; conservation is unaffected)" << std::endl;
+    }
+  } else if (mood_monitor) {
+    // detect and report, never demote: the incidence of inadmissible cells is itself the
+    // measurement for a pure higher-order run
+    bool report = (dbg >= 1) ||
+                  (mood_diag_cadence > 0 && (ncycle % mood_diag_cadence) == 0);
+    if (report) {
+      mood_nbad0 = MoodDetect();
+      mood_nbad1 = mood_nbad0;
+      MoodReport(ncycle, pmy_pack->pmesh->time, 0, mood_nbad0, mood_nbad1);
+    }
+  }
+
+  // ---- (d2) particle-side identity sums (debug only). Deferred to here because the
+  // closed-boundary clip factor depends on which kernel each particle ended up using.
+  if (dbg >= 1 && npart > 0) {
+    auto &plor = tmunu_lor;
+    auto &pfine = tmunu_finestencil;
+    auto &porder = deposit_order_p;
+    DepositShape h0 = mood_hier[0], h1 = mood_hier[1], h2 = mood_hier[2];
+    par_for("tmunu_psum", DevExeSpace(), 0, (npart-1), KOKKOS_LAMBDA(const int p) {
+      int m = pi(PGID,p) - gids;
+      Real x[3]   = {pr(IPX,p),  pr(IPY,p),  pr(IPZ,p)};
+      Real u_d[3] = {pr(IPVX,p), pr(IPVY,p), pr(IPVZ,p)};
+      const RegionSize &sz = size.d_view(m);
+      // deposit_order_p is authoritative whether or not MOOD is enabled: the generation
+      // pass writes it for every particle, including the closed-physical-face rule.
+      int lev = porder(p);
+      DepositShape sh = (lev <= 0) ? h0 : ((lev == 1) ? h1 : h2);
+      ShapeDim cd[3];
+      ShapeClassify(x[0], ncell[0], sz.x1min, sz.x1max,
+                    mbbcs.d_view(m,0), mbbcs.d_view(m,1), sh, cd[0]);
+      ShapeClassify(x[1], ncell[1], sz.x2min, sz.x2max,
+                    mbbcs.d_view(m,2), mbbcs.d_view(m,3), sh, cd[1]);
+      ShapeClassify(x[2], ncell[2], sz.x3min, sz.x3max,
+                    mbbcs.d_view(m,4), mbbcs.d_view(m,5), sh, cd[2]);
+      Real f = 1.0;
+      bool fine = (pfine(p) != 0);
+      Real smin[3] = {sz.x1min, sz.x2min, sz.x3min};
+      Real smax[3] = {sz.x1max, sz.x2max, sz.x3max};
+      for (int d=0; d<3; ++d) {
+        if (cd[d].band != 0 && !cd[d].open) {
+          if (fine) {
+            int nfine = 2*ncell[d];
+            int fi = LeftCenterIndex(x[d], nfine, smin[d], smax[d]);
+            Real dxf = (smax[d] - smin[d])/static_cast<Real>(nfine);
+            Real fd = fmin(fmax((x[d] - CellCenterX(fi, nfine, smin[d], smax[d]))/dxf,
+                                0.0), 1.0);
+            f *= ShapeClipFactor(sh, renorm, fi, fd, nfine);
+          } else {
+            f *= ShapeClipFactor(sh, renorm, cd[d].idx, cd[d].delta, ncell[d]);
+          }
+        }
+      }
       Real amp[10];
-      TmunuAmplitudes(rec.mass, rec.lorentz, rec.u_d, amp);
-      const RegionSize &tsz = size.d_view(tm);
-      if (rec.lev < 0) {
-        int off[3];
-        off[0] = rec.off_code % 3 - 1;
-        off[1] = (rec.off_code / 3) % 3 - 1;
-        off[2] = rec.off_code / 9 - 1;
-        Real dv = tsz.dx1*tsz.dx2*tsz.dx3;
-        DepositCloud(tmunu, g_dd, tm, is, js, ks, ncell, dv, off, rec.idx, rec.delta,
-                     amp);
-      } else if (xl_scheme == 1) {
-        DepositCloudNative(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.x, amp);
-      } else if (rec.slev > rec.lev) {
-        DepositCloudRestrict(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.sxmin,
-                             rec.idx, rec.delta, amp);
-      } else {
-        DepositCloudNative(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.x, amp);
+      TmunuAmplitudes(pr(IPM,p), plor(p), u_d, amp);
+      for (int c=0; c<10; ++c) {
+        Kokkos::atomic_add(&psum(c), amp[c]*f);
       }
     });
   }
@@ -901,6 +1248,97 @@ void Particles::set_prtcl_tmunu() {
     }
   }
   return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void Particles::DepositAllRecords()
+//! \brief the single unified deposit pass over every record in the canonical queue (self
+//! records + same-rank images + received cross-rank images), in canonical
+//! (target_m, tag, off_code, lev) order, so per-cell accumulation is independent of the
+//! rank decomposition (bitwise np-invariance on a serial host; GPU atomics are correct
+//! but not bit-reproducible, as before).
+//!
+//! Factored out of set_prtcl_tmunu because the MOOD cascade re-runs it after each
+//! demotion sweep -- WITHOUT regenerating, re-sorting or re-shipping the records.
+//!
+//! `deposit_shape = cic` (the default) dispatches to the historical DepositCloud /
+//! DepositCloudNative / DepositCloudRestrict, untouched, so the campaign control is
+//! reproducible bit for bit. The test knob `deposit_generic_cic = true` routes CIC
+//! through the generalised kernels instead, which lets a single run assert that the
+//! W = 2 member of the general family and the historical kernel agree exactly.
+
+void Particles::DepositAllRecords() {
+  int nimg = nimages_thispack;
+  if (nimg <= 0) {return;}
+  auto &indcs = pmy_pack->pmesh->mb_indcs;
+  auto &size = pmy_pack->pmb->mb_size;
+  auto &tmunu = pmy_pack->ptmunu->tmunu;
+  auto &g_dd = pmy_pack->padm->adm.g_dd;
+  auto &imgd = tmunu_images;
+  int ncell[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+  int is = indcs.is, js = indcs.js, ks = indcs.ks;
+  int xl_scheme = (xlevel_deposit == CrossLevelDeposit::native) ? 1 : 0;
+  bool legacy = (deposit_shape == DepositShape::cic) && !deposit_generic_cic;
+  DepositShape h0 = mood_hier[0], h1 = mood_hier[1], h2 = mood_hier[2];
+  bool renorm = deposit_renorm;
+
+  if (legacy) {
+    par_for("tmunu_deposit", DevExeSpace(), 0, (nimg-1),
+    KOKKOS_LAMBDA(const int g) {
+      const TmunuImage rec = imgd.d_view(g);
+      int tm = rec.target_m;
+      Real amp[10];
+      TmunuAmplitudes(rec.mass, rec.lorentz, rec.u_d, amp);
+      const RegionSize &tsz = size.d_view(tm);
+      if (rec.lev < 0) {
+        int off[3];
+        off[0] = rec.off_code % 3 - 1;
+        off[1] = (rec.off_code / 3) % 3 - 1;
+        off[2] = rec.off_code / 9 - 1;
+        Real dv = tsz.dx1*tsz.dx2*tsz.dx3;
+        DepositCloud(tmunu, g_dd, tm, is, js, ks, ncell, dv, off, rec.idx, rec.delta,
+                     amp);
+      } else if (xl_scheme == 1) {
+        DepositCloudNative(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.x, amp);
+      } else if (rec.slev > rec.lev) {
+        DepositCloudRestrict(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.sxmin,
+                             rec.idx, rec.delta, amp);
+      } else {
+        DepositCloudNative(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.x, amp);
+      }
+    });
+  } else {
+    par_for("tmunu_deposit_shape", DevExeSpace(), 0, (nimg-1),
+    KOKKOS_LAMBDA(const int g) {
+      const TmunuImage rec = imgd.d_view(g);
+      int tm = rec.target_m;
+      // every record of a given particle carries the SAME order, so the kernel's weights
+      // sum to one over the particle's whole cloud -- the conservation invariant
+      int lev = rec.order;
+      DepositShape sh = (lev <= 0) ? h0 : ((lev == 1) ? h1 : h2);
+      Real amp[10];
+      TmunuAmplitudes(rec.mass, rec.lorentz, rec.u_d, amp);
+      const RegionSize &tsz = size.d_view(tm);
+      if (rec.lev < 0) {
+        int off[3];
+        off[0] = rec.off_code % 3 - 1;
+        off[1] = (rec.off_code / 3) % 3 - 1;
+        off[2] = rec.off_code / 9 - 1;
+        Real dv = tsz.dx1*tsz.dx2*tsz.dx3;
+        DepositCloudShape(tmunu, g_dd, tm, is, js, ks, ncell, dv, off, rec.idx,
+                          rec.delta, amp, sh, renorm);
+      } else if (xl_scheme == 1) {
+        DepositCloudNativeShape(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.x, amp,
+                                sh, renorm);
+      } else if (rec.slev > rec.lev) {
+        DepositCloudRestrictShape(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.sxmin,
+                                  rec.idx, rec.delta, amp, sh, renorm);
+      } else {
+        DepositCloudNativeShape(tmunu, g_dd, tm, is, js, ks, ncell, tsz, rec.x, amp,
+                                sh, renorm);
+      }
+    });
+  }
 }
 
 //----------------------------------------------------------------------------------------
