@@ -182,10 +182,60 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
         }
       }
     }
+  } else if (mode.compare("lattice") == 0 || mode.compare("ball") == 0 ||
+             mode.compare("smooth") == 0) {
+    // ---- distributed configurations for the higher-order-deposition battery ----
+    //   lattice : nlat^3 equal-mass particles filling [lat_lo, lat_hi]^3 uniformly.
+    //             The deposited E must be FLAT away from the edges for any kernel with
+    //             unit partition -- the "constant/uniform distribution" test.
+    //   ball    : the same lattice, keeping only |x - centre| < ball_r, i.e. a uniform
+    //             sphere with a SHARP surface. This is the configuration in which the
+    //             negative lobes of Lambda_{2,2}/Lambda_{4,4} produce Gibbs undershoot
+    //             and the MOOD fallback must fire.
+    //   smooth  : the same lattice, with per-particle mass proportional to a smooth
+    //             analytic density rho(x) = 1 + a*cos(2 pi k x/L) (a product over the
+    //             three axes). Comparing the deposited E against rho gives the
+    //             MEASURED order of the mapping, which is the point of the exercise.
+    int nlat = pin->GetOrAddInteger("problem","nlat",32);
+    Real lo = pin->GetOrAddReal("problem","lat_lo",-0.5);
+    Real hi = pin->GetOrAddReal("problem","lat_hi", 0.5);
+    Real ballr = pin->GetOrAddReal("problem","ball_r",0.25);
+    Real bcx = pin->GetOrAddReal("problem","ball_x1",0.0);
+    Real bcy = pin->GetOrAddReal("problem","ball_x2",0.0);
+    Real bcz = pin->GetOrAddReal("problem","ball_x3",0.0);
+    Real amp = pin->GetOrAddReal("problem","smooth_amp",0.5);
+    Real kwav = pin->GetOrAddReal("problem","smooth_k",1.0);
+    Real jit = pin->GetOrAddReal("problem","lat_shift",0.0);   // rigid offset, in cells
+    Real dlat = (hi - lo)/static_cast<Real>(nlat);
+    Real llen = (hi - lo);
+    int tag = 0;
+    for (int kz=0; kz<nlat; ++kz) {
+      for (int ky=0; ky<nlat; ++ky) {
+        for (int kx=0; kx<nlat; ++kx) {
+          Real px = lo + (static_cast<Real>(kx) + 0.5 + jit)*dlat;
+          Real py = lo + (static_cast<Real>(ky) + 0.5 + jit)*dlat;
+          Real pz = lo + (static_cast<Real>(kz) + 0.5 + jit)*dlat;
+          int t = tag++;
+          if (mode.compare("ball") == 0) {
+            Real rr = sqrt((px-bcx)*(px-bcx) + (py-bcy)*(py-bcy) + (pz-bcz)*(pz-bcz));
+            if (rr >= ballr) {continue;}
+          }
+          Real mp = pmass;
+          if (mode.compare("smooth") == 0) {
+            Real tp = 2.0*M_PI*kwav/llen;
+            mp = pmass*(1.0 + amp*cos(tp*(px-lo)))
+                      *(1.0 + amp*cos(tp*(py-lo)))
+                      *(1.0 + amp*cos(tp*(pz-lo)));
+          }
+          int m = ppart->FindContainingMeshBlock(px, py, pz);
+          if (m >= 0) {st.Add(px, py, pz, pux, puy, puz, mp, pmbp->gids + m, t);}
+        }
+      }
+    }
   } else {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
-              << "<problem> mode = '" << mode << "' not recognized (use single|sweep)"
-              << std::endl;
+              << "<problem> mode = '" << mode
+              << "' not recognized (use single|sweep|lattice|ball|smooth)" << std::endl;
     exit(EXIT_FAILURE);
   }
 

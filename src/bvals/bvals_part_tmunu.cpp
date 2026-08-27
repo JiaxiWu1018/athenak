@@ -47,10 +47,16 @@
 namespace particles {
 
 // flat-buffer widths per image: 14 Reals {delta[3], x[3], mass, lorentz, u_d[3],
-// sxmin[3]} and 8 ints {target_gid, tag, off_code, lev, idx[3], slev}.
+// sxmin[3]} and 9 ints {target_gid, tag, off_code, lev, idx[3], slev, order}.
+// `order` is the MOOD hierarchy level of the SOURCE PARTICLE: the kernel choice must be
+// identical on every record of a particle (the weights of one kernel sum to one over the
+// whole cloud), so it is decided on the source rank and shipped. Each MOOD sweep
+// refreshes
+// it with RefreshTmunuImageOrders() -- one int per image, no re-sort, no re-transport of
+// the 144-byte records.
 namespace {
 constexpr int kImgNR = 14;
-constexpr int kImgNI = 8;
+constexpr int kImgNI = 9;
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -178,6 +184,7 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
       ibuf(kImgNI*n + 5) = w.idx[1];
       ibuf(kImgNI*n + 6) = w.idx[2];
       ibuf(kImgNI*n + 7) = w.slev;
+      ibuf(kImgNI*n + 8) = w.order;
       rbuf(kImgNR*n + 0) = w.delta[0];
       rbuf(kImgNR*n + 1) = w.delta[1];
       rbuf(kImgNR*n + 2) = w.delta[2];
@@ -256,6 +263,9 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
       rec.idx[1]   = ibuf(kImgNI*n + 5);
       rec.idx[2]   = ibuf(kImgNI*n + 6);
       rec.slev     = ibuf(kImgNI*n + 7);
+      rec.order    = ibuf(kImgNI*n + 8);
+      rec.src_p    = -1;    // generated on another rank: refreshed over the wire instead
+      rec.aux      = n;     // receive-buffer index; survives the canonical sort
       rec.delta[0] = rbuf(kImgNR*n + 0);
       rec.delta[1] = rbuf(kImgNR*n + 1);
       rec.delta[2] = rbuf(kImgNR*n + 2);
@@ -312,6 +322,101 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
       std::cout << "[tmunu-debug] cycle=" << pm->ncycle
                 << " ghost images sent==received==" << sr[0] << " (global)" << std::endl;
     }
+  }
+#endif  // MPI_PARALLEL_ENABLED
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void ParticlesBoundaryValues::RefreshTmunuImageOrders()
+//! \brief re-ship the per-image MOOD hierarchy level after a demotion sweep.
+//!
+//! The kernel a particle deposits with must be identical on every one of its records --
+//! the weights of ONE kernel sum to one over the particle's whole cloud, so mixing
+//! kernels
+//! within a particle would break the exact conservation identity. The decision is
+//! therefore taken on the source rank (which, after the flag ghost fill, can see the
+//! particle's entire stencil) and must reach the ranks that hold its images.
+//!
+//! Re-running ExchangeTmunuImages would re-generate, re-sort and re-transport ~10^6
+//! 144-byte records per rank per sweep. Instead this reuses the message census
+//! (imgsends_thisrank / imgrecvs_thisrank) and the record ordering already established by
+//! this cycle's exchange and ships ONE int per image on tag 4. Receive-buffer index n
+//! maps
+//! to the canonical-queue slot through Particles::tmunu_recv_slot, which was built from
+//! TmunuImage::aux immediately after the sort.
+//!
+//! Must be called only after ExchangeTmunuImages() in the same cycle. Serial no-op.
+
+void ParticlesBoundaryValues::RefreshTmunuImageOrders() {
+#if MPI_PARALLEL_ENABLED
+  int n_send = pmy_part->nimg_send_thispack;
+  bool no_errors = true;
+
+  // ---- post receives, one contiguous slice per sending rank (same grouping as the
+  // record exchange, so slice element n is receive-buffer index n) ----
+  if (n_img_recv > 0 &&
+      n_img_recv > static_cast<int>(img_orecvbuf.extent(0))) {
+    Kokkos::realloc(img_orecvbuf, n_img_recv);
+  }
+  img_orecv_req.assign(n_img_recv_msgs, MPI_REQUEST_NULL);
+  {
+    int start = 0;
+    for (int n=0; n<n_img_recv_msgs; ++n) {
+      int np = imgrecvs_thisrank[n].nprtcls;
+      int src = imgrecvs_thisrank[n].sendrank;
+      auto op = Kokkos::subview(img_orecvbuf, std::make_pair(start, start + np));
+      if (MPI_Irecv(op.data(), np, MPI_INT, src, 4, mpi_comm_part,
+                    &(img_orecv_req[n])) != MPI_SUCCESS) {no_errors = false;}
+      start += np;
+    }
+  }
+
+  // ---- pack the staged wire records' current order and send ----
+  if (n_send > 0) {
+    if (n_send > static_cast<int>(img_osendbuf.extent(0))) {
+      Kokkos::realloc(img_osendbuf, n_send);
+    }
+    auto &obuf = img_osendbuf;
+    auto &simg = pmy_part->tmunu_img_send;
+    par_for("img_pack_order", DevExeSpace(), 0, (n_send-1), KOKKOS_LAMBDA(const int n) {
+      obuf(n) = simg.d_view(n).order;
+    });
+    Kokkos::fence();
+  }
+  img_osend_req.assign(n_img_send_msgs, MPI_REQUEST_NULL);
+  {
+    int start = 0;
+    for (int n=0; n<n_img_send_msgs; ++n) {
+      int np = imgsends_thisrank[n].nprtcls;
+      int dst = imgsends_thisrank[n].recvrank;
+      auto op = Kokkos::subview(img_osendbuf, std::make_pair(start, start + np));
+      if (MPI_Isend(op.data(), np, MPI_INT, dst, 4, mpi_comm_part,
+                    &(img_osend_req[n])) != MPI_SUCCESS) {no_errors = false;}
+      start += np;
+    }
+  }
+  if (!no_errors) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+              << "MPI error posting MOOD order-refresh sends/recvs" << std::endl
+              << std::flush;
+    MPI_Abort(MPI_COMM_WORLD, 1);
+  }
+
+  if (n_img_recv_msgs > 0) {
+    MPI_Waitall(n_img_recv_msgs, img_orecv_req.data(), MPI_STATUSES_IGNORE);
+  }
+  if (n_img_recv > 0) {
+    auto &img = pmy_part->tmunu_images;
+    auto &rslot = pmy_part->tmunu_recv_slot;
+    auto &obuf = img_orecvbuf;
+    int nrecv = n_img_recv;
+    par_for("img_unpack_order", DevExeSpace(), 0, (nrecv-1), KOKKOS_LAMBDA(const int n) {
+      img.d_view(rslot(n)).order = obuf(n);
+    });
+  }
+  if (n_img_send_msgs > 0) {
+    MPI_Waitall(n_img_send_msgs, img_osend_req.data(), MPI_STATUSES_IGNORE);
   }
 #endif  // MPI_PARALLEL_ENABLED
   return;

@@ -346,6 +346,8 @@ class ParticlesBoundaryValues {
   // migration (tags 0/1) has drained. It has a separate per-deposit message census.
   DvceArray1D<Real> img_rsendbuf, img_rrecvbuf;
   DvceArray1D<int> img_isendbuf, img_irecvbuf;
+  DvceArray1D<int> img_osendbuf, img_orecvbuf;   // MOOD order refresh (1 int per image)
+  std::vector<MPI_Request> img_osend_req, img_orecv_req;
   std::vector<MPI_Request> img_rrecv_req, img_rsend_req;
   std::vector<MPI_Request> img_irecv_req, img_isend_req;
   int n_img_send_msgs, n_img_recv_msgs;
@@ -367,6 +369,10 @@ class ParticlesBoundaryValues {
   TaskStatus ClearPrtclSend();
   TaskStatus RecvAndUnpackPrtcls();
   void ExchangeTmunuImages();
+  // MOOD order refresh: re-ship ONE int per already-transported image along the same
+  // message structure, so a demotion sweep costs 4 bytes/image instead of re-generating,
+  // re-sorting and re-shipping the 144-byte records. Tag 4 on mpi_comm_part.
+  void RefreshTmunuImageOrders();
 
  protected:
   particles::Particles* pmy_part;
