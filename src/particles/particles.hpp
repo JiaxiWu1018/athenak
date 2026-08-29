@@ -204,6 +204,7 @@ class Particles {
   // so it is reported always -- never only under <particles> debug.
   std::int64_t boris_nreject_cum;
   bool boris_first_reject_seen;
+  bool fatal_boris_reject;
 
   // A substep whose high-order geometry is invalid is re-solved with a trilinear
   // interpolant before being rejected: its weights are non-negative and sum to one, so

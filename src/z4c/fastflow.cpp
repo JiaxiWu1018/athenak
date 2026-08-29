@@ -157,7 +157,22 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   ah_surf_center[0] = ah_surf_center[1] = ah_surf_center[2] = 0.0;
   ah_surf_rmin = -1.0;
   ah_surf_rmax = -1.0;
+  ah_surf_rmin_limit = pin->GetOrAddReal("fastflow", "consumer_rmin_" + n_str, 0.0);
+  ah_surf_rmax_limit = pin->GetOrAddReal("fastflow", "consumer_rmax_" + n_str,
+                                        std::numeric_limits<Real>::max());
+  ah_surf_hrel_limit = pin->GetOrAddReal("fastflow", "consumer_hrel_" + n_str,
+                                        std::numeric_limits<Real>::max());
+  ah_surf_persist = pin->GetOrAddInteger("fastflow", "consumer_persist_" + n_str, 1);
+  if (ah_surf_rmin_limit < 0.0 || ah_surf_rmax_limit <= ah_surf_rmin_limit
+      || ah_surf_hrel_limit <= 0.0 || ah_surf_persist < 1) {
+    std::cout << "### FATAL ERROR: fastflow consumer gate for horizon " << nh
+              << " requires 0 <= consumer_rmin < consumer_rmax, consumer_hrel > 0, "
+              << "and consumer_persist >= 1" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+  ah_surf_candidate_streak = 0;
   ah_surf_warned = false;
+  ah_surf_geometry_warned = false;
 
   // Reallocate for the spherical harmonics.
   // The spherical grid is the same for all surfaces.
@@ -445,7 +460,43 @@ void FastFlow::Find(int iter, Real time) {
   FastFlowLoop();
 
   if (ah_found) {
-    SnapshotSurface();
+    Real candidate_rmax = 0.0;
+    auto &rr_ = rr;
+    Kokkos::parallel_reduce("FastFlow_consumer_rmax",
+    Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles),
+    KOKKOS_LAMBDA(const int &p, Real &lmax_r) {
+      lmax_r = Kokkos::max(lmax_r, rr_(p));
+    }, Kokkos::Max<Real>(candidate_rmax));
+    const Real candidate_area = ah_prop[harea];
+    const Real candidate_hrel = Kokkos::fabs(ah_prop[hhmean]) / candidate_area;
+    const bool geometry_ok = Kokkos::isfinite(rr_min) && Kokkos::isfinite(candidate_rmax)
+                          && Kokkos::isfinite(candidate_area)
+                          && Kokkos::isfinite(candidate_hrel)
+                          && rr_min > 0.0 && rr_min >= ah_surf_rmin_limit
+                          && candidate_rmax <= ah_surf_rmax_limit
+                          && candidate_area > 0.0 && candidate_hrel <= ah_surf_hrel_limit;
+    if (!geometry_ok) {
+      ah_surf_candidate_streak = 0;
+      // A raw FastFlow convergence that is unsafe for consumers must not seed the next
+      // search.  Retain ah_found through Write() so the rejected shape remains available
+      // for diagnosis, but force InitialGuess() back to the configured physical scale.
+      last_a0 = -1.0;
+      if (ioproc && !ah_surf_geometry_warned) {
+        ah_surf_geometry_warned = true;
+        std::cout << "### WARNING: horizon " << nh
+                  << " not published to consumers: candidate radius range ["
+                  << rr_min << "," << candidate_rmax << "], area=" << candidate_area
+                  << ", |<H>|/area=" << candidate_hrel << " violates rmin >= "
+                  << ah_surf_rmin_limit << ", rmax <= " << ah_surf_rmax_limit
+                  << ", area > 0, or |<H>|/area <= " << ah_surf_hrel_limit << "."
+                  << std::endl;
+      }
+    } else {
+      ++ah_surf_candidate_streak;
+      if (ah_surf_candidate_streak >= ah_surf_persist) {SnapshotSurface();}
+    }
+  } else {
+    ah_surf_candidate_streak = 0;
   }
 
   // Retain `last_a0` in restart: this serves as primary ini. guess.
@@ -939,8 +990,11 @@ void FastFlow::SnapshotSurface() {
   MPI_Allreduce(MPI_IN_PLACE, hp.data(), nangles, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 #endif
   int noff = 0;
-  for (int q = 0; q < nangles; ++q) {if (hp[q] == 0) {++noff;}}
+  for (int q = 0; q < nangles; ++q) {
+    if (hp[q] == 0) {++noff;}
+  }
   if (noff > 0) {
+    ah_surf_candidate_streak = 0;
     if (ioproc && !ah_surf_warned) {
       ah_surf_warned = true;
       std::cout << "### WARNING: horizon " << nh << " not published to consumers: "

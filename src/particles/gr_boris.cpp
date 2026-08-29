@@ -27,6 +27,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
 
 #include "athena.hpp"
@@ -917,6 +918,18 @@ void Particles::GR_BorisPush() {
                 << nprtcl_thispack << " particles kept their step-n state"
                 << " (geodesic " << nrej_geo << ", write-back " << nrej_out
                 << "; rank total " << boris_nreject_cum << ")" << std::endl;
+      if (fatal_boris_reject) {
+        std::cout << "### FATAL ERROR: <particles> fatal_boris_reject=true and rank "
+                  << global_variable::my_rank << " rejected " << nrej
+                  << " GR-Boris update(s) at cycle " << pmy_pack->pmesh->ncycle
+                  << ". The run cannot advance a trustworthy particle solution."
+                  << std::endl;
+#if MPI_PARALLEL_ENABLED
+        MPI_Abort(MPI_COMM_WORLD, 1);
+#else
+        std::exit(EXIT_FAILURE);
+#endif
+      }
     }
     if (nfail > 0) {
       boris_nfail_cum += static_cast<std::int64_t>(nfail);

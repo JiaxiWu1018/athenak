@@ -166,6 +166,7 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   boris_first_fail_seen = false;
   boris_nreject_cum = 0;
   boris_first_reject_seen = false;
+  fatal_boris_reject = pin->GetOrAddBoolean("particles", "fatal_boris_reject", false);
   boris_nretry_cum = 0;
   boris_nrescued_cum = 0;
   boris_first_retry_seen = false;

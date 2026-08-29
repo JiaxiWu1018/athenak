@@ -61,12 +61,16 @@ class FastFlow {
   //! outside [start_time, stop_time], and is restored from the restart parameter dump
   //! while the l>0 shape coefficients and rr_min are NOT -- so after a restart a restored
   //! `ah_found == true` can coexist with rr_min == -1 and ac/as == 0. `ah_surf_valid` is
-  //! sticky and is set only by SnapshotSurface(), which also refuses a surface that is
-  //! not wholly on the mesh.
+  //! sticky and is set only by SnapshotSurface(), after the consumer geometry and
+  //! persistence gates pass and the surface is wholly on the mesh.
   bool ah_surf_valid;
   Real ah_surf_center[3];
   Real ah_surf_rmin, ah_surf_rmax;   // angular extrema, for the consumer's bracket
-  bool ah_surf_warned;               // the off-grid warning is printed once
+  Real ah_surf_rmin_limit, ah_surf_rmax_limit; // optional physical publication limits
+  Real ah_surf_hrel_limit;            // optional |<H>|/area publication limit
+  int ah_surf_persist, ah_surf_candidate_streak;
+  bool ah_surf_warned;                // the off-grid warning is printed once
+  bool ah_surf_geometry_warned;       // the geometry warning is printed once
   DualArray1D<Real> a0_surf, ac_surf, as_surf;   // packing as a0/ac/as
   void SnapshotSurface();
   int GetLmax() const {return lmax;}
