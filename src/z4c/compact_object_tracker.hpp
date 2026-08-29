@@ -79,6 +79,7 @@ class CompactObjectTracker {
   Real mass;            // mass needed for FastFlow
   Mesh const *pmesh;
   int out_every;
+  int walk_every;       // update cadence for the cell-walking mode
   std::ofstream ofile;
   Real pos[NDIM];
 };

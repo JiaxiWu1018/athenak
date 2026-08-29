@@ -33,7 +33,7 @@
 //----------------------------------------------------------------------------------------
 CompactObjectTracker::CompactObjectTracker(Mesh *pmesh, ParameterInput *pin, int n):
               owns_compact_object{false}, vel{NAN, NAN, NAN},
-              pmesh{pmesh}, out_every{1}, pos{NAN, NAN, NAN} {
+              pmesh{pmesh}, out_every{1}, walk_every{1}, pos{NAN, NAN, NAN} {
   std::string nstr = std::to_string(n);
   std::string ofname = pin->GetString("job", "basename") + ".";
   ofname += pin->GetOrAddString("z4c", "filename", "co_");
@@ -73,6 +73,14 @@ CompactObjectTracker::CompactObjectTracker(Mesh *pmesh, ParameterInput *pin, int
   radius = pin->GetOrAddReal("z4c", "co_" + nstr + "_radius", 0.0);
 
   out_every = pin->GetOrAddInteger("z4c", "co_" + nstr + "_out_every", 1);
+
+  walk_every = pin->GetOrAddInteger("z4c", "tracker_walk_every", 1);
+  if (walk_every < 1) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line "
+              << __LINE__ << std::endl;
+    std::cout << "tracker_walk_every must be positive" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
 
   if (0 == global_variable::my_rank) {
     ofile.open(ofname.c_str());
@@ -146,7 +154,7 @@ void CompactObjectTracker::EvolveTracker(MeshBlockPack *pmbp) {
       for (int a = 0; a < NDIM; ++a) {
         pos[a] += pmesh->dt * vel[a];
       }
-    } else {
+    } else if ((pmesh->ncycle % walk_every) == 0) {
       auto &padm = pmbp->padm;
       auto &size = pmbp->pmb->mb_size;
       auto &indcs = pmbp->pmesh->mb_indcs;
