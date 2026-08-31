@@ -35,6 +35,9 @@
 //!
 //! Public <problem> parameters:
 //!   cluster_mass, cluster_radius_over_mass, cluster_xi
+//!   cluster_eta_radial (default 0: radial/tangential repartition at constant
+//!                       local speed, eta = |v_r|/|v_t|; stratified_antithetic
+//!                       only; eta = 0 is bitwise the historical start)
 //!   cluster_nradial, cluster_nangular, cluster_seed
 //!   cluster_octahedral_quiet_start
 //!   cluster_rotation_enable, cluster_rotation_axis_x, cluster_rotation_axis_y,
@@ -867,6 +870,17 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   Real radius_over_mass =
       pin->GetOrAddReal("problem", "cluster_radius_over_mass", 6.1);
   Real xi = pin->GetOrAddReal("problem", "cluster_xi", 1.0);
+  // Radial/tangential velocity repartition at constant local speed (2026-08-31
+  // radial-dispersion session): eta = |v_r|/|v_t| per particle.  The flat unit
+  // velocity direction is tilted t_hat -> (t_hat + eta*n_hat)/sqrt(1+eta^2), so
+  // v_t = v0/sqrt(1+eta^2), |v_r| = eta*v0/sqrt(1+eta^2), and |v| = v0, W, and
+  // the particle energy alpha*W are unchanged exactly.  Default 0.0 keeps every
+  // historical realization bitwise unchanged (the modification is guarded by
+  // eta != 0).  Implemented and validated only for cluster_sampler =
+  // stratified_antithetic, where the whole-vector antithetic sign keeps
+  // v(odd) = -v(even) exact, so pairwise momentum, angular-momentum, and
+  // deposited momentum-density cancellation are all preserved.
+  Real eta_radial = pin->GetOrAddReal("problem", "cluster_eta_radial", 0.0);
   int nradial = pin->GetOrAddInteger("problem", "cluster_nradial", 32);
   int nangular = pin->GetOrAddInteger("problem", "cluster_nangular", 64);
   cluster_nradial_history = nradial;
@@ -912,6 +926,19 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   if (octahedral_quiet_start && (nangular % 24 != 0)) {
     Fatal("cluster_octahedral_quiet_start=true requires "
           "cluster_nangular to be divisible by 24.");
+  }
+  if (eta_radial != 0.0) {
+    if (sampler != ClusterSampler::stratified_antithetic) {
+      Fatal("cluster_eta_radial != 0 is implemented (and validated) only for "
+            "cluster_sampler=stratified_antithetic.");
+    }
+    if (!(eta_radial > 0.0 && eta_radial < 1.0)) {
+      Fatal("Require 0 <= cluster_eta_radial < 1.");
+    }
+    if (rotation_enable) {
+      Fatal("cluster_eta_radial != 0 with cluster_rotation_enable=true "
+            "is untested; disable one of them.");
+    }
   }
   Real compactness = 1.0/radius_over_mass;
   Real surface_v2 = xi*xi*compactness/(1.0 - 2.0*compactness);
@@ -1258,6 +1285,21 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
             sign*(cchi*eth[1] + schi*eph[1]),
             sign*(cchi*eth[2] + schi*eph[2])
           };
+          if (eta_radial != 0.0) {
+            // Constant-W radial/tangential repartition: tilt the flat unit
+            // direction t_hat -> (t_hat + eta*n_hat)/sqrt(1+eta^2).  n, eth,
+            // eph are mutually orthonormal flat vectors and gamma_ij = A^2
+            // delta_ij, so |u|, W, umag, and alpha*W are unchanged exactly.
+            // The antithetic sign multiplies the radial component too (both
+            // tvec[a] and sign*eta*n[a] flip), and round-to-nearest is
+            // sign-symmetric, so v(odd) = -v(even) stays bitwise exact.
+            // Guarded by eta != 0: eta = 0 keeps the historical realization
+            // bitwise unchanged.
+            Real inv_norm = 1.0/std::sqrt(1.0 + eta_radial*eta_radial);
+            for (int a = 0; a < 3; ++a) {
+              tvec[a] = inv_norm*(tvec[a] + sign*eta_radial*n[a]);
+            }
+          }
           Real pos[3] = {
             center[0] + s.riso*n[0],
             center[1] + s.riso*n[1],
@@ -1383,6 +1425,13 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << "  |P_part|/M=" << pnorm/mass << "\n"
               << "  rigid_rotation="
               << (rotation_enable ? "enabled" : "disabled") << "\n";
+    if (eta_radial != 0.0) {
+      Real inv_norm = 1.0/std::sqrt(1.0 + eta_radial*eta_radial);
+      std::cout << "  eta_radial=" << eta_radial
+                << "  v_t/v0=" << inv_norm
+                << "  |v_r|/v0=" << eta_radial*inv_norm
+                << "  L_scalar_pred_ratio=" << inv_norm << "\n";
+    }
     if (rotation_enable) {
       std::cout << "  rotation_axis_unit=(" << rotation_axis[0] << ","
                 << rotation_axis[1] << "," << rotation_axis[2] << ")"
