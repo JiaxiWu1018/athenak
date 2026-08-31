@@ -67,6 +67,8 @@ class FastFlow {
   Real ah_surf_center[3];
   Real ah_surf_rmin, ah_surf_rmax;   // angular extrema, for the consumer's bracket
   Real ah_surf_rmin_limit, ah_surf_rmax_limit; // optional physical publication limits
+  Real ah_surf_rmin_cells;            // optional minimum radius in finder-local cells
+  Real ah_surf_local_dx;              // local cell width used by the last candidate gate
   Real ah_surf_hrel_limit;            // optional |<H>|/area publication limit
   int ah_surf_persist, ah_surf_candidate_streak;
   bool ah_surf_warned;                // the off-grid warning is printed once
@@ -202,6 +204,7 @@ class FastFlow {
   Real PuncSumMasses();
   void PuncWeightedMassCentralPoint(Real *xc, Real *yc, Real *zc);
   bool PuncAreClose();
+  Real LocalCellWidthAtCenter();
 };
 
 #endif  // Z4C_FASTFLOW_HPP_

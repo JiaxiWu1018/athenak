@@ -158,16 +158,21 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   ah_surf_rmin = -1.0;
   ah_surf_rmax = -1.0;
   ah_surf_rmin_limit = pin->GetOrAddReal("fastflow", "consumer_rmin_" + n_str, 0.0);
+  ah_surf_rmin_cells = pin->GetOrAddReal("fastflow", "consumer_rmin_cells_" + n_str,
+                                        0.0);
+  ah_surf_local_dx = std::numeric_limits<Real>::infinity();
   ah_surf_rmax_limit = pin->GetOrAddReal("fastflow", "consumer_rmax_" + n_str,
                                         std::numeric_limits<Real>::max());
   ah_surf_hrel_limit = pin->GetOrAddReal("fastflow", "consumer_hrel_" + n_str,
                                         std::numeric_limits<Real>::max());
   ah_surf_persist = pin->GetOrAddInteger("fastflow", "consumer_persist_" + n_str, 1);
-  if (ah_surf_rmin_limit < 0.0 || ah_surf_rmax_limit <= ah_surf_rmin_limit
+  if (ah_surf_rmin_limit < 0.0 || ah_surf_rmin_cells < 0.0
+      || ah_surf_rmax_limit <= ah_surf_rmin_limit
       || ah_surf_hrel_limit <= 0.0 || ah_surf_persist < 1) {
     std::cout << "### FATAL ERROR: fastflow consumer gate for horizon " << nh
-              << " requires 0 <= consumer_rmin < consumer_rmax, consumer_hrel > 0, "
-              << "and consumer_persist >= 1" << std::endl;
+              << " requires 0 <= consumer_rmin < consumer_rmax, "
+              << "consumer_rmin_cells >= 0, consumer_hrel > 0, and "
+              << "consumer_persist >= 1" << std::endl;
     exit(EXIT_FAILURE);
   }
   ah_surf_candidate_streak = 0;
@@ -447,6 +452,32 @@ void FastFlow::Write(int iter, Real time) {
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn Real FastFlow::LocalCellWidthAtCenter()
+//! \brief Return the current leaf-cell width at this finder's center.
+//!
+//! The minimum-radius consumer gate must follow a moving finder through AMR rather than
+//! assuming a single global dx.  MeshBlocks are leaf blocks, so the half-open containment
+//! test selects the block that currently owns the center.  Taking the minimum over ranks
+//! also handles an exactly shared boundary conservatively.  The maximum directional width
+//! is returned so a radius quoted in cells is resolved in every direction.
+Real FastFlow::LocalCellWidthAtCenter() {
+  Real local_dx = std::numeric_limits<Real>::infinity();
+  auto &size = pmbp->pmb->mb_size;
+  for (int m = 0; m < pmbp->nmb_thispack; ++m) {
+    const RegionSize &sz = size.h_view(m);
+    if (center[0] >= sz.x1min && center[0] < sz.x1max
+        && center[1] >= sz.x2min && center[1] < sz.x2max
+        && center[2] >= sz.x3min && center[2] < sz.x3max) {
+      local_dx = std::min(local_dx, std::max(sz.dx1, std::max(sz.dx2, sz.dx3)));
+    }
+  }
+#if MPI_PARALLEL_ENABLED
+  MPI_Allreduce(MPI_IN_PLACE, &local_dx, 1, MPI_ATHENA_REAL, MPI_MIN, MPI_COMM_WORLD);
+#endif
+  return local_dx;
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void FastFlow::Find(int iter, Real time)
 //! \brief Search for the horizons
 void FastFlow::Find(int iter, Real time) {
@@ -469,10 +500,17 @@ void FastFlow::Find(int iter, Real time) {
     }, Kokkos::Max<Real>(candidate_rmax));
     const Real candidate_area = ah_prop[harea];
     const Real candidate_hrel = Kokkos::fabs(ah_prop[hhmean]) / candidate_area;
+    ah_surf_local_dx = LocalCellWidthAtCenter();
+    const bool local_dx_ok = (ah_surf_rmin_cells == 0.0)
+                          || (Kokkos::isfinite(ah_surf_local_dx)
+                              && ah_surf_local_dx > 0.0);
+    const Real resolved_rmin = local_dx_ok
+        ? std::max(ah_surf_rmin_limit, ah_surf_rmin_cells*ah_surf_local_dx)
+        : std::numeric_limits<Real>::infinity();
     const bool geometry_ok = Kokkos::isfinite(rr_min) && Kokkos::isfinite(candidate_rmax)
                           && Kokkos::isfinite(candidate_area)
                           && Kokkos::isfinite(candidate_hrel)
-                          && rr_min > 0.0 && rr_min >= ah_surf_rmin_limit
+                          && local_dx_ok && rr_min > 0.0 && rr_min >= resolved_rmin
                           && candidate_rmax <= ah_surf_rmax_limit
                           && candidate_area > 0.0 && candidate_hrel <= ah_surf_hrel_limit;
     if (!geometry_ok) {
@@ -486,8 +524,11 @@ void FastFlow::Find(int iter, Real time) {
         std::cout << "### WARNING: horizon " << nh
                   << " not published to consumers: candidate radius range ["
                   << rr_min << "," << candidate_rmax << "], area=" << candidate_area
-                  << ", |<H>|/area=" << candidate_hrel << " violates rmin >= "
-                  << ah_surf_rmin_limit << ", rmax <= " << ah_surf_rmax_limit
+                  << ", |<H>|/area=" << candidate_hrel << ", local dx="
+                  << ah_surf_local_dx << " violates rmin >= max("
+                  << ah_surf_rmin_limit << ", " << ah_surf_rmin_cells
+                  << " local cells) = " << resolved_rmin << ", rmax <= "
+                  << ah_surf_rmax_limit
                   << ", area > 0, or |<H>|/area <= " << ah_surf_hrel_limit << "."
                   << std::endl;
       }
