@@ -30,8 +30,12 @@
 //!    the coordinate rest-mass measure psi psi0^5 n0 (rejection on psi/psi0), momenta
 //!    from f0(R,.)/n0(R). Clump a: positions from P_a = psi Ma Ga/I_a (Eq. 36), momenta
 //!    from the Maxwellian h_a (Eq. 33), rest weight mu_a = I_a/(N_a <W>_a) (Eq. 37).
-//!    All particles are inserted in antithetic pairs (v, -v) at the same position so the
-//!    deposited momentum current cancels exactly pair by pair.
+//!    Thermal momenta are inserted in antithetic rest-frame pairs.  With zero bulk boost
+//!    the deposited current cancels exactly pair by pair.  An optional clump y-boost applies
+//!    the same proper Lorentz boost to both members and rescales the rest weight by the
+//!    changed mean Lorentz factor, preserving the target energy density while intentionally
+//!    introducing a local momentum current.  Because K_ij remains zero, such boosted data
+//!    are explicitly constraint-imperfect and require a separate momentum-constraint gate.
 //!  - Sec. V: gauge init alpha = alpha0 (psi0/psi)^2, beta^i = 0 (Eq. 39).
 //!
 //! AthenaK conventions (audited against this tree):
@@ -70,6 +74,7 @@
 //!   gi_nclumps          number of clumps (default 4)
 //!   gi_clumpN_mass, gi_clumpN_x1/x2/x3, gi_clumpN_sigma, gi_clumpN_s  (N = 1..nclumps;
 //!                       defaults for N<=4 from Table I of the paper)
+//!   gi_clumpN_bulk_vy orthonormal bulk velocity beta_y; |beta_y|<1 (default 0)
 //!   gi_clump_mass_scale multiplier applied to every Ma; 0 disables all clumps and
 //!                       recovers the exact static background (default 1.0)
 //!   gi_dump_profile     if non-empty, rank 0 writes the radial profile table to this
@@ -375,7 +380,7 @@ Real ClumpPsiTerm(Real mass, Real sigma, Real r) {
 }
 
 struct Clump {
-  Real mass, x1, x2, x3, sigma, svel;
+  Real mass, x1, x2, x3, sigma, svel, bulk_vy;
   int npart;
   Real ia, wavg, mu;
 };
@@ -472,10 +477,10 @@ Real EnvelopePerturbIntegral(const GIProfile &p, Real d, Real sigma) {
 
 struct PrtclStage {
   std::vector<Real> x, y, z, ux, uy, uz, mass;
-  std::vector<int> gid, tag;
+  std::vector<int> gid, tag, component;
 
   void Add(Real x_, Real y_, Real z_, Real ux_, Real uy_, Real uz_, Real mass_,
-           int gid_, int tag_) {
+           int gid_, int tag_, int component_) {
     x.push_back(x_);
     y.push_back(y_);
     z.push_back(z_);
@@ -485,6 +490,7 @@ struct PrtclStage {
     mass.push_back(mass_);
     gid.push_back(gid_);
     tag.push_back(tag_);
+    component.push_back(component_);
   }
 };
 
@@ -599,10 +605,12 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     clumps[a].x3 = pin->GetOrAddReal("problem", tagc + "_x3", 0.0);
     clumps[a].sigma = pin->GetOrAddReal("problem", tagc + "_sigma", dsg);
     clumps[a].svel = pin->GetOrAddReal("problem", tagc + "_s", def_svel);
-    if (clumps[a].mass < 0.0 || clumps[a].sigma <= 0.0 || clumps[a].svel <= 0.0) {
+    clumps[a].bulk_vy = pin->GetOrAddReal("problem", tagc + "_bulk_vy", 0.0);
+    if (clumps[a].mass < 0.0 || clumps[a].sigma <= 0.0 || clumps[a].svel <= 0.0
+        || std::abs(clumps[a].bulk_vy) >= 1.0) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
                 << std::endl << "gi_cluster clump " << a+1
-                << " requires mass>=0, sigma>0, s>0." << std::endl;
+                << " requires mass>=0, sigma>0, s>0, |bulk_vy|<1." << std::endl;
       std::exit(EXIT_FAILURE);
     }
   }
@@ -654,7 +662,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
           [&](Real rb) { return ClumpPsiTerm(b.mass, b.sigma, rb); });
     }
     c.ia = c.mass*mean_psi;     // I_a = Ma <psi>_{G_a}
-    c.wavg = MeanLorentzMaxwell(c.svel);
+    Real gamma_bulk = 1.0/std::sqrt(1.0 - c.bulk_vy*c.bulk_vy);
+    // For an isotropic rest distribution, <W_boost> = gamma_bulk <W_rest> because
+    // <v_y>_rest=0.  This keeps the deposited clump energy normalization I_a unchanged.
+    c.wavg = gamma_bulk*MeanLorentzMaxwell(c.svel);
   }
 
   // Particle counts: clump particles proportional to Ma, forced even (pairs).
@@ -881,8 +892,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
 
     int mloc = ppart->FindContainingMeshBlock(px, py, pz);
     if (mloc >= 0) {
-      stage.Add(px, py, pz, ux, uy, uz, mu_env, pmbp->gids + mloc, tag);
-      stage.Add(px, py, pz, -ux, -uy, -uz, mu_env, pmbp->gids + mloc, tag + 1);
+      stage.Add(px, py, pz, ux, uy, uz, mu_env, pmbp->gids + mloc, tag, 0);
+      stage.Add(px, py, pz, -ux, -uy, -uz, mu_env, pmbp->gids + mloc, tag + 1, 0);
     }
     tag += 2;
     placed += 2;
@@ -891,7 +902,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   // ---- Clumps: positions X ~ Ga rejected against psi/psi_bound (target P_a = psi Ga up
   //      to normalization, Eq. 36); momenta from the Maxwellian h_a; antithetic pairs.
   std::int64_t clump_pos_trials = 0;
-  for (const Clump &c : active) {
+  for (std::size_t a = 0; a < active.size(); ++a) {
+    const Clump &c = active[a];
     int placed_c = 0;
     while (placed_c < c.npart) {
       ++clump_pos_trials;
@@ -913,15 +925,26 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       Real v1, v2, v3, v4;
       BoxMuller(&v1, &v2);
       BoxMuller(&v3, &v4);
+      // Form an antithetic thermal pair in the clump rest frame, then apply the same
+      // orthonormal y-directed Lorentz boost to both four-velocities:
+      //   W' = gamma (W + beta v_y),  v'_y = gamma (v_y + beta W).
+      // Only the spatial four-velocity is stored; its covariant coordinate components are
+      // u_i = psi^2 v'_ihat for gamma_ij = psi^4 delta_ij.
+      Real vx = c.svel*v1;
+      Real vy = c.svel*v2;
+      Real vz = c.svel*v3;
+      Real w_rest = std::sqrt(1.0 + vx*vx + vy*vy + vz*vz);
+      Real gamma_bulk = 1.0/std::sqrt(1.0 - c.bulk_vy*c.bulk_vy);
+      Real vyp = gamma_bulk*(vy + c.bulk_vy*w_rest);
+      Real vym = gamma_bulk*(-vy + c.bulk_vy*w_rest);
       Real psi2 = psi*psi;
-      Real ux = psi2*c.svel*v1;
-      Real uy = psi2*c.svel*v2;
-      Real uz = psi2*c.svel*v3;
 
       int mloc = ppart->FindContainingMeshBlock(px, py, pz);
       if (mloc >= 0) {
-        stage.Add(px, py, pz, ux, uy, uz, c.mu, pmbp->gids + mloc, tag);
-        stage.Add(px, py, pz, -ux, -uy, -uz, c.mu, pmbp->gids + mloc, tag + 1);
+        stage.Add(px, py, pz, psi2*vx, psi2*vyp, psi2*vz, c.mu,
+                  pmbp->gids + mloc, tag, static_cast<int>(a) + 1);
+        stage.Add(px, py, pz, -psi2*vx, psi2*vym, -psi2*vz, c.mu,
+                  pmbp->gids + mloc, tag + 1, static_cast<int>(a) + 1);
       }
       tag += 2;
       placed_c += 2;
@@ -932,6 +955,43 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   // Fill the particle arrays and the global census (relativistic_cluster pattern).
 
   int npart = static_cast<int>(stage.x.size());
+
+  // Exact finite-N matter ledger on the initialized slice.  The global staged particle
+  // set is a disjoint partition across ranks, so an MPI sum counts every particle once.
+  // P_i and L_z use the stored covariant coordinate momentum, matching the matter source
+  // in the ADM momentum/angular-momentum volume integrals.  P_hat is included to expose
+  // the intended orthonormal boost directly.
+  constexpr int nledger = 8;
+  int ncomponents = static_cast<int>(active.size()) + 1;  // envelope + clumps
+  std::vector<Real> ledger(ncomponents*nledger, 0.0);
+  std::vector<std::int64_t> ledger_count(ncomponents, 0);
+  for (int p = 0; p < npart; ++p) {
+    int comp = stage.component[p];
+    Real psi = PsiFull(prof, active, stage.x[p], stage.y[p], stage.z[p]);
+    Real inv_psi2 = 1.0/(psi*psi);
+    Real vx = stage.ux[p]*inv_psi2;
+    Real vy = stage.uy[p]*inv_psi2;
+    Real vz = stage.uz[p]*inv_psi2;
+    Real w = std::sqrt(1.0 + vx*vx + vy*vy + vz*vz);
+    Real mass = stage.mass[p];
+    Real *sum = &ledger[comp*nledger];
+    sum[0] += mass*w;
+    sum[1] += mass*stage.ux[p];
+    sum[2] += mass*stage.uy[p];
+    sum[3] += mass*stage.uz[p];
+    sum[4] += mass*vx;
+    sum[5] += mass*vy;
+    sum[6] += mass*vz;
+    sum[7] += mass*(stage.x[p]*stage.uy[p] - stage.y[p]*stage.ux[p]);
+    ++ledger_count[comp];
+  }
+#if MPI_PARALLEL_ENABLED
+  MPI_Allreduce(MPI_IN_PLACE, ledger.data(), static_cast<int>(ledger.size()),
+                MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, ledger_count.data(), static_cast<int>(ledger_count.size()),
+                MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
   Kokkos::realloc(ppart->prtcl_rdata, ppart->nrdata, npart);
   Kokkos::realloc(ppart->prtcl_idata, ppart->nidata, npart);
   auto hr = Kokkos::create_mirror_view(ppart->prtcl_rdata);
@@ -993,10 +1053,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
                 ncl, sum_ma, dip1, dip2, dip3, m0 + sum_ma);
     for (int a = 0; a < ncl; ++a) {
       std::printf("  clump %d   : Ma=%.6g X=(%.4g,%.4g,%.4g) sigma=%.4g s=%.4g "
-                  "Na=%d Ia=%.10g <W>=%.10g mu=%.10g\n",
+                  "bulk_vy=%.8g Na=%d Ia=%.10g <W>=%.10g mu=%.10g\n",
                   a+1, active[a].mass, active[a].x1, active[a].x2, active[a].x3,
-                  active[a].sigma, active[a].svel, active[a].npart, active[a].ia,
-                  active[a].wavg, active[a].mu);
+                  active[a].sigma, active[a].svel, active[a].bulk_vy, active[a].npart,
+                  active[a].ia, active[a].wavg, active[a].mu);
     }
     std::printf("  sampling  : seed=%d k_env=%.6g psi_bound=%.6g env_accept=%.4g "
                 "clump_accept=%.4g mom_accept=%.4g\n",
@@ -1008,6 +1068,14 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
                 (env_mom_trials > 0)
                     ? static_cast<Real>(n_env/2)/static_cast<Real>(env_mom_trials)
                     : 0.0);
+    for (int comp = 0; comp < ncomponents; ++comp) {
+      const Real *sum = &ledger[comp*nledger];
+      const char *name = (comp == 0) ? "envelope" : "clump";
+      std::printf("  ledger %-8s %d: N=%lld sum(mW)=%.10g P_cov=(%.6e,%.6e,%.6e) "
+                  "P_hat=(%.6e,%.6e,%.6e) Lz_cov=%.10g\n",
+                  name, comp, static_cast<long long>(ledger_count[comp]), sum[0], sum[1],
+                  sum[2], sum[3], sum[4], sum[5], sum[6], sum[7]);
+    }
     std::printf("  particles : total=%d (envelope %d + clumps %d), antithetic pairs\n",
                 npart_total, n_env, n_clump_sum);
 
