@@ -86,6 +86,7 @@ void Particles::mark_excised() {
   Real cx1 = excise_x1, cx2 = excise_x2, cx3 = excise_x3;
   bool lapse_on = (excise_lapse > 0.0);
   Real alpha_thr = excise_lapse;
+  const bool tri = (interp_method == ParticleInterpMethod::trilinear);
 
   // alpha source: live (post-step) arrays, gr_boris convention
   DvceArray5D<Real> alpha_arr;
@@ -127,7 +128,11 @@ void Particles::mark_excised() {
       int interp_indcs[4] = {mb, -1, -1, -1};
       SetInterpIndices(xp, mb_par, ncell, interp_indcs);
       Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
-      CalcInterpWght<NGHOST>(xp, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+      if (tri) {
+        CalcTriWght<NGHOST>(xp, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+      } else {
+        CalcInterpWght<NGHOST>(xp, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+      }
       Real alpha = LagrangeInterpolator<NGHOST>(alpha_arr, alpha_idx, interp_indcs,
                                                 Lx, Ly, Lz);
       if (alpha < alpha_thr) {

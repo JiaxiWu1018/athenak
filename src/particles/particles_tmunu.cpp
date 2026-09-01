@@ -417,6 +417,9 @@ void Particles::set_prtcl_tmunu() {
     auto &img = tmunu_images;
     auto &img_send = tmunu_img_send;
     auto &nimg_ctr = tmunu_nimg;
+    // gather-scheme selector for the Lorentz-factor metric evaluation below; the CIC
+    // deposit stencil itself is unaffected by this choice
+    const bool tri = (interp_method == ParticleInterpMethod::trilinear);
     int img_cap = static_cast<int>(tmunu_images.extent(0));
     int send_cap = static_cast<int>(tmunu_img_send.extent(0));
     par_for("tmunu_gen_records", DevExeSpace(), 0, (npart-1),
@@ -449,7 +452,11 @@ void Particles::set_prtcl_tmunu() {
       int interp_indcs[4] = {m, -1, -1, -1};
       SetInterpIndices(x, mb_par, ncell, interp_indcs);
       Real Lx[2*NGHOST] = {0.0}, Ly[2*NGHOST] = {0.0}, Lz[2*NGHOST] = {0.0};
-      CalcInterpWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+      if (tri) {
+        CalcTriWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+      } else {
+        CalcInterpWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+      }
       Real g3u[6];
       LagrangeInterpolator<NGHOST>(adm_n, adm::ADM::I_ADM_GXX, interp_indcs,
                                    Lx, Ly, Lz, g3u);

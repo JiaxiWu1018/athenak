@@ -418,6 +418,7 @@ ClusterShellHealth WriteClusterShellSummary(Mesh *pm) {
   DvceArray1D<Real> radius_areal("cluster shell areal radius", npart);
   DvceArray1D<Real> radial_velocity("cluster shell radial velocity", npart);
   DvceArray1D<int> tag("cluster shell tag", npart);
+  const bool tri = (ppart->interp_method == ParticleInterpMethod::trilinear);
 
   Kokkos::parallel_for("homogeneous cluster shell samples",
       Kokkos::RangePolicy<>(DevExeSpace(), 0, npart),
@@ -438,8 +439,13 @@ ClusterShellHealth WriteClusterShellSummary(Mesh *pm) {
     Real Lx[2*NGHOST] = {0.0};
     Real Ly[2*NGHOST] = {0.0};
     Real Lz[2*NGHOST] = {0.0};
-    particles::CalcInterpWght<NGHOST>(
-        xabs, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    if (tri) {
+      particles::CalcTriWght<NGHOST>(
+          xabs, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    } else {
+      particles::CalcInterpWght<NGHOST>(
+          xabs, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    }
 
     Real alpha = 0.0;
     Real beta[3] = {0.0, 0.0, 0.0};

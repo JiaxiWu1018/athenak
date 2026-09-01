@@ -140,6 +140,71 @@ void CalcInterpWghtAndDrv(const Real *x0, const Real *grid, const int *ncell,
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn void CalcTriWght
+//! \brief Genuine 8-point (2x2x2) TRILINEAR gather weights, PADDED into the 2*ORDER-wide
+//! Lagrange weight arrays: every slot is exactly 0.0 except the two central slots
+//! [ORDER-1] and [ORDER], which hold the 1-D linear weights (1-t) and t for the
+//! cell-centre pair straddling the particle -- the same node pair and the same weights
+//! that CIC deposition uses, i.e. the adjoint of the deposit operator. The padded layout
+//! lets every existing LagrangeInterpolator call site evaluate the trilinear interpolant
+//! unchanged: the zero-weight nodes contribute exactly 0.0 to the accumulation, so the
+//! result is bitwise the dedicated 8-point formula. Uses the SAME clamped base index
+//! from SetInterpIndices as the Lagrange path (slot [ORDER-1] is stencil node
+//! interp_indcs[d], slot [ORDER] is node interp_indcs[d]+1).
+
+template <int ORDER>
+KOKKOS_INLINE_FUNCTION
+void CalcTriWght(const Real *x0, const Real *grid, const int *ncell,
+                 const int *interp_indcs, Real *Lx, Real *Ly, Real *Lz) {
+  constexpr int N = 2 * ORDER;
+  for (int i = 0; i < N; ++i) { Lx[i] = 0.0; Ly[i] = 0.0; Lz[i] = 0.0; }
+  const Real xa = CellCenterX(interp_indcs[1], ncell[0], grid[0], grid[1]);
+  const Real ya = CellCenterX(interp_indcs[2], ncell[1], grid[3], grid[4]);
+  const Real za = CellCenterX(interp_indcs[3], ncell[2], grid[6], grid[7]);
+  const Real tx = (x0[0] - xa) / grid[2];
+  const Real ty = (x0[1] - ya) / grid[5];
+  const Real tz = (x0[2] - za) / grid[8];
+  Lx[ORDER-1] = 1.0 - tx;  Lx[ORDER] = tx;
+  Ly[ORDER-1] = 1.0 - ty;  Ly[ORDER] = ty;
+  Lz[ORDER-1] = 1.0 - tz;  Lz[ORDER] = tz;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void CalcTriWghtAndDrv
+//! \brief Like CalcTriWght, but also fills the derivative-weight arrays with the exact
+//! derivative of the trilinear basis: dL[ORDER-1] = -1/dx, dL[ORDER] = +1/dx (zero
+//! elsewhere). Feeding dLx (in place of Lx) into LagrangeInterpolator then yields the
+//! exact spatial derivative of the trilinear interpolant: the two-node finite difference
+//! in the derivative direction, bilinearly interpolated in the transverse directions.
+//! This derivative is piecewise-constant across cell faces in the derivative direction
+//! (a known property of the trilinear/CIC-adjoint scheme), unlike the smooth
+//! high-order Lagrange derivative.
+
+template <int ORDER>
+KOKKOS_INLINE_FUNCTION
+void CalcTriWghtAndDrv(const Real *x0, const Real *grid, const int *ncell,
+                       const int *interp_indcs, Real *Lx, Real *Ly, Real *Lz,
+                       Real *dLx, Real *dLy, Real *dLz) {
+  constexpr int N = 2 * ORDER;
+  for (int i = 0; i < N; ++i) {
+    Lx[i] = 0.0; Ly[i] = 0.0; Lz[i] = 0.0;
+    dLx[i] = 0.0; dLy[i] = 0.0; dLz[i] = 0.0;
+  }
+  const Real xa = CellCenterX(interp_indcs[1], ncell[0], grid[0], grid[1]);
+  const Real ya = CellCenterX(interp_indcs[2], ncell[1], grid[3], grid[4]);
+  const Real za = CellCenterX(interp_indcs[3], ncell[2], grid[6], grid[7]);
+  const Real tx = (x0[0] - xa) / grid[2];
+  const Real ty = (x0[1] - ya) / grid[5];
+  const Real tz = (x0[2] - za) / grid[8];
+  Lx[ORDER-1] = 1.0 - tx;  Lx[ORDER] = tx;
+  Ly[ORDER-1] = 1.0 - ty;  Ly[ORDER] = ty;
+  Lz[ORDER-1] = 1.0 - tz;  Lz[ORDER] = tz;
+  dLx[ORDER-1] = -1.0 / grid[2];  dLx[ORDER] = 1.0 / grid[2];
+  dLy[ORDER-1] = -1.0 / grid[5];  dLy[ORDER] = 1.0 / grid[5];
+  dLz[ORDER-1] = -1.0 / grid[8];  dLz[ORDER] = 1.0 / grid[8];
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn Real LagrangeInterpolator
 //! \brief Interpolate scalar field variable nvar of the 5-D array u0 to the particle:
 //! sum over the 2*ORDER^3 stencil of Lx_i*Ly_j*Lz_k * u0(m,nvar,k,j,i). The

@@ -92,6 +92,7 @@ void Particles::calc_prtcl_energy() {
   if (use_z4c) {
     z4c_u0 = gr_boris_freeze_metric ? z4c_last : pmy_pack->pz4c->u0;
   }
+  const bool tri = (interp_method == ParticleInterpMethod::trilinear);
 
   par_for("calc_prtcl_energy", DevExeSpace(), 0, (nprtcl_thispack-1),
   KOKKOS_LAMBDA(const int p) {
@@ -104,11 +105,15 @@ void Particles::calc_prtcl_energy() {
       size.d_view(m).x2min, size.d_view(m).x2max, size.d_view(m).dx2,
       size.d_view(m).x3min, size.d_view(m).x3max, size.d_view(m).dx3};
 
-    // stencil indices + Lagrange weights at the particle
+    // stencil indices + gather weights (Lagrange or padded trilinear) at the particle
     int interp_indcs[4] = {m, -1, -1, -1};
     SetInterpIndices(x, mb_par, ncell, interp_indcs);
     Real Lx[2*NGHOST] = {0.0}, Ly[2*NGHOST] = {0.0}, Lz[2*NGHOST] = {0.0};
-    CalcInterpWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    if (tri) {
+      CalcTriWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    } else {
+      CalcInterpWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    }
 
     // interpolate lapse + shift (from Z4c when live, else ADM) and the 3-metric (ADM)
     Real alp;

@@ -164,6 +164,50 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     }
   }
 
+  // select the grid->particle interpolation scheme. "lagrange" (default, and the
+  // historical behavior when the key is absent) is the 2*NGHOST-point tensor-product
+  // Lagrange gather; "trilinear" is the genuine 8-point (2x2x2) linear gather -- the
+  // adjoint of CIC deposition -- applied at EVERY grid-at-particle evaluation (pusher,
+  // energy, excision, deposition Lorentz factor, shell/monopole diagnostics). The
+  // default keeps the historical code path: no trilinear code executes at all.
+  {
+    std::string imeth = pin->GetOrAddString("particles","interpolation","lagrange");
+    if (imeth.compare("lagrange") == 0) {
+      interp_method = ParticleInterpMethod::lagrange;
+    } else if (imeth.compare("trilinear") == 0) {
+      interp_method = ParticleInterpMethod::trilinear;
+      // the special-relativistic Boris / drift / tracer pushers and the gr_boris EM
+      // half-kicks still gather with Lagrange weights only; reject any combination
+      // that would silently mix schemes inside one particle update
+      if (pusher != ParticlesPusher::gr_boris) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "<particles> interpolation = trilinear is only "
+                  << "implemented for pusher = gr_boris" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      if (pmy_pack->pmhd != nullptr) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "<particles> interpolation = trilinear does not "
+                  << "support the gr_boris electromagnetic half-kicks (MHD present); "
+                  << "those gathers are Lagrange-only" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+    } else {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "<particles> interpolation = '" << imeth
+                << "' not recognized (use lagrange|trilinear)" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    if (global_variable::my_rank == 0) {
+      std::cout << "PARTICLES grid->particle interpolation = " << imeth
+                << ((interp_method == ParticleInterpMethod::trilinear)
+                    ? " (genuine 2x2x2 trilinear gather, CIC-adjoint, at every"
+                      " grid-at-particle site)"
+                    : " (historical 2*NGHOST-point tensor-product Lagrange gather)")
+                << std::endl;
+    }
+  }
+
   // migration debug instrumentation (see particles.hpp for the level semantics)
   debug_lvl = pin->GetOrAddInteger("particles","debug",0);
   if (debug_lvl < 0 || debug_lvl > 2) {

@@ -54,8 +54,14 @@ namespace particles {
 //! interpolates the metric and its spatial derivatives at the space-time midpoint and
 //! applies the 3+1 geodesic equations. Euler=true evaluates at (x^n, step n) for the
 //! forward-Euler fallback.
+//!
+//! IMETH selects the gather scheme at compile time (values of ParticleInterpMethod):
+//! 0 = Lagrange (historical; the instantiation contains no trilinear code, preserving
+//! the default path bitwise), 1 = trilinear (padded weights; every LagrangeInterpolator
+//! contraction below then evaluates the genuine 2x2x2 linear interpolant and its exact
+//! derivative -- see CalcTriWghtAndDrv).
 
-template <int NG>
+template <int NG, int IMETH = 0>
 struct GeodesicPush {
   const Real *x_old, *u_old, *mb_par;
   const int *ncell;
@@ -86,8 +92,13 @@ struct GeodesicPush {
     SetInterpIndices(x_mid, mb_par, ncell, interp_indcs);
     Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
     Real dLx[8] = {0.0}, dLy[8] = {0.0}, dLz[8] = {0.0};
-    CalcInterpWghtAndDrv<NG>(x_mid, mb_par, ncell,
-                             interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
+    if constexpr (IMETH == static_cast<int>(ParticleInterpMethod::trilinear)) {
+      CalcTriWghtAndDrv<NG>(x_mid, mb_par, ncell,
+                            interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
+    } else {
+      CalcInterpWghtAndDrv<NG>(x_mid, mb_par, ncell,
+                               interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
+    }
 
     // ---- Step 1: update position ----
     // (i) interpolate lapse/shift/3-metric at the midpoint (time-averaged old/new)
@@ -310,6 +321,7 @@ void AccumulateGRBorisMonopoleProfiles(
   Real c0 = pp->gr_boris_monopole_center[0];
   Real c1 = pp->gr_boris_monopole_center[1];
   Real c2 = pp->gr_boris_monopole_center[2];
+  const bool tri = (pp->interp_method == ParticleInterpMethod::trilinear);
 
   par_for("gr_boris_monopole_average", DevExeSpace(), 0, pp->nprtcl_thispack - 1,
   KOKKOS_LAMBDA(const int p) {
@@ -331,7 +343,11 @@ void AccumulateGRBorisMonopoleProfiles(
     int interp_indcs[4] = {mb, -1, -1, -1};
     SetInterpIndices(x, mb_par, ncell, interp_indcs);
     Real Lx[2*NG] = {0.0}, Ly[2*NG] = {0.0}, Lz[2*NG] = {0.0};
-    CalcInterpWght<NG>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    if (tri) {
+      CalcTriWght<NG>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    } else {
+      CalcInterpWght<NG>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    }
     Real old_scalar[4], new_scalar[4];
     InterpolateMonopoleScalars<NG>(
         adm_old, use_z4c, z4c_old, interp_indcs, Lx, Ly, Lz, n, old_scalar);
@@ -603,6 +619,9 @@ void Particles::GR_BorisPush() {
   int gids = pmy_pack->gids;
   auto dt_ = pmy_pack->pmesh->dt;
   auto qom = q_over_m;
+  // gather-scheme selector for the geodesic substep; the EM half-kicks below are
+  // Lagrange-only (trilinear+MHD is rejected at construction in particles.cpp)
+  const bool tri_gather = (interp_method == ParticleInterpMethod::trilinear);
 
   auto nfail_ = boris_nfail;          // bounded non-convergence diagnostic counters
   const int ndetail_ = kBorisDetail;
@@ -661,6 +680,9 @@ void Particles::GR_BorisPush() {
     Real u_n[3] = {pr(IPVX, p), pr(IPVY, p), pr(IPVZ, p)};
 
     // ---- Step 1+2: first half EM kick at x^n (skipped when no MHD) ----
+    // NOTE: the EM half-kick gathers below are Lagrange-only; interpolation=trilinear
+    // with MHD present is rejected at construction (particles.cpp), so no run mixes
+    // schemes here.
     Real u_p[3] = {0.0};
     if (use_mhd) {
       Real B_interp_n[3] = {0.0}, v_interp_n[3] = {0.0};
@@ -797,6 +819,27 @@ void Particles::GR_BorisPush() {
       MonopoleGeodesicPush gp(
           x_n, u_p, mono_old, mono_new, mono_nr, mono_dr, dt_, center);
       find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+    } else if (tri_gather) {
+      switch (ng) {
+      case 2: {
+        GeodesicPush<2,1> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
+                             z4c_n, z4c_np1);
+        find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+        break;
+      }
+      case 3: {
+        GeodesicPush<3,1> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
+                             z4c_n, z4c_np1);
+        find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+        break;
+      }
+      case 4: {
+        GeodesicPush<4,1> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
+                             z4c_n, z4c_np1);
+        find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+        break;
+      }
+      }
     } else {
       switch (ng) {
       case 2: {
@@ -1065,6 +1108,7 @@ void Particles::GRBorisDiagnostics() {
   bool use_monopole = gr_boris_live_monopole;
   auto &raw_du_dt = gr_boris_raw_du_dt;
   auto &raw_dL_dt = gr_boris_raw_dL_dt;
+  const bool tri_gather = (interp_method == ParticleInterpMethod::trilinear);
 
   par_for("gr_boris_diagnostics", DevExeSpace(), 0, nprtcl_thispack - 1,
   KOKKOS_LAMBDA(const int p) {
@@ -1088,6 +1132,23 @@ void Particles::GRBorisDiagnostics() {
       MonopoleGeodesicPush evaluate(
           x, u, mono_profile, mono_profile, mono_nr, mono_dr, 1.0, center);
       evaluate(x, u, x_plus_rate, u_plus_rate, true);
+    } else if (tri_gather) {
+      if (ng == 2) {
+        GeodesicPush<2,1> evaluate(
+            x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+            use_z4c, z4c_metric, z4c_metric);
+        evaluate(x, u, x_plus_rate, u_plus_rate, true);
+      } else if (ng == 3) {
+        GeodesicPush<3,1> evaluate(
+            x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+            use_z4c, z4c_metric, z4c_metric);
+        evaluate(x, u, x_plus_rate, u_plus_rate, true);
+      } else {
+        GeodesicPush<4,1> evaluate(
+            x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+            use_z4c, z4c_metric, z4c_metric);
+        evaluate(x, u, x_plus_rate, u_plus_rate, true);
+      }
     } else {
       if (ng == 2) {
         GeodesicPush<2> evaluate(
@@ -1121,7 +1182,24 @@ void Particles::GRBorisDiagnostics() {
 
     if (use_monopole) {
       Real x_raw[3] = {0.0}, u_raw[3] = {0.0};
-      if (ng == 2) {
+      if (tri_gather) {
+        if (ng == 2) {
+          GeodesicPush<2,1> evaluate(
+              x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+              use_z4c, z4c_metric, z4c_metric);
+          evaluate(x, u, x_raw, u_raw, true);
+        } else if (ng == 3) {
+          GeodesicPush<3,1> evaluate(
+              x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+              use_z4c, z4c_metric, z4c_metric);
+          evaluate(x, u, x_raw, u_raw, true);
+        } else {
+          GeodesicPush<4,1> evaluate(
+              x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+              use_z4c, z4c_metric, z4c_metric);
+          evaluate(x, u, x_raw, u_raw, true);
+        }
+      } else if (ng == 2) {
         GeodesicPush<2> evaluate(
             x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
             use_z4c, z4c_metric, z4c_metric);
