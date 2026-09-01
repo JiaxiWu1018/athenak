@@ -36,6 +36,8 @@
 //!   cluster_lambda_tan tangential reorientation amplitude in [0,1] (default 0)
 //!   cluster_eps_out    outward-bias amplitude eps_out in [0,1] (default 0)
 //!   cluster_radial_mode_u coherent radial-mode surface 3-velocity U in (-1,1) (default 0)
+//!   cluster_solve_momentum_constraint initialize the spherical CTT K_ij correction
+//!                                     sourced by the coherent mode (default false)
 //!   cluster_bias_mode  "stratified" (default) or "bernoulli"
 //!   cluster_bias_seed  salt for the bernoulli-mode per-tag hash (default 0)
 //!   cluster_t0_dump    if non-empty, rank 0 writes the full global t=0 particle sample
@@ -47,6 +49,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <random>
 #include <string>
 #include <utility>
@@ -102,6 +105,7 @@ struct ClusterProfile {
   Real r_over_m;
   Real riso_over_m_surface;
   Real rest_mass_over_m;
+  Real cdf_normalization;
 };
 
 struct PrtclStage {
@@ -291,6 +295,7 @@ ClusterProfile ConstructProfile(Real yc, Real dx) {
               << std::endl;
     std::exit(EXIT_FAILURE);
   }
+  profile.cdf_normalization = integral;
   for (Real &value : profile.cdf) { value /= integral; }
   profile.cdf.back() = 1.0;
 
@@ -612,6 +617,116 @@ bool AddCoherentRadialMode(DrawnParticle *d, Real radial_mode_u,
   return std::isfinite(*abs_delta_vtan) && std::isfinite(*normalization_residual);
 }
 
+//! \struct CTTMomentumProfile
+//! \brief spherical conformal-transverse-traceless momentum-constraint correction.
+//!
+//! With gamma_ij=psi^4 delta_ij, K=0 and
+//!
+//!   (L W)^ij = 2 a(r) (n^i n^j - delta^ij/3),  a=W'-W/r,
+//!
+//! the radial momentum constraint is
+//!
+//!   W'' + 2 W'/r - 2 W/r^2 = F(r),  F=6 pi psi^6 S_r,
+//!
+//! because the particle deposition stores the covariant Eulerian momentum density S_r.
+//! The regular/asymptotically-decaying Green solution gives the especially simple
+//!
+//!   a(r) = r^-3 integral_0^r s^3 F(s) ds.
+//!
+//! The source below is the exact spherical continuum average of the sampled equilibrium
+//! distribution after AddCoherentRadialMode. It removes the coherent current while leaving
+//! the unavoidable finite-N nonspherical shot-noise part to the evolution constraints.
+
+struct CTTMomentumProfile {
+  std::vector<Real> a;
+  Real moment = 0.0;       // integral_0^R r^3 F dr; a=moment/r^3 outside matter
+  Real max_abs_source = 0.0;
+  Real max_abs_a = 0.0;
+  Real max_abs_mean_uhat_r = 0.0;
+};
+
+//! \brief angular average <u_(hat r)> after adding q=delta v^(hat r).
+//!
+//! The base velocity has magnitude sqrt(1-y) and isotropic mu. A symmetric 64-point
+//! midpoint quadrature makes the q=0 result cancel pairwise exactly and is amply converged
+//! for the small Session-04 amplitudes.
+Real MeanPerturbedRadialUhat(Real y, Real q) {
+  constexpr int nmu_half = 32;
+  Real v0 = std::sqrt(std::max(static_cast<Real>(1.0) - y,
+                               static_cast<Real>(0.0)));
+  Real sum = 0.0;
+  for (int k = 0; k < nmu_half; ++k) {
+    Real mu = (static_cast<Real>(k) + 0.5)/static_cast<Real>(nmu_half);
+    Real den_plus = y - q*q - 2.0*v0*q*mu;
+    Real den_minus = y - q*q + 2.0*v0*q*mu;
+    if (!(den_plus > 0.0) || !(den_minus > 0.0)) {
+      return std::numeric_limits<Real>::quiet_NaN();
+    }
+    sum += (v0*mu + q)/std::sqrt(den_plus);
+    sum += (-v0*mu + q)/std::sqrt(den_minus);
+  }
+  return sum/static_cast<Real>(2*nmu_half);
+}
+
+CTTMomentumProfile ConstructCTTMomentumProfile(const ClusterProfile &profile,
+                                                Real total_mass,
+                                                Real radial_mode_u) {
+  CTTMomentumProfile correction;
+  std::size_t nprof = profile.x.size();
+  correction.a.assign(nprof, 0.0);
+  std::vector<Real> source(nprof, 0.0);
+  std::vector<Real> integrand(nprof, 0.0);
+  std::vector<Real> cumulative(nprof, 0.0);
+  Real zeta = (1.0 - profile.y.front())/3.0;
+  Real rest_mass = total_mass*profile.rest_mass_over_m;
+
+  for (std::size_t i = 1; i < nprof; ++i) {
+    Real x = profile.x[i];
+    Real riso = total_mass*profile.riso_over_m[i];
+    Real compact = 1.0 - 2.0*zeta*profile.v[i]/x;
+    Real radial_factor = 1.0/std::sqrt(compact);
+    // From rbar proportional to x exp(h), d rbar/dx = rbar*radial_factor/x.
+    Real driso_dx = riso*radial_factor/x;
+    Real inv_y_minus_one = std::max(static_cast<Real>(1.0)/profile.y[i] - 1.0,
+                                    static_cast<Real>(0.0));
+    Real cdf_weight = x*x/profile.y[i]*std::sqrt(inv_y_minus_one);
+    Real dprob_dx = cdf_weight/profile.cdf_normalization;
+    Real x_areal = x/profile.xs;
+    Real q = 0.5*radial_mode_u*(3.0*x_areal - x_areal*x_areal*x_areal);
+    Real mean_uhat_r = MeanPerturbedRadialUhat(profile.y[i], q);
+    if (!std::isfinite(mean_uhat_r)) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "Non-timelike continuum velocity in CTT source at x="
+                << x << ", U=" << radial_mode_u << "." << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+
+    // rho_0 = M0 (dP/dx)/(4 pi A^3 rbar^2 drbar/dx), S_r=A rho_0<u_hat_r>.
+    // Hence F=6 pi psi^6 S_r=(3/2) M0 A (dP/dx)<u_hat_r>/(rbar^2 drbar/dx).
+    Real denom = riso*riso*driso_dx;
+    source[i] = (denom > 0.0)
+        ? 1.5*rest_mass*profile.conformal_a[i]*dprob_dx*mean_uhat_r/denom
+        : 0.0;
+    integrand[i] = riso*riso*riso*source[i];
+    correction.max_abs_source = std::max(correction.max_abs_source,
+                                         std::abs(source[i]));
+    correction.max_abs_mean_uhat_r = std::max(correction.max_abs_mean_uhat_r,
+                                              std::abs(mean_uhat_r));
+  }
+
+  for (std::size_t i = 1; i < nprof; ++i) {
+    Real r0 = total_mass*profile.riso_over_m[i-1];
+    Real r1 = total_mass*profile.riso_over_m[i];
+    cumulative[i] = cumulative[i-1] +
+                    0.5*(integrand[i-1] + integrand[i])*(r1 - r0);
+    correction.a[i] = cumulative[i]/(r1*r1*r1);
+    correction.max_abs_a = std::max(correction.max_abs_a,
+                                    std::abs(correction.a[i]));
+  }
+  correction.moment = cumulative.back();
+  return correction;
+}
+
 //! \struct BiasStats
 //! \brief t=0 bookkeeping for the outward bias, accumulated over ALL tags (every rank
 //! reproduces the same global draw, so rank 0 can report them without any reduction).
@@ -710,6 +825,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   Real lambda_tan = pin->GetOrAddReal("problem", "cluster_lambda_tan", 0.0);
   Real eps_out = pin->GetOrAddReal("problem", "cluster_eps_out", 0.0);
   Real radial_mode_u = pin->GetOrAddReal("problem", "cluster_radial_mode_u", 0.0);
+  bool solve_momentum_constraint = pin->GetOrAddBoolean(
+      "problem", "cluster_solve_momentum_constraint", false);
   std::string bias_mode = pin->GetOrAddString("problem", "cluster_bias_mode",
                                               "stratified");
   int bias_seed = pin->GetOrAddInteger("problem", "cluster_bias_seed", 0);
@@ -745,25 +862,40 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << "(got '" << bias_mode << "')." << std::endl;
     std::exit(EXIT_FAILURE);
   }
+  if (solve_momentum_constraint && (lambda_tan != 0.0 || eps_out != 0.0)) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "cluster_solve_momentum_constraint currently supports "
+              << "the coherent radial mode alone; require lambda_tan=eps_out=0."
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
 
   ClusterProfile profile = ConstructProfile(yc, profile_dx);
+  CTTMomentumProfile momentum_correction;
+  if (solve_momentum_constraint) {
+    momentum_correction = ConstructCTTMomentumProfile(profile, total_mass, radial_mode_u);
+  }
 
   // Copy the isotropic radial metric profile to the device.
   int nprof = static_cast<int>(profile.x.size());
   DvceArray1D<Real> radius_d("cluster_radius", nprof);
   DvceArray1D<Real> conf_d("cluster_conformal_a", nprof);
   DvceArray1D<Real> lapse_d("cluster_lapse", nprof);
+  DvceArray1D<Real> ctt_a_d("cluster_ctt_a", nprof);
   auto radius_h = Kokkos::create_mirror_view(radius_d);
   auto conf_h = Kokkos::create_mirror_view(conf_d);
   auto lapse_h = Kokkos::create_mirror_view(lapse_d);
+  auto ctt_a_h = Kokkos::create_mirror_view(ctt_a_d);
   for (int i = 0; i < nprof; ++i) {
     radius_h(i) = total_mass*profile.riso_over_m[i];
     conf_h(i) = profile.conformal_a[i];
     lapse_h(i) = profile.lapse[i];
+    ctt_a_h(i) = solve_momentum_constraint ? momentum_correction.a[i] : 0.0;
   }
   Kokkos::deep_copy(radius_d, radius_h);
   Kokkos::deep_copy(conf_d, conf_h);
   Kokkos::deep_copy(lapse_d, lapse_h);
+  Kokkos::deep_copy(ctt_a_d, ctt_a_h);
 
   // Smooth equilibrium metric in isotropic Cartesian coordinates. The exterior is the
   // standard isotropic Schwarzschild solution with mass M.
@@ -777,6 +909,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   int nmb = pmbp->nmb_thispack;
   Real surface_radius = total_mass*profile.riso_over_m_surface;
   Real mass = total_mass;
+  Real ctt_moment = solve_momentum_constraint ? momentum_correction.moment : 0.0;
   Real cx = center[0], cy = center[1], cz = center[2];
   par_for("pgen relativistic cluster metric", DevExeSpace(), 0, nmb-1,
           ksg, keg, jsg, jeg, isg, ieg,
@@ -787,6 +920,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     Real riso = std::sqrt(x1*x1 + x2*x2 + x3*x3);
     Real conformal_a;
     Real alpha;
+    Real ctt_a = 0.0;
     if (riso < surface_radius) {
       int lo = 0;
       int hi = nprof - 1;
@@ -802,19 +936,35 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       Real frac = (denom > 0.0) ? (riso - radius_d(lo))/denom : 0.0;
       conformal_a = conf_d(lo) + frac*(conf_d(hi) - conf_d(lo));
       alpha = lapse_d(lo) + frac*(lapse_d(hi) - lapse_d(lo));
+      if (solve_momentum_constraint) {
+        ctt_a = ctt_a_d(lo) + frac*(ctt_a_d(hi) - ctt_a_d(lo));
+      }
     } else {
       Real q = 0.5*mass/riso;
       conformal_a = (1.0 + q)*(1.0 + q);
       alpha = (1.0 - q)/(1.0 + q);
+      if (solve_momentum_constraint) {
+        ctt_a = ctt_moment/(riso*riso*riso);
+      }
     }
     Real gamma_diag = conformal_a*conformal_a;
+    Real nx = (riso > 0.0) ? x1/riso : 0.0;
+    Real ny = (riso > 0.0) ? x2/riso : 0.0;
+    Real nz = (riso > 0.0) ? x3/riso : 0.0;
+    Real nhat[3] = {nx, ny, nz};
     adm.psi4(m,k,j,i) = gamma_diag;
     adm.alpha(m,k,j,i) = alpha;
     for (int a = 0; a < 3; ++a) {
       adm.beta_u(m,a,k,j,i) = 0.0;
       for (int b = a; b < 3; ++b) {
         adm.g_dd(m,a,b,k,j,i) = (a == b) ? gamma_diag : 0.0;
-        adm.vK_dd(m,a,b,k,j,i) = 0.0;
+        if (solve_momentum_constraint) {
+          Real tf = nhat[a]*nhat[b] - ((a == b) ? 1.0/3.0 : 0.0);
+          // K_ij=psi^-2 (L W)_ij=A^-1 2 a(n_i n_j-delta_ij/3).
+          adm.vK_dd(m,a,b,k,j,i) = 2.0*ctt_a*tf/conformal_a;
+        } else {
+          adm.vK_dd(m,a,b,k,j,i) = 0.0;
+        }
       }
     }
   });
@@ -1041,6 +1191,16 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << ", Riso/M=" << profile.riso_over_m_surface
               << ", M0/M=" << profile.rest_mass_over_m
               << ", m0=" << particle_mass << ", seed=" << seed << std::endl;
+    std::cout << "Cluster CTT momentum solve: enabled="
+              << (solve_momentum_constraint ? 1 : 0);
+    if (solve_momentum_constraint) {
+      std::cout << ", quadrature_nmu=64, moment=" << momentum_correction.moment
+                << ", max|F|=" << momentum_correction.max_abs_source
+                << ", max|a|=" << momentum_correction.max_abs_a
+                << ", max|<u_hat_r>|="
+                << momentum_correction.max_abs_mean_uhat_r;
+    }
+    std::cout << std::endl;
 
     // t=0 bias bookkeeping.  These sums run over ALL tags on every rank, so they are
     // global by construction and need no MPI reduction.
