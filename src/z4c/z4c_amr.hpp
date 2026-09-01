@@ -30,6 +30,7 @@ class Z4c_AMR {
 
   void Refine(MeshBlockPack *pmbp);             // call the AMR method
   void RefineTracker(MeshBlockPack *pmbp);      // Refine based on trackers
+  void EnforceTrackerFloor(MeshBlockPack *pmbp);  // Combine tracker floor with method
   void RefineChiMin(MeshBlockPack *pmbp);       // Refine based on min{chi}
   void RefineDchiMax(MeshBlockPack *pmbp);      // Refine based on max{dchi}
   void RefineLoehner(MeshBlockPack *pmbp);      // Refine based on Loehner estimator
@@ -37,6 +38,7 @@ class Z4c_AMR {
 
   RefinementMethod method;
   LoehnerVariable loehner_variable;
+  bool tracker_floor;
 
   // Optinally set the minimum refinement level inside different radial shells
   std::vector<Real> radius;

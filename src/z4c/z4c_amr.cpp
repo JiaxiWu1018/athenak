@@ -64,6 +64,8 @@ Z4c_AMR::Z4c_AMR(ParameterInput *pin) {
     std::exit(EXIT_FAILURE);
   }
 
+  tracker_floor = pin->GetOrAddBoolean("z4c_amr", "tracker_floor", false);
+
   for (int nr = 0; nr < 16; ++nr) {
     std::string name = "radius_" + std::to_string(nr) + "_rad";
     if (pin->DoesParameterExist("z4c_amr", name)) {
@@ -86,6 +88,9 @@ void Z4c_AMR::Refine(MeshBlockPack *pmy_pack) {
     RefineDchiMax(pmy_pack);
   } else if (method == Loehner) {
     RefineLoehner(pmy_pack);
+  }
+  if (tracker_floor && method != Tracker) {
+    EnforceTrackerFloor(pmy_pack);
   }
   RefineRadii(pmy_pack);
 }
@@ -148,6 +153,60 @@ void Z4c_AMR::RefineTracker(MeshBlockPack *pmbp) {
   }
 
   // sync host and device
+  refine_flag.template modify<HostMemSpace>();
+  refine_flag.template sync<DevExeSpace>();
+}
+
+// Combine compact-object tracker regions with another AMR method as a minimum
+// local-resolution floor.  Unlike RefineTracker(), this never erases a refine
+// request made by (for example) the Lohner estimator outside the tracker regions.
+void Z4c_AMR::EnforceTrackerFloor(MeshBlockPack *pmbp) {
+  if (pmbp->pz4c->ptracker.empty()) {
+    return;
+  }
+
+  Mesh *pmesh       = pmbp->pmesh;
+  auto &refine_flag = pmesh->pmr->refine_flag;
+  auto &size        = pmbp->pmb->mb_size;
+  int nmb           = pmbp->nmb_thispack;
+  int mbs           = pmesh->gids_eachrank[global_variable::my_rank];
+
+  for (int m = 0; m < nmb; ++m) {
+    int level = pmesh->lloc_eachmb[m + mbs].level - pmesh->root_level;
+    Real &x1min = size.h_view(m).x1min;
+    Real &x1max = size.h_view(m).x1max;
+    Real &x2min = size.h_view(m).x2min;
+    Real &x2max = size.h_view(m).x2max;
+    Real &x3min = size.h_view(m).x3min;
+    Real &x3max = size.h_view(m).x3max;
+
+    int floor_flag = -1;
+    for (auto &pt : pmbp->pz4c->ptracker) {
+      Real cx = fmax(x1min, fmin(pt->GetPos(0), x1max));
+      Real cy = fmax(x2min, fmin(pt->GetPos(1), x2max));
+      Real cz = fmax(x3min, fmin(pt->GetPos(2), x3max));
+      Real dmin2 = SQ(pt->GetPos(0) - cx)
+                   + SQ(pt->GetPos(1) - cy)
+                   + SQ(pt->GetPos(2) - cz);
+      bool iscontained =
+        (pt->GetPos(0) >= x1min && pt->GetPos(0) <= x1max) &&
+        (pt->GetPos(1) >= x2min && pt->GetPos(1) <= x2max) &&
+        (pt->GetPos(2) >= x3min && pt->GetPos(2) <= x3max);
+
+      if (dmin2 < SQ(pt->GetRadius()) || iscontained) {
+        int tracker_flag = -1;
+        if (pt->GetReflevel() < 0 || level < pt->GetReflevel()) {
+          tracker_flag = 1;
+        } else if (level == pt->GetReflevel()) {
+          tracker_flag = 0;
+        }
+        floor_flag = std::max(floor_flag, tracker_flag);
+      }
+    }
+    refine_flag.h_view(m + mbs) =
+        std::max(refine_flag.h_view(m + mbs), floor_flag);
+  }
+
   refine_flag.template modify<HostMemSpace>();
   refine_flag.template sync<DevExeSpace>();
 }
