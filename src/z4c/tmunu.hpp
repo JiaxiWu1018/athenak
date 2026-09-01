@@ -65,10 +65,15 @@ class Tmunu {
   // init/restart seed, post-regrid re-deposit). No-op when nfilter_passes == 0.
   void ApplyDigitalFilter(int ncycle, int debug_lvl);
 
- private:
-  void FillTmunuGhosts();              // synchronous CC exchange (driver-init pattern)
+  // The filter kernel launchers below are implementation details, but they must be
+  // PUBLIC: nvcc's extended __host__ __device__ lambda rule forbids device lambdas
+  // inside private/protected member functions (CUDA build; hipcc accepts either).
+  // No call-site or behavior change.
   void FilterOnePass();                // Eq. (11) stencil, all 10 components
   void ComputeSourceIntegrals(int slot);  // sum q sqrt(gamma) dV -> filt_sums[slot*10+]
+
+ private:
+  void FillTmunuGhosts();              // synchronous CC exchange (driver-init pattern)
   void ReportFilterDiagnostics(int ncycle, bool full);
 
   MeshBlockPack* pmy_pack;
