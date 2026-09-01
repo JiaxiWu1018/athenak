@@ -39,8 +39,11 @@ enum class CrossLevelDeposit {conservative, native};
 // deposition Lorentz factor, pgen shell diagnostics, live-monopole accumulation).
 // lagrange is the historical default (2*NGHOST-wide tensor-product Lagrange, absent
 // key preserves that path bitwise); trilinear is the genuine 8-point 2x2x2 linear
-// gather, the adjoint of CIC deposition. Selected by <particles> interpolation.
-enum class ParticleInterpMethod {lagrange=0, trilinear=1};
+// gather, the adjoint of CIC deposition; hermite is the 64-point tensor-product
+// cubic Hermite (Catmull-Rom) gather with 2nd-order centred node slopes -- globally
+// C1, so the gathered force is continuous across cell faces.
+// Selected by <particles> interpolation.
+enum class ParticleInterpMethod {lagrange=0, trilinear=1, hermite=2};
 
 //----------------------------------------------------------------------------------------
 //! \struct ParticlesTaskIDs

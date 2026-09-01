@@ -95,6 +95,9 @@ struct GeodesicPush {
     if constexpr (IMETH == static_cast<int>(ParticleInterpMethod::trilinear)) {
       CalcTriWghtAndDrv<NG>(x_mid, mb_par, ncell,
                             interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
+    } else if constexpr (IMETH == static_cast<int>(ParticleInterpMethod::hermite)) {
+      CalcHermiteWghtAndDrv<NG>(x_mid, mb_par, ncell,
+                                interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
     } else {
       CalcInterpWghtAndDrv<NG>(x_mid, mb_par, ncell,
                                interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
@@ -321,7 +324,7 @@ void AccumulateGRBorisMonopoleProfiles(
   Real c0 = pp->gr_boris_monopole_center[0];
   Real c1 = pp->gr_boris_monopole_center[1];
   Real c2 = pp->gr_boris_monopole_center[2];
-  const bool tri = (pp->interp_method == ParticleInterpMethod::trilinear);
+  const int imeth = static_cast<int>(pp->interp_method);
 
   par_for("gr_boris_monopole_average", DevExeSpace(), 0, pp->nprtcl_thispack - 1,
   KOKKOS_LAMBDA(const int p) {
@@ -343,8 +346,10 @@ void AccumulateGRBorisMonopoleProfiles(
     int interp_indcs[4] = {mb, -1, -1, -1};
     SetInterpIndices(x, mb_par, ncell, interp_indcs);
     Real Lx[2*NG] = {0.0}, Ly[2*NG] = {0.0}, Lz[2*NG] = {0.0};
-    if (tri) {
+    if (imeth == 1) {
       CalcTriWght<NG>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    } else if (imeth == 2) {
+      CalcHermiteWght<NG>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
     } else {
       CalcInterpWght<NG>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
     }
@@ -620,8 +625,8 @@ void Particles::GR_BorisPush() {
   auto dt_ = pmy_pack->pmesh->dt;
   auto qom = q_over_m;
   // gather-scheme selector for the geodesic substep; the EM half-kicks below are
-  // Lagrange-only (trilinear+MHD is rejected at construction in particles.cpp)
-  const bool tri_gather = (interp_method == ParticleInterpMethod::trilinear);
+  // Lagrange-only (non-Lagrange + MHD is rejected at construction in particles.cpp)
+  const int imeth_gather = static_cast<int>(interp_method);
 
   auto nfail_ = boris_nfail;          // bounded non-convergence diagnostic counters
   const int ndetail_ = kBorisDetail;
@@ -819,7 +824,28 @@ void Particles::GR_BorisPush() {
       MonopoleGeodesicPush gp(
           x_n, u_p, mono_old, mono_new, mono_nr, mono_dr, dt_, center);
       find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
-    } else if (tri_gather) {
+    } else if (imeth_gather == 2) {
+      switch (ng) {
+      case 2: {
+        GeodesicPush<2,2> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
+                             z4c_n, z4c_np1);
+        find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+        break;
+      }
+      case 3: {
+        GeodesicPush<3,2> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
+                             z4c_n, z4c_np1);
+        find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+        break;
+      }
+      case 4: {
+        GeodesicPush<4,2> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
+                             z4c_n, z4c_np1);
+        find_root = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+        break;
+      }
+      }
+    } else if (imeth_gather == 1) {
       switch (ng) {
       case 2: {
         GeodesicPush<2,1> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c,
@@ -1108,7 +1134,7 @@ void Particles::GRBorisDiagnostics() {
   bool use_monopole = gr_boris_live_monopole;
   auto &raw_du_dt = gr_boris_raw_du_dt;
   auto &raw_dL_dt = gr_boris_raw_dL_dt;
-  const bool tri_gather = (interp_method == ParticleInterpMethod::trilinear);
+  const int imeth_gather = static_cast<int>(interp_method);
 
   par_for("gr_boris_diagnostics", DevExeSpace(), 0, nprtcl_thispack - 1,
   KOKKOS_LAMBDA(const int p) {
@@ -1132,7 +1158,24 @@ void Particles::GRBorisDiagnostics() {
       MonopoleGeodesicPush evaluate(
           x, u, mono_profile, mono_profile, mono_nr, mono_dr, 1.0, center);
       evaluate(x, u, x_plus_rate, u_plus_rate, true);
-    } else if (tri_gather) {
+    } else if (imeth_gather == 2) {
+      if (ng == 2) {
+        GeodesicPush<2,2> evaluate(
+            x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+            use_z4c, z4c_metric, z4c_metric);
+        evaluate(x, u, x_plus_rate, u_plus_rate, true);
+      } else if (ng == 3) {
+        GeodesicPush<3,2> evaluate(
+            x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+            use_z4c, z4c_metric, z4c_metric);
+        evaluate(x, u, x_plus_rate, u_plus_rate, true);
+      } else {
+        GeodesicPush<4,2> evaluate(
+            x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+            use_z4c, z4c_metric, z4c_metric);
+        evaluate(x, u, x_plus_rate, u_plus_rate, true);
+      }
+    } else if (imeth_gather == 1) {
       if (ng == 2) {
         GeodesicPush<2,1> evaluate(
             x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
@@ -1182,7 +1225,24 @@ void Particles::GRBorisDiagnostics() {
 
     if (use_monopole) {
       Real x_raw[3] = {0.0}, u_raw[3] = {0.0};
-      if (tri_gather) {
+      if (imeth_gather == 2) {
+        if (ng == 2) {
+          GeodesicPush<2,2> evaluate(
+              x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+              use_z4c, z4c_metric, z4c_metric);
+          evaluate(x, u, x_raw, u_raw, true);
+        } else if (ng == 3) {
+          GeodesicPush<3,2> evaluate(
+              x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+              use_z4c, z4c_metric, z4c_metric);
+          evaluate(x, u, x_raw, u_raw, true);
+        } else {
+          GeodesicPush<4,2> evaluate(
+              x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,
+              use_z4c, z4c_metric, z4c_metric);
+          evaluate(x, u, x_raw, u_raw, true);
+        }
+      } else if (imeth_gather == 1) {
         if (ng == 2) {
           GeodesicPush<2,1> evaluate(
               x, u, mb, mb_par, ncell, 1.0, adm_metric, adm_metric,

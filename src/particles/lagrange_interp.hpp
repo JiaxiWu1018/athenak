@@ -205,6 +205,82 @@ void CalcTriWghtAndDrv(const Real *x0, const Real *grid, const int *ncell,
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn void CalcHermiteWght / CalcHermiteWghtAndDrv
+//! \brief Genuine tensor-product cubic HERMITE gather weights (Catmull-Rom form),
+//! PADDED into the 2*ORDER-wide Lagrange weight arrays. In 1-D the interpolant on the
+//! cell-centre pair (a, a+1) straddling the particle is the cubic Hermite polynomial
+//! H(t) = h00 u_a + h10 dx m_a + h01 u_{a+1} + h11 dx m_{a+1} with 2nd-order centred
+//! node slopes m_i = (u_{i+1} - u_{i-1})/(2 dx); substituting m gives the 4-node
+//! Catmull-Rom kernel over stencil nodes a-1..a+2 (weight-array slots
+//! [ORDER-2 .. ORDER+1], zeros elsewhere):
+//!   w_{a-1} = (-t^3 + 2t^2 - t)/2      w_a     = (3t^3 - 5t^2 + 2)/2
+//!   w_{a+1} = (-3t^3 + 4t^2 + t)/2     w_{a+2} = (t^3 - t^2)/2
+//! This is NOT 4-point Lagrange: the kernel interpolates only the middle two nodes and
+//! uses the outer two for slopes, and because adjacent cells share node values AND node
+//! slopes the interpolant is globally C1 -- the gathered force is CONTINUOUS across
+//! cell faces (trilinear: piecewise-constant derivative; Lagrange: C0 only). Reproduces
+//! constants, linears, and quadratics exactly. Stencil reach a-1..a+2 stays inside the
+//! allocated array for any NGHOST >= 2 under the same SetInterpIndices clamp.
+//! CalcHermiteWghtAndDrv also fills the derivative slots with the kernel t-derivative
+//! divided by dx (the exact derivative of the Hermite interpolant):
+//!   w'_{a-1} = (-3t^2 + 4t - 1)/2      w'_a     = (9t^2 - 10t)/2
+//!   w'_{a+1} = (-9t^2 + 8t + 1)/2      w'_{a+2} = (3t^2 - 2t)/2
+
+template <int ORDER>
+KOKKOS_INLINE_FUNCTION
+void CalcHermiteWght(const Real *x0, const Real *grid, const int *ncell,
+                     const int *interp_indcs, Real *Lx, Real *Ly, Real *Lz) {
+  static_assert(ORDER >= 2, "Hermite gather needs NGHOST >= 2");
+  constexpr int N = 2 * ORDER;
+  for (int i = 0; i < N; ++i) { Lx[i] = 0.0; Ly[i] = 0.0; Lz[i] = 0.0; }
+  const Real xa = CellCenterX(interp_indcs[1], ncell[0], grid[0], grid[1]);
+  const Real ya = CellCenterX(interp_indcs[2], ncell[1], grid[3], grid[4]);
+  const Real za = CellCenterX(interp_indcs[3], ncell[2], grid[6], grid[7]);
+  const Real t[3] = {(x0[0] - xa) / grid[2], (x0[1] - ya) / grid[5],
+                     (x0[2] - za) / grid[8]};
+  Real *W[3] = {Lx, Ly, Lz};
+  for (int d = 0; d < 3; ++d) {
+    const Real u = t[d], u2 = u * u, u3 = u2 * u;
+    W[d][ORDER-2] = 0.5 * (-u3 + 2.0 * u2 - u);
+    W[d][ORDER-1] = 0.5 * (3.0 * u3 - 5.0 * u2 + 2.0);
+    W[d][ORDER  ] = 0.5 * (-3.0 * u3 + 4.0 * u2 + u);
+    W[d][ORDER+1] = 0.5 * (u3 - u2);
+  }
+}
+
+template <int ORDER>
+KOKKOS_INLINE_FUNCTION
+void CalcHermiteWghtAndDrv(const Real *x0, const Real *grid, const int *ncell,
+                           const int *interp_indcs, Real *Lx, Real *Ly, Real *Lz,
+                           Real *dLx, Real *dLy, Real *dLz) {
+  static_assert(ORDER >= 2, "Hermite gather needs NGHOST >= 2");
+  constexpr int N = 2 * ORDER;
+  for (int i = 0; i < N; ++i) {
+    Lx[i] = 0.0; Ly[i] = 0.0; Lz[i] = 0.0;
+    dLx[i] = 0.0; dLy[i] = 0.0; dLz[i] = 0.0;
+  }
+  const Real xa = CellCenterX(interp_indcs[1], ncell[0], grid[0], grid[1]);
+  const Real ya = CellCenterX(interp_indcs[2], ncell[1], grid[3], grid[4]);
+  const Real za = CellCenterX(interp_indcs[3], ncell[2], grid[6], grid[7]);
+  const Real t[3] = {(x0[0] - xa) / grid[2], (x0[1] - ya) / grid[5],
+                     (x0[2] - za) / grid[8]};
+  const Real idx[3] = {1.0 / grid[2], 1.0 / grid[5], 1.0 / grid[8]};
+  Real *W[3] = {Lx, Ly, Lz};
+  Real *D[3] = {dLx, dLy, dLz};
+  for (int d = 0; d < 3; ++d) {
+    const Real u = t[d], u2 = u * u, u3 = u2 * u;
+    W[d][ORDER-2] = 0.5 * (-u3 + 2.0 * u2 - u);
+    W[d][ORDER-1] = 0.5 * (3.0 * u3 - 5.0 * u2 + 2.0);
+    W[d][ORDER  ] = 0.5 * (-3.0 * u3 + 4.0 * u2 + u);
+    W[d][ORDER+1] = 0.5 * (u3 - u2);
+    D[d][ORDER-2] = 0.5 * (-3.0 * u2 + 4.0 * u - 1.0) * idx[d];
+    D[d][ORDER-1] = 0.5 * (9.0 * u2 - 10.0 * u) * idx[d];
+    D[d][ORDER  ] = 0.5 * (-9.0 * u2 + 8.0 * u + 1.0) * idx[d];
+    D[d][ORDER+1] = 0.5 * (3.0 * u2 - 2.0 * u) * idx[d];
+  }
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn Real LagrangeInterpolator
 //! \brief Interpolate scalar field variable nvar of the 5-D array u0 to the particle:
 //! sum over the 2*ORDER^3 stencil of Lx_i*Ly_j*Lz_k * u0(m,nvar,k,j,i). The
