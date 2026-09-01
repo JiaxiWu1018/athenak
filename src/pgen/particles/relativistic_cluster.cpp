@@ -28,14 +28,14 @@
 //!   cluster_profile_dx dimensionless ODE step in x (default 1e-4)
 //!   cluster_center_x1, cluster_center_x2, cluster_center_x3 (default 0)
 //!
-//! Velocity-angle perturbations (the ST-migration experiment). These parameters leave the
-//! equilibrium metric, the sampled positions, the per-particle rest mass and the
-//! per-particle momentum MAGNITUDE |u_i| untouched. lambda_tan rotates every momentum
-//! toward the local tangential plane while eps_out changes how many particles move
-//! outward rather than inward. lambda_tan = eps_out = 0 reproduces the previous pgen path
-//! bit for bit (both perturbation blocks are skipped). See the sections below.
+//! ST-migration perturbations. lambda_tan and eps_out leave the equilibrium metric, sampled
+//! positions, per-particle rest mass and per-particle momentum magnitude |u_i| untouched.
+//! The coherent radial mode instead adds a local Eulerian orthonormal radial 3-velocity and
+//! therefore deliberately changes the particle energy. All three blocks are skipped at zero,
+//! reproducing the previous pgen path bit for bit. See the sections below.
 //!   cluster_lambda_tan tangential reorientation amplitude in [0,1] (default 0)
 //!   cluster_eps_out    outward-bias amplitude eps_out in [0,1] (default 0)
+//!   cluster_radial_mode_u coherent radial-mode surface 3-velocity U in (-1,1) (default 0)
 //!   cluster_bias_mode  "stratified" (default) or "bernoulli"
 //!   cluster_bias_seed  salt for the bernoulli-mode per-tag hash (default 0)
 //!   cluster_t0_dump    if non-empty, rank 0 writes the full global t=0 particle sample
@@ -363,6 +363,21 @@ Real InterpolateCDF(const std::vector<Real> &cdf, const std::vector<Real> &value
 //       Independent per particle, giving the binomial shot noise the stratified rule
 //       removes; retained as a cross-check that the stratification introduces no bias.
 //       These sets are nested in eps_out as well.
+//
+// The independent coherent radial mode is an ENERGY-CHANGING perturbation inspired by
+// neutron-star migration tests. In the local Eulerian orthonormal frame it applies
+//
+//     delta v^(hat r) = U (3 x - x^3)/2,
+//     x = r_areal/R_areal = A(rbar) rbar/R_areal,
+//
+// to every particle. The tangential Eulerian 3-velocity is retained. With
+// u_(hat i)=u_i/A=W v_(hat i), the updated stored covariant spatial 4-velocity is
+//
+//     W' = 1/sqrt(1-|v'|^2),       u_i' = A W' v'_(hat i).
+//
+// Thus the formula is never added to a coordinate component. For U>0 the profile is
+// outward everywhere except at the regular center, reaches U at the surface, and has
+// zero radial derivative there. The block is skipped exactly when U=0.
 //----------------------------------------------------------------------------------------
 
 //! \brief base-2 radical inverse (van der Corput) of j, in [0,1).
@@ -529,6 +544,74 @@ void ReorientTangential(DrawnParticle *d, Real lambda_tan) {
   }
 }
 
+//! \brief add the coherent Eulerian-orthonormal radial 3-velocity mode.
+//!
+//! Returns false if the requested velocity would be non-finite or non-timelike. Diagnostic
+//! outputs describe the local frame immediately before and after this map.
+bool AddCoherentRadialMode(DrawnParticle *d, Real radial_mode_u,
+                           Real surface_areal_radius, Real *delta_vr,
+                           Real *vr_before, Real *vr_after, Real *w_before,
+                           Real *w_after, Real *v2_after,
+                           Real *abs_delta_vtan, Real *normalization_residual) {
+  Real nmag = std::sqrt(d->nx*d->nx + d->ny*d->ny + d->nz*d->nz);
+  if (!(nmag > 0.0) || !(d->conf_a > 0.0) || !(surface_areal_radius > 0.0)) {
+    return false;
+  }
+  Real nx = d->nx/nmag, ny = d->ny/nmag, nz = d->nz/nmag;
+
+  // u_(hat i)=u_i/A is the Eulerian-frame spatial 4-momentum per unit rest mass.
+  Real uhx = d->ux/d->conf_a;
+  Real uhy = d->uy/d->conf_a;
+  Real uhz = d->uz/d->conf_a;
+  Real usq = uhx*uhx + uhy*uhy + uhz*uhz;
+  Real w0 = std::sqrt(1.0 + usq);
+  Real vx = uhx/w0, vy = uhy/w0, vz = uhz/w0;
+  Real vr0 = vx*nx + vy*ny + vz*nz;
+  Real tx = vx - vr0*nx;
+  Real ty = vy - vr0*ny;
+  Real tz = vz - vr0*nz;
+
+  // Circumferential radius is r=A*rbar for gamma_ij=A^2 delta_ij. Clamp only protects
+  // the polynomial from interpolation roundoff at the sampled surface.
+  Real x = d->conf_a*d->riso/surface_areal_radius;
+  x = std::min(std::max(x, static_cast<Real>(0.0)), static_cast<Real>(1.0));
+  Real dv = 0.5*radial_mode_u*(3.0*x - x*x*x);
+  Real vr1 = vr0 + dv;
+  Real vx1 = tx + vr1*nx;
+  Real vy1 = ty + vr1*ny;
+  Real vz1 = tz + vr1*nz;
+  Real v2 = vx1*vx1 + vy1*vy1 + vz1*vz1;
+  if (!std::isfinite(v2) || !(v2 < 1.0)) { return false; }
+
+  Real w1 = 1.0/std::sqrt(1.0 - v2);
+  d->ux = d->conf_a*w1*vx1;
+  d->uy = d->conf_a*w1*vy1;
+  d->uz = d->conf_a*w1*vz1;
+  d->umag = std::sqrt(d->ux*d->ux + d->uy*d->uy + d->uz*d->uz);
+
+  // Reconstruct the Eulerian velocity from the stored u_i as an independent local check.
+  Real uhx1 = d->ux/d->conf_a;
+  Real uhy1 = d->uy/d->conf_a;
+  Real uhz1 = d->uz/d->conf_a;
+  Real w1_check = std::sqrt(1.0 + uhx1*uhx1 + uhy1*uhy1 + uhz1*uhz1);
+  Real cvx = uhx1/w1_check, cvy = uhy1/w1_check, cvz = uhz1/w1_check;
+  Real cvr = cvx*nx + cvy*ny + cvz*nz;
+  Real ctx = cvx - cvr*nx;
+  Real cty = cvy - cvr*ny;
+  Real ctz = cvz - cvr*nz;
+
+  *delta_vr = dv;
+  *vr_before = vr0;
+  *vr_after = cvr;
+  *w_before = w0;
+  *w_after = w1_check;
+  *v2_after = v2;
+  *abs_delta_vtan = std::sqrt((ctx-tx)*(ctx-tx) + (cty-ty)*(cty-ty) +
+                              (ctz-tz)*(ctz-tz));
+  *normalization_residual = std::abs(w1_check - w1)/w1;
+  return std::isfinite(*abs_delta_vtan) && std::isfinite(*normalization_residual);
+}
+
 //! \struct BiasStats
 //! \brief t=0 bookkeeping for the outward bias, accumulated over ALL tags (every rank
 //! reproduces the same global draw, so rank 0 can report them without any reduction).
@@ -550,6 +633,16 @@ struct BiasStats {
   Real p_tot[3] = {0.0, 0.0, 0.0};   // sum of m0 u_i/A        (linear momentum)
   Real j_tot[3] = {0.0, 0.0, 0.0};   // sum of m0 (x cross u)_i (angular momentum)
   Real max_rel_dumag = 0.0;          // max |(|u'| - |u|)|/|u| over all perturbations
+  Real sum_mode_dv = 0.0;            // coherent-mode delta v^(hat r)
+  Real sum_mode_vr_before = 0.0;     // Eulerian radial 3-velocity immediately pre-mode
+  Real sum_mode_vr_after = 0.0;      // ... post-mode
+  Real sum_mode_w_before = 0.0;      // Eulerian Lorentz factor immediately pre-mode
+  Real sum_mode_w_after = 0.0;       // ... post-mode
+  Real min_mode_dv = 1.0;            // extrema are meaningful only when U != 0
+  Real max_mode_dv = -1.0;
+  Real max_mode_v2 = 0.0;
+  Real max_abs_delta_vtan = 0.0;
+  Real max_mode_normalization_residual = 0.0;
 };
 
 }  // namespace
@@ -616,6 +709,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   };
   Real lambda_tan = pin->GetOrAddReal("problem", "cluster_lambda_tan", 0.0);
   Real eps_out = pin->GetOrAddReal("problem", "cluster_eps_out", 0.0);
+  Real radial_mode_u = pin->GetOrAddReal("problem", "cluster_radial_mode_u", 0.0);
   std::string bias_mode = pin->GetOrAddString("problem", "cluster_bias_mode",
                                               "stratified");
   int bias_seed = pin->GetOrAddInteger("problem", "cluster_bias_seed", 0);
@@ -637,6 +731,12 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
               << std::endl << "Require 0 <= cluster_eps_out <= 1 (got " << eps_out
               << ")." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (!std::isfinite(radial_mode_u) || std::abs(radial_mode_u) >= 1.0) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "Require finite -1 < cluster_radial_mode_u < 1 (got "
+              << radial_mode_u << ")." << std::endl;
     std::exit(EXIT_FAILURE);
   }
   if (bias_mode.compare("stratified") != 0 && bias_mode.compare("bernoulli") != 0) {
@@ -803,7 +903,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
                                     lz_base*lz_base);
 
     Real umag_before = 0.0;
-    if (lambda_tan > 0.0 || (!select.empty() && select[tag])) {
+    if (lambda_tan > 0.0 || (!select.empty() && select[tag]) ||
+        radial_mode_u != 0.0) {
       umag_before = std::sqrt(d.ux*d.ux + d.uy*d.uy + d.uz*d.uz);
     }
     if (lambda_tan > 0.0) {
@@ -818,6 +919,32 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
         ++bias.n_reflected;
       }
     }
+    if (radial_mode_u != 0.0) {
+      Real dv, vr_before, vr_after, w_before, w_after, v2_after;
+      Real abs_delta_vtan, normalization_residual;
+      bool mode_ok = AddCoherentRadialMode(
+          &d, radial_mode_u, total_mass*profile.r_over_m, &dv, &vr_before,
+          &vr_after, &w_before, &w_after, &v2_after, &abs_delta_vtan,
+          &normalization_residual);
+      if (!mode_ok) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "cluster_radial_mode_u=" << radial_mode_u
+                  << " produced a non-timelike or invalid velocity for tag=" << tag
+                  << "." << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      bias.sum_mode_dv += dv;
+      bias.sum_mode_vr_before += vr_before;
+      bias.sum_mode_vr_after += vr_after;
+      bias.sum_mode_w_before += w_before;
+      bias.sum_mode_w_after += w_after;
+      bias.min_mode_dv = std::min(bias.min_mode_dv, dv);
+      bias.max_mode_dv = std::max(bias.max_mode_dv, dv);
+      bias.max_mode_v2 = std::max(bias.max_mode_v2, v2_after);
+      bias.max_abs_delta_vtan = std::max(bias.max_abs_delta_vtan, abs_delta_vtan);
+      bias.max_mode_normalization_residual = std::max(
+          bias.max_mode_normalization_residual, normalization_residual);
+    }
     if (umag_before > 0.0) {
       Real umag_after = std::sqrt(d.ux*d.ux + d.uy*d.uy + d.uz*d.uz);
       bias.max_rel_dumag = std::max(bias.max_rel_dumag,
@@ -830,7 +957,12 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     Real mu = (d.umag > 0.0) ? udotn/d.umag : 0.0;
     bias.sum_mu += mu;
     bias.sum_mu2 += mu*mu;
-    bias.sum_vr += mu*speed;
+    Real speed_after = speed;
+    if (radial_mode_u != 0.0) {
+      Real phat2 = d.umag*d.umag/(d.conf_a*d.conf_a);
+      speed_after = std::sqrt(phat2/(1.0 + phat2));
+    }
+    bias.sum_vr += mu*speed_after;
     Real w = particle_mass/d.conf_a;
     bias.sum_pr += w*udotn;
     bias.p_tot[0] += w*d.ux;
@@ -924,13 +1056,24 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
         ? 1.0 - (1.0 - mean_mu2_base)/(2.0*mean_mu2_base) : 0.0;
     Real beta = (mean_mu2 > 0.0)
         ? 1.0 - (1.0 - mean_mu2)/(2.0*mean_mu2) : 0.0;
-    std::cout << "Cluster tangential bias: lambda_tan=" << lambda_tan
-              << ", n_reoriented=" << bias.n_reoriented
-              << ", <|L|> " << bias.sum_abs_l_base*inv_n << " -> "
-              << bias.sum_abs_l*inv_n
-              << ", ratio=" << bias.sum_abs_l/bias.sum_abs_l_base << std::endl;
-    std::cout << "Cluster tangential bias: <mu^2> " << mean_mu2_base << " -> "
-              << mean_mu2 << ", beta " << beta_base << " -> " << beta << std::endl;
+    if (radial_mode_u == 0.0) {
+      std::cout << "Cluster tangential bias: lambda_tan=" << lambda_tan
+                << ", n_reoriented=" << bias.n_reoriented
+                << ", <|L|> " << bias.sum_abs_l_base*inv_n << " -> "
+                << bias.sum_abs_l*inv_n
+                << ", ratio=" << bias.sum_abs_l/bias.sum_abs_l_base << std::endl;
+      std::cout << "Cluster tangential bias: <mu^2> " << mean_mu2_base << " -> "
+                << mean_mu2 << ", beta " << beta_base << " -> " << beta << std::endl;
+    } else {
+      std::cout << "Cluster perturbation summary: lambda_tan=" << lambda_tan
+                << ", radial_mode_u=" << radial_mode_u
+                << ", <|L|> " << bias.sum_abs_l_base*inv_n << " -> "
+                << bias.sum_abs_l*inv_n
+                << ", ratio=" << bias.sum_abs_l/bias.sum_abs_l_base << std::endl;
+      std::cout << "Cluster perturbation summary: <mu^2> " << mean_mu2_base << " -> "
+                << mean_mu2 << ", directional beta " << beta_base << " -> " << beta
+                << std::endl;
+    }
     std::cout << "Cluster outward bias: eps_out=" << eps_out
               << ", mode=" << bias_mode
               << ", n_inward_base=" << bias.n_inward_base
@@ -938,18 +1081,41 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << ", n_reflected=" << bias.n_reflected
               << ", reflected/inward=" << frac_reflected
               << " (target " << eps_out << ")" << std::endl;
-    std::cout << "Cluster outward bias: f_outward " << f_out_base << " -> " << f_out
-              << " (target " << 0.5*(1.0 + eps_out) << ")"
-              << ", <mu> " << bias.sum_mu_base*inv_n << " -> " << bias.sum_mu*inv_n
-              << " (target " << 0.5*eps_out << ")"
-              << ", <v_r> " << bias.sum_vr_base*inv_n << " -> " << bias.sum_vr*inv_n
-              << std::endl;
-    std::cout << "Cluster outward bias: P_r=" << bias.sum_pr
+    if (radial_mode_u == 0.0) {
+      std::cout << "Cluster outward bias: f_outward " << f_out_base << " -> " << f_out
+                << " (target " << 0.5*(1.0 + eps_out) << ")"
+                << ", <mu> " << bias.sum_mu_base*inv_n << " -> " << bias.sum_mu*inv_n
+                << " (target " << 0.5*eps_out << ")"
+                << ", <v_r> " << bias.sum_vr_base*inv_n << " -> " << bias.sum_vr*inv_n
+                << std::endl;
+    } else {
+      std::cout << "Cluster perturbation summary: f_outward " << f_out_base << " -> "
+                << f_out << ", <mu> " << bias.sum_mu_base*inv_n << " -> "
+                << bias.sum_mu*inv_n << ", <v_r> " << bias.sum_vr_base*inv_n << " -> "
+                << bias.sum_vr*inv_n << std::endl;
+    }
+    std::cout << ((radial_mode_u == 0.0) ? "Cluster outward bias: P_r="
+                                         : "Cluster perturbation summary: P_r=")
+              << bias.sum_pr
               << ", P=(" << bias.p_tot[0] << "," << bias.p_tot[1] << ","
               << bias.p_tot[2] << ")"
               << ", J=(" << bias.j_tot[0] << "," << bias.j_tot[1] << ","
               << bias.j_tot[2] << ")"
               << ", max|d|u||/|u|=" << bias.max_rel_dumag << std::endl;
+    if (radial_mode_u != 0.0) {
+      std::cout << "Cluster coherent radial mode: U=" << radial_mode_u
+                << ", radius=areal, <delta v_r>=" << bias.sum_mode_dv*inv_n
+                << ", range(delta v_r)=[" << bias.min_mode_dv << ","
+                << bias.max_mode_dv << "]"
+                << ", <v_r> " << bias.sum_mode_vr_before*inv_n << " -> "
+                << bias.sum_mode_vr_after*inv_n
+                << ", <W> " << bias.sum_mode_w_before*inv_n << " -> "
+                << bias.sum_mode_w_after*inv_n << std::endl;
+      std::cout << "Cluster coherent radial mode: max(v^2)=" << bias.max_mode_v2
+                << ", max|delta v_tan|=" << bias.max_abs_delta_vtan
+                << ", max normalization residual="
+                << bias.max_mode_normalization_residual << std::endl;
+    }
   }
 
   if (want_dump) {
@@ -969,6 +1135,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
        << " fields=tag,reflected,x,y,z,ux,uy,uz"
        << " yc=" << yc << " lambda_tan=" << lambda_tan
        << " eps_out=" << eps_out << " bias_mode=" << bias_mode
+       << " radial_mode_u=" << radial_mode_u << " radial_mode_radius=areal"
        << " bias_seed=" << bias_seed << " seed=" << seed
        << " mass=" << total_mass << " m0=" << particle_mass
        << " R_over_M=" << profile.r_over_m
