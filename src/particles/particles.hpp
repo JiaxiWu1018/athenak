@@ -35,12 +35,17 @@ enum class ParticleType {cosmic_ray, dust};
 enum class CrossLevelDeposit {conservative, native};
 
 // Grid->particle interpolation scheme, applied at EVERY gather of grid fields at
-// particle positions (pusher force + metric, energy diagnostic, lapse excision,
-// deposition Lorentz factor, pgen shell diagnostics, live-monopole accumulation).
-// lagrange is the historical default (2*NGHOST-wide tensor-product Lagrange, absent
-// key preserves that path bitwise); trilinear is the genuine 8-point 2x2x2 linear
-// gather, the adjoint of CIC deposition. Selected by <particles> interpolation.
-enum class ParticleInterpMethod {lagrange=0, trilinear=1};
+// particle positions (gr_boris pusher force + metric, energy diagnostic, lapse
+// excision, deposition Lorentz factor). lagrange is the historical default
+// (2*NGHOST-wide tensor-product Lagrange, absent key preserves that path bitwise);
+// trilinear is the genuine 8-point 2x2x2 linear gather, the adjoint of CIC deposition;
+// hermite is the 64-point tensor-product cubic Hermite (Catmull-Rom) gather with
+// 2nd-order centred node slopes -- globally C1, so the gathered force is continuous
+// across cell faces. Selected by <particles> interpolation. Not covered by design: the
+// SR Boris / EM half-kick gathers (Lagrange-only, guarded at construction) and the
+// gr_boris retry kernel, which always uses its own dedicated two-node trilinear
+// operator (gr_boris.cpp kRetryTrilinear).
+enum class ParticleInterpMethod {lagrange=0, trilinear=1, hermite=2};
 
 //----------------------------------------------------------------------------------------
 //! \struct ParticlesTaskIDs

@@ -51,7 +51,7 @@ void Particles::calc_prtcl_energy() {
   DvceArray5D<Real> z4c_u0;
   bool use_z4c = (pmy_pack->pz4c != nullptr);
   if (use_z4c) {z4c_u0 = pmy_pack->pz4c->u0;}
-  const bool tri = (interp_method == ParticleInterpMethod::trilinear);
+  const int imeth = static_cast<int>(interp_method);
 
   par_for("calc_prtcl_energy", DevExeSpace(), 0, (nprtcl_thispack-1),
   KOKKOS_LAMBDA(const int p) {
@@ -68,8 +68,10 @@ void Particles::calc_prtcl_energy() {
     int interp_indcs[4] = {m, -1, -1, -1};
     SetInterpIndices(x, mb_par, ncell, interp_indcs);
     Real Lx[2*NGHOST] = {0.0}, Ly[2*NGHOST] = {0.0}, Lz[2*NGHOST] = {0.0};
-    if (tri) {
+    if (imeth == 1) {
       CalcTriWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
+    } else if (imeth == 2) {
+      CalcHermiteWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
     } else {
       CalcInterpWght<NGHOST>(x, mb_par, ncell, interp_indcs, Lx, Ly, Lz);
     }

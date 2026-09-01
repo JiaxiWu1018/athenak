@@ -92,43 +92,55 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   // select the grid->particle interpolation scheme. "lagrange" (default, and the
   // historical behavior when the key is absent) is the 2*NGHOST-point tensor-product
   // Lagrange gather; "trilinear" is the genuine 8-point (2x2x2) linear gather -- the
-  // adjoint of CIC deposition -- applied at EVERY grid-at-particle evaluation (pusher,
-  // energy, excision, deposition Lorentz factor, shell/monopole diagnostics). The
-  // default keeps the historical code path: no trilinear code executes at all.
+  // adjoint of CIC deposition; "hermite" is the 64-point cubic Hermite (Catmull-Rom,
+  // globally C1) gather. The selection is applied at EVERY grid-at-particle evaluation
+  // (gr_boris pusher force incl. fixed-point iteration and Euler fallback, energy
+  // diagnostic, lapse excision, deposition Lorentz factor). The default keeps the
+  // historical code path: no trilinear/Hermite code executes at all. The gr_boris
+  // retry of a rejected geodesic substep always uses its own dedicated two-node
+  // trilinear operator, whatever is selected here (see gr_boris.cpp).
   {
     std::string imeth = pin->GetOrAddString("particles","interpolation","lagrange");
     if (imeth.compare("lagrange") == 0) {
       interp_method = ParticleInterpMethod::lagrange;
-    } else if (imeth.compare("trilinear") == 0) {
-      interp_method = ParticleInterpMethod::trilinear;
+    } else if (imeth.compare("trilinear") == 0 || imeth.compare("hermite") == 0) {
+      interp_method = (imeth.compare("hermite") == 0)
+          ? ParticleInterpMethod::hermite : ParticleInterpMethod::trilinear;
       // the special-relativistic Boris / drift / tracer pushers and the gr_boris EM
       // half-kicks still gather with Lagrange weights only; reject any combination
       // that would silently mix schemes inside one particle update
       if (pusher != ParticlesPusher::gr_boris) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
-                  << std::endl << "<particles> interpolation = trilinear is only "
-                  << "implemented for pusher = gr_boris" << std::endl;
+                  << std::endl << "<particles> interpolation = " << imeth
+                  << " is only implemented for pusher = gr_boris" << std::endl;
         std::exit(EXIT_FAILURE);
       }
       if (pmy_pack->pmhd != nullptr) {
         std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
-                  << std::endl << "<particles> interpolation = trilinear does not "
-                  << "support the gr_boris electromagnetic half-kicks (MHD present); "
-                  << "those gathers are Lagrange-only" << std::endl;
+                  << std::endl << "<particles> interpolation = " << imeth
+                  << " does not support the gr_boris electromagnetic half-kicks "
+                  << "(MHD present); those gathers are Lagrange-only" << std::endl;
         std::exit(EXIT_FAILURE);
       }
     } else {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
                 << std::endl << "<particles> interpolation = '" << imeth
-                << "' not recognized (use lagrange|trilinear)" << std::endl;
+                << "' not recognized (use lagrange|trilinear|hermite)" << std::endl;
       std::exit(EXIT_FAILURE);
     }
     if (global_variable::my_rank == 0) {
-      std::cout << "PARTICLES grid->particle interpolation = " << imeth
-                << ((interp_method == ParticleInterpMethod::trilinear)
-                    ? " (genuine 2x2x2 trilinear gather, CIC-adjoint, at every"
-                      " grid-at-particle site)"
-                    : " (historical 2*NGHOST-point tensor-product Lagrange gather)")
+      const char *desc = " (historical 2*NGHOST-point tensor-product Lagrange gather)";
+      if (interp_method == ParticleInterpMethod::trilinear) {
+        desc = " (genuine 2x2x2 trilinear gather, CIC-adjoint, at every"
+               " grid-at-particle site)";
+      } else if (interp_method == ParticleInterpMethod::hermite) {
+        desc = " (genuine 4x4x4 cubic-Hermite/Catmull-Rom gather, globally C1,"
+               " at every grid-at-particle site)";
+      }
+      std::cout << "PARTICLES grid->particle interpolation = " << imeth << desc
+                << std::endl
+                << "PARTICLES gr_boris retry of rejected geodesic substeps: dedicated "
+                << "two-node trilinear gather (fixed, independent of the selection above)"
                 << std::endl;
     }
   }

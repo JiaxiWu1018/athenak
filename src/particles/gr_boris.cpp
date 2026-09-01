@@ -28,6 +28,7 @@
 #include <cmath>
 #include <cstdio>
 #include <iostream>
+#include <string>
 
 #include "athena.hpp"
 #include "globals.hpp"
@@ -65,7 +66,9 @@ namespace particles {
 //!   1 = trilinear : genuine 2x2x2 linear gather via PADDED weights (CalcTriWghtAndDrv
 //!                   zero-fills the 2*NG-wide weight arrays except the central two
 //!                   slots, so every LagrangeInterpolator contraction below evaluates
-//!                   the trilinear interpolant and its exact derivative).
+//!                   the trilinear interpolant and its exact derivative);
+//!   2 = hermite   : genuine 4x4x4 cubic-Hermite (Catmull-Rom, globally C1) gather via
+//!                   PADDED weights in slots [NG-2..NG+1] (CalcHermiteWghtAndDrv).
 //! kRetryTrilinear is the DEDICATED two-node trilinear operator of GRBorisRetry
 //! (CalcTrilinearWghtAndDrv + TrilinearInterpolator<NG>) and is not user-selectable.
 //! It is kept separate from the padded form on purpose: it reads only the eight corner
@@ -87,7 +90,8 @@ template <int NG, int IMETH = 0>
 struct GeodesicPush {
   static_assert(IMETH == kRetryTrilinear ||
                 IMETH == static_cast<int>(ParticleInterpMethod::lagrange) ||
-                IMETH == static_cast<int>(ParticleInterpMethod::trilinear),
+                IMETH == static_cast<int>(ParticleInterpMethod::trilinear) ||
+                IMETH == static_cast<int>(ParticleInterpMethod::hermite),
                 "GeodesicPush: unknown interpolation method");
   const Real *x_old, *u_old, *mb_par;
   const int *ncell;
@@ -147,6 +151,9 @@ struct GeodesicPush {
     } else if constexpr (IMETH == static_cast<int>(ParticleInterpMethod::trilinear)) {
       CalcTriWghtAndDrv<NG>(x_mid, mb_par, ncell,
                             interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
+    } else if constexpr (IMETH == static_cast<int>(ParticleInterpMethod::hermite)) {
+      CalcHermiteWghtAndDrv<NG>(x_mid, mb_par, ncell,
+                                interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
     } else {
       CalcInterpWghtAndDrv<NG>(x_mid, mb_par, ncell,
                                interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
@@ -522,9 +529,9 @@ void Particles::GR_BorisPush() {
     Real u_n[3] = {pr(IPVX, p), pr(IPVY, p), pr(IPVZ, p)};
 
     // ---- Step 1+2: first half EM kick at x^n (skipped when no MHD) ----
-    // NOTE: the EM half-kick gathers below are Lagrange-only; interpolation=trilinear
-    // with MHD present is rejected at construction (particles.cpp), so no run mixes
-    // schemes here.
+    // NOTE: the EM half-kick gathers below are Lagrange-only; a non-Lagrange
+    // <particles> interpolation with MHD present is rejected at construction
+    // (particles.cpp), so no run mixes schemes here.
     Real u_p[3] = {0.0};
     if (use_mhd) {
       Real B_interp_n[3] = {0.0}, v_interp_n[3] = {0.0};
@@ -662,6 +669,11 @@ void Particles::GR_BorisPush() {
     switch (imeth_gather) {
     case static_cast<int>(ParticleInterpMethod::trilinear):
       gstat = GeodesicSubstep<static_cast<int>(ParticleInterpMethod::trilinear)>(
+          ng, x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c, z4c_n, z4c_np1,
+          x_np1, u_pp);
+      break;
+    case static_cast<int>(ParticleInterpMethod::hermite):
+      gstat = GeodesicSubstep<static_cast<int>(ParticleInterpMethod::hermite)>(
           ng, x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c, z4c_n, z4c_np1,
           x_np1, u_pp);
       break;
@@ -893,13 +905,28 @@ void Particles::GR_BorisPush() {
       boris_nrescued_cum += static_cast<std::int64_t>(nrescued);
       if (!boris_first_retry_seen) {
         boris_first_retry_seen = true;
+        // the retry operator is the dedicated two-node trilinear gather whatever the
+        // primary <particles> interpolation is (see GeodesicPush / kRetryTrilinear)
+        std::string primary, order;
+        if (interp_method == ParticleInterpMethod::hermite) {
+          primary = "hermite"; order = "third order (C1 cubic Hermite)";
+        } else if (interp_method == ParticleInterpMethod::trilinear) {
+          primary = "trilinear";
+          order = "different: the dedicated eight-node retry evaluates the SAME "
+                  "interpolant as the padded primary gather, so a rescue here means a "
+                  "non-finite stored value outside the eight surrounding nodes poisoned "
+                  "the padded contraction";
+        } else {
+          primary = "lagrange"; order = std::to_string(2*ng) + "th";
+        }
         std::cout << "### WARNING in " << __FILE__ << ": a geodesic substep whose "
-                  << "high-order geometry was invalid was re-solved with a TRILINEAR "
+                  << "geometry interpolated with the primary gather (" << primary
+                  << ") was invalid was re-solved with the dedicated TRILINEAR "
                   << "interpolant for the first time this run (rank "
                   << global_variable::my_rank << ", cycle " << pmy_pack->pmesh->ncycle
                   << ")." << std::endl
-                  << "    That push is first order accurate in space, not " << 2*ng
-                  << "th: it is a repair, not an improvement, and it means the metric is "
+                  << "    That push is first order accurate in space, not " << order
+                  << ": it is a repair, not an improvement, and it means the metric is "
                   << "under-resolved where that particle sits -- refine, or excise "
                   << "earlier." << std::endl
                   << "    'invalid grid' below counts the retries whose eight "
