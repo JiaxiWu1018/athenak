@@ -38,6 +38,9 @@
 //!   cluster_radial_mode_u coherent radial-mode surface 3-velocity U in (-1,1) (default 0)
 //!   cluster_solve_momentum_constraint initialize the spherical CTT K_ij correction
 //!                                     sourced by the coherent mode (default false)
+//!   cluster_solve_hamiltonian_constraint additionally solve the coupled incremental
+//!                                      Hamiltonian correction (default false; requires
+//!                                      cluster_solve_momentum_constraint=true)
 //!   cluster_bias_mode  "stratified" (default) or "bernoulli"
 //!   cluster_bias_seed  salt for the bernoulli-mode per-tag hash (default 0)
 //!   cluster_t0_dump    if non-empty, rank 0 writes the full global t=0 particle sample
@@ -315,6 +318,18 @@ Real InterpolateCDF(const std::vector<Real> &cdf, const std::vector<Real> &value
   return values[lo] + frac*(values[hi] - values[lo]);
 }
 
+Real InterpolateRadius(const std::vector<Real> &radius,
+                       const std::vector<Real> &values, Real r) {
+  if (r <= radius.front()) { return values.front(); }
+  if (r >= radius.back()) { return values.back(); }
+  auto it = std::lower_bound(radius.begin() + 1, radius.end(), r);
+  std::size_t hi = static_cast<std::size_t>(it - radius.begin());
+  std::size_t lo = hi - 1;
+  Real denom = radius[hi] - radius[lo];
+  Real frac = (denom > 0.0) ? (r - radius[lo])/denom : 0.0;
+  return values[lo] + frac*(values[hi] - values[lo]);
+}
+
 //----------------------------------------------------------------------------------------
 // Velocity-angle perturbations
 // ----------------------------
@@ -554,7 +569,8 @@ void ReorientTangential(DrawnParticle *d, Real lambda_tan) {
 //! Returns false if the requested velocity would be non-finite or non-timelike. Diagnostic
 //! outputs describe the local frame immediately before and after this map.
 bool AddCoherentRadialMode(DrawnParticle *d, Real radial_mode_u,
-                           Real surface_areal_radius, Real *delta_vr,
+                           Real surface_areal_radius, Real mode_conformal_a,
+                           Real *delta_vr,
                            Real *vr_before, Real *vr_after, Real *w_before,
                            Real *w_after, Real *v2_after,
                            Real *abs_delta_vtan, Real *normalization_residual) {
@@ -578,7 +594,7 @@ bool AddCoherentRadialMode(DrawnParticle *d, Real radial_mode_u,
 
   // Circumferential radius is r=A*rbar for gamma_ij=A^2 delta_ij. Clamp only protects
   // the polynomial from interpolation roundoff at the sampled surface.
-  Real x = d->conf_a*d->riso/surface_areal_radius;
+  Real x = mode_conformal_a*d->riso/surface_areal_radius;
   x = std::min(std::max(x, static_cast<Real>(0.0)), static_cast<Real>(1.0));
   Real dv = 0.5*radial_mode_u*(3.0*x - x*x*x);
   Real vr1 = vr0 + dv;
@@ -727,6 +743,244 @@ CTTMomentumProfile ConstructCTTMomentumProfile(const ClusterProfile &profile,
   return correction;
 }
 
+//! \brief angular average <W> after adding q=delta v^(hat r).
+Real MeanPerturbedLorentz(Real y, Real q) {
+  constexpr int nmu_half = 32;
+  Real v0 = std::sqrt(std::max(static_cast<Real>(1.0) - y,
+                               static_cast<Real>(0.0)));
+  Real sum = 0.0;
+  for (int k = 0; k < nmu_half; ++k) {
+    Real mu = (static_cast<Real>(k) + 0.5)/static_cast<Real>(nmu_half);
+    Real den_plus = y - q*q - 2.0*v0*q*mu;
+    Real den_minus = y - q*q + 2.0*v0*q*mu;
+    if (!(den_plus > 0.0) || !(den_minus > 0.0)) {
+      return std::numeric_limits<Real>::quiet_NaN();
+    }
+    sum += 1.0/std::sqrt(den_plus) + 1.0/std::sqrt(den_minus);
+  }
+  return sum/static_cast<Real>(2*nmu_half);
+}
+
+//! \struct IncrementalConstraintProfile
+//! \brief coupled spherical CTT correction relative to the exact ST equilibrium.
+//!
+//! The historical pgen samples the printed Eq. (A18) radial measure, whereas the smooth
+//! equilibrium ODE uses the proper-volume rest-mass measure. An absolute particle-source
+//! Hamiltonian solve would therefore move even U=0 away from the already validated ST
+//! equilibrium. Instead write psi=psi_0+delta psi and solve only for the change made by
+//! the coherent mode, using the same A18 coordinate density in both terms:
+//!
+//!   Laplacian(delta psi) = -delta Q,
+//!   delta Q = 2 pi D [<W>_U/psi - <W>_0/psi_0] + a^2/(3 psi^7),
+//!   D = M0 (dP/dr)/(4 pi r^2),
+//!   F = 6 pi D psi^2 <u_hat_r>,  a=r^-3 integral_0^r s^3 F ds.
+//!
+//! Thus U=0 is an exact no-op by construction. The logarithmic exterior grid resolves
+//! the a=C/r^3 Hamiltonian tail and enforces delta psi -> 0 at infinity.
+struct IncrementalConstraintProfile {
+  std::vector<Real> radius;
+  std::vector<Real> conformal_a;
+  std::vector<Real> a;
+  Real moment = 0.0;
+  Real delta_adm_mass = 0.0;
+  Real max_abs_source = 0.0;
+  Real max_abs_a = 0.0;
+  Real max_abs_mean_uhat_r = 0.0;
+  Real max_abs_delta_psi = 0.0;
+  Real max_rel_delta_psi = 0.0;
+  Real max_abs_delta_q = 0.0;
+  Real final_relative_update = 0.0;
+  int iterations = 0;
+};
+
+IncrementalConstraintProfile ConstructIncrementalConstraintProfile(
+    const ClusterProfile &profile, Real total_mass, Real radial_mode_u) {
+  constexpr int n_outer = 2048;
+  constexpr int max_iterations = 10000;
+  constexpr Real relaxation = 0.35;
+  constexpr Real tolerance = 2.0e-13;
+  IncrementalConstraintProfile correction;
+  std::size_t n_matter = profile.x.size();
+  std::size_t n_total = n_matter + n_outer;
+  correction.radius.resize(n_total);
+  correction.conformal_a.resize(n_total);
+  correction.a.assign(n_total, 0.0);
+
+  std::vector<Real> psi0(n_total, 1.0), psi(n_total, 1.0);
+  std::vector<Real> dcoord(n_total, 0.0), mean_w(n_total, 1.0);
+  std::vector<Real> mean_w0(n_total, 1.0), mean_uhat_r(n_total, 0.0);
+  std::vector<Real> source(n_total, 0.0), moment(n_total, 0.0);
+  std::vector<Real> delta_q(n_total, 0.0), inner(n_total, 0.0);
+  std::vector<Real> outer(n_total, 0.0), trial(n_total, 1.0);
+  Real rest_mass = total_mass*profile.rest_mass_over_m;
+  Real zeta = (1.0 - profile.y.front())/3.0;
+
+  for (std::size_t i = 0; i < n_matter; ++i) {
+    correction.radius[i] = total_mass*profile.riso_over_m[i];
+    psi0[i] = std::sqrt(profile.conformal_a[i]);
+    psi[i] = psi0[i];
+    mean_w0[i] = 1.0/std::sqrt(profile.y[i]);
+    Real xfrac = (i == 0) ? 0.0 : profile.x[i]/profile.xs;
+    Real q = 0.5*radial_mode_u*(3.0*xfrac - xfrac*xfrac*xfrac);
+    mean_w[i] = MeanPerturbedLorentz(profile.y[i], q);
+    mean_uhat_r[i] = MeanPerturbedRadialUhat(profile.y[i], q);
+    if (!std::isfinite(mean_w[i]) || !std::isfinite(mean_uhat_r[i])) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "Non-timelike continuum velocity in coupled CTT source."
+                << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    correction.max_abs_mean_uhat_r = std::max(
+        correction.max_abs_mean_uhat_r, std::abs(mean_uhat_r[i]));
+    if (i > 0) {
+      Real x = profile.x[i];
+      Real r = correction.radius[i];
+      Real compact = 1.0 - 2.0*zeta*profile.v[i]/x;
+      Real radial_factor = 1.0/std::sqrt(compact);
+      Real driso_dx = r*radial_factor/x;
+      Real inv_y_minus_one = std::max(1.0/profile.y[i] - 1.0,
+                                      static_cast<Real>(0.0));
+      Real cdf_weight = x*x/profile.y[i]*std::sqrt(inv_y_minus_one);
+      Real dprob_dx = cdf_weight/profile.cdf_normalization;
+      Real denom = 4.0*M_PI*r*r*driso_dx;
+      dcoord[i] = (denom > 0.0) ? rest_mass*dprob_dx/denom : 0.0;
+    }
+  }
+
+  Real surface = correction.radius[n_matter - 1];
+  Real outer_limit = std::max(1.0e6*total_mass, 10.0*surface);
+  Real log_start = std::log(surface*(1.0 + 1.0e-8));
+  Real log_end = std::log(outer_limit);
+  for (int j = 0; j < n_outer; ++j) {
+    std::size_t i = n_matter + static_cast<std::size_t>(j);
+    Real f = static_cast<Real>(j)/static_cast<Real>(n_outer - 1);
+    Real r = std::exp(log_start + f*(log_end - log_start));
+    correction.radius[i] = r;
+    psi0[i] = 1.0 + 0.5*total_mass/r;
+    psi[i] = psi0[i];
+  }
+
+  // This branch is both a regression guarantee and the mathematical zero of the
+  // incremental equations: no arithmetic is allowed to perturb the U=0 metric.
+  if (radial_mode_u == 0.0) {
+    for (std::size_t i = 0; i < n_total; ++i) {
+      correction.conformal_a[i] = psi0[i]*psi0[i];
+    }
+    correction.iterations = 1;
+    return correction;
+  }
+
+  bool converged = false;
+  for (int iteration = 0; iteration < max_iterations; ++iteration) {
+    for (std::size_t i = 0; i < n_total; ++i) {
+      source[i] = 6.0*M_PI*dcoord[i]*psi[i]*psi[i]*mean_uhat_r[i];
+    }
+    moment[0] = 0.0;
+    for (std::size_t i = 1; i < n_total; ++i) {
+      Real r0 = correction.radius[i-1], r1 = correction.radius[i];
+      Real f0 = r0*r0*r0*source[i-1];
+      Real f1 = r1*r1*r1*source[i];
+      moment[i] = moment[i-1] + 0.5*(f0 + f1)*(r1 - r0);
+      correction.a[i] = moment[i]/(r1*r1*r1);
+    }
+    correction.a[0] = 0.0;
+    for (std::size_t i = 0; i < n_total; ++i) {
+      Real matter_change = 2.0*M_PI*dcoord[i]*
+          (mean_w[i]/psi[i] - mean_w0[i]/psi0[i]);
+      Real extrinsic = correction.a[i]*correction.a[i]/
+                       (3.0*std::pow(psi[i], 7));
+      delta_q[i] = matter_change + extrinsic;
+    }
+    inner[0] = 0.0;
+    for (std::size_t i = 1; i < n_total; ++i) {
+      Real r0 = correction.radius[i-1], r1 = correction.radius[i];
+      Real f0 = r0*r0*delta_q[i-1];
+      Real f1 = r1*r1*delta_q[i];
+      inner[i] = inner[i-1] + 0.5*(f0 + f1)*(r1 - r0);
+    }
+    outer[n_total-1] = 0.0;
+    for (std::size_t i = n_total-1; i > 0; --i) {
+      Real r0 = correction.radius[i-1], r1 = correction.radius[i];
+      Real f0 = r0*delta_q[i-1];
+      Real f1 = r1*delta_q[i];
+      outer[i-1] = outer[i] + 0.5*(f0 + f1)*(r1 - r0);
+    }
+    Real radius_last = correction.radius.back();
+    Real ctt_moment = moment.back();
+    Real tail = ctt_moment*ctt_moment/
+                (12.0*std::pow(radius_last, 4));
+    Real max_relative_update = 0.0;
+    for (std::size_t i = 0; i < n_total; ++i) {
+      Real green = outer[i] + tail;
+      if (i > 0) { green += inner[i]/correction.radius[i]; }
+      trial[i] = psi0[i] + green;
+      max_relative_update = std::max(
+          max_relative_update, std::abs(trial[i] - psi[i])/psi0[i]);
+    }
+    for (std::size_t i = 0; i < n_total; ++i) {
+      psi[i] = (1.0 - relaxation)*psi[i] + relaxation*trial[i];
+    }
+    correction.iterations = iteration + 1;
+    correction.final_relative_update = max_relative_update;
+    if (max_relative_update < tolerance) {
+      converged = true;
+      break;
+    }
+  }
+  if (!converged) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "Incremental coupled CTT solve did not converge after "
+              << max_iterations << " iterations; last relative update="
+              << correction.final_relative_update << "." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+
+  // Re-evaluate all sources at the converged iterate for diagnostics and ADM mass.
+  for (std::size_t i = 0; i < n_total; ++i) {
+    source[i] = 6.0*M_PI*dcoord[i]*psi[i]*psi[i]*mean_uhat_r[i];
+    correction.max_abs_source = std::max(correction.max_abs_source,
+                                         std::abs(source[i]));
+  }
+  moment[0] = 0.0;
+  for (std::size_t i = 1; i < n_total; ++i) {
+    Real r0 = correction.radius[i-1], r1 = correction.radius[i];
+    Real f0 = r0*r0*r0*source[i-1];
+    Real f1 = r1*r1*r1*source[i];
+    moment[i] = moment[i-1] + 0.5*(f0 + f1)*(r1 - r0);
+    correction.a[i] = moment[i]/(r1*r1*r1);
+    correction.max_abs_a = std::max(correction.max_abs_a,
+                                    std::abs(correction.a[i]));
+  }
+  correction.a[0] = 0.0;
+  correction.moment = moment.back();
+  inner[0] = 0.0;
+  for (std::size_t i = 0; i < n_total; ++i) {
+    Real matter_change = 2.0*M_PI*dcoord[i]*
+        (mean_w[i]/psi[i] - mean_w0[i]/psi0[i]);
+    Real extrinsic = correction.a[i]*correction.a[i]/
+                     (3.0*std::pow(psi[i], 7));
+    delta_q[i] = matter_change + extrinsic;
+    correction.max_abs_delta_q = std::max(correction.max_abs_delta_q,
+                                          std::abs(delta_q[i]));
+    correction.max_abs_delta_psi = std::max(correction.max_abs_delta_psi,
+                                            std::abs(psi[i] - psi0[i]));
+    correction.max_rel_delta_psi = std::max(correction.max_rel_delta_psi,
+                                            std::abs(psi[i]/psi0[i] - 1.0));
+    correction.conformal_a[i] = psi[i]*psi[i];
+    if (i > 0) {
+      Real r0 = correction.radius[i-1], r1 = correction.radius[i];
+      Real f0 = r0*r0*delta_q[i-1];
+      Real f1 = r1*r1*delta_q[i];
+      inner[i] = inner[i-1] + 0.5*(f0 + f1)*(r1 - r0);
+    }
+  }
+  Real radius_last = correction.radius.back();
+  Real mass_tail = 2.0*correction.moment*correction.moment/
+                   (9.0*std::pow(radius_last, 3));
+  correction.delta_adm_mass = 2.0*inner.back() + mass_tail;
+  return correction;
+}
+
 //! \struct BiasStats
 //! \brief t=0 bookkeeping for the outward bias, accumulated over ALL tags (every rank
 //! reproduces the same global draw, so rank 0 can report them without any reduction).
@@ -827,6 +1081,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   Real radial_mode_u = pin->GetOrAddReal("problem", "cluster_radial_mode_u", 0.0);
   bool solve_momentum_constraint = pin->GetOrAddBoolean(
       "problem", "cluster_solve_momentum_constraint", false);
+  bool solve_hamiltonian_constraint = pin->GetOrAddBoolean(
+      "problem", "cluster_solve_hamiltonian_constraint", false);
   std::string bias_mode = pin->GetOrAddString("problem", "cluster_bias_mode",
                                               "stratified");
   int bias_seed = pin->GetOrAddInteger("problem", "cluster_bias_seed", 0);
@@ -862,6 +1118,12 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << "(got '" << bias_mode << "')." << std::endl;
     std::exit(EXIT_FAILURE);
   }
+  if (solve_hamiltonian_constraint && !solve_momentum_constraint) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "cluster_solve_hamiltonian_constraint requires "
+              << "cluster_solve_momentum_constraint=true." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
   if (solve_momentum_constraint && (lambda_tan != 0.0 || eps_out != 0.0)) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
               << std::endl << "cluster_solve_momentum_constraint currently supports "
@@ -872,9 +1134,17 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
 
   ClusterProfile profile = ConstructProfile(yc, profile_dx);
   CTTMomentumProfile momentum_correction;
-  if (solve_momentum_constraint) {
+  IncrementalConstraintProfile constraint_correction;
+  if (solve_hamiltonian_constraint) {
+    constraint_correction = ConstructIncrementalConstraintProfile(
+        profile, total_mass, radial_mode_u);
+  } else if (solve_momentum_constraint) {
     momentum_correction = ConstructCTTMomentumProfile(profile, total_mass, radial_mode_u);
   }
+  // Preserve the historical U=0 initialization bit for bit even when both opt-in solver
+  // flags are enabled as a regression test. The incremental solution is exactly zero.
+  bool apply_hamiltonian_correction = solve_hamiltonian_constraint &&
+                                      radial_mode_u != 0.0;
 
   // Copy the isotropic radial metric profile to the device.
   int nprof = static_cast<int>(profile.x.size());
@@ -882,23 +1152,42 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   DvceArray1D<Real> conf_d("cluster_conformal_a", nprof);
   DvceArray1D<Real> lapse_d("cluster_lapse", nprof);
   DvceArray1D<Real> ctt_a_d("cluster_ctt_a", nprof);
+  int nham = solve_hamiltonian_constraint
+      ? static_cast<int>(constraint_correction.radius.size()) : 1;
+  DvceArray1D<Real> ham_radius_d("cluster_ham_radius", nham);
+  DvceArray1D<Real> ham_conf_d("cluster_ham_conformal_a", nham);
   auto radius_h = Kokkos::create_mirror_view(radius_d);
   auto conf_h = Kokkos::create_mirror_view(conf_d);
   auto lapse_h = Kokkos::create_mirror_view(lapse_d);
   auto ctt_a_h = Kokkos::create_mirror_view(ctt_a_d);
+  auto ham_radius_h = Kokkos::create_mirror_view(ham_radius_d);
+  auto ham_conf_h = Kokkos::create_mirror_view(ham_conf_d);
   for (int i = 0; i < nprof; ++i) {
     radius_h(i) = total_mass*profile.riso_over_m[i];
     conf_h(i) = profile.conformal_a[i];
     lapse_h(i) = profile.lapse[i];
-    ctt_a_h(i) = solve_momentum_constraint ? momentum_correction.a[i] : 0.0;
+    ctt_a_h(i) = solve_hamiltonian_constraint ? constraint_correction.a[i] :
+                   (solve_momentum_constraint ? momentum_correction.a[i] : 0.0);
   }
   Kokkos::deep_copy(radius_d, radius_h);
   Kokkos::deep_copy(conf_d, conf_h);
   Kokkos::deep_copy(lapse_d, lapse_h);
+  if (solve_hamiltonian_constraint) {
+    for (int i = 0; i < nham; ++i) {
+      ham_radius_h(i) = constraint_correction.radius[i];
+      ham_conf_h(i) = constraint_correction.conformal_a[i];
+    }
+  } else {
+    ham_radius_h(0) = 0.0;
+    ham_conf_h(0) = 1.0;
+  }
   Kokkos::deep_copy(ctt_a_d, ctt_a_h);
+  Kokkos::deep_copy(ham_radius_d, ham_radius_h);
+  Kokkos::deep_copy(ham_conf_d, ham_conf_h);
 
-  // Smooth equilibrium metric in isotropic Cartesian coordinates. The exterior is the
-  // standard isotropic Schwarzschild solution with mass M.
+  // Smooth equilibrium metric in isotropic Cartesian coordinates. The optional
+  // Hamiltonian solve replaces A=psi^2 by its incremental coupled solution while the
+  // equilibrium lapse is retained as a regular gauge choice.
   auto &size = pmbp->pmb->mb_size;
   auto &adm = pmbp->padm->adm;
   int is = indcs.is, js = indcs.js, ks = indcs.ks;
@@ -909,7 +1198,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   int nmb = pmbp->nmb_thispack;
   Real surface_radius = total_mass*profile.riso_over_m_surface;
   Real mass = total_mass;
-  Real ctt_moment = solve_momentum_constraint ? momentum_correction.moment : 0.0;
+  Real corrected_mass = total_mass + (apply_hamiltonian_correction
+      ? constraint_correction.delta_adm_mass : 0.0);
+  Real ctt_moment = solve_hamiltonian_constraint ? constraint_correction.moment :
+                    (solve_momentum_constraint ? momentum_correction.moment : 0.0);
   Real cx = center[0], cy = center[1], cz = center[2];
   par_for("pgen relativistic cluster metric", DevExeSpace(), 0, nmb-1,
           ksg, keg, jsg, jeg, isg, ieg,
@@ -945,6 +1237,28 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       alpha = (1.0 - q)/(1.0 + q);
       if (solve_momentum_constraint) {
         ctt_a = ctt_moment/(riso*riso*riso);
+      }
+    }
+    if (apply_hamiltonian_correction) {
+      if (riso <= ham_radius_d(nham-1)) {
+        int hlo = 0;
+        int hhi = nham - 1;
+        while (hlo + 1 < hhi) {
+          int mid = (hlo + hhi)/2;
+          if (ham_radius_d(mid) <= riso) {
+            hlo = mid;
+          } else {
+            hhi = mid;
+          }
+        }
+        Real denom = ham_radius_d(hhi) - ham_radius_d(hlo);
+        Real frac = (denom > 0.0) ? (riso - ham_radius_d(hlo))/denom : 0.0;
+        conformal_a = ham_conf_d(hlo) + frac*(ham_conf_d(hhi) - ham_conf_d(hlo));
+      } else {
+        // This branch lies beyond the 10^6 M solver grid in normal use; the omitted
+        // CTT r^-6 source is then negligible compared with the ADM 1/r term.
+        Real q = 0.5*corrected_mass/riso;
+        conformal_a = (1.0 + q)*(1.0 + q);
       }
     }
     Real gamma_diag = conformal_a*conformal_a;
@@ -1052,6 +1366,27 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     bias.sum_abs_l_base += std::sqrt(lx_base*lx_base + ly_base*ly_base +
                                     lz_base*lz_base);
 
+    // When the incremental Hamiltonian solve changes A=psi^2, rescale u_i by
+    // A_new/A_0 so the original local physical velocity is preserved before the mode.
+    // The mode profile itself remains tied to the equilibrium areal radius as prescribed.
+    Real mode_conformal_a = d.conf_a;
+    if (apply_hamiltonian_correction) {
+      Real corrected_conformal_a = InterpolateRadius(
+          constraint_correction.radius, constraint_correction.conformal_a, d.riso);
+      if (!(corrected_conformal_a > 0.0)) {
+        std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                  << std::endl << "Invalid corrected conformal factor for tag="
+                  << tag << "." << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      Real metric_scale = corrected_conformal_a/d.conf_a;
+      d.ux *= metric_scale;
+      d.uy *= metric_scale;
+      d.uz *= metric_scale;
+      d.umag *= metric_scale;
+      d.conf_a = corrected_conformal_a;
+    }
+
     Real umag_before = 0.0;
     if (lambda_tan > 0.0 || (!select.empty() && select[tag]) ||
         radial_mode_u != 0.0) {
@@ -1073,7 +1408,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       Real dv, vr_before, vr_after, w_before, w_after, v2_after;
       Real abs_delta_vtan, normalization_residual;
       bool mode_ok = AddCoherentRadialMode(
-          &d, radial_mode_u, total_mass*profile.r_over_m, &dv, &vr_before,
+          &d, radial_mode_u, total_mass*profile.r_over_m, mode_conformal_a,
+          &dv, &vr_before,
           &vr_after, &w_before, &w_after, &v2_after, &abs_delta_vtan,
           &normalization_residual);
       if (!mode_ok) {
@@ -1193,12 +1529,31 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
               << ", m0=" << particle_mass << ", seed=" << seed << std::endl;
     std::cout << "Cluster CTT momentum solve: enabled="
               << (solve_momentum_constraint ? 1 : 0);
-    if (solve_momentum_constraint) {
+    if (solve_hamiltonian_constraint) {
+      std::cout << ", quadrature_nmu=64, moment=" << constraint_correction.moment
+                << ", max|F|=" << constraint_correction.max_abs_source
+                << ", max|a|=" << constraint_correction.max_abs_a
+                << ", max|<u_hat_r>|="
+                << constraint_correction.max_abs_mean_uhat_r;
+    } else if (solve_momentum_constraint) {
       std::cout << ", quadrature_nmu=64, moment=" << momentum_correction.moment
                 << ", max|F|=" << momentum_correction.max_abs_source
                 << ", max|a|=" << momentum_correction.max_abs_a
                 << ", max|<u_hat_r>|="
                 << momentum_correction.max_abs_mean_uhat_r;
+    }
+    std::cout << std::endl;
+    std::cout << "Cluster incremental Hamiltonian solve: enabled="
+              << (solve_hamiltonian_constraint ? 1 : 0);
+    if (solve_hamiltonian_constraint) {
+      std::cout << ", iterations=" << constraint_correction.iterations
+                << ", final_relative_update="
+                << constraint_correction.final_relative_update
+                << ", delta_ADM_mass=" << constraint_correction.delta_adm_mass
+                << ", max|delta_psi|=" << constraint_correction.max_abs_delta_psi
+                << ", max|delta_psi/psi0|="
+                << constraint_correction.max_rel_delta_psi
+                << ", max|delta_Q|=" << constraint_correction.max_abs_delta_q;
     }
     std::cout << std::endl;
 
@@ -1296,6 +1651,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
        << " yc=" << yc << " lambda_tan=" << lambda_tan
        << " eps_out=" << eps_out << " bias_mode=" << bias_mode
        << " radial_mode_u=" << radial_mode_u << " radial_mode_radius=areal"
+       << " solve_momentum_constraint=" << (solve_momentum_constraint ? 1 : 0)
+       << " solve_hamiltonian_constraint=" << (solve_hamiltonian_constraint ? 1 : 0)
+       << " delta_adm_mass=" << (solve_hamiltonian_constraint
+                                      ? constraint_correction.delta_adm_mass : 0.0)
        << " bias_seed=" << bias_seed << " seed=" << seed
        << " mass=" << total_mass << " m0=" << particle_mass
        << " R_over_M=" << profile.r_over_m
