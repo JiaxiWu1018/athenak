@@ -179,6 +179,22 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   ah_surf_warned = false;
   ah_surf_geometry_warned = false;
 
+  // Optional protection-only raw snapshot.  It is deliberately independent of the
+  // trusted snapshot above and is never restored from a restart parameter dump.
+  ah_raw_surf_enabled = pin->GetOrAddBoolean("fastflow",
+                                             "protection_raw_snapshot_" + n_str, false);
+  Kokkos::realloc(a0_raw_surf, lmax1);
+  Kokkos::realloc(ac_raw_surf, lmpoints);
+  Kokkos::realloc(as_raw_surf, lmpoints);
+  ah_raw_surf_valid = false;
+  ah_raw_surf_reported = false;
+  ah_raw_surf_warned = false;
+  ah_raw_surf_center[0] = ah_raw_surf_center[1] = ah_raw_surf_center[2] = 0.0;
+  ah_raw_surf_rmin = ah_raw_surf_rmax = -1.0;
+  ah_raw_surf_time = -1.0;
+  ah_raw_surf_area = ah_raw_surf_hrel = std::numeric_limits<Real>::quiet_NaN();
+  ah_raw_surf_cycle = -1;
+
   // Reallocate for the spherical harmonics.
   // The spherical grid is the same for all surfaces.
   Kokkos::realloc(Y0, nangles, lmax1);
@@ -500,6 +516,18 @@ void FastFlow::Find(int iter, Real time) {
     }, Kokkos::Max<Real>(candidate_rmax));
     const Real candidate_area = ah_prop[harea];
     const Real candidate_hrel = Kokkos::fabs(ah_prop[hhmean]) / candidate_area;
+
+    // The protection-only snapshot intentionally has weaker admission criteria than
+    // publication: finite positive radii, fully on-grid geometry, and the existing
+    // absurd maximum-radius guard only.  SnapshotRawSurface performs the on-grid test.
+    const bool raw_geometry_ok = Kokkos::isfinite(rr_min)
+                              && Kokkos::isfinite(candidate_rmax)
+                              && rr_min > 0.0 && candidate_rmax >= rr_min
+                              && candidate_rmax <= ah_surf_rmax_limit;
+    if (ah_raw_surf_enabled && raw_geometry_ok) {
+      SnapshotRawSurface(pmbp->pmesh->ncycle, time, candidate_rmax);
+    }
+
     ah_surf_local_dx = LocalCellWidthAtCenter();
     const bool local_dx_ok = (ah_surf_rmin_cells == 0.0)
                           || (Kokkos::isfinite(ah_surf_local_dx)
@@ -1023,17 +1051,71 @@ void FastFlow::UpdateFlowSpectralComponents() {
 //! havepoint is per-rank, so reduce with MAX -- SUM would miscount a point claimed by
 //! two ranks through their ghost zones.
 
-void FastFlow::SnapshotSurface() {
+bool FastFlow::CurrentSurfaceOnGrid(int &noff) {
   Kokkos::deep_copy(havepoint.h_view, havepoint.d_view);
   std::vector<int> hp(nangles);
   for (int q = 0; q < nangles; ++q) {hp[q] = havepoint.h_view(q);}
 #if MPI_PARALLEL_ENABLED
   MPI_Allreduce(MPI_IN_PLACE, hp.data(), nangles, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 #endif
-  int noff = 0;
+  noff = 0;
   for (int q = 0; q < nangles; ++q) {
     if (hp[q] == 0) {++noff;}
   }
+  return (noff == 0);
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void FastFlow::SnapshotRawSurface(int iter, Real time, Real candidate_rmax)
+//! \brief retain a plausible raw surface solely for conditional deep-lapse protection
+
+void FastFlow::SnapshotRawSurface(int iter, Real time, Real candidate_rmax) {
+  int noff = 0;
+  if (!CurrentSurfaceOnGrid(noff)) {
+    if (ioproc && !ah_raw_surf_warned) {
+      ah_raw_surf_warned = true;
+      std::cout << "### WARNING: raw protection surface " << nh << " rejected: "
+                << noff << " of " << nangles << " collocation points are off-grid."
+                << std::endl;
+    }
+    return;
+  }
+
+  Kokkos::deep_copy(a0_raw_surf.h_view, a0.h_view);
+  Kokkos::deep_copy(ac_raw_surf.h_view, ac.h_view);
+  Kokkos::deep_copy(as_raw_surf.h_view, as.h_view);
+  a0_raw_surf.template modify<HostMemSpace>();
+  a0_raw_surf.template sync<DevExeSpace>();
+  ac_raw_surf.template modify<HostMemSpace>();
+  ac_raw_surf.template sync<DevExeSpace>();
+  as_raw_surf.template modify<HostMemSpace>();
+  as_raw_surf.template sync<DevExeSpace>();
+
+  ah_raw_surf_center[0] = center[0];
+  ah_raw_surf_center[1] = center[1];
+  ah_raw_surf_center[2] = center[2];
+  ah_raw_surf_rmin = rr_min;
+  ah_raw_surf_rmax = candidate_rmax;
+  ah_raw_surf_time = time;
+  ah_raw_surf_cycle = iter;
+  ah_raw_surf_area = ah_prop[harea];
+  ah_raw_surf_hrel = Kokkos::fabs(ah_prop[hhmean]) / ah_prop[harea];
+  ah_raw_surf_valid = true;
+
+  if (ioproc && !ah_raw_surf_reported) {
+    ah_raw_surf_reported = true;
+    std::cout << "raw protection surface " << nh << " qualified at cycle=" << iter
+              << " time=" << time << " center=(" << center[0] << "," << center[1]
+              << "," << center[2] << ") radius=[" << rr_min << ","
+              << candidate_rmax << "] area=" << ah_raw_surf_area
+              << " |<H>|/area=" << ah_raw_surf_hrel
+              << " (not published by this trigger)" << std::endl;
+  }
+}
+
+void FastFlow::SnapshotSurface() {
+  int noff = 0;
+  CurrentSurfaceOnGrid(noff);
   if (noff > 0) {
     ah_surf_candidate_streak = 0;
     if (ioproc && !ah_surf_warned) {

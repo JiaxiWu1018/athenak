@@ -162,6 +162,11 @@ class Particles {
   Real excise_radius;
   Real excise_x1, excise_x2, excise_x3;
   Real excise_lapse;
+  //   excise_lapse_raw_ah: replace ordinary lapse excision by the intersection
+  //     alpha < excise_lapse AND inside a protection-only raw FastFlow snapshot.  The
+  //     raw snapshot has only finite/positive/on-grid/rmax guards and is not a published
+  //     horizon; a published AH, when present, always takes precedence in this mode.
+  bool excise_lapse_raw_ah;
   //   excise_ah: destroy particles inside a converged FastFlow apparent horizon. Inert
   //     until a find in this run converges AND passes FastFlow's on-grid test, and a
   //     later failed find does not retract the last good surface. Requires <z4c> and a
@@ -174,6 +179,9 @@ class Particles {
   DualArray2D<Real> ah_par;    // (nhorizon, NAH_PAR)
   DualArray2D<Real> ah_coef;   // (nhorizon, (lmax+1) + 2*lmpoints)
   int ah_nhorizon, ah_lmax, ah_lmpoints, ah_nvalid;
+  DualArray2D<Real> raw_ah_par;
+  DualArray2D<Real> raw_ah_coef;
+  int raw_ah_nvalid;
   // per-cycle marking written by MarkExcised, consumed by SetNewPrtclGID: excise_flag is
   // a ParticlesDeathReason (0 = keep); crit is the criterion value at marking -- r for
   // sphere, alpha for lapse, the containment ratio r/R_horizon (< 1 inside) for horizon
@@ -288,6 +296,7 @@ class Particles {
   // host-side refresh of ah_par/ah_coef from the live FastFlow snapshots; returns the
   // number of valid horizons (0 => the kernel's AH branch is skipped)
   int StageHorizons();
+  int StageRawHorizons();
   // Stress-energy deposition, scheduled after EnergyCalculation when feedback is on.
   TaskStatus SetPrtclTmunu(Driver *pdriver, int stage);
   template <int NGHOST> void set_prtcl_tmunu();

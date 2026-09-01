@@ -118,8 +118,15 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   excise_x2     = pin->GetOrAddReal("particles","excise_x2",0.0);
   excise_x3     = pin->GetOrAddReal("particles","excise_x3",0.0);
   excise_lapse  = pin->GetOrAddReal("particles","excise_lapse",0.0);
+  excise_lapse_raw_ah = pin->GetOrAddBoolean("particles", "excise_lapse_raw_ah", false);
   excise_ah     = pin->GetOrAddBoolean("particles","excise_ah",false);
   excise_any    = (excise_radius > 0.0) || (excise_lapse > 0.0) || excise_ah;
+  if (excise_lapse_raw_ah && (excise_lapse <= 0.0 || !excise_ah)) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "<particles> excise_lapse_raw_ah requires both "
+              << "excise_lapse > 0 and excise_ah = true" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
   if (excise_lapse > 0.0 && pmy_pack->padm == nullptr) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
               << "<particles> excise_lapse requires ADM variables (<adm> or <z4c>)"
@@ -130,6 +137,7 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   ah_lmax = 0;
   ah_lmpoints = 0;
   ah_nvalid = 0;
+  raw_ah_nvalid = 0;
   if (excise_ah) {
     // fail at construction rather than silently never excising
     if (pmy_pack->pz4c == nullptr || pmy_pack->pz4c->pfastflow.empty()) {
@@ -141,6 +149,7 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     ah_nhorizon = static_cast<int>(pmy_pack->pz4c->pfastflow.size());
     ah_lmax = pmy_pack->pz4c->pfastflow[0]->GetLmax();
     ah_lmpoints = pmy_pack->pz4c->pfastflow[0]->GetLmpoints();
+    int nraw_enabled = 0;
     // <fastflow> lmax is global, so one staging extent serves every surface; assert it
     for (int h=1; h<ah_nhorizon; ++h) {
       if (pmy_pack->pz4c->pfastflow[h]->GetLmax() != ah_lmax) {
@@ -150,11 +159,27 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
         std::exit(EXIT_FAILURE);
       }
     }
+    for (int h=0; h<ah_nhorizon; ++h) {
+      if (pmy_pack->pz4c->pfastflow[h]->ah_raw_surf_enabled) {++nraw_enabled;}
+    }
+    if (excise_lapse_raw_ah && nraw_enabled == 0) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "<particles> excise_lapse_raw_ah requires at least one "
+                << "<fastflow> protection_raw_snapshot_N = true" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
     Kokkos::realloc(ah_par, ah_nhorizon, NAH_PAR);
     Kokkos::realloc(ah_coef, ah_nhorizon, (ah_lmax + 1) + 2*ah_lmpoints);
     Kokkos::deep_copy(ah_par.h_view, 0.0);
     ah_par.template modify<HostMemSpace>();
     ah_par.template sync<DevExeSpace>();
+    if (excise_lapse_raw_ah) {
+      Kokkos::realloc(raw_ah_par, ah_nhorizon, NAH_PAR);
+      Kokkos::realloc(raw_ah_coef, ah_nhorizon, (ah_lmax + 1) + 2*ah_lmpoints);
+      Kokkos::deep_copy(raw_ah_par.h_view, 0.0);
+      raw_ah_par.template modify<HostMemSpace>();
+      raw_ah_par.template sync<DevExeSpace>();
+    }
   }
   if (excise_any) {
     Kokkos::realloc(excise_flag, 1);

@@ -75,6 +75,24 @@ class FastFlow {
   bool ah_surf_geometry_warned;       // the geometry warning is printed once
   DualArray1D<Real> a0_surf, ac_surf, as_surf;   // packing as a0/ac/as
   void SnapshotSurface();
+
+  // ---- Weaker snapshot used only as a deep-lapse geometric permission mask ---------
+  //! This snapshot never makes a horizon authoritative.  When explicitly enabled, it
+  //! records the last raw FastFlow convergence in this run whose radii are finite and
+  //! positive, whose entire collocation surface is on-grid, and whose maximum radius
+  //! passes the same absurd-size guard as the trusted consumer path.  In particular it
+  //! does NOT apply the minimum-cell, normalized-expansion, or persistence gates above.
+  //! Particle excision may use it only in conjunction with a deep-lapse threshold; AH
+  //! publication and ordinary AH excision continue to key exclusively on ah_surf_valid.
+  bool ah_raw_surf_enabled, ah_raw_surf_valid;
+  bool ah_raw_surf_reported, ah_raw_surf_warned;
+  Real ah_raw_surf_center[3];
+  Real ah_raw_surf_rmin, ah_raw_surf_rmax;
+  Real ah_raw_surf_time, ah_raw_surf_area, ah_raw_surf_hrel;
+  int ah_raw_surf_cycle;
+  DualArray1D<Real> a0_raw_surf, ac_raw_surf, as_raw_surf;
+  void SnapshotRawSurface(int iter, Real time, Real candidate_rmax);
+  bool CurrentSurfaceOnGrid(int &noff);
   int GetLmax() const {return lmax;}
   int GetLmpoints() const {return lmpoints;}
 

@@ -7,16 +7,21 @@
 //! \brief parameterized particle excision: the MarkExcised task runs between Push and
 //! NewGID (only scheduled when a criterion is enabled) and writes the per-particle
 //! excise_flag/excise_crit arrays that SetNewPrtclGID's destruction marking consumes.
-//! Three independent criteria (see particles.hpp):
+//! Three independent criteria plus one protected combination (see particles.hpp):
 //!   sphere  (PrtclDeathSphere):  |x - c| < excise_radius -- pure geometry, any pusher;
 //!   lapse   (PrtclDeathLapse):   alpha(x_p) < excise_lapse, with alpha Lagrange-
 //!     interpolated at the (post-push) particle position from the live arrays with the
 //!     gr_boris source switch: Z4c present => I_Z4C_ALPHA from u0, else I_ADM_ALPHA;
 //!   horizon (PrtclDeathHorizon): the particle is inside a converged FastFlow apparent
 //!     horizon that FastFlow published (z4c/fastflow.cpp, SnapshotSurface).
-//! They are checked in that order, so the recorded reason follows the precedence
-//! exit > sphere > lapse > horizon (exit is applied later, in SetNewPrtclGID); every
-//! enabled criterion still destroys. Marking uses the pre-wrap position: a particle that
+//!   protected lapse (PrtclDeathLapse): alpha(x_p) < excise_lapse AND the particle is
+//!     inside a protection-only raw FastFlow snapshot.  That snapshot is not published
+//!     as an AH and cannot trigger ordinary AH excision.  In this mode a published AH
+//!     is tested first and is therefore the authoritative destruction reason.
+//! Ordinary mode retains exit > sphere > lapse > horizon precedence (exit is applied
+//! later, in SetNewPrtclGID). Protected mode uses exit > sphere > published horizon >
+//! protected lapse, so AH excision becomes authoritative as soon as publication occurs.
+//! Marking uses the pre-wrap position: a particle that
 //! periodically wraps INTO the excision region this cycle is caught at the next cycle's
 //! marking. The criteria evaluate the post-step (n+1) fields, consistent with the
 //! post-push position.
@@ -88,6 +93,42 @@ int Particles::StageHorizons() {
   return nvalid;
 }
 
+//----------------------------------------------------------------------------------------
+//! \fn int Particles::StageRawHorizons()
+//! \brief stage plausible raw surfaces that do not already have a trusted publication
+
+int Particles::StageRawHorizons() {
+  auto &pff = pmy_pack->pz4c->pfastflow;
+  const int lmax1 = ah_lmax + 1;
+  int nvalid = 0;
+  for (int h=0; h<ah_nhorizon; ++h) {
+    // Once this finder has a published surface, ordinary AH excision is authoritative;
+    // do not allow a newer/weaker raw shape to enlarge its removal region.
+    const bool ok = pff[h]->ah_raw_surf_valid && !pff[h]->ah_surf_valid;
+    raw_ah_par.h_view(h, IAHVALID) = ok ? 1.0 : 0.0;
+    if (!ok) {continue;}
+    nvalid += 1;
+    raw_ah_par.h_view(h, IAHCX) = pff[h]->ah_raw_surf_center[0];
+    raw_ah_par.h_view(h, IAHCY) = pff[h]->ah_raw_surf_center[1];
+    raw_ah_par.h_view(h, IAHCZ) = pff[h]->ah_raw_surf_center[2];
+    raw_ah_par.h_view(h, IAHRMIN) = pff[h]->ah_raw_surf_rmin;
+    raw_ah_par.h_view(h, IAHRMAX) = pff[h]->ah_raw_surf_rmax;
+    for (int l=0; l<lmax1; ++l) {
+      raw_ah_coef.h_view(h, l) = pff[h]->a0_raw_surf.h_view(l);
+    }
+    for (int i=0; i<ah_lmpoints; ++i) {
+      raw_ah_coef.h_view(h, lmax1 + i) = pff[h]->ac_raw_surf.h_view(i);
+      raw_ah_coef.h_view(h, lmax1 + ah_lmpoints + i) =
+          pff[h]->as_raw_surf.h_view(i);
+    }
+  }
+  raw_ah_par.template modify<HostMemSpace>();
+  raw_ah_par.template sync<DevExeSpace>();
+  raw_ah_coef.template modify<HostMemSpace>();
+  raw_ah_coef.template sync<DevExeSpace>();
+  return nvalid;
+}
+
 TaskStatus Particles::MarkExcised(Driver *pdrive, int stage) {
   int npart = nprtcl_thispack;
   if (npart > static_cast<int>(excise_flag.extent(0))) {
@@ -95,6 +136,7 @@ TaskStatus Particles::MarkExcised(Driver *pdrive, int stage) {
     Kokkos::realloc(excise_crit, npart);
   }
   ah_nvalid = excise_ah ? StageHorizons() : 0;
+  raw_ah_nvalid = excise_lapse_raw_ah ? StageRawHorizons() : 0;
   if (npart == 0) {return TaskStatus::complete;}
 
   if (excise_lapse > 0.0) {
@@ -135,11 +177,15 @@ void Particles::mark_excised() {
   Real rexc = excise_radius;
   Real cx1 = excise_x1, cx2 = excise_x2, cx3 = excise_x3;
   bool lapse_on = (excise_lapse > 0.0);
+  bool protected_lapse = excise_lapse_raw_ah;
   Real alpha_thr = excise_lapse;
   bool ah_on = (excise_ah && ah_nvalid > 0);
+  bool raw_ah_on = (protected_lapse && raw_ah_nvalid > 0);
   int nh = ah_nhorizon, ah_lmax_ = ah_lmax, ah_lmpts_ = ah_lmpoints;
   auto ahpar = ah_par;
   auto ahcoef = ah_coef;
+  auto rawahpar = raw_ah_par;
+  auto rawahcoef = raw_ah_coef;
 
   // alpha source: live (post-step) arrays, gr_boris convention
   DvceArray5D<Real> alpha_arr;
@@ -168,7 +214,36 @@ void Particles::mark_excised() {
         crit = r;
       }
     }
-    if (flag == 0 && lapse_on) {
+    // Evaluate published containment once.  Protected mode assigns the AH reason now,
+    // before considering lapse; ordinary mode assigns it after lapse to preserve the
+    // established sphere > lapse > horizon ledger precedence exactly.
+    bool in_published_ah = false;
+    Real published_best = AH_CRIT_FAR;
+    if (flag == 0 && ah_on) {
+      for (int h=0; h<nh; ++h) {
+        Real c;
+        if (AHInside(ahpar.d_view, ahcoef.d_view, h, ah_lmax_, ah_lmpts_,
+                     x1, x2, x3, c)) {in_published_ah = true;}
+        if (c < published_best) {published_best = c;}
+      }
+      if (protected_lapse && in_published_ah) {
+        flag = PrtclDeathHorizon;
+        crit = published_best;
+      }
+    }
+
+    // Ordinary lapse has unconditional permission.  Protected lapse receives permission
+    // only inside at least one plausible raw surface that lacks a trusted publication.
+    bool lapse_permitted = lapse_on && !protected_lapse;
+    if (flag == 0 && raw_ah_on) {
+      for (int h=0; h<nh; ++h) {
+        Real c;
+        if (AHInside(rawahpar.d_view, rawahcoef.d_view, h, ah_lmax_, ah_lmpts_,
+                     x1, x2, x3, c)) {lapse_permitted = true;}
+      }
+    }
+
+    if (flag == 0 && lapse_permitted) {
       int mb = pi(PGID,p) - gids;
       const Real mb_par[9] = {size.d_view(mb).x1min, size.d_view(mb).x1max,
                               size.d_view(mb).dx1,
@@ -189,17 +264,9 @@ void Particles::mark_excised() {
         crit = alpha;
       }
     }
-    if (flag == 0 && ah_on) {
-      // inside ANY published horizon; record the smallest containment ratio, i.e. the
-      // horizon the particle is deepest inside
-      Real best = AH_CRIT_FAR;
-      for (int h=0; h<nh; ++h) {
-        Real c;
-        if (AHInside(ahpar.d_view, ahcoef.d_view, h, ah_lmax_, ah_lmpts_,
-                     x1, x2, x3, c)) {flag = PrtclDeathHorizon;}
-        if (c < best) {best = c;}
-      }
-      if (flag == PrtclDeathHorizon) {crit = best;}
+    if (flag == 0 && !protected_lapse && in_published_ah) {
+      flag = PrtclDeathHorizon;
+      crit = published_best;
     }
     eflag(p) = flag;
     ecrit(p) = crit;
