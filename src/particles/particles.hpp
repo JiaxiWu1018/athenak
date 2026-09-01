@@ -34,6 +34,14 @@ enum class ParticleType {cosmic_ray, dust};
 // coarse cells; native deposits independently at each target block's resolution.
 enum class CrossLevelDeposit {conservative, native};
 
+// Grid->particle interpolation scheme, applied at EVERY gather of grid fields at
+// particle positions (pusher force + metric, energy diagnostic, lapse excision,
+// deposition Lorentz factor, pgen shell diagnostics, live-monopole accumulation).
+// lagrange is the historical default (2*NGHOST-wide tensor-product Lagrange, absent
+// key preserves that path bitwise); trilinear is the genuine 8-point 2x2x2 linear
+// gather, the adjoint of CIC deposition. Selected by <particles> interpolation.
+enum class ParticleInterpMethod {lagrange=0, trilinear=1};
+
 //----------------------------------------------------------------------------------------
 //! \struct ParticlesTaskIDs
 //  \brief container to hold TaskIDs of all particles tasks
@@ -239,6 +247,10 @@ class Particles {
   DvceArray5D<Real> z4c_last;      // Z4c variables at step n
 
   ParticlesPusher pusher;
+
+  // grid->particle interpolation scheme (see the enum above); every gather kernel
+  // dispatches on this at launch, so one run uses exactly one scheme everywhere
+  ParticleInterpMethod interp_method;
 
   // Boundary communication buffers and functions for particles
   ParticlesBoundaryValues *pbval_part;

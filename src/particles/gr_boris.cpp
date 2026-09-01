@@ -56,17 +56,39 @@ namespace particles {
 //! criterion on the leading principal minors, since det > 0 alone is not sufficient),
 //! in which case (xout,uout) must not be used.
 //!
-//! TRI selects the interpolation operator and nothing else: trilinear weights lie in
-//! [0,1] and sum to one, so the interpolated gamma_ij is a convex combination of the
-//! eight corner matrices and inherits their positive-definiteness, which the wide
-//! alternating-sign stencil cannot promise. The 3+1 formulae, the time averaging and
-//! the Euler branch are identical, so the retry solves the same discrete problem.
-//! TRI must stay a template parameter with `if constexpr` branches: a kernel holding
-//! both operators live spills registers on GPU targets (measured >1000x slower on
-//! MI210), so each kernel must instantiate exactly one operator.
+//! IMETH selects the interpolation operator and nothing else: the 3+1 formulae, the
+//! time averaging and the Euler branch are identical for every value, so every variant
+//! solves the same discrete problem. Non-negative values are ParticleInterpMethod
+//! values, i.e. the run-time <particles> interpolation selector of the PRIMARY push:
+//!   0 = lagrange  : 2*NG-point tensor-product Lagrange (historical; this instantiation
+//!                   contains no trilinear code, preserving the default path bitwise);
+//!   1 = trilinear : genuine 2x2x2 linear gather via PADDED weights (CalcTriWghtAndDrv
+//!                   zero-fills the 2*NG-wide weight arrays except the central two
+//!                   slots, so every LagrangeInterpolator contraction below evaluates
+//!                   the trilinear interpolant and its exact derivative).
+//! kRetryTrilinear is the DEDICATED two-node trilinear operator of GRBorisRetry
+//! (CalcTrilinearWghtAndDrv + TrilinearInterpolator<NG>) and is not user-selectable.
+//! It is kept separate from the padded form on purpose: it reads only the eight corner
+//! nodes, so a non-finite stored value elsewhere in the wide stencil cannot poison it
+//! (0*NaN = NaN in a padded contraction), and its weights lie in [0,1] and sum to one,
+//! so the interpolated gamma_ij is a convex combination of the eight corner matrices
+//! and inherits their positive-definiteness, which the wide alternating-sign stencils
+//! cannot promise. The retry therefore stays trilinear whatever the primary scheme is.
+//! IMETH must stay a template parameter with `if constexpr` branches: a kernel holding
+//! the two-node and the 2*NG-node contraction live at once spills registers on GPU
+//! targets (measured >1000x slower on MI210), so the retry runs in its own kernel. The
+//! padded variants share one contraction and differ only in the weight builder.
 
-template <int NG, bool TRI>
+// IMETH value of the dedicated two-node trilinear operator used by GRBorisRetry; kept
+// outside the ParticleInterpMethod range so it can never be selected from the input.
+constexpr int kRetryTrilinear = -1;
+
+template <int NG, int IMETH = 0>
 struct GeodesicPush {
+  static_assert(IMETH == kRetryTrilinear ||
+                IMETH == static_cast<int>(ParticleInterpMethod::lagrange) ||
+                IMETH == static_cast<int>(ParticleInterpMethod::trilinear),
+                "GeodesicPush: unknown interpolation method");
   const Real *x_old, *u_old, *mb_par;
   const int *ncell;
   const DvceArray5D<Real> adm_old, adm_new, z4c_old, z4c_new;
@@ -84,13 +106,14 @@ struct GeodesicPush {
       adm_old(adm_old_), adm_new(adm_new_), z4c_old(z4c_old_), z4c_new(z4c_new_),
       mb(mb_), dt(dt_), use_z4c(use_z4c_) {}
 
-  //! The only place the interpolation operator enters. The discarded branch is not
-  //! instantiated, so <NG,false> carries no trilinear code and generates exactly what the
-  //! pusher generated before the fallback existed.
+  //! The only place the contraction operator enters. The discarded branch is not
+  //! instantiated, so <NG,0> carries no trilinear code and generates exactly what the
+  //! pusher generated before the fallback existed; the padded schemes (IMETH >= 1)
+  //! use the same LagrangeInterpolator contraction with a different weight builder.
   KOKKOS_INLINE_FUNCTION
   Real Interp(const DvceArray5D<Real>& u0, const int nvar, const int *idcs,
               const Real *Wx, const Real *Wy, const Real *Wz) const {
-    if constexpr (TRI) {
+    if constexpr (IMETH == kRetryTrilinear) {
       return TrilinearInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz);
     } else {
       return LagrangeInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz);
@@ -99,7 +122,7 @@ struct GeodesicPush {
   KOKKOS_INLINE_FUNCTION
   void Interp(const DvceArray5D<Real>& u0, const int nvar, const int *idcs,
               const Real *Wx, const Real *Wy, const Real *Wz, Real *res) const {
-    if constexpr (TRI) {
+    if constexpr (IMETH == kRetryTrilinear) {
       TrilinearInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz, res);
     } else {
       LagrangeInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz, res);
@@ -118,9 +141,12 @@ struct GeodesicPush {
     SetInterpIndices(x_mid, mb_par, ncell, interp_indcs);
     Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
     Real dLx[8] = {0.0}, dLy[8] = {0.0}, dLz[8] = {0.0};
-    if constexpr (TRI) {
+    if constexpr (IMETH == kRetryTrilinear) {
       CalcTrilinearWghtAndDrv(x_mid, mb_par, ncell,
                               interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
+    } else if constexpr (IMETH == static_cast<int>(ParticleInterpMethod::trilinear)) {
+      CalcTriWghtAndDrv<NG>(x_mid, mb_par, ncell,
+                            interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
     } else {
       CalcInterpWghtAndDrv<NG>(x_mid, mb_par, ncell,
                                interp_indcs, Lx, Ly, Lz, dLx, dLy, dLz);
@@ -389,6 +415,41 @@ bool GridMetricValid(const DvceArray5D<Real>& adm, const Real x[3],
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn int GeodesicSubstep
+//! \brief run one implicit geodesic substep with the IMETH gather operator at the run's
+//! ghost width (NG = 2, 3 or 4 are the instantiated stencils). Returns the
+//! GeodesicStatus of FixedPointIteration; an unsupported ng is reported as kRejected so
+//! the caller never writes back an unset state.
+
+template <int IMETH>
+KOKKOS_INLINE_FUNCTION
+int GeodesicSubstep(const int ng, const Real x_n[3], const Real u_n[3], const int mb,
+                    const Real mb_par[9], const int ncell[3], const Real dt,
+                    const DvceArray5D<Real>& adm_n, const DvceArray5D<Real>& adm_np1,
+                    const bool use_z4c,
+                    const DvceArray5D<Real>& z4c_n, const DvceArray5D<Real>& z4c_np1,
+                    Real x_np1[3], Real u_np1[3]) {
+  switch (ng) {
+  case 2: {
+    GeodesicPush<2, IMETH> gp(x_n, u_n, mb, mb_par, ncell, dt, adm_n, adm_np1,
+                              use_z4c, z4c_n, z4c_np1);
+    return FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
+  }
+  case 3: {
+    GeodesicPush<3, IMETH> gp(x_n, u_n, mb, mb_par, ncell, dt, adm_n, adm_np1,
+                              use_z4c, z4c_n, z4c_np1);
+    return FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
+  }
+  case 4: {
+    GeodesicPush<4, IMETH> gp(x_n, u_n, mb, mb_par, ncell, dt, adm_n, adm_np1,
+                              use_z4c, z4c_n, z4c_np1);
+    return FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
+  }
+  }
+  return kRejected;
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void Particles::GR_BorisPush
 
 void Particles::GR_BorisPush() {
@@ -402,6 +463,9 @@ void Particles::GR_BorisPush() {
   int gids = pmy_pack->gids;
   auto dt_ = pmy_pack->pmesh->dt;
   auto qom = q_over_m;
+  // gather-scheme selector for the geodesic substep; the EM half-kicks below are
+  // Lagrange-only (non-Lagrange + MHD is rejected at construction in particles.cpp)
+  const int imeth_gather = static_cast<int>(interp_method);
 
   auto nfail_ = boris_nfail;          // bounded non-convergence diagnostic counters
   const int ndetail_ = kBorisDetail;
@@ -458,6 +522,9 @@ void Particles::GR_BorisPush() {
     Real u_n[3] = {pr(IPVX, p), pr(IPVY, p), pr(IPVZ, p)};
 
     // ---- Step 1+2: first half EM kick at x^n (skipped when no MHD) ----
+    // NOTE: the EM half-kick gathers below are Lagrange-only; interpolation=trilinear
+    // with MHD present is rejected at construction (particles.cpp), so no run mixes
+    // schemes here.
     Real u_p[3] = {0.0};
     if (use_mhd) {
       Real B_interp_n[3] = {0.0}, v_interp_n[3] = {0.0};
@@ -588,26 +655,21 @@ void Particles::GR_BorisPush() {
 
     // ---- Step 3: implicit geodesic substep x^n -> x^{n+1}, u_p -> u_pp ----
     Real x_np1[3] = {0.0}, u_pp[3] = {0.0};
+    // The gather operator is the run-time <particles> interpolation selection; each
+    // case instantiates exactly one weight builder (all padded schemes share the
+    // LagrangeInterpolator contraction, so no branch mixes contraction operators).
     int gstat = kRejected;
-    switch (ng) {
-    case 2: {
-      GeodesicPush<2, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
-                                use_z4c, z4c_n, z4c_np1);
-      gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+    switch (imeth_gather) {
+    case static_cast<int>(ParticleInterpMethod::trilinear):
+      gstat = GeodesicSubstep<static_cast<int>(ParticleInterpMethod::trilinear)>(
+          ng, x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c, z4c_n, z4c_np1,
+          x_np1, u_pp);
       break;
-    }
-    case 3: {
-      GeodesicPush<3, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
-                                use_z4c, z4c_n, z4c_np1);
-      gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+    default:
+      gstat = GeodesicSubstep<static_cast<int>(ParticleInterpMethod::lagrange)>(
+          ng, x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1, use_z4c, z4c_n, z4c_np1,
+          x_np1, u_pp);
       break;
-    }
-    case 4: {
-      GeodesicPush<4, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
-                                use_z4c, z4c_n, z4c_np1);
-      gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
-      break;
-    }
     }
     if (gstat == kRejected && retry_on_) {
       // Hand this particle to the retry kernel rather than rejecting it here. The
@@ -975,22 +1037,22 @@ void Particles::GRBorisRetry() {
     bool grid_ok = false;
     switch (ng) {
     case 2: {
-      GeodesicPush<2, true> gp(x_n, u_n, mb, mb_par, ncell, dt_, adm_n, adm_np1,
-                               use_z4c, z4c_n, z4c_np1);
+      GeodesicPush<2, kRetryTrilinear> gp(x_n, u_n, mb, mb_par, ncell, dt_,
+                                          adm_n, adm_np1, use_z4c, z4c_n, z4c_np1);
       gstat = FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
       grid_ok = GridMetricValid<2>(adm_n, x_n, mb_par, ncell, mb);
       break;
     }
     case 3: {
-      GeodesicPush<3, true> gp(x_n, u_n, mb, mb_par, ncell, dt_, adm_n, adm_np1,
-                               use_z4c, z4c_n, z4c_np1);
+      GeodesicPush<3, kRetryTrilinear> gp(x_n, u_n, mb, mb_par, ncell, dt_,
+                                          adm_n, adm_np1, use_z4c, z4c_n, z4c_np1);
       gstat = FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
       grid_ok = GridMetricValid<3>(adm_n, x_n, mb_par, ncell, mb);
       break;
     }
     case 4: {
-      GeodesicPush<4, true> gp(x_n, u_n, mb, mb_par, ncell, dt_, adm_n, adm_np1,
-                               use_z4c, z4c_n, z4c_np1);
+      GeodesicPush<4, kRetryTrilinear> gp(x_n, u_n, mb, mb_par, ncell, dt_,
+                                          adm_n, adm_np1, use_z4c, z4c_n, z4c_np1);
       gstat = FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
       grid_ok = GridMetricValid<4>(adm_n, x_n, mb_par, ncell, mb);
       break;
