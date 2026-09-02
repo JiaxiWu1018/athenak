@@ -71,10 +71,16 @@ class FastFlow {
   Real ah_surf_local_dx;              // local cell width used by the last candidate gate
   Real ah_surf_hrel_limit;            // optional |<H>|/area publication limit
   int ah_surf_persist, ah_surf_candidate_streak;
+  //! Capability mode deliberately leaves the resolution, expansion, and persistence
+  //! tests above as diagnostics only. Its consumer gate is limited to finite positive,
+  //! wholly on-grid geometry plus explicit catastrophic radius/centre-jump bounds.
+  bool ah_surf_capability_mode, ah_surf_capability_have_center;
+  Real ah_surf_capability_rmax, ah_surf_capability_center_jump;
+  Real ah_surf_capability_last_center[3];
   bool ah_surf_warned;                // the off-grid warning is printed once
   bool ah_surf_geometry_warned;       // the geometry warning is printed once
   DualArray1D<Real> a0_surf, ac_surf, as_surf;   // packing as a0/ac/as
-  void SnapshotSurface();
+  bool SnapshotSurface();
 
   // ---- Weaker snapshot used only as a deep-lapse geometric permission mask ---------
   //! This snapshot never makes a horizon authoritative.  When explicitly enabled, it
@@ -210,11 +216,13 @@ class FastFlow {
   std::string ofname_verbose;
   std::string ofname_ylm;
   std::string ofname_grid;
+  std::string ofname_consumer;
   FILE *pofile_summary;
   FILE *pofile_shape;
   FILE *pofile_verbose;
   FILE *pofile_ylm;
   FILE *pofile_grid;
+  FILE *pofile_consumer;
 
   // Functions to interface with puncture tracker
   Real PuncMaxDistance();

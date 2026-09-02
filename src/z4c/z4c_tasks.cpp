@@ -314,7 +314,7 @@ TaskStatus Z4c::TrackCompactObjects(Driver *pdrive, int stage) {
     for (auto & pt : ptracker) {
       pt->InterpolateVelocity(pmy_pack);
       pt->EvolveTracker(pmy_pack);
-      pt->WriteTracker();
+      pt->WriteTracker(pmy_pack);
     }
   }
   return TaskStatus::complete;

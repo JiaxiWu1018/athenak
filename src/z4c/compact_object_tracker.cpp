@@ -92,7 +92,8 @@ CompactObjectTracker::CompactObjectTracker(Mesh *pmesh, ParameterInput *pin, int
     }
     ofile << std::endl;
 
-    ofile << "# 1:iter 2:time 3:x 4:y 5:z 6:vx 7:vy 8:vz\n";
+    ofile << "# 1:iter 2:time 3:x 4:y 5:z 6:vx 7:vy 8:vz "
+          << "9:amr_level 10:dx1 11:dx2 12:dx3\n";
     ofile << std::flush;
     ofile << std::setprecision(19);
   }
@@ -255,8 +256,30 @@ void CompactObjectTracker::EvolveTracker(MeshBlockPack *pmbp) {
 }
 
 //----------------------------------------------------------------------------------------
-void CompactObjectTracker::WriteTracker() {
-  if (0 == global_variable::my_rank && 0 == pmesh->ncycle % out_every) {
+void CompactObjectTracker::WriteTracker(MeshBlockPack *pmbp) {
+  if ((pmesh->ncycle % out_every) != 0) return;
+
+  auto &size = pmbp->pmb->mb_size;
+  auto &lev = pmbp->pmb->mb_lev;
+  Real local[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  for (int m = 0; m < pmbp->nmb_thispack; ++m) {
+    if ((pos[0] >= size.h_view(m).x1min && pos[0] < size.h_view(m).x1max) &&
+        (pos[1] >= size.h_view(m).x2min && pos[1] < size.h_view(m).x2max) &&
+        (pos[2] >= size.h_view(m).x3min && pos[2] < size.h_view(m).x3max)) {
+      local[0] = static_cast<Real>(lev.h_view(m));
+      local[1] = size.h_view(m).dx1;
+      local[2] = size.h_view(m).dx2;
+      local[3] = size.h_view(m).dx3;
+      local[4] = 1.0;
+      break;
+    }
+  }
+#if MPI_PARALLEL_ENABLED
+  MPI_Allreduce(MPI_IN_PLACE, local, 5, MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  if (0 == global_variable::my_rank) {
+    Real inv_owners = (local[4] > 0.0 ? 1.0 / local[4] : 0.0);
     ofile << pmesh->ncycle << " "
           << pmesh->time << " "
           << pos[0] << " "
@@ -264,6 +287,11 @@ void CompactObjectTracker::WriteTracker() {
           << pos[2] << " "
           << vel[0] << " "
           << vel[1] << " "
-          << vel[2] << std::endl << std::flush;
+          << vel[2] << " "
+          << (local[4] > 0.0 ? local[0] * inv_owners : -1.0) << " "
+          << (local[4] > 0.0 ? local[1] * inv_owners : NAN) << " "
+          << (local[4] > 0.0 ? local[2] * inv_owners : NAN) << " "
+          << (local[4] > 0.0 ? local[3] * inv_owners : NAN)
+          << std::endl << std::flush;
   }
 }

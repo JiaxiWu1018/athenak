@@ -1,0 +1,367 @@
+<comment>
+Session-005 Arm A capability experiment. Same accepted Session-004 physical model:
+M_env=0.76, R0=30, two identical cold M=0.12 clumps at x=+-3, zero bulk/orbital
+velocity, and 5,000,000 particles in the required 3:1:1 ratio. Continuum ADM mass 1.
+
+Fresh t=0 start in the accepted [-128,128]^3 box, root dx=2. Seed regions initially
+reach dx=1/64, but tracker_floor=false: only Lohner(alpha psi^7, threshold 0.2)
+controls their later refinement/derefinement. num_levels=10 permits dx_min=1/256.
+
+Capability-only particle removal uses alpha<0.05. AH finding remains on as a strict,
+diagnostic-only channel and has no feedback on excision. These permissively excised
+interiors are not a precision collapse/BH solution.
+
+<job>
+basename = s5_arm_a_lapse005
+
+<mesh>
+nghost = 4
+nx1 = 128
+x1min = -128.0
+x1max = 128.0
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 128
+x2min = -128.0
+x2max = 128.0
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 128
+x3min = -128.0
+x3max = 128.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+
+<time>
+evolution = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim = 100000000
+tlim = 10.0
+ndiag = 50
+
+<mesh_refinement>
+refinement = adaptive
+num_levels = 10
+max_nmb_per_rank = 240
+ncycle_check = 16
+refinement_interval = 16
+
+<amr_criterion1>
+method = user
+
+<z4c_amr>
+method = loehner
+tracker_floor = false
+loehner_variable = alp_psi7
+loehner_threshold = 0.2
+radius_0_rad = 34.0
+radius_0_reflevel = 1
+radius_1_rad = 18.0
+radius_1_reflevel = 2
+radius_2_rad = 15.0
+radius_2_reflevel = 3
+
+<refined_region1>
+level = 1
+x1min = -34
+x1max = 34
+x2min = -34
+x2max = 34
+x3min = -34
+x3max = 34
+
+<refined_region2>
+level = 2
+x1min = -18
+x1max = 18
+x2min = -18
+x2max = 18
+x3min = -18
+x3max = 18
+
+<refined_region3>
+level = 3
+x1min = -15
+x1max = 15
+x2min = -15
+x2max = 15
+x3min = -15
+x3max = 15
+
+<refined_region4>
+level = 4
+x1min = -6
+x1max = 0
+x2min = -3
+x2max = 3
+x3min = -3
+x3max = 3
+
+<refined_region5>
+level = 5
+x1min = -4.5
+x1max = -1.5
+x2min = -1.5
+x2max = 1.5
+x3min = -1.5
+x3max = 1.5
+
+<refined_region6>
+level = 6
+x1min = -3.75
+x1max = -2.25
+x2min = -0.75
+x2max = 0.75
+x3min = -0.75
+x3max = 0.75
+
+<refined_region7>
+level = 7
+x1min = -3.375
+x1max = -2.625
+x2min = -0.375
+x2max = 0.375
+x3min = -0.375
+x3max = 0.375
+
+<refined_region8>
+level = 4
+x1min = 0
+x1max = 6
+x2min = -3
+x2max = 3
+x3min = -3
+x3max = 3
+
+<refined_region9>
+level = 5
+x1min = 1.5
+x1max = 4.5
+x2min = -1.5
+x2max = 1.5
+x3min = -1.5
+x3max = 1.5
+
+<refined_region10>
+level = 6
+x1min = 2.25
+x1max = 3.75
+x2min = -0.75
+x2max = 0.75
+x3min = -0.75
+x3max = 0.75
+
+<refined_region11>
+level = 7
+x1min = 2.625
+x1max = 3.375
+x2min = -0.375
+x2max = 0.375
+x3min = -0.375
+x3max = 0.375
+
+<z4c>
+lapse_harmonicf = 1.0
+lapse_harmonic = 0.0
+lapse_oplog = 2.0
+lapse_advect = 1.0
+shift_eta = 2.0
+shift_advect = 1.0
+diss = 0.1
+chi_div_floor = 0.00001
+damp_kappa1 = 0.02
+damp_kappa2 = 0.0
+tracker_mode = walk
+tracker_walk_every = 16
+co_0_type = BH
+co_0_x = -3
+co_0_y = 0
+co_0_z = 0
+co_0_mass = 0.12
+co_0_radius = 3
+co_0_reflevel = 4
+co_0_out_every = 20
+co_1_type = BH
+co_1_x = -3
+co_1_y = 0
+co_1_z = 0
+co_1_mass = 0.12
+co_1_radius = 1.5
+co_1_reflevel = 5
+co_1_out_every = 20
+co_2_type = BH
+co_2_x = -3
+co_2_y = 0
+co_2_z = 0
+co_2_mass = 0.12
+co_2_radius = 0.75
+co_2_reflevel = 6
+co_2_out_every = 20
+co_3_type = BH
+co_3_x = -3
+co_3_y = 0
+co_3_z = 0
+co_3_mass = 0.12
+co_3_radius = 0.375
+co_3_reflevel = 7
+co_3_out_every = 20
+co_4_type = BH
+co_4_x = -3
+co_4_y = 0
+co_4_z = 0
+co_4_mass = 0.12
+co_4_radius = 0.1875
+co_4_reflevel = 7
+co_4_out_every = 20
+co_5_type = BH
+co_5_x = 3
+co_5_y = 0
+co_5_z = 0
+co_5_mass = 0.12
+co_5_radius = 3
+co_5_reflevel = 4
+co_5_out_every = 20
+co_6_type = BH
+co_6_x = 3
+co_6_y = 0
+co_6_z = 0
+co_6_mass = 0.12
+co_6_radius = 1.5
+co_6_reflevel = 5
+co_6_out_every = 20
+co_7_type = BH
+co_7_x = 3
+co_7_y = 0
+co_7_z = 0
+co_7_mass = 0.12
+co_7_radius = 0.75
+co_7_reflevel = 6
+co_7_out_every = 20
+co_8_type = BH
+co_8_x = 3
+co_8_y = 0
+co_8_z = 0
+co_8_mass = 0.12
+co_8_radius = 0.375
+co_8_reflevel = 7
+co_8_out_every = 20
+co_9_type = BH
+co_9_x = 3
+co_9_y = 0
+co_9_z = 0
+co_9_mass = 0.12
+co_9_radius = 0.1875
+co_9_reflevel = 7
+co_9_out_every = 20
+
+<fastflow>
+npunct = 10
+num_horizons = 2
+ntheta = 10
+lmax = 6
+expand_guess = 1.0
+output_ylm = true
+output_grid = false
+verbose = true
+consumer_rmin_0 = 0.0
+consumer_rmin_1 = 0.0
+consumer_rmin_cells_0 = 4.0
+consumer_rmin_cells_1 = 4.0
+consumer_rmax_0 = 0.1875
+consumer_rmax_1 = 0.1875
+consumer_hrel_0 = 0.2
+consumer_hrel_1 = 0.2
+consumer_persist_0 = 3
+consumer_persist_1 = 3
+use_puncture_0 = 0
+initial_radius_0 = 0.06
+flow_iterations_0 = 200
+flow_alpha_beta_const_0 = 0.005
+hmean_tol_0 = 100.0
+mass_tol_0 = 1e-4
+start_time_0 = 2.5
+stop_time_0 = 30.0
+use_puncture_1 = 5
+initial_radius_1 = 0.06
+flow_iterations_1 = 200
+flow_alpha_beta_const_1 = 0.005
+hmean_tol_1 = 100.0
+mass_tol_1 = 1e-4
+start_time_1 = 2.5
+stop_time_1 = 30.0
+
+<particles>
+particle_type = dust
+pusher = gr_boris
+fatal_boris_reject = true
+init = pgen
+feedback = true
+mass = 1.0
+debug = 1
+destroy_log = true
+excise_radius = 0.0
+excise_lapse = 0.05
+excise_lapse_raw_ah = false
+excise_ah = false
+cross_level_deposit = conservative
+
+<problem>
+gi_m0 = 0.76
+gi_r0 = 30.0
+gi_n_env = 3000000
+gi_n_clump = 2000000
+gi_seed = 4001
+gi_profile_dr = 0.001
+gi_nclumps = 2
+gi_clump_mass_scale = 1.0
+gi_dump_profile = gi_profile_M076_two_clump.txt
+
+<output1>
+file_type = hst
+dt = 0.05
+
+<output2>
+file_type = bin
+variable = tmunu
+slice_x3 = 0.0
+dt = 0.1
+
+<output3>
+file_type = bin
+variable = con
+slice_x3 = 0.0
+dt = 0.1
+
+<output4>
+file_type = bin
+variable = z4c
+slice_x3 = 0.0
+dt = 0.1
+
+<output5>
+file_type = pvtk
+variable = prtcl_all
+dt = 0.25
+
+<output6>
+file_type = bin
+variable = tmunu_E
+id = E3d
+dt = 2.0
+
+<output7>
+file_type = rst
+dt = 0.5
+
+<output8>
+file_type = cbin
+variable = z4c_chi
+id = mesh
+coarsen_factor = 32
+dt = 0.05

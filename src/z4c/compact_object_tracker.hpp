@@ -35,7 +35,7 @@ class CompactObjectTracker {
   //! Update and broadcast the puncture position
   void EvolveTracker(MeshBlockPack *pmbp);
   //! Write data to file
-  void WriteTracker();
+  void WriteTracker(MeshBlockPack *pmbp);
   //! Get position array
   inline Real * GetPos() {
     return &pos[0];

@@ -166,6 +166,13 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   ah_surf_hrel_limit = pin->GetOrAddReal("fastflow", "consumer_hrel_" + n_str,
                                         std::numeric_limits<Real>::max());
   ah_surf_persist = pin->GetOrAddInteger("fastflow", "consumer_persist_" + n_str, 1);
+  ah_surf_capability_mode = pin->GetOrAddBoolean(
+      "fastflow", "consumer_capability_mode_" + n_str, false);
+  ah_surf_capability_rmax = pin->GetOrAddReal(
+      "fastflow", "capability_rmax_" + n_str, std::numeric_limits<Real>::max());
+  ah_surf_capability_center_jump = pin->GetOrAddReal(
+      "fastflow", "capability_center_jump_" + n_str,
+      std::numeric_limits<Real>::max());
   if (ah_surf_rmin_limit < 0.0 || ah_surf_rmin_cells < 0.0
       || ah_surf_rmax_limit <= ah_surf_rmin_limit
       || ah_surf_hrel_limit <= 0.0 || ah_surf_persist < 1) {
@@ -175,6 +182,16 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
               << "consumer_persist >= 1" << std::endl;
     exit(EXIT_FAILURE);
   }
+  if (ah_surf_capability_rmax <= 0.0 || ah_surf_capability_center_jump <= 0.0) {
+    std::cout << "### FATAL ERROR: fastflow capability gate for horizon " << nh
+              << " requires capability_rmax > 0 and capability_center_jump > 0"
+              << std::endl;
+    exit(EXIT_FAILURE);
+  }
+  ah_surf_capability_have_center = false;
+  ah_surf_capability_last_center[0] = 0.0;
+  ah_surf_capability_last_center[1] = 0.0;
+  ah_surf_capability_last_center[2] = 0.0;
   ah_surf_candidate_streak = 0;
   ah_surf_warned = false;
   ah_surf_geometry_warned = false;
@@ -280,6 +297,10 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
                                                              "horizon_grid_" + n_str);
     ofname_grid += ".txt";
   }
+  ofname_consumer = pin->GetString("job", "basename") + ".";
+  ofname_consumer += pin->GetOrAddString("fastflow", "horizon_consumer_" + n_str,
+                                        "horizon_consumer_" + n_str);
+  ofname_consumer += ".csv";
 
   #if MPI_PARALLEL_ENABLED
     ioproc = (root == global_variable::my_rank);
@@ -304,6 +325,22 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
       fprintf(pofile_summary, "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area "
                                "9:hrms 10:hmean 11:meanradius 12:minradius\n");
       fflush(pofile_summary);
+    }
+    bool new_consumer_file = (access(ofname_consumer.c_str(), F_OK) != 0);
+    pofile_consumer = fopen(ofname_consumer.c_str(), "a");
+    if (NULL == pofile_consumer) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "Could not open file '" << ofname_consumer
+                << "' for writing!" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    if (new_consumer_file) {
+      fprintf(pofile_consumer,
+          "cycle,time,capability_mode,center_x,center_y,center_z,rmin,rmax,area,hrel,"
+          "local_dx,rmin_cells,quality_geometry_ok,quality_streak,quality_persist_ok,"
+          "capability_finite_positive,capability_on_grid,capability_center_jump_ok,"
+          "capability_geometry_ok,published_this_candidate\n");
+      fflush(pofile_consumer);
     }
 
     if (output_grid) {
@@ -405,6 +442,7 @@ FastFlow::~FastFlow() {
   // Close files
   if (ioproc) {
     fclose(pofile_summary);
+    fclose(pofile_consumer);
     if (verbose) {
       fclose(pofile_verbose);
     }
@@ -535,19 +573,74 @@ void FastFlow::Find(int iter, Real time) {
     const Real resolved_rmin = local_dx_ok
         ? std::max(ah_surf_rmin_limit, ah_surf_rmin_cells*ah_surf_local_dx)
         : std::numeric_limits<Real>::infinity();
-    const bool geometry_ok = Kokkos::isfinite(rr_min) && Kokkos::isfinite(candidate_rmax)
+    const bool quality_geometry_ok = Kokkos::isfinite(rr_min)
+                          && Kokkos::isfinite(candidate_rmax)
                           && Kokkos::isfinite(candidate_area)
                           && Kokkos::isfinite(candidate_hrel)
                           && local_dx_ok && rr_min > 0.0 && rr_min >= resolved_rmin
                           && candidate_rmax <= ah_surf_rmax_limit
                           && candidate_area > 0.0 && candidate_hrel <= ah_surf_hrel_limit;
-    if (!geometry_ok) {
+    if (quality_geometry_ok) {
+      ++ah_surf_candidate_streak;
+    } else {
       ah_surf_candidate_streak = 0;
-      // A raw FastFlow convergence that is unsafe for consumers must not seed the next
-      // search.  Retain ah_found through Write() so the rejected shape remains available
-      // for diagnosis, but force InitialGuess() back to the configured physical scale.
+    }
+    const bool quality_persist_ok =
+        (ah_surf_candidate_streak >= ah_surf_persist);
+
+    // Catastrophic-only capability gate. This intentionally does NOT depend on the
+    // minimum radius in cells, normalized expansion, or persistence values above. All
+    // angular radii must nevertheless be finite and positive; checking every collocation
+    // point avoids relying on NaN-sensitive min/max reduction semantics.
+    int capability_bad_radius = 0;
+    auto &rr_cap = rr;
+    Kokkos::parallel_reduce("FastFlow_capability_finite_positive",
+    Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles),
+    KOKKOS_LAMBDA(const int &p, int &lsum) {
+      if (!Kokkos::isfinite(rr_cap(p)) || !(rr_cap(p) > 0.0)) {++lsum;}
+    }, capability_bad_radius);
+    const bool capability_finite_positive = capability_bad_radius == 0
+        && Kokkos::isfinite(rr_min) && Kokkos::isfinite(candidate_rmax)
+        && Kokkos::isfinite(candidate_area) && candidate_area > 0.0
+        && Kokkos::isfinite(center[0]) && Kokkos::isfinite(center[1])
+        && Kokkos::isfinite(center[2]) && candidate_rmax >= rr_min;
+    int capability_noff = 0;
+    const bool capability_on_grid = CurrentSurfaceOnGrid(capability_noff);
+    Real center_jump = 0.0;
+    if (ah_surf_capability_have_center) {
+      for (int a = 0; a < 3; ++a) {
+        center_jump += SQR(center[a] - ah_surf_capability_last_center[a]);
+      }
+      center_jump = Kokkos::sqrt(center_jump);
+    }
+    const bool capability_center_jump_ok = !ah_surf_capability_have_center
+        || (Kokkos::isfinite(center_jump)
+            && center_jump <= ah_surf_capability_center_jump);
+    const bool capability_geometry_ok = capability_finite_positive
+        && capability_on_grid && capability_center_jump_ok
+        && candidate_rmax <= ah_surf_capability_rmax;
+
+    bool published_this_candidate = false;
+    if (ah_surf_capability_mode) {
+      if (capability_geometry_ok) {
+        published_this_candidate = SnapshotSurface();
+        if (published_this_candidate) {
+          ah_surf_capability_have_center = true;
+          for (int a = 0; a < 3; ++a) {
+            ah_surf_capability_last_center[a] = center[a];
+          }
+        }
+      } else {
+        // A catastrophically implausible convergence must not seed the next search.
+        last_a0 = -1.0;
+      }
+    } else if (quality_persist_ok) {
+      published_this_candidate = SnapshotSurface();
+    } else {
+      // In strict mode, a convergence that is unsafe for consumers must not seed the next
+      // search. Retain ah_found through Write() for diagnosis, but reset the next guess.
       last_a0 = -1.0;
-      if (ioproc && !ah_surf_geometry_warned) {
+      if (ioproc && !ah_surf_geometry_warned && !quality_geometry_ok) {
         ah_surf_geometry_warned = true;
         std::cout << "### WARNING: horizon " << nh
                   << " not published to consumers: candidate radius range ["
@@ -560,9 +653,26 @@ void FastFlow::Find(int iter, Real time) {
                   << ", area > 0, or |<H>|/area <= " << ah_surf_hrel_limit << "."
                   << std::endl;
       }
-    } else {
-      ++ah_surf_candidate_streak;
-      if (ah_surf_candidate_streak >= ah_surf_persist) {SnapshotSurface();}
+    }
+
+    if (ioproc) {
+      const Real rmin_cells = (Kokkos::isfinite(ah_surf_local_dx)
+                               && ah_surf_local_dx > 0.0)
+          ? rr_min/ah_surf_local_dx : std::numeric_limits<Real>::quiet_NaN();
+      fprintf(pofile_consumer,
+          "%d,%.17g,%d,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,"
+          "%.17g,%d,%d,%d,%d,%d,%d,%d,%d\n",
+          pmbp->pmesh->ncycle, time, static_cast<int>(ah_surf_capability_mode),
+          center[0], center[1], center[2], rr_min, candidate_rmax, candidate_area,
+          candidate_hrel, ah_surf_local_dx, rmin_cells,
+          static_cast<int>(quality_geometry_ok), ah_surf_candidate_streak,
+          static_cast<int>(quality_persist_ok),
+          static_cast<int>(capability_finite_positive),
+          static_cast<int>(capability_on_grid),
+          static_cast<int>(capability_center_jump_ok),
+          static_cast<int>(capability_geometry_ok),
+          static_cast<int>(published_this_candidate));
+      fflush(pofile_consumer);
     }
   } else {
     ah_surf_candidate_streak = 0;
@@ -1034,7 +1144,7 @@ void FastFlow::UpdateFlowSpectralComponents() {
 }
 
 //----------------------------------------------------------------------------------------
-//! \fn void FastFlow::SnapshotSurface()
+//! \fn bool FastFlow::SnapshotSurface()
 //! \brief publish the just-converged surface for consumers, unless part of it is off-grid
 //!
 //! Called from Find() on a converged flow, where a0/ac/as, `rr` and rr_min are mutually
@@ -1113,7 +1223,7 @@ void FastFlow::SnapshotRawSurface(int iter, Real time, Real candidate_rmax) {
   }
 }
 
-void FastFlow::SnapshotSurface() {
+bool FastFlow::SnapshotSurface() {
   int noff = 0;
   CurrentSurfaceOnGrid(noff);
   if (noff > 0) {
@@ -1125,7 +1235,7 @@ void FastFlow::SnapshotSurface() {
                 << " of " << nangles << " collocation points are off the mesh, so the "
                 << "surface integrals that accepted it were partial." << std::endl;
     }
-    return;   // keep the previous valid snapshot, if any
+    return false;   // keep the previous valid snapshot, if any
   }
 
   Kokkos::deep_copy(a0_surf.h_view, a0.h_view);
@@ -1155,6 +1265,7 @@ void FastFlow::SnapshotSurface() {
   ah_surf_center[1] = center[1];
   ah_surf_center[2] = center[2];
   ah_surf_valid = true;
+  return true;
 }
 
 //----------------------------------------------------------------------------------------

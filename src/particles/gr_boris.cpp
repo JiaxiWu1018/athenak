@@ -397,26 +397,54 @@ int FixedPointIteration(const F& f, const Real x0[3], const Real u0[3],
 
 template <int NG>
 KOKKOS_INLINE_FUNCTION
-bool GridMetricValid(const DvceArray5D<Real>& adm, const Real x[3],
-                     const Real *mb_par, const int *ncell, const int mb) {
+int GridMetricStatus(const DvceArray5D<Real>& adm_n,
+                     const DvceArray5D<Real>& adm_np1, const Real x[3],
+                     const Real *mb_par, const int *ncell, const int mb,
+                     int bad_cell[3], int &bad_slot, int &bad_timelevel,
+                     Real bad_metric[6]) {
   int idcs[4] = {mb, -1, -1, -1};
   SetInterpIndices(x, mb_par, ncell, idcs);
-  for (int i = 0; i < 2; ++i) {
-    for (int j = 0; j < 2; ++j) {
-      for (int k = 0; k < 2; ++k) {
-        Real g[6] = {0.0};
-        for (int m = 0; m < 6; ++m) {
-          g[m] = adm(idcs[0], adm::ADM::I_ADM_GXX+m,
-                     idcs[3] + NG + k, idcs[2] + NG + j, idcs[1] + NG + i);
-          if (!Kokkos::isfinite(g[m])) {return false;}
+  bad_slot = -1;
+  bad_timelevel = -1;
+  for (int tl = 0; tl < 2; ++tl) {
+    for (int i = 0; i < 2; ++i) {
+      for (int j = 0; j < 2; ++j) {
+        for (int k = 0; k < 2; ++k) {
+          const int ii = idcs[1] + NG + i;
+          const int jj = idcs[2] + NG + j;
+          const int kk = idcs[3] + NG + k;
+          Real g[6] = {0.0};
+          for (int m = 0; m < 6; ++m) {
+            g[m] = (tl == 0)
+                ? adm_n(idcs[0], adm::ADM::I_ADM_GXX+m, kk, jj, ii)
+                : adm_np1(idcs[0], adm::ADM::I_ADM_GXX+m, kk, jj, ii);
+          }
+          int status = 0;
+          for (int m = 0; m < 6; ++m) {
+            if (!Kokkos::isfinite(g[m])) {
+              status = 1;
+              bad_slot = m;
+              break;
+            }
+          }
+          const Real minor2 = g[0]*g[3] - g[1]*g[1];
+          const Real det = Primitive::GetDeterminant(g);
+          if (status == 0 && !(g[0] > 0.0)) {status = 2;}
+          if (status == 0 && !(minor2 > 0.0)) {status = 3;}
+          if (status == 0 && !(det > 0.0)) {status = 4;}
+          if (status != 0) {
+            bad_cell[0] = ii;
+            bad_cell[1] = jj;
+            bad_cell[2] = kk;
+            bad_timelevel = tl;
+            for (int m = 0; m < 6; ++m) {bad_metric[m] = g[m];}
+            return status;
+          }
         }
-        Real minor2 = g[0]*g[3] - g[1]*g[1];
-        if (!(g[0] > 0.0) || !(minor2 > 0.0) ||
-            !(Primitive::GetDeterminant(g) > 0.0)) {return false;}
       }
     }
   }
-  return true;
+  return 0;
 }
 
 //----------------------------------------------------------------------------------------
@@ -994,6 +1022,8 @@ void Particles::GRBorisRetry() {
   auto &indcs = pmy_pack->pmesh->mb_indcs;
   int ng = indcs.ng;
   auto &size = pmy_pack->pmb->mb_size;
+  auto &mblev = pmy_pack->pmb->mb_lev;
+  auto time_ = pmy_pack->pmesh->time;
   int gids = pmy_pack->gids;
   auto dt_ = pmy_pack->pmesh->dt;
 
@@ -1029,31 +1059,83 @@ void Particles::GRBorisRetry() {
 
     Real x_np1[3] = {0.0}, u_np1[3] = {0.0};
     int gstat = kRejected;
-    bool grid_ok = false;
+    int bad_cell[3] = {-1, -1, -1};
+    int bad_slot = -1, bad_timelevel = -1;
+    Real bad_metric[6] = {0.0};
+    int grid_status = 0;
     switch (ng) {
     case 2: {
       GeodesicPush<2, true> gp(x_n, u_n, mb, mb_par, ncell, dt_, adm_n, adm_np1,
                                use_z4c, z4c_n, z4c_np1);
       gstat = FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
-      grid_ok = GridMetricValid<2>(adm_n, x_n, mb_par, ncell, mb);
+      grid_status = GridMetricStatus<2>(adm_n, adm_np1, x_n, mb_par, ncell, mb,
+                                        bad_cell, bad_slot, bad_timelevel, bad_metric);
       break;
     }
     case 3: {
       GeodesicPush<3, true> gp(x_n, u_n, mb, mb_par, ncell, dt_, adm_n, adm_np1,
                                use_z4c, z4c_n, z4c_np1);
       gstat = FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
-      grid_ok = GridMetricValid<3>(adm_n, x_n, mb_par, ncell, mb);
+      grid_status = GridMetricStatus<3>(adm_n, adm_np1, x_n, mb_par, ncell, mb,
+                                        bad_cell, bad_slot, bad_timelevel, bad_metric);
       break;
     }
     case 4: {
       GeodesicPush<4, true> gp(x_n, u_n, mb, mb_par, ncell, dt_, adm_n, adm_np1,
                                use_z4c, z4c_n, z4c_np1);
       gstat = FixedPointIteration(gp, x_n, u_n, x_np1, u_np1);
-      grid_ok = GridMetricValid<4>(adm_n, x_n, mb_par, ncell, mb);
+      grid_status = GridMetricStatus<4>(adm_n, adm_np1, x_n, mb_par, ncell, mb,
+                                        bad_cell, bad_slot, bad_timelevel, bad_metric);
       break;
     }
     }
-    if (!grid_ok) {Kokkos::atomic_fetch_add(&nfail_(6), 1);}
+    const bool grid_ok = (grid_status == 0);
+    if (!grid_ok) {
+      const int ibad = Kokkos::atomic_fetch_add(&nfail_(6), 1);
+      if (ibad < ndetail_) {
+        const Real xbad = size.d_view(mb).x1min
+                        + (bad_cell[0] - ng + 0.5)*size.d_view(mb).dx1;
+        const Real ybad = size.d_view(mb).x2min
+                        + (bad_cell[1] - ng + 0.5)*size.d_view(mb).dx2;
+        const Real zbad = size.d_view(mb).x3min
+                        + (bad_cell[2] - ng + 0.5)*size.d_view(mb).dx3;
+        const Real psi4_bad = (bad_timelevel == 0)
+            ? adm_n(mb, adm::ADM::I_ADM_PSI4, bad_cell[2], bad_cell[1], bad_cell[0])
+            : adm_np1(mb, adm::ADM::I_ADM_PSI4, bad_cell[2], bad_cell[1], bad_cell[0]);
+        Real zchi_bad = 0.0;
+        Real zg_bad[6] = {0.0};
+        if (use_z4c) {
+          zchi_bad = (bad_timelevel == 0)
+              ? z4c_n(mb, z4c::Z4c::I_Z4C_CHI,
+                      bad_cell[2], bad_cell[1], bad_cell[0])
+              : z4c_np1(mb, z4c::Z4c::I_Z4C_CHI,
+                        bad_cell[2], bad_cell[1], bad_cell[0]);
+          for (int q = 0; q < 6; ++q) {
+            zg_bad[q] = (bad_timelevel == 0)
+                ? z4c_n(mb, z4c::Z4c::I_Z4C_GXX+q,
+                        bad_cell[2], bad_cell[1], bad_cell[0])
+                : z4c_np1(mb, z4c::Z4c::I_Z4C_GXX+q,
+                          bad_cell[2], bad_cell[1], bad_cell[0]);
+          }
+        }
+        Kokkos::printf(
+            "### GRID_METRIC_PATHOLOGY time=%.17e status=%d timelevel=%d "
+            "bad_adm_slot=%d gid=%d level=%d dx=(%.9e,%.9e,%.9e) "
+            "cell=(%d,%d,%d) cell_x=(%.9e,%.9e,%.9e) "
+            "particle_x=(%.9e,%.9e,%.9e) "
+            "adm_g=(%.9e,%.9e,%.9e,%.9e,%.9e,%.9e) adm_psi4=%.9e "
+            "z4c_chi=%.9e z4c_gt=(%.9e,%.9e,%.9e,%.9e,%.9e,%.9e) "
+            "z4c_present=%d\n",
+            time_, grid_status, bad_timelevel, bad_slot, pi(PGID, p),
+            mblev.d_view(mb), size.d_view(mb).dx1, size.d_view(mb).dx2,
+            size.d_view(mb).dx3, bad_cell[0], bad_cell[1], bad_cell[2],
+            xbad, ybad, zbad, x_n[0], x_n[1], x_n[2],
+            bad_metric[0], bad_metric[1], bad_metric[2], bad_metric[3],
+            bad_metric[4], bad_metric[5], psi4_bad, zchi_bad,
+            zg_bad[0], zg_bad[1], zg_bad[2], zg_bad[3], zg_bad[4], zg_bad[5],
+            static_cast<int>(use_z4c));
+      }
+    }
 
     bool finite_out = gstat != kRejected
                    && Kokkos::isfinite(x_np1[0]) && Kokkos::isfinite(x_np1[1])
