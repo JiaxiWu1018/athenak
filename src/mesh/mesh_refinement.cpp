@@ -17,6 +17,7 @@
 #include <cmath>     // abs
 #include <algorithm> // sort
 #include <utility>   // pair
+#include <vector>
 
 #include "athena.hpp"
 #include "globals.hpp"
@@ -50,6 +51,7 @@ MeshRefinement::MeshRefinement(Mesh *pm, ParameterInput *pin) :
   nmb_sent_thisrank(0),
   ncyc_check_amr(1),
   refinement_interval(5),
+  log_amr_events(false),
   prolong_prims(false),
   refine_flag("rflag",pm->nmb_total),
   fc_amr_repair("fc_amr_repair",pm->nmb_total),
@@ -65,6 +67,8 @@ MeshRefinement::MeshRefinement(Mesh *pm, ParameterInput *pin) :
     // read interval (in cycles) between check of AMR and derefinement
     ncyc_check_amr = pin->GetOrAddReal("mesh_refinement", "ncycle_check", 1);
     refinement_interval = pin->GetOrAddReal("mesh_refinement", "refinement_interval", 5);
+    // read flag enabling a one-line stdout record of every mesh-topology change
+    log_amr_events = pin->GetOrAddBoolean("mesh_refinement", "log_amr_events", false);
     // read prolongate primitives flag
     if (pin->DoesParameterExist("mesh_refinement", "prolong_primitives")) {
       prolong_prims = pin->GetBoolean("mesh_refinement", "prolong_primitives");
@@ -212,7 +216,35 @@ void MeshRefinement::AdaptiveMeshRefinement(Driver *pdriver, ParameterInput *pin
 
     nmb_created += nnew;
     nmb_deleted += ndel;
+
+    if (log_amr_events) {PrintAMREvent(nnew, ndel);}
   }
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void MeshRefinement::PrintAMREvent()
+//! \brief Writes one stdout line per mesh-topology change: the cycle and time at which
+//! it happened, how many MeshBlocks were created and destroyed, the new total, and the
+//! new number of MeshBlocks on each physical level.  Enabled by
+//! <mesh_refinement> log_amr_events, so a run's complete AMR history can be recovered
+//! from its log without extra output files.  Cost is one loop over nmb_total per event.
+
+void MeshRefinement::PrintAMREvent(int nnew, int ndel) {
+  if (global_variable::my_rank != 0) {return;}
+  int nplev = pmy_mesh->max_level - pmy_mesh->root_level + 1;
+  std::vector<int> nb_per_plevel(std::max(nplev,1), 0);
+  for (int m=0; m<(pmy_mesh->nmb_total); ++m) {
+    int pl = pmy_mesh->lloc_eachmb[m].level - pmy_mesh->root_level;
+    if (pl >= 0 && pl < nplev) {nb_per_plevel[pl] += 1;}
+  }
+  std::cout << "AMR: cycle=" << pmy_mesh->ncycle << " time=" << pmy_mesh->time
+            << " created=" << nnew << " deleted=" << ndel
+            << " nmb=" << pmy_mesh->nmb_total << " levels=";
+  for (int pl=0; pl<nplev; ++pl) {
+    std::cout << (pl == 0 ? "" : ",") << pl << ":" << nb_per_plevel[pl];
+  }
+  std::cout << std::endl;
   return;
 }
 

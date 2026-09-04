@@ -52,6 +52,7 @@ class MeshRefinement {
   int nmb_sent_thisrank;     // # of MeshBlocks sent during load balancing on this rank
   int ncyc_check_amr;        // # of cycles between checking mesh for ref/derefinement
   int refinement_interval;   // # of cycles between allowing successive ref/derefinement
+  bool log_amr_events;       // print one line per mesh-topology change to stdout
   bool prolong_prims;        // flag to enable prolongation of primitive vars
   RefinementCriteria* pmrc=nullptr;   // object to control various refinement criteria
 
@@ -101,6 +102,7 @@ class MeshRefinement {
   void CheckForRefinement(MeshBlockPack* pmbp);
   void AdaptiveMeshRefinement(Driver *pdrive, ParameterInput *pin);
   void UpdateMeshBlockTree(int &nnew, int &ndel);
+  void PrintAMREvent(int nnew, int ndel);
   void RedistAndRefineMeshBlocks(ParameterInput *pin, int nnew, int ndel);
 
   void DerefineCCSameRank(DvceArray5D<Real> &a, DvceArray5D<Real> &ca);
