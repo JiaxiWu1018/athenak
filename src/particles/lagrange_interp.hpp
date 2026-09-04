@@ -169,7 +169,9 @@ KOKKOS_INLINE_FUNCTION
 void CalcTriWght(const Real *x0, const Real *grid, const int *ncell,
                  const int *interp_indcs, Real *Lx, Real *Ly, Real *Lz) {
   constexpr int N = 2 * ORDER;
-  for (int i = 0; i < N; ++i) { Lx[i] = 0.0; Ly[i] = 0.0; Lz[i] = 0.0; }
+  for (int i = 0; i < N; ++i) {
+    Lx[i] = 0.0; Ly[i] = 0.0; Lz[i] = 0.0;
+  }
   const Real xa = CellCenterX(interp_indcs[1], ncell[0], grid[0], grid[1]);
   const Real ya = CellCenterX(interp_indcs[2], ncell[1], grid[3], grid[4]);
   const Real za = CellCenterX(interp_indcs[3], ncell[2], grid[6], grid[7]);
@@ -244,7 +246,9 @@ void CalcHermiteWght(const Real *x0, const Real *grid, const int *ncell,
                      const int *interp_indcs, Real *Lx, Real *Ly, Real *Lz) {
   static_assert(ORDER >= 2, "Hermite gather needs NGHOST >= 2");
   constexpr int N = 2 * ORDER;
-  for (int i = 0; i < N; ++i) { Lx[i] = 0.0; Ly[i] = 0.0; Lz[i] = 0.0; }
+  for (int i = 0; i < N; ++i) {
+    Lx[i] = 0.0; Ly[i] = 0.0; Lz[i] = 0.0;
+  }
   const Real xa = CellCenterX(interp_indcs[1], ncell[0], grid[0], grid[1]);
   const Real ya = CellCenterX(interp_indcs[2], ncell[1], grid[3], grid[4]);
   const Real za = CellCenterX(interp_indcs[3], ncell[2], grid[6], grid[7]);
