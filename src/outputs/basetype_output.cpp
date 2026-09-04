@@ -171,6 +171,13 @@ BaseTypeOutput::BaseTypeOutput(ParameterInput *pin, Mesh *pm, OutputParameters o
        << std::endl << "Input file is likely missing corresponding block" << std::endl;
     exit(EXIT_FAILURE);
   }
+  if (ivar==154 && (pm->pmb_pack->pz4c == nullptr)) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
+       << "Output of curvature invariants requested in <output> block '"
+       << out_params.block_name << "' but Z4c object not constructed."
+       << std::endl << "Input file is likely missing corresponding block" << std::endl;
+    exit(EXIT_FAILURE);
+  }
   if (ivar==153 && (pm->pmb_pack->pgrav == nullptr)) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl
        << "Output of gravity potential requested in <output> block '"
@@ -670,6 +677,13 @@ BaseTypeOutput::BaseTypeOutput(ParameterInput *pin, Mesh *pm, OutputParameters o
     if (variable.compare("weyl") == 0) {
       outvars.emplace_back("weyl_rpsi4",0,&(pm->pmb_pack->pz4c->u_weyl));
       outvars.emplace_back("weyl_ipsi4",1,&(pm->pmb_pack->pz4c->u_weyl));
+    }
+
+    // curvature invariants (computed on demand at output time, see derived_variables.cpp)
+    if (variable.compare("kretschmann") == 0) {
+      out_params.contains_derived = true;
+      outvars.emplace_back("kretschmann",0,&(pm->pmb_pack->pz4c->u_kretsch));
+      outvars.emplace_back("weyl_sq",1,&(pm->pmb_pack->pz4c->u_kretsch));
     }
 
     // radiation moments in coordinate frame

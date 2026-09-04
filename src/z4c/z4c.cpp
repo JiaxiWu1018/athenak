@@ -72,6 +72,7 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
   coarse_u0("coarse u0 z4c",1,1,1,1,1),
   u_weyl("u_weyl",1,1,1,1,1),
   coarse_u_weyl("coarse_u_weyl",1,1,1,1,1),
+  u_kretsch("u_kretsch",1,1,1,1,1),
   pamr(new Z4c_AMR(pin)),
   pmy_pack(ppack) {
   // (1) read time-evolution option [already error checked in driver constructor]
@@ -93,6 +94,7 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
   Kokkos::realloc(u1,    nmb, (nz4c), ncells3, ncells2, ncells1);
   Kokkos::realloc(u_rhs, nmb, (nz4c), ncells3, ncells2, ncells1);
   Kokkos::realloc(u_weyl,    nmb, (2), ncells3, ncells2, ncells1);
+  Kokkos::realloc(u_kretsch, nmb, (2), ncells3, ncells2, ncells1);
   Kokkos::deep_copy(DevExeSpace(), u0, 0.0);
   Kokkos::deep_copy(DevExeSpace(), u1, 0.0);
   Kokkos::deep_copy(DevExeSpace(), u_rhs, 0.0);

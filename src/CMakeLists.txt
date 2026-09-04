@@ -207,6 +207,7 @@ add_executable(
         z4c/z4c_gauge.cpp
         z4c/z4c_Sbc.cpp
         z4c/z4c_calculate_weyl_scalars.cpp
+        z4c/z4c_kretschmann.cpp
         z4c/z4c_wave_extr.cpp
         z4c/z4c_amr.cpp
         z4c/cce/cce.cpp

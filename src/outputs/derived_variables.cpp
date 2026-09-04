@@ -29,6 +29,7 @@
 #include "radiation/radiation.hpp"
 #include "radiation/radiation_tetrad.hpp"
 #include "particles/particles.hpp"
+#include "z4c/z4c.hpp"
 #include "outputs.hpp"
 #include "utils/current.hpp"
 
@@ -93,6 +94,12 @@ void BaseTypeOutput::ComputeDerivedVariable(std::string name, Mesh *pm) {
   // derived variable index
   int &i_dv = out_params.i_derived;
   int &n_dv = out_params.n_derived;
+
+  // curvature invariants (Kretschmann, Weyl^2) written directly into Z4c::u_kretsch
+  if (name.compare("kretschmann") == 0) {
+    pm->pmb_pack->pz4c->CalcKretschmann(pm->pmb_pack);
+    return;
+  }
 
   // specific internal energy proxy = eint / density
   if (name.compare("temperature") == 0) {

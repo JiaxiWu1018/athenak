@@ -21,7 +21,7 @@
     #error NHISTORY > NREDUCTION in outputs.hpp
 #endif
 
-#define NOUTPUT_CHOICES 154
+#define NOUTPUT_CHOICES 155
 // choices for output variables used in <ouput> blocks in input file
 // TO ADD MORE CHOICES:
 //   - add more strings to array below, change NOUTPUT_CHOICES above appropriately
@@ -100,7 +100,9 @@ static const char *var_choice[NOUTPUT_CHOICES] = {
   // Particles (151-152)
   "prtcl_all", "prtcl_d",
   // Gravity (153)
-  "grav_phi"
+  "grav_phi",
+  // Curvature invariants (154): Kretschmann and Weyl^2 from Z4c/ADM (+ Tmunu)
+  "kretschmann"
 };
 
 

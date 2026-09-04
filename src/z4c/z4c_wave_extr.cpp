@@ -8,6 +8,7 @@
 //  and output the waveform
 
 // C++ standard headers
+#include <sys/stat.h>  // mkdir
 #include <unistd.h>
 #include <cstdio>
 #include <stdexcept>
@@ -121,6 +122,10 @@ void Z4c::WaveExtr(MeshBlockPack *pmbp) {
   #endif
 
   if (0 == global_variable::my_rank) {
+    // The directory was created by the Z4c constructor in the launch directory; when the
+    // run directory is changed afterwards (-d), recreate it relative to the current one so
+    // the relative file names below resolve (no-op if it already exists).
+    mkdir("waveforms", 0775);
     int idx = 0;
     for (int g=0; g<nradii; ++g) {
       // Output file names

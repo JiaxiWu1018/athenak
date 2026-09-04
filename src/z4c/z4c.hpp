@@ -89,6 +89,7 @@ class Z4c {
   DvceArray5D<Real> coarse_u0; // coarse representation of z4c solution
   DvceArray5D<Real> u_weyl; // weyl scalars
   DvceArray5D<Real> coarse_u_weyl; // coarse representation of weyl scalars
+  DvceArray5D<Real> u_kretsch; // curvature invariants: [0]=Kretschmann, [1]=Weyl^2
   DvceArray4D<Real> spatial_damp;  // spatially dependent damping profile
   DualArray2D<Real> damping_puncture_info;  // BH positions and masses
 
@@ -269,6 +270,9 @@ class Z4c {
   void ADMConstraints(MeshBlockPack *pmbp);
   template <int NGHOST>
   void Z4cWeyl(MeshBlockPack *pmbp);
+  template <int NGHOST>
+  void Z4cKretschmann(MeshBlockPack *pmbp);
+  void CalcKretschmann(MeshBlockPack *pmbp);
   void WaveExtr(MeshBlockPack *pmbp);
   void AlgConstr(MeshBlockPack *pmbp);
 
