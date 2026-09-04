@@ -311,6 +311,10 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
     pfastflow.push_back(std::make_unique<FastFlow>(pmy_pack, pin, n));
     n++;
   }
+  // all finders share finder 0's full-mesh metric-derivative array (see FastFlow ctor)
+  for (size_t h = 1; h < pfastflow.size(); ++h) {
+    pfastflow[h]->ShareMetricDrvts(*pfastflow[0]);
+  }
   // Construct the Cartesian data grid for dumping horizon data
   n = 0;
   while (true) {

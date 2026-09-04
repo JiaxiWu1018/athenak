@@ -328,6 +328,13 @@ TaskStatus Z4c::TrackCompactObjects(Driver *pdrive, int stage) {
 TaskStatus Z4c::FindHorizon(Driver *pdrive, int stage) {
   Real time = pmy_pack->pmesh->time;
   auto &indcs = pmy_pack->pmesh->mb_indcs;
+  if (pfastflow.empty()) {
+    return TaskStatus::complete;
+  }
+  // <fastflow> find_every: search only every N cycles (default 1 = every cycle)
+  if ((pmy_pack->pmesh->ncycle % pfastflow[0]->find_every) != 0) {
+    return TaskStatus::complete;
+  }
   if (stage == pdrive->nexp_stages) {
     for (auto & pahf : pfastflow) {
       switch (indcs.ng) {

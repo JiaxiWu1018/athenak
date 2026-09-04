@@ -84,6 +84,9 @@ class FastFlow {
   Real flow_alpha_beta_const; // alpha & beta constants in the iteration formula
                               // Eqs. (43) & (44) of https://arxiv.org/pdf/gr-qc/9707050
   bool verbose;
+  int find_every;  // run the finder (and its metric derivatives) every N cycles (global)
+  // share finder 0's full-mesh metric-derivative array (identical for every finder)
+  void ShareMetricDrvts(const FastFlow &src) { dg = src.dg; }
   bool output_ylm;
   bool output_grid;
 

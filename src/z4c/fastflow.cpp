@@ -61,6 +61,8 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
 
   lmax = pin->GetOrAddInteger("fastflow", "lmax", 4);
   lmax1 = lmax + 1;
+  // cadence (in cycles) of the search; 1 = every cycle (historical behaviour)
+  find_every = std::max(1, pin->GetOrAddInteger("fastflow", "find_every", 1));
 
   // Flow parameters
   flow_iterations = pin->GetOrAddInteger("fastflow", "flow_iterations_" + n_str, 100);
@@ -195,12 +197,19 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   // with adaptive mesh refinement and load balancing (e.g. a boosted puncture
   // dragging the refined region across ranks). To prevent this allocate more
   // memory based in the max. nmb. of MBs per rank from startup.
+  // The metric-derivative array covers the whole local mesh and is identical for every
+  // finder (all finders see the same ADM state at the same time and run sequentially), so
+  // only finder 0 allocates it; Z4c makes the other finders share the same View. This
+  // removes the dominant memory cost of running several searches (18 x ncells^3 x 8 B per
+  // MeshBlock slot per finder).
   auto &indcs = pmbp->pmesh->mb_indcs;
   int nmb = std::max((pmbp->nmb_thispack), (pmbp->pmesh->nmb_maxperrank));
   int ncells1 = indcs.nx1 + 2 * (indcs.ng);
   int ncells2 = indcs.nx2 + 2 * (indcs.ng);
   int ncells3 = indcs.nx3 + 2 * (indcs.ng);
-  Kokkos::realloc(dg, nmb, (NDRVSSPMETRIC), ncells3, ncells2, ncells1);
+  if (nh == 0) {
+    Kokkos::realloc(dg, nmb, (NDRVSSPMETRIC), ncells3, ncells2, ncells1);
+  }
 
   // Array computed in surface integrals.
   Kokkos::realloc(rho, nangles);
