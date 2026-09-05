@@ -1,0 +1,330 @@
+<comment>
+Prolate collisionless spheroid collapse (Shapiro & Teukolsky 1991 configuration):
+M = 1, eccentricity e = 0.9, semi-major axis b/M = 10 (a = 4.3589 M), N = 2,000,000 equal-mass
+particles at rest, no rotation. Particle-consistent conformally-flat, time-symmetric initial
+data (gamma_ij = Psi^4 delta_ij, K_ij = 0) from scripts/particles/spheroid_id.py, evolved in the
+moving-puncture Z4c gauge (1+log lapse, Gamma-driver shift) with the pre-collapsed lapse
+alpha = Psi^-2 and beta^i = 0.  Generate the initial-data file with, e.g.
+
+  python3 scripts/particles/spheroid_id.py --N 2000000 --fold 4 --seed 20260904 --dx 0.125 \
+      --box -8 8 -8 8 -16 16 --rescale-iters 4 --defect-correct 40 --src-threshold 1e-8 \
+      --out spheroid_e09_b10_N2e6_dx0.125.bin
+
+and point <problem>/sph_id_file at it.  Mesh [-128,128]^3, root 128^3 (dx = 2), 32^3 MeshBlocks,
+num_levels = 8 (L0..L7, dx_min = 1/64); static seeds L1..L4 for the initial spheroid, then
+Loehner AMR on alpha*psi^7 (threshold 0.2) controls refinement and derefinement.  Lapse-based
+particle excision (alpha < 0.05), apparent-horizon excision off, FastFlow horizon searches on
+(diagnostic, every 8 cycles).  This is the deck used for the 2026-09 Session-1 production
+continuation (Hermite grid->particle gather; use interpolation = lagrange for the default
+2*NGHOST-node Lagrange gather).
+
+<job>
+basename = sph_e09_b10
+
+<mesh>
+nghost = 4
+nx1 = 128
+x1min = -128.0
+x1max = 128.0
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 128
+x2min = -128.0
+x2max = 128.0
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 128
+x3min = -128.0
+x3max = 128.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+
+<time>
+evolution = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim = 100000000
+tlim = 60.0
+ndiag = 20
+
+<mesh_refinement>
+refinement = adaptive
+num_levels = 8
+max_nmb_per_rank = 300
+ncycle_check = 16
+refinement_interval = 16
+
+<amr_criterion1>
+method = user
+
+<z4c_amr>
+method = loehner
+loehner_variable = alp_psi7
+loehner_threshold = 0.2
+
+<refined_region1>
+level = 1
+x1min = -32
+x1max = 32
+x2min = -32
+x2max = 32
+x3min = -40
+x3max = 40
+
+<refined_region2>
+level = 2
+x1min = -16
+x1max = 16
+x2min = -16
+x2max = 16
+x3min = -24
+x3max = 24
+
+<refined_region3>
+level = 3
+x1min = -10
+x1max = 10
+x2min = -10
+x2max = 10
+x3min = -16
+x3max = 16
+
+<refined_region4>
+level = 4
+x1min = -6
+x1max = 6
+x2min = -6
+x2max = 6
+x3min = -12
+x3max = 12
+
+<z4c>
+lapse_harmonicf = 1.0
+lapse_harmonic = 0.0
+lapse_oplog = 2.0
+lapse_advect = 1.0
+shift_eta = 2.0
+shift_advect = 1.0
+diss = 0.1
+chi_div_floor = 0.00001
+damp_kappa1 = 0.02
+damp_kappa2 = 0.0
+nrad_wave_extraction = 3
+extraction_radius_0 = 40.0
+extraction_radius_1 = 60.0
+extraction_radius_2 = 80.0
+waveform_dt = 0.5
+
+<fastflow>
+# Segment from t = 25 (L7 cap): eight searches every 8 cycles, hmean_tol = 300 (blow-up guard
+# |int H dA| ~ 8 pi r must not trip at iteration 0). The spindle poles move inward at
+# ~0.8 M per M (z = 5.7 at t = 22, 4.2 at t = 23.85; projected 3.3 at t = 25, merging near the
+# origin around t ~ 28): pole-centred searches at z = 3.5, 2.5, 1.5, 0.75 plus origin-centred
+# searches bracketing a common surface (r0 = 8, 4, 2, 1).
+npunct = 0
+num_horizons = 8
+find_every = 8
+ntheta = 12
+lmax = 8
+flow = standard
+expand_guess = 1.0
+output_ylm = true
+output_grid = true
+verbose = true
+initial_radius_0 = 8.0
+flow_alpha_beta_const_0 = 1.0
+flow_iterations_0 = 300
+hmean_tol_0 = 300.0
+mass_tol_0 = 1e-4
+center_x_0 = 0.0
+center_y_0 = 0.0
+center_z_0 = 0.0
+start_time_0 = 8.0
+stop_time_0 = 1e30
+initial_radius_1 = 4.0
+flow_alpha_beta_const_1 = 0.7
+flow_iterations_1 = 300
+hmean_tol_1 = 300.0
+mass_tol_1 = 1e-4
+center_x_1 = 0.0
+center_y_1 = 0.0
+center_z_1 = 0.0
+start_time_1 = 8.0
+stop_time_1 = 1e30
+initial_radius_2 = 2.0
+flow_alpha_beta_const_2 = 0.3
+flow_iterations_2 = 300
+hmean_tol_2 = 300.0
+mass_tol_2 = 1e-4
+center_x_2 = 0.0
+center_y_2 = 0.0
+center_z_2 = 0.0
+start_time_2 = 8.0
+stop_time_2 = 1e30
+initial_radius_3 = 1.0
+flow_alpha_beta_const_3 = 0.2
+flow_iterations_3 = 300
+hmean_tol_3 = 300.0
+mass_tol_3 = 1e-4
+center_x_3 = 0.0
+center_y_3 = 0.0
+center_z_3 = 0.0
+start_time_3 = 8.0
+stop_time_3 = 1e30
+initial_radius_4 = 1.0
+flow_alpha_beta_const_4 = 0.2
+flow_iterations_4 = 300
+hmean_tol_4 = 300.0
+mass_tol_4 = 1e-4
+center_x_4 = 0.0
+center_y_4 = 0.0
+center_z_4 = 3.5
+start_time_4 = 8.0
+stop_time_4 = 1e30
+initial_radius_5 = 1.0
+flow_alpha_beta_const_5 = 0.2
+flow_iterations_5 = 300
+hmean_tol_5 = 300.0
+mass_tol_5 = 1e-4
+center_x_5 = 0.0
+center_y_5 = 0.0
+center_z_5 = 2.5
+start_time_5 = 8.0
+stop_time_5 = 1e30
+initial_radius_6 = 0.8
+flow_alpha_beta_const_6 = 0.15
+flow_iterations_6 = 300
+hmean_tol_6 = 300.0
+mass_tol_6 = 1e-4
+center_x_6 = 0.0
+center_y_6 = 0.0
+center_z_6 = 1.5
+start_time_6 = 8.0
+stop_time_6 = 1e30
+initial_radius_7 = 0.5
+flow_alpha_beta_const_7 = 0.1
+flow_iterations_7 = 300
+hmean_tol_7 = 300.0
+mass_tol_7 = 1e-4
+center_x_7 = 0.0
+center_y_7 = 0.0
+center_z_7 = 0.75
+start_time_7 = 8.0
+stop_time_7 = 1e30
+
+<particles>
+particle_type = dust
+pusher = gr_boris
+interpolation = hermite
+init = pgen
+feedback = true
+mass = 1.0
+debug = 1
+destroy_log = true
+excise_radius = 0.0
+excise_lapse = 0.05
+excise_ah = false
+cross_level_deposit = conservative
+
+<problem>
+user_hist = true
+sph_id_file = spheroid_e09_b10_N2e6_dx0.125.bin
+sph_psi_mode = table
+sph_precollapsed_lapse = true
+sph_near_margin = 1.0
+sph_coarse_dx = 0.25
+sph_checks = true
+
+# ---------------- outputs (x-z meridional slices; 3D at low cadence) ----------------
+<output1>
+file_type = hst
+dt = 0.05
+
+<output2>
+file_type = bin
+variable = tmunu_E
+id = E_xz
+slice_x2 = 0.0
+dt = 0.25
+
+<output3>
+file_type = bin
+variable = z4c_alpha
+id = alp_xz
+slice_x2 = 0.0
+dt = 0.25
+
+<output4>
+file_type = bin
+variable = kretschmann
+id = kr_xz
+slice_x2 = 0.0
+dt = 0.25
+
+<output5>
+file_type = bin
+variable = con
+id = con_xz
+slice_x2 = 0.0
+dt = 0.5
+
+<output6>
+file_type = bin
+variable = z4c_chi
+id = chi_xz
+slice_x2 = 0.0
+dt = 0.25
+
+<output7>
+file_type = bin
+variable = tmunu_E
+id = E_xy
+slice_x3 = 0.0
+dt = 0.5
+
+<output8>
+file_type = pvtk
+variable = prtcl_all
+dt = 1.0
+
+<output9>
+file_type = bin
+variable = tmunu_E
+id = E3d
+dt = 5.0
+
+<output10>
+file_type = bin
+variable = z4c_alpha
+id = alp3d
+dt = 5.0
+
+<output11>
+file_type = cbin
+variable = z4c_alpha
+id = mesh
+coarsen_factor = 32
+dt = 0.25
+
+<output12>
+file_type = bin
+variable = adm
+id = adm_xz
+slice_x2 = 0.0
+dt = 0.5
+
+<output13>
+file_type = bin
+variable = adm
+id = adm_xy
+slice_x3 = 0.0
+dt = 0.5
+
+<output14>
+file_type = rst
+dt = 5.0
