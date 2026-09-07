@@ -124,7 +124,9 @@ nx3 = 32
 
 <mesh_refinement>
 refinement       = static
-max_nmb_per_rank = 1600
+# max_nmb_per_rank is only consulted for ADAPTIVE refinement; with
+# refinement = static the code reports it as an unused parameter, so it is
+# deliberately absent.
 
 <refined_region1>
 level = 1
@@ -241,7 +243,9 @@ cross_level_deposit = conservative
 # matter-source filtering OFF (ApplyDigitalFilter returns at its first statement
 # and Tmunu allocates no filter scratch or bvals buffers)
 tmunu_filter_passes   = 0
-tmunu_filter_selftest = false
+# The upstream filter port deliberately excluded the self-test path, so
+# tmunu_filter_selftest does not exist; setting it only produced an
+# unused-parameter warning.
 
 <problem>
 user_hist            = true
