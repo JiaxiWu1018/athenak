@@ -450,8 +450,8 @@ particles::ParticlesBoundaryValues::ParticlesBoundaryValues(
     destroylist("destroylist",1),
     holelist("holelist",1),
     cpairs("cpairs",1),
-    destroy_rec_r("drec_r",7,1),
-    destroy_rec_i("drec_i",3,1),
+    destroy_rec_r("drec_r",8,1),
+    destroy_rec_i("drec_i",4,1),
     ndest_global{0, 0, 0, 0},
 #if MPI_PARALLEL_ENABLED
     prtcl_rsendbuf("rsend",1),

@@ -958,10 +958,11 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
 
   // Exact finite-N matter ledger on the initialized slice.  The global staged particle
   // set is a disjoint partition across ranks, so an MPI sum counts every particle once.
-  // P_i and L_z use the stored covariant coordinate momentum, matching the matter source
-  // in the ADM momentum/angular-momentum volume integrals.  P_hat is included to expose
-  // the intended orthonormal boost directly.
-  constexpr int nledger = 8;
+  // P_i and J_i use the stored covariant coordinate momentum, matching the matter
+  // source in the ADM momentum/angular-momentum volume integrals. P_hat exposes the
+  // intended orthonormal boost directly. J_internal is centered on each component's
+  // prescribed center (the origin for the envelope), while J_origin uses O=(0,0,0).
+  constexpr int nledger = 14;
   int ncomponents = static_cast<int>(active.size()) + 1;  // envelope + clumps
   std::vector<Real> ledger(ncomponents*nledger, 0.0);
   std::vector<std::int64_t> ledger_count(ncomponents, 0);
@@ -974,15 +975,29 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     Real vz = stage.uz[p]*inv_psi2;
     Real w = std::sqrt(1.0 + vx*vx + vy*vy + vz*vz);
     Real mass = stage.mass[p];
+    Real cx = 0.0, cy = 0.0, cz = 0.0;
+    if (comp > 0) {
+      cx = active[comp-1].x1;
+      cy = active[comp-1].x2;
+      cz = active[comp-1].x3;
+    }
+    Real x = stage.x[p], y = stage.y[p], z = stage.z[p];
+    Real ux = stage.ux[p], uy = stage.uy[p], uz = stage.uz[p];
     Real *sum = &ledger[comp*nledger];
-    sum[0] += mass*w;
-    sum[1] += mass*stage.ux[p];
-    sum[2] += mass*stage.uy[p];
-    sum[3] += mass*stage.uz[p];
-    sum[4] += mass*vx;
-    sum[5] += mass*vy;
-    sum[6] += mass*vz;
-    sum[7] += mass*(stage.x[p]*stage.uy[p] - stage.y[p]*stage.ux[p]);
+    sum[0] += mass;
+    sum[1] += mass*w;
+    sum[2] += mass*ux;
+    sum[3] += mass*uy;
+    sum[4] += mass*uz;
+    sum[5] += mass*vx;
+    sum[6] += mass*vy;
+    sum[7] += mass*vz;
+    sum[8] += mass*(y*uz - z*uy);
+    sum[9] += mass*(z*ux - x*uz);
+    sum[10] += mass*(x*uy - y*ux);
+    sum[11] += mass*((y-cy)*uz - (z-cz)*uy);
+    sum[12] += mass*((z-cz)*ux - (x-cx)*uz);
+    sum[13] += mass*((x-cx)*uy - (y-cy)*ux);
     ++ledger_count[comp];
   }
 #if MPI_PARALLEL_ENABLED
@@ -1071,11 +1086,24 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     for (int comp = 0; comp < ncomponents; ++comp) {
       const Real *sum = &ledger[comp*nledger];
       const char *name = (comp == 0) ? "envelope" : "clump";
-      std::printf("  ledger %-8s %d: N=%lld sum(mW)=%.10g P_cov=(%.6e,%.6e,%.6e) "
-                  "P_hat=(%.6e,%.6e,%.6e) Lz_cov=%.10g\n",
+      std::printf("  ledger %-8s %d: N=%lld rest_mass=%.10g sum(mW)=%.10g "
+                  "P_cov=(%.6e,%.6e,%.6e) P_hat=(%.6e,%.6e,%.6e) "
+                  "J_origin_cov=(%.10g,%.10g,%.10g) "
+                  "J_internal_cov=(%.10g,%.10g,%.10g)\n",
                   name, comp, static_cast<long long>(ledger_count[comp]), sum[0], sum[1],
-                  sum[2], sum[3], sum[4], sum[5], sum[6], sum[7]);
+                  sum[2], sum[3], sum[4], sum[5], sum[6], sum[7], sum[8], sum[9],
+                  sum[10], sum[11], sum[12], sum[13]);
     }
+    std::vector<Real> ledger_total(nledger, 0.0);
+    for (int comp = 0; comp < ncomponents; ++comp) {
+      for (int q = 0; q < nledger; ++q) {
+        ledger_total[q] += ledger[comp*nledger + q];
+      }
+    }
+    std::printf("  ledger system    : rest_mass=%.10g sum(mW)=%.10g "
+                "P_cov=(%.6e,%.6e,%.6e) J_origin_cov=(%.10g,%.10g,%.10g)\n",
+                ledger_total[0], ledger_total[1], ledger_total[2], ledger_total[3],
+                ledger_total[4], ledger_total[8], ledger_total[9], ledger_total[10]);
     std::printf("  particles : total=%d (envelope %d + clumps %d), antithetic pairs\n",
                 npart_total, n_env, n_clump_sum);
 

@@ -321,8 +321,8 @@ class ParticlesBoundaryValues {
   DualArray1D<int> destroylist;     // their array indices (host-sorted ascending)
   DualArray1D<int> holelist;        // merged sent + destroyed hole indices (ascending)
   DualArray1D<int> cpairs;          // tail-compaction (dst,src) pairs, flattened 2*npairs
-  DvceArray2D<Real> destroy_rec_r;  // death records, 7 x cap: {x,y,z,vx,vy,vz,crit}
-  DvceArray2D<int>  destroy_rec_i;  // death records, 3 x cap: {tag, gid, reason}
+  DvceArray2D<Real> destroy_rec_r;  // 8 x cap: {x,y,z,u1,u2,u3,crit,mass}
+  DvceArray2D<int>  destroy_rec_i;  // 4 x cap: {tag,gid,reason,component}
   int ndest_global[NPRTCL_DEATH_REASON];  // this cycle's destruction census by reason,
                                     // summed over all ranks (every rank holds it)
   std::vector<int> ndest_eachrank;  // per-rank destroy totals this cycle (MPI census)

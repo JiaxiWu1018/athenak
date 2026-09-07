@@ -101,6 +101,7 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   bool exc_any = pmy_part->excise_any;
   auto &eflag = pmy_part->excise_flag;
   auto &ecrit = pmy_part->excise_crit;
+  int component_split_tag = pmy_part->destroy_component_split_tag;
 
   // Exact list sizing, pass 1 of 2: count (i) the particles that crossed a MeshBlock
   // boundary and (ii) the particles to destroy (mesh exits through non-periodic
@@ -137,8 +138,8 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
     Kokkos::realloc(destroylist, ndest_ub);
   }
   if (ndest_ub > destroy_rec_r.extent_int(1)) {
-    Kokkos::realloc(destroy_rec_r, 7, ndest_ub);
-    Kokkos::realloc(destroy_rec_i, 3, ndest_ub);
+    Kokkos::realloc(destroy_rec_r, 8, ndest_ub);
+    Kokkos::realloc(destroy_rec_i, 4, ndest_ub);
   }
   par_for("part_update",DevExeSpace(),0,(npart-1), KOKKOS_LAMBDA(const int p) {
     int m = pi(PGID,p) - gids;
@@ -184,9 +185,12 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
       drr(4,slot) = pr(IPVY,p);
       drr(5,slot) = three_d ? pr(IPVZ,p) : 0.0;
       drr(6,slot) = (reason > 0) ? ecrit(p) : 0.0;  // r or alpha at marking
+      drr(7,slot) = pr(IPM,p);  // proper rest mass
       dri(0,slot) = pi(PTAG,p);
       dri(1,slot) = pi(PGID,p);
       dri(2,slot) = reason;
+      dri(3,slot) = (component_split_tag >= 0)
+                    ? ((pi(PTAG,p) < component_split_tag) ? 0 : 1) : -1;
       if (dbg > 0) {
         // destroyed-side checksums of the two-sided conservation ledger (cast BEFORE
         // multiplying: int tag*tag overflows at tag >= 46341)

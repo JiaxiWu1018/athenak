@@ -100,6 +100,8 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   rr_min = -1.0;
 
   expand_guess = pin->GetOrAddReal("fastflow", "expand_guess", 1.0);
+  reuse_last_surface_shape = pin->GetOrAddBoolean(
+      "fastflow", "reuse_last_surface_shape_" + n_str, false);
 
   // If surface was found prior to checkpoint, read it as warm-up guess
   last_a0 = pin->GetOrAddReal("fastflow", "last_a0_" + n_str, -1.0);
@@ -323,7 +325,9 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
     }
     if (new_file) {
       fprintf(pofile_summary, "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area "
-                               "9:hrms 10:hmean 11:meanradius 12:minradius\n");
+                               "9:hrms 10:hmean 11:meanradius 12:minradius "
+                               "13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P "
+                               "19:center_x 20:center_y 21:center_z\n");
       fflush(pofile_summary);
     }
     bool new_consumer_file = (access(ofname_consumer.c_str(), F_OK) != 0);
@@ -470,6 +474,9 @@ void FastFlow::Write(int iter, Real time) {
         ah_prop[hhmean],
         ah_prop[hmeanradius],
         ah_prop[hminradius]);
+    fprintf(pofile_summary, " %.15e %.15e %.15e %.15e %.15e %.15e %.15e %.15e %.15e",
+        ah_prop[hmirr], ah_prop[hchi], ah_prop[hPx], ah_prop[hPy], ah_prop[hPz],
+        ah_prop[hP], center[0], center[1], center[2]);
     fprintf(pofile_summary, "\n");
     fflush(pofile_summary);
 
@@ -705,6 +712,24 @@ void FastFlow::InitialGuess() {
     center[1] = pmbp->pz4c->ptracker[use_puncture]->GetPos(1);
     center[2] = pmbp->pz4c->ptracker[use_puncture]->GetPos(2);
 
+    // A published surface is a stronger warm start than the legacy spherical guess:
+    // retain all l,m coefficients while translating the expansion origin with the
+    // tracker. This state is deliberately in-run only; after a restart, ah_surf_valid
+    // remains false until a new surface passes the publication gates.
+    if (reuse_last_surface_shape && ah_surf_valid) {
+      Kokkos::deep_copy(a0.h_view, a0_surf.h_view);
+      Kokkos::deep_copy(ac.h_view, ac_surf.h_view);
+      Kokkos::deep_copy(as.h_view, as_surf.h_view);
+      a0.h_view(0) *= expand_guess;
+      a0.template modify<HostMemSpace>();
+      a0.template sync<DevExeSpace>();
+      ac.template modify<HostMemSpace>();
+      ac.template sync<DevExeSpace>();
+      as.template modify<HostMemSpace>();
+      as.template sync<DevExeSpace>();
+      return;
+    }
+
     // Update a0
     // For single BH in isotropic coordinates: horizon radius=m/2
     // but make sure it can surround all punctures comfortably, i.e.
@@ -924,6 +949,10 @@ void FastFlow::FastFlowLoop() {
   Real Sy = 0;
   Real Sz = 0;
   Real S = 0;
+  Real Px = 0;
+  Real Py = 0;
+  Real Pz = 0;
+  Real P = 0;
   bool failed = false;
 
   if (verbose && ioproc) {
@@ -962,6 +991,10 @@ void FastFlow::FastFlowLoop() {
     Sy = integrals[iSy] / (8 * M_PI);
     Sz = integrals[iSz] / (8 * M_PI);
     S  = Kokkos::sqrt(SQR(Sx) + SQR(Sy) + SQR(Sz));
+    Px = integrals[iPx] / (8 * M_PI);
+    Py = integrals[iPy] / (8 * M_PI);
+    Pz = integrals[iPz] / (8 * M_PI);
+    P  = Kokkos::sqrt(SQR(Px) + SQR(Py) + SQR(Pz));
 
     meanradius = a0.h_view(0) / Kokkos::sqrt(4.0 * M_PI);
 
@@ -1046,7 +1079,13 @@ void FastFlow::FastFlowLoop() {
     ah_prop[hSy] = Sy;
     ah_prop[hSz] = Sz;
     ah_prop[hS]  = S;
-    ah_prop[hmass] = Kokkos::sqrt( SQR(mass) + 0.25*SQR(S/mass) ); // Christodoulu mass
+    ah_prop[hmass] = Kokkos::sqrt( SQR(mass) + 0.25*SQR(S/mass) ); // Christodoulou mass
+    ah_prop[hmirr] = mass;
+    ah_prop[hchi] = S/SQR(ah_prop[hmass]);
+    ah_prop[hPx] = Px;
+    ah_prop[hPy] = Py;
+    ah_prop[hPz] = Pz;
+    ah_prop[hP] = P;
   }
 
   if (verbose && ioproc) {
@@ -1061,6 +1100,7 @@ void FastFlow::FastFlowLoop() {
       fprintf(pofile_verbose, " Sy = %f\n", Sy);
       fprintf(pofile_verbose, " Sz = %f\n", Sz);
       fprintf(pofile_verbose, " S  = %f\n", S);
+      fprintf(pofile_verbose, " P  = (%f, %f, %f), |P| = %f\n", Px, Py, Pz, P);
     } else if (!failed && !ah_found) {
       fprintf(pofile_verbose, "Failed, reached max iterations %d\n", flow_iterations);
     }
@@ -1422,7 +1462,10 @@ void FastFlow::SurfaceIntegrals() {
                 Real& hmean,
                 Real& Sx,
                 Real& Sy,
-                Real& Sz) {
+                Real& Sz,
+                Real& Px,
+                Real& Py,
+                Real& Pz) {
     // Derivatives of (r,theta,phi) w.r.t (x,y,z)
     AthenaPointTensor<Real, TensorSymm::NONE, NDIM, 1> drdi;
     AthenaPointTensor<Real, TensorSymm::NONE, NDIM, 1> dthetadi;
@@ -1718,16 +1761,30 @@ void FastFlow::SurfaceIntegrals() {
       phiz(1) =  xp; // (x-xc);
       phiz(2) =  0;
 
-      // Integrand of spin
+      // Integrand of spin. These are centered flat-coordinate rotations, not an
+      // approximate-Killing-vector solve; the output must therefore be labelled as a
+      // coordinate-rotation estimate.
       Real intSx = 0;
       Real intSy = 0;
       Real intSz = 0;
+      // Quasi-local coordinate-translation momentum (Krishnan, Lousto & Zlochower,
+      // arXiv:0707.0876, Eq. 3): P_i=(8 pi)^-1 int (K_ib-K gamma_ib) R^b dA.
+      // Its coordinate dependence is intentional and must be retained when forming
+      // L=(X-O)xP outside this kernel.
+      Real intPx = 0;
+      Real intPy = 0;
+      Real intPz = 0;
       for (int a = 0; a < NDIM; ++a) {
         for (int b = 0; b < NDIM; ++b) {
           intSx += phix(a) * R(b) * Ki_(Kmap[a][b],p);
           intSy += phiy(a) * R(b) * Ki_(Kmap[a][b],p);
           intSz += phiz(a) * R(b) * Ki_(Kmap[a][b],p);
         }
+      }
+      for (int b = 0; b < NDIM; ++b) {
+        intPx += (Ki_(Kmap[0][b],p) - TrK*gi_(gmap[0][b],p))*R(b);
+        intPy += (Ki_(Kmap[1][b],p) - TrK*gi_(gmap[1][b],p))*R(b);
+        intPz += (Ki_(Kmap[2][b],p) - TrK*gi_(gmap[2][b],p))*R(b);
       }
 
       // ----------
@@ -1743,6 +1800,9 @@ void FastFlow::SurfaceIntegrals() {
       Sx     += da * intSx;
       Sy     += da * intSy;
       Sz     += da * intSz;
+      Px     += da * intPx;
+      Py     += da * intPy;
+      Pz     += da * intPz;
     }
   }, Kokkos::Sum<Real>(integrals[iarea]),
      Kokkos::Sum<Real>(integrals[icoarea]),
@@ -1750,7 +1810,10 @@ void FastFlow::SurfaceIntegrals() {
      Kokkos::Sum<Real>(integrals[ihmean]),
      Kokkos::Sum<Real>(integrals[iSx]),
      Kokkos::Sum<Real>(integrals[iSy]),
-     Kokkos::Sum<Real>(integrals[iSz]));
+     Kokkos::Sum<Real>(integrals[iSz]),
+     Kokkos::Sum<Real>(integrals[iPx]),
+     Kokkos::Sum<Real>(integrals[iPy]),
+     Kokkos::Sum<Real>(integrals[iPz]));
 
   #if MPI_PARALLEL_ENABLED
     MPI_Allreduce(MPI_IN_PLACE,integrals,invar,MPI_ATHENA_REAL,MPI_SUM,MPI_COMM_WORLD);

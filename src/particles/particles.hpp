@@ -147,6 +147,9 @@ class Particles {
   // on every destroy-cycle; <particles> destroy_log = true|false (default true)
   bool destroy_log;
   std::string destroy_log_fname;
+  // Optional two-component label for the death ledger: tags below the split are
+  // component 0, tags at/above it component 1; -1 leaves the component unknown.
+  int destroy_component_split_tag;
 
   // parameterized excision (Stage 3c(b); replaces the prototype's hardcoded
   // rexcise=2-iff-not-Minkowski, bug B1). Two independent criteria, both default OFF:

@@ -23,7 +23,7 @@ class ParameterInput;
 //! \brief Tracks a single puncture
 class CompactObjectTracker {
   enum CompactObjectType { BlackHole, NeutronStar };
-  enum TrackerMode { ODE, Walk };
+  enum TrackerMode { ODE, Walk, ParticleLapse };
 
  public:
   //! Initialize a tracker
@@ -34,6 +34,8 @@ class CompactObjectTracker {
   void InterpolateVelocity(MeshBlockPack *pmbp);
   //! Update and broadcast the puncture position
   void EvolveTracker(MeshBlockPack *pmbp);
+  //! Tagged-particle core seed followed by a local lapse-minimum walk
+  void EvolveParticleLapse(MeshBlockPack *pmbp);
   //! Write data to file
   void WriteTracker(MeshBlockPack *pmbp);
   //! Get position array
@@ -80,6 +82,13 @@ class CompactObjectTracker {
   Mesh const *pmesh;
   int out_every;
   int walk_every;       // update cadence for the cell-walking mode
+  int tracker_index;
+  int particle_tag_min, particle_tag_max;
+  Real particle_core_radius;
+  Real walk_velocity[NDIM], motion_pos[NDIM], walk_last_time;
+  bool have_motion_pos, horizon_tracking;
+  int track_source;       // 0 ordinary, 1 particle+lapse, 2 horizon+lapse, 3 fallback
+  Real core_count, core_rest_mass, lapse_min;
   std::ofstream ofile;
   Real pos[NDIM];
 };

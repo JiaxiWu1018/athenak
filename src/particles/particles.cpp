@@ -109,6 +109,14 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   // death-record ledger (one CSV row per destroyed particle; see particles_destroy.cpp)
   destroy_log = pin->GetOrAddBoolean("particles","destroy_log",true);
   destroy_log_fname = pin->GetString("job","basename") + ".prtcl_destroy.csv";
+  destroy_component_split_tag = pin->GetOrAddInteger(
+      "particles", "destroy_component_split_tag", -1);
+  if (destroy_component_split_tag < -1) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "destroy_component_split_tag must be -1 (unknown) or "
+              << "a nonnegative tag boundary" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
 
   // parameterized excision (see particles.hpp for semantics and the gauge note);
   // defaults OFF -- the prototype's hardcoded rexcise=2-iff-not-Minkowski (bug B1)

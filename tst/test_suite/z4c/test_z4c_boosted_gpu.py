@@ -5,6 +5,7 @@ to within error tolerances.
 """
 
 # Modules
+import numpy as np
 import pytest
 import test_suite.testutils as testutils
 import athena_read
@@ -94,6 +95,16 @@ def test_run():
                 f"RMS of horizon too large, error: {hrms:g} "
                 f"threshold: {maxerrors['RMS-horizon']:g}"
             )
+        # The extended summary must expose finite full-3D horizon diagnostics.
+        for name in ("Mirr", "mass", "chi", "Px", "Py", "Pz", "P",
+                     "center_x", "center_y", "center_z"):
+            assert name in horizon, f"missing horizon diagnostic {name}"
+            assert np.isfinite(horizon[name][-1]), f"non-finite horizon diagnostic {name}"
+        assert horizon["Mirr"][-1] > 0.0
+        assert horizon["mass"][-1] >= horizon["Mirr"][-1]
+        assert horizon["P"][-1] > 1.0e-4, (
+            "boosted puncture has no resolved quasi-local linear momentum"
+        )
 
     finally:
         testutils.cleanup()

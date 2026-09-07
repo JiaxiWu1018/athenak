@@ -108,6 +108,7 @@ class FastFlow {
   Real initial_radius; // Initial guess for the radius of the horizon
   Real rr_min; // Minimum radius
   Real expand_guess; // Expand the initial guess by this factor
+  bool reuse_last_surface_shape; // warm-start from the last published full shape
   Real center[3]; // Center around which the horizon is searched
 
   // Fast-Flow parameters
@@ -171,9 +172,10 @@ class FastFlow {
     ihrms,
     ihmean,
     iSx, iSy, iSz,
+    iPx, iPy, iPz,
     invar
   };
-  static constexpr int kInvar = 7;
+  static constexpr int kInvar = 10;
   Real integrals[kInvar]; // Array of surface integrals
 
   // Indexes of horizon quantities
@@ -186,9 +188,12 @@ class FastFlow {
     hmass,
     hmeanradius,
     hminradius,
+    hmirr,
+    hchi,
+    hPx, hPy, hPz, hP,
     hnvar
   };
-  static constexpr int kHnvar = 11;
+  static constexpr int kHnvar = 17;
   Real ah_prop[kHnvar]; // Array of horizon quantities
 
   // 5D Device array for the metric derivatives
