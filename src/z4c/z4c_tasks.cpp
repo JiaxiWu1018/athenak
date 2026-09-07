@@ -336,12 +336,16 @@ TaskStatus Z4c::FindHorizon(Driver *pdrive, int stage) {
     return TaskStatus::complete;
   }
   if (stage == pdrive->nexp_stages) {
+    // All finders alias finder 0's full-mesh derivative view. Compute that identical
+    // field once through the first active finder, rather than once per initial guess.
     for (auto & pahf : pfastflow) {
+      if (!pahf->IsActiveAt(time)) continue;
       switch (indcs.ng) {
         case 2: pahf->MetricDerivatives<2>(time); break;
         case 3: pahf->MetricDerivatives<3>(time); break;
         case 4: pahf->MetricDerivatives<4>(time); break;
       }
+      break;
     }
     for (auto & pahf : pfastflow) {
       pahf->Find(stage, time);

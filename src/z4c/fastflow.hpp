@@ -48,6 +48,7 @@ class FastFlow {
   void Write(int iter, Real time); // function for result writing
   template <int NGHOST>
   void MetricDerivatives(Real time); // compute the metric derivatives
+  bool IsActiveAt(Real time); // time/puncture gate shared by task and finder methods
   template <int NGHOST>
   void MetricInterp();
   void ComputeSphericalHarmonics();

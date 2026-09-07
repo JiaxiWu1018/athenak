@@ -389,8 +389,7 @@ FastFlow::~FastFlow() {
 //! \brief Output summary and shape file, for each horizon.
 void FastFlow::Write(int iter, Real time) {
   if (ioproc) {
-    if ((time < start_time) || (time > stop_time)) return;
-    if (wait_until_punc_are_close && !(PuncAreClose())) return;
+    if (!IsActiveAt(time)) return;
 
     // Summary file
     fprintf(pofile_summary, "%d %g ", iter, time);
@@ -444,8 +443,7 @@ void FastFlow::Write(int iter, Real time) {
 //! \fn void FastFlow::Find(int iter, Real time)
 //! \brief Search for the horizons
 void FastFlow::Find(int iter, Real time) {
-  if ((time < start_time) || (time > stop_time)) return;
-  if (wait_until_punc_are_close && !(PuncAreClose())) return;
+  if (!IsActiveAt(time)) return;
   if (verbose && ioproc) {
     fprintf(pofile_verbose, "time=%.4f, cycle=%d\n", time, iter);
   }
@@ -532,14 +530,20 @@ void FastFlow::InitialGuess() {
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn bool FastFlow::IsActiveAt(Real time)
+//! \brief True when this finder is inside its search window and passes its puncture gate.
+bool FastFlow::IsActiveAt(Real time) {
+  if ((time < start_time) || (time > stop_time)) return false;
+  if (wait_until_punc_are_close && !(PuncAreClose())) return false;
+  return true;
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void FastFlow::MetricDerivatives(Real time)
 //! \brief Compute drvts of ADM metric at MB level.
 template <int NGHOST>
 void FastFlow::MetricDerivatives(Real time) {
-  // Check whether derivatives have to be computed
-  // if (use_stored_metric_drvts) return;
-  if((time < start_time) || (time > stop_time)) return;
-  if (wait_until_punc_are_close && !(PuncAreClose())) return;
+  if (!IsActiveAt(time)) return;
 
   // Explicitely capture the variables for the Kokkos kernel.
   auto &adm = pmbp->padm->adm;
@@ -1032,7 +1036,7 @@ void FastFlow::RadiiFromSphericalHarmonics() {
   // Step 2: Compute the global minimum.
   rr_min = std::numeric_limits<Real>::infinity();
   Kokkos::parallel_reduce("FastFlow_sphradii",
-  Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles-1),
+  Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles),
   KOKKOS_LAMBDA(const int &p, Real &lmin) {
     lmin = Kokkos::min(lmin, rr_(p));
   }, Kokkos::Min<Real>(rr_min));
@@ -1131,7 +1135,7 @@ void FastFlow::SurfaceIntegrals() {
 
   // Loop over surface points
   Kokkos::parallel_reduce("FastFlow_surfintegrals",
-  Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles-1),
+  Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles),
   KOKKOS_LAMBDA(const int &p,
                 Real& area,
                 Real& coarea,
