@@ -89,6 +89,18 @@
 #   LARGER than A1_raw at t = 0.  Interpret the global A1_com together with the per-band
 #   d_lm columns of the shell ledger, which localise the mode in radius.
 #
+# NO trk OUTPUT.  file_type = trk is DISABLED in this campaign.  Besides selecting only
+#   the innermost particles (TrackedParticleOutput keeps PTAG < nparticles, and for this
+#   sampler the tag is monotone in initial radius), the writer is unsafe: it computes
+#   npout_min from pm->nprtcl_eachrank -- the TOTAL particle count per rank -- instead of
+#   npout_eachrank, the tracked count.  npout_min can therefore exceed a rank's own npout,
+#   the collective loop reads outpart(p) past the end of a host array, and the garbage tag
+#   becomes a byte offset in MPI_File_write_at.  Observed here as a 94.9 GB trk file after
+#   150 M of the frozen-metric preflight, growing fast enough to trip the storage
+#   watchdog.  (The writer also passes &data[0] for every particle instead of &data[6*p],
+#   so every tracked particle would record particle 0's state.)  Both are fixed on the
+#   branch, but production does not use the path.
+#
 # EXCISION IS OFF (excise_lapse = 0, excise_radius = 0, excise_ah = false); this
 #   is a weak-field baseline and no particle should ever be removed.
 # =============================================================================
@@ -273,7 +285,6 @@ plummer_field_rmax   = 8192.0
 #      hst  at P/200 = 5.962483906 M  (scalars + the two radial-diagnostic CSVs)
 #      pvtk at P/100 = 11.92496781 M  (ALL particles: the scientific reduction)
 #      bin  at P/100                  (slices for movies)
-#      trk  at P/200                  (continuous orbit tracks, inner core)
 #      cbin at P/10  = 119.2496781 M  (coarsened 3D ADM)
 #      rst  at P/4   = 298.124195 M   (13 checkpoints incl. every integer P_1/2)
 
@@ -315,11 +326,3 @@ dt             = 119.2496781
 file_type = rst
 dt        = 298.124195
 
-# Continuous orbit tracks for the innermost 2048 pairs (tags 0..4095).  Because
-# the tag is monotone in the initial radial quantile this is deliberately an
-# INNER-CORE tracker, not a representative movie subset; the movie subset is a
-# fixed strided set of tags selected in post-processing from the pvtk frames.
-<output8>
-file_type  = trk
-nparticles = 4096
-dt         = 5.962483906

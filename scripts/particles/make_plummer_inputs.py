@@ -69,7 +69,7 @@ def build(prod):
     t = set_key(t, "time", "ndiag", "1")
     t = set_key(t, "particles", "debug", "1")
     for i, dt in [(1, 0.5), (2, 0.5), (3, 0.5), (4, 0.5), (5, 0.5), (6, 1.0e30),
-                  (7, 1.0e30), (8, 0.5)]:
+                  (7, 1.0e30)]:
         t = set_key(t, "output%d" % i, "dt", repr(dt))
     decks["pf_t0_plummer.athinput"] = header(
         "NRPIC Plummer session 1 -- PREFLIGHT A: t = 0 diagnostic (4 cycles)",
@@ -79,8 +79,8 @@ def build(prod):
          "<time>/ndiag         -> 1      (per-cycle timestep/perf line)",
          "<particles>/debug    -> 1      (post-migration validation + ledger; FATAL on"
          " any containment, GID-range or count violation)",
-         "output dt            -> 0.5 M for hst/pvtk/bin/trk so t=0 and the first cycles"
-         " are dumped; cbin and rst effectively disabled (dt = 1e30)",
+         "output dt            -> 0.5 M for hst/pvtk/bin so t=0 and the first cycles are"
+         " dumped; cbin and rst effectively disabled (dt = 1e30)",
          "PURPOSE: leaf MeshBlock count (expect 400), per-rank memory, the actual"
          " timestep from all restrictions, seconds/cycle, output sizes, the initial"
          " Hamiltonian/momentum constraint norms and profile, the sampler banner"
@@ -106,7 +106,6 @@ def build(prod):
     t = set_key(t, "output6", "dt", repr(P_HALF/4.0))
     t = set_key(t, "output7", "dt", repr(P_HALF/4.0))
     t = set_key(t, "output1", "dt", repr(P_HALF/200.0))
-    t = set_key(t, "output8", "dt", repr(P_HALF/400.0))
     decks["pf_frozen_plummer.athinput"] = header(
         "NRPIC Plummer session 1 -- PREFLIGHT B: frozen-metric orbit test, full N, 1 P_1/2",
         ["<job>/basename           -> pf_frozen_plummer",
@@ -118,8 +117,7 @@ def build(prod):
          "<output3> (con), <output4> (tmunu) and <output5> (z4c) REMOVED: all three"
          " require objects that do not exist without <z4c>/feedback, and"
          " basetype_output.cpp:153 makes that a startup fatal error regardless of dt",
-         "<output6> (cbin adm) and <output7> (rst) at P/4; pvtk at P/100, hst at P/200,"
-         " trk at P/400",
+         "<output6> (cbin adm) and <output7> (rst) at P/4; pvtk at P/100, hst at P/200",
          "PURPOSE: the production pusher, gather, migration and cross-refinement"
          " machinery exercised at the production particle count in the production"
          " gridded metric.  Measures radial drift and the conservation of E = alpha W"
@@ -138,14 +136,13 @@ def build(prod):
         t = set_key(t, "output%d" % i, "dt", "25.0")
     t = set_key(t, "output6", "dt", "50.0")
     t = set_key(t, "output7", "dt", "50.0")
-    t = set_key(t, "output8", "dt", "5.0")
     decks["pf_live_plummer.athinput"] = header(
         "NRPIC Plummer session 1 -- PREFLIGHT C: short fully coupled run + restart",
         ["<job>/basename  -> pf_live_plummer",
          "<time>/tlim     -> 100 M (~400 cycles at dt = 0.25 M)",
          "<time>/ndiag    -> 50",
-         "output cadences compressed (pvtk/bin 25 M, cbin/rst 50 M, trk 5 M) so the"
-         " short run exercises every output path and produces two restart files",
+         "output cadences compressed (pvtk/bin 25 M, cbin/rst 50 M) so the short run"
+         " exercises every output path and produces two restart files",
          "PURPOSE: stable fully coupled evolution, restart continuity (restart from"
          " the 50 M checkpoint must reproduce the 100 M state), particle accounting,"
          " memory growth, measured seconds/cycle and node-hours to P_1/2 and 3 P_1/2,"

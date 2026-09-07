@@ -22,12 +22,22 @@ DECK=nr_pic_plummer
 S() { ssh -o BatchMode=yes -o ConnectTimeout=30 $H "$@" 2>/dev/null; }
 
 S "mkdir -p $R/runs/$LABEL && touch $R/runs/$LABEL/.protect_all_rst"
+# A cancelled segment leaves no verdict banner. Distinguish that from a genuine failure by
+# reporting it and stopping, which is what the operator wants either way.
 
 for seg in $(seq 1 "$MAXSEG"); do
-  j=$(S "cd $R && sbatch -t ${SEGH}:00:00 -J $LABEL scripts/amd_run.sbatch $LABEL $DECK" \
-        | grep -oE 'Submitted batch job [0-9]+' | grep -oE '[0-9]+')
-  if [ -z "$j" ]; then echo "PROD: segment $seg SUBMIT FAILED"; exit 1; fi
-  echo "PROD: segment $seg submitted as job $j (${SEGH} h)"
+  # Adopt an already-queued or running segment rather than submitting a duplicate: the
+  # first segment is often launched by hand, and two concurrent segments writing the same
+  # run directory would corrupt it.
+  j=$(S "squeue -h -u jiaxiwu -o '%i %j' | awk -v L=$LABEL '\$2 == L {print \$1; exit}'")
+  if [ -n "$j" ]; then
+    echo "PROD: segment $seg adopting the existing job $j"
+  else
+    j=$(S "cd $R && sbatch -t ${SEGH}:00:00 -J $LABEL scripts/amd_run.sbatch $LABEL $DECK" \
+          | grep -oE 'Submitted batch job [0-9]+' | grep -oE '[0-9]+')
+    if [ -z "$j" ]; then echo "PROD: segment $seg SUBMIT FAILED"; exit 1; fi
+    echo "PROD: segment $seg submitted as job $j (${SEGH} h)"
+  fi
   for i in $(seq 1 2000); do
     S "squeue -h -j $j -o %T" | grep -q . || break
     sleep 60

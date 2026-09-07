@@ -145,18 +145,28 @@ void TrackedParticleOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
   }
   // calculate local data offset
   std::vector<int> rank_offset(global_variable::nranks, 0);
-  int npout_min = pm->nprtcl_eachrank[0];
+  // npout_min is the number of particles EVERY rank has, so it must be the minimum of the
+  // TRACKED counts npout_eachrank -- not of pm->nprtcl_eachrank, which is the total
+  // particle count per rank and is orders of magnitude larger. Seeding the minimum from
+  // the wrong array (and skipping rank 0 in the loop) let npout_min exceed a rank's own
+  // npout; outpart(p) then read past the end of a host array of length npout, and the
+  // garbage tag became a byte offset in MPI_File_write_at. Observed as a 94.9 GB .trk
+  // file after 150 M of a 2.1M-particle run.
+  int npout_min = npout_eachrank[0];
   for (int n=1; n<global_variable::nranks; ++n) {
     rank_offset[n] = rank_offset[n-1] + npout_eachrank[n-1];
     npout_min = std::min(npout_min, npout_eachrank[n]);
   }
+  npout_min = std::min(npout_min, npout);
 
   // Write tracked particle data collectively over minimum shared number of prtcls
   for (int p=0; p<npout_min; ++p) {
-    // offset computed assuming tags run 0...(ntrack-1) sequentially
-    std::size_t myoffset = header_offset + 6*outpart(p).tag;
+    // Offset in FLOATS, assuming tags run 0...(ntrack-1) sequentially. Write this
+    // particle's own six floats: &data[0] would record particle 0's state for every
+    // tracked particle.
+    std::size_t myoffset = header_offset + 6*static_cast<std::size_t>(outpart(p).tag);
     // Write particle positions collectively for minimum number of particles across ranks
-    if (partfile.Write_any_type_at_all(&(data[0]),6,myoffset,"float") != 6) {
+    if (partfile.Write_any_type_at_all(&(data[6*p]),6,myoffset,"float") != 6) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
           << std::endl << "particle data not written correctly to tracked particle file"
           << std::endl;
@@ -165,10 +175,10 @@ void TrackedParticleOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
   }
   // Write particle positions individually for remaining particles on each rank
   for (int p=npout_min; p<npout; ++p) {
-    // offset computed assuming tags run 0...(ntrack-1) sequentially
-    std::size_t myoffset = header_offset + 6*outpart(p).tag;
+    // offset in FLOATS, assuming tags run 0...(ntrack-1) sequentially
+    std::size_t myoffset = header_offset + 6*static_cast<std::size_t>(outpart(p).tag);
     // Write particle positions collectively for minimum number of particles across ranks
-    if (partfile.Write_any_type_at(&(data[0]),6,myoffset,"float") != 6) {
+    if (partfile.Write_any_type_at(&(data[6*p]),6,myoffset,"float") != 6) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
           << std::endl << "particle data not written correctly to tracked particle file"
           << std::endl;
