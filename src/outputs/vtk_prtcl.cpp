@@ -34,6 +34,16 @@ ParticleVTKOutput::ParticleVTKOutput(ParameterInput *pin, Mesh *pm, OutputParame
   BaseTypeOutput(pin, pm, op) {
   // create new directory for this output. Comments in binary.cpp constructor explain why
   mkdir("pvtk",0775);
+  sample_stride = pin->GetOrAddInteger(op.block_name, "sample_stride", 1);
+  sample_remainder = pin->GetOrAddInteger(op.block_name, "sample_remainder", 0);
+  if (sample_stride <= 0 || sample_remainder < 0 || sample_remainder >= sample_stride) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "particle VTK sampling requires sample_stride > 0 and "
+              << "0 <= sample_remainder < sample_stride" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+  outpart_capacity = 0;
+  npout_eachrank.resize(global_variable::nranks, 0);
 }
 
 //----------------------------------------------------------------------------------------
@@ -42,22 +52,62 @@ ParticleVTKOutput::ParticleVTKOutput(ParameterInput *pin, Mesh *pm, OutputParame
 
 void ParticleVTKOutput::LoadOutputData(Mesh *pm) {
   particles::Particles *pp = pm->pmb_pack->ppart;
-  npout_thisrank = pm->nprtcl_thisrank;
-  npout_total = pm->nprtcl_total;
-  Kokkos::realloc(outpart_rdata, pp->nrdata, npout_thisrank);
-  Kokkos::realloc(outpart_idata, pp->nidata, npout_thisrank);
+  int npart = pp->nprtcl_thispack;
+  auto &pr = pp->prtcl_rdata;
+  auto &pi = pp->prtcl_idata;
+  int nrdata = pp->nrdata;
+  int nidata = pp->nidata;
+  int stride = sample_stride;
+  int remainder = sample_remainder;
 
-  // Create mirror view on device of host view of output particle real/int data
-  auto d_outpart_rdata = Kokkos::create_mirror_view(Kokkos::DefaultHostExecutionSpace(),
-                                                    outpart_rdata);
-  auto d_outpart_idata = Kokkos::create_mirror_view(Kokkos::DefaultHostExecutionSpace(),
-                                                    outpart_idata);
-  // Copy particle positions into device mirrors
-  Kokkos::deep_copy(d_outpart_rdata, pp->prtcl_rdata);
-  Kokkos::deep_copy(d_outpart_idata, pp->prtcl_idata);
-  // Copy particle positions from device mirror to host output array
-  Kokkos::deep_copy(outpart_rdata, d_outpart_rdata);
-  Kokkos::deep_copy(outpart_idata, d_outpart_idata);
+  // Select a persistent, deterministic cohort by immutable particle tag. Count first so
+  // sampled movie outputs do not allocate storage for the full ensemble.
+  npout_thisrank = 0;
+  Kokkos::parallel_reduce("pvtk_count_sample",
+    Kokkos::RangePolicy<>(DevExeSpace(), 0, npart),
+    KOKKOS_LAMBDA(const int p, int &sum) {
+      if ((pi(PTAG,p) % stride) == remainder) {sum += 1;}
+    }, Kokkos::Sum<int>(npout_thisrank));
+
+  // Keep output staging at a geometric high-water capacity. This avoids recreating and
+  // re-registering device buffers on every output, while all I/O below uses only the
+  // logical prefix [0,npout_thisrank).
+  if (npout_thisrank > outpart_capacity) {
+    int grown = outpart_capacity + std::max(outpart_capacity/8, 1);
+    outpart_capacity = std::max(npout_thisrank, grown);
+    Kokkos::realloc(d_outpart_rdata, nrdata, outpart_capacity);
+    Kokkos::realloc(d_outpart_idata, nidata, outpart_capacity);
+    Kokkos::realloc(outpart_rdata, nrdata, outpart_capacity);
+    Kokkos::realloc(outpart_idata, nidata, outpart_capacity);
+  }
+  auto d_prout = d_outpart_rdata;
+  auto d_piout = d_outpart_idata;
+
+  // A scan gives deterministic tag-selection packing in the particle array's current
+  // order. Membership is stable across migration/reordering because it depends on PTAG.
+  Kokkos::parallel_scan("pvtk_pack_sample",
+    Kokkos::RangePolicy<>(DevExeSpace(), 0, npart),
+    KOKKOS_LAMBDA(const int p, int &offset, const bool final_pass) {
+      if ((pi(PTAG,p) % stride) == remainder) {
+        if (final_pass) {
+          for (int n=0; n<nrdata; ++n) {d_prout(n,offset) = pr(n,p);}
+          for (int n=0; n<nidata; ++n) {d_piout(n,offset) = pi(n,p);}
+        }
+        offset += 1;
+      }
+    });
+  if (outpart_capacity > 0) {
+    Kokkos::deep_copy(outpart_rdata, d_outpart_rdata);
+    Kokkos::deep_copy(outpart_idata, d_outpart_idata);
+  }
+
+  npout_eachrank[global_variable::my_rank] = npout_thisrank;
+#if MPI_PARALLEL_ENABLED
+  MPI_Allgather(&npout_thisrank, 1, MPI_INT, npout_eachrank.data(), 1, MPI_INT,
+                MPI_COMM_WORLD);
+#endif
+  npout_total = 0;
+  for (int n=0; n<global_variable::nranks; ++n) {npout_total += npout_eachrank[n];}
 }
 
 //----------------------------------------------------------------------------------------
@@ -107,7 +157,10 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
         << "# AthenaK particle data at time= " << pm->time
         << "  nranks= " << global_variable::nranks
         << "  cycle=" << pm->ncycle
-        << "  variables=" << out_params.variable << std::endl
+        << "  variables=" << out_params.variable
+        << "  sample_stride=" << sample_stride
+        << "  sample_remainder=" << sample_remainder
+        << "  nominal_sample_weight=" << sample_stride << std::endl
         << "BINARY" << std::endl
         << "DATASET UNSTRUCTURED_GRID" << std::endl;
 
@@ -148,10 +201,10 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
   }
   // calculate local data offset
   std::vector<int> rank_offset(global_variable::nranks, 0);
-  int npout_min = pm->nprtcl_eachrank[0];
+  int npout_min = npout_eachrank[0];
   for (int n=1; n<global_variable::nranks; ++n) {
-    rank_offset[n] = rank_offset[n-1] + pm->nprtcl_eachrank[n-1];
-    npout_min = std::min(npout_min, pm->nprtcl_eachrank[n]);
+    rank_offset[n] = rank_offset[n-1] + npout_eachrank[n-1];
+    npout_min = std::min(npout_min, npout_eachrank[n]);
   }
 
   // Write particle positions
@@ -168,7 +221,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
     }
     // individual writes for remaining particles on each rank
     myoffset += datasize*3*npout_min;
-    int nremain = pm->nprtcl_thisrank - npout_min;
+    int nremain = npout_thisrank - npout_min;
     if (nremain > 0) {
       if (partfile.Write_any_type_at(data + 3*npout_min,3*nremain,myoffset,"float")
             != static_cast<size_t>(3*nremain)) {
@@ -178,7 +231,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
         exit(EXIT_FAILURE);
       }
     }
-    header_offset += 3*pm->nprtcl_total*datasize;
+    header_offset += 3*npout_total*datasize;
   }
 
   // Write Part 6: scalar particle data
@@ -231,7 +284,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
     }
     // individual writes for remaining particles on each rank
     myoffset += datasize*npout_min;
-    int nremain = pm->nprtcl_thisrank - npout_min;
+    int nremain = npout_thisrank - npout_min;
     if (nremain > 0) {
       if (partfile.Write_any_type_at(data + npout_min,nremain,myoffset,"float")
             != static_cast<size_t>(nremain)) {
@@ -241,7 +294,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
         exit(EXIT_FAILURE);
       }
     }
-    header_offset += pm->nprtcl_total*datasize;
+    header_offset += npout_total*datasize;
   }
 
   // Write Part 7: velocity VECTORS (the covariant spatial 4-velocity u_i, in
@@ -273,7 +326,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
       exit(EXIT_FAILURE);
     }
     myoffset += datasize*3*npout_min;
-    int nremain = pm->nprtcl_thisrank - npout_min;
+    int nremain = npout_thisrank - npout_min;
     if (nremain > 0) {
       if (partfile.Write_any_type_at(data + 3*npout_min,3*nremain,myoffset,"float")
             != static_cast<size_t>(3*nremain)) {
@@ -283,7 +336,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
         exit(EXIT_FAILURE);
       }
     }
-    header_offset += 3*pm->nprtcl_total*datasize;
+    header_offset += 3*npout_total*datasize;
   }
 
   // Write Part 6 (cont.): additional real SCALARS — conserved specific energy (-u_t) and
@@ -317,7 +370,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
         exit(EXIT_FAILURE);
       }
       myoffset += datasize*npout_min;
-      int nremain = pm->nprtcl_thisrank - npout_min;
+      int nremain = npout_thisrank - npout_min;
       if (nremain > 0) {
         if (partfile.Write_any_type_at(data + npout_min,nremain,myoffset,"float")
               != static_cast<size_t>(nremain)) {
@@ -327,7 +380,7 @@ void ParticleVTKOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
           exit(EXIT_FAILURE);
         }
       }
-      header_offset += pm->nprtcl_total*datasize;
+      header_offset += npout_total*datasize;
     }
   }
 

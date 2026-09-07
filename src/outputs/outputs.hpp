@@ -367,6 +367,12 @@ class ParticleVTKOutput : public BaseTypeOutput {
  protected:
   int npout_thisrank;
   int npout_total;
+  int sample_stride;
+  int sample_remainder;
+  int outpart_capacity;
+  std::vector<int> npout_eachrank;
+  DvceArray2D<Real> d_outpart_rdata;
+  DvceArray2D<int>  d_outpart_idata;
   HostArray2D<Real> outpart_rdata;
   HostArray2D<int>  outpart_idata;
 };
