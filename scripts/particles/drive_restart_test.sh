@@ -15,7 +15,10 @@ H=hpcfund.amd.com
 R=/work1/eliasmost/jiaxiwu/plummer_s01_20260906
 S() { ssh -o BatchMode=yes -o ConnectTimeout=30 $H "$@" 2>/dev/null; }
 
-src=$(S "ls -1 $R/runs/pf_live/out/rst/*.rst 2>/dev/null | sort | head -2 | tail -1")
+# The runner prunes to the two newest checkpoints after each segment, so with rst dt = 50
+# the surviving pair is {t=50, t=100}. Take the OLDEST survivor: restarting the t=100 one
+# would simply hit tlim immediately and test nothing.
+src=$(S "ls -1 $R/runs/pf_live/out/rst/*.rst 2>/dev/null | sort | head -1")
 if [ -z "$src" ]; then echo "RESTART: no second checkpoint in runs/pf_live/out/rst"; exit 1; fi
 echo "RESTART: seeding from $src"
 S "rm -rf $R/runs/pf_restart && mkdir -p $R/runs/pf_restart/out/rst &&
