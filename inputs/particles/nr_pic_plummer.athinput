@@ -63,6 +63,32 @@
 #   3 P_1/2 endpoint.  Late-time results must be qualified until inward-moving
 #   boundary features are shown to be absent or negligible.
 #
+# IN-CODE DIAGNOSTIC LEDGERS, written at the hst cadence and reduced over ALL
+#   particles / cells in double precision:
+#     <basename>.plummer_shells.csv   current-radius bins (48 log bins in areal radius
+#                                     over [0.5,800] M): mass, <r_areal>, <v_r>, radial
+#                                     and tangential dispersions, <alpha W>, <|L|>, and
+#                                     real spherical-harmonic moments to l = 4 about the
+#                                     origin (c_lm) and about the instantaneous centre of
+#                                     mass (d_lm).
+#     <basename>.plummer_cohorts.csv  32 bins in INITIAL radial group (tag/2), which is an
+#                                     exact equal-rest-mass initial band for this sampler.
+#     <basename>.plummer_fields.csv   64 log bins in ISOTROPIC coordinate radius R over
+#                                     [0.5,8192] M: coordinate-volume-weighted |H|, H^2,
+#                                     M^2, alpha, chi, deposited E, areal radius, Khat and
+#                                     Khat^2, plus the cell size so the refinement level
+#                                     occupying each bin is identifiable.  This is the
+#                                     constraint PROFILE, and it is what can see a
+#                                     refinement-seam, density-cutoff or boundary feature.
+#
+# CAVEAT ON A1_com.  A_l is the established unweighted <Y_lm(nhat)> definition, so it is
+#   sensitive to the choice of origin for particles at small r.  Unlike the homogeneous
+#   cluster, the Plummer profile is centrally peaked and the sampler puts particles as
+#   close as r = 0.19 M to the centre, so subtracting a centre-of-mass offset of order
+#   0.08 M measurably changes nhat for the innermost particles and can make A1_com
+#   LARGER than A1_raw at t = 0.  Interpret the global A1_com together with the per-band
+#   d_lm columns of the shell ledger, which localise the mode in radius.
+#
 # EXCISION IS OFF (excise_lapse = 0, excise_radius = 0, excise_ah = false); this
 #   is a weak-field baseline and no particle should ever be removed.
 # =============================================================================
@@ -235,6 +261,9 @@ plummer_shell_rmin   = 0.5
 plummer_shell_rmax   = 800.0
 plummer_cohort_nbin  = 32
 plummer_lmax         = 4
+plummer_field_nbin   = 64
+plummer_field_rmin   = 0.5
+plummer_field_rmax   = 8192.0
 
 # ---- outputs.  P_1/2 = 1192.496781 M.
 #      hst  at P/200 = 5.962483906 M  (scalars + the two radial-diagnostic CSVs)
