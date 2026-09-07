@@ -13,8 +13,12 @@
 #
 # It emits one progress line per segment; each line becomes a notification.
 set -uo pipefail
-SEGH=${1:-12}
-MAXSEG=${2:-12}
+# Shorter segments deliberately bound the per-process VRAM growth: a fresh process resets
+# the allocation, and restart continuity is verified bit-continuous, so segmenting is
+# almost free. 12 h segments reached 70 % VRAM; 4 h keeps it near 57 %.
+SEGH=${1:-4}
+MAXSEG=${2:-16}
+rtry=0
 H=hpcfund.amd.com
 R=/work1/eliasmost/jiaxiwu/plummer_s01_20260906
 LABEL=prod_plummer
@@ -76,9 +80,32 @@ for seg in $(seq 1 "$MAXSEG"); do
   wd=$(S "grep -ac 'WATCHDOG CANCEL' $L | head -1"); wd=${wd//[^0-9]/}
   case "$v" in
     *"CASE DONE"*)     echo "PROD: reached tlim after $seg segment(s)"; break ;;
-    *"CASE FAILED"*)   echo "PROD: segment $seg FAILED, stopping the chain"
-                       S "grep -aiE '### FATAL|Memory access fault|nan|Terminating' $L | head -10"
-                       exit 1 ;;
+    *"CASE FAILED"*)
+      # Distinguish a TRANSIENT RESOURCE failure from a physics or code failure. Job
+      # 407606 died at cycle 7200 with
+      #   HSA_STATUS_ERROR_OUT_OF_RESOURCES ... Available Free mem : 19868 MB
+      # after 10.5 h, with per-card VRAM having climbed 49 % -> 70 % over the segment and
+      # the node still healthy afterwards. That is the VRAM-growth failure mode the
+      # archive already records for this stack, and the correct response is to restart
+      # from the last checkpoint in a FRESH process, which resets the allocation. A NaN,
+      # a memory-access fault or a code assertion is different and must stop the chain.
+      res=$(S "grep -acE 'HSA_STATUS_ERROR_OUT_OF_RESOURCES|hipErrorOutOfMemory|out of memory' $L | head -1")
+      res=${res//[^0-9]/}
+      hard=$(S "grep -acE '### FATAL ERROR|Memory access fault|nan detected|Assertion' $L | head -1")
+      hard=${hard//[^0-9]/}
+      if [ -n "$res" ] && [ "$res" -gt 0 ] 2>/dev/null && \
+         { [ -z "$hard" ] || [ "$hard" -eq 0 ] 2>/dev/null; }; then
+        rtry=$((rtry + 1))
+        if [ "$rtry" -le 6 ]; then
+          echo "PROD: segment $seg hit a transient GPU resource exhaustion (retry $rtry/6); resuming from the last checkpoint"
+          continue
+        fi
+        echo "PROD: segment $seg hit GPU resource exhaustion and the retry budget is spent"
+        exit 1
+      fi
+      echo "PROD: segment $seg FAILED for a non-resource reason, stopping the chain"
+      S "grep -aiE '### FATAL ERROR|Memory access fault|nan|Assertion' $L | head -10"
+      exit 1 ;;
     *"CASE INCOMPLETE"*) : ;;                       # hit the wall limit; resubmit
     *)
       # No verdict banner. The common benign cause is the storage watchdog cancelling the

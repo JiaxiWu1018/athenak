@@ -23,7 +23,16 @@ last=-1
 fired=0
 absent=0
 for i in $(seq 1 900); do
-  L=$(S "ls -1t $R/logs/$LABEL.*.log 2>/dev/null | head -1")
+  # Resolve the CURRENT job id, then use ITS log. Taking the newest log file instead means
+  # that after a failure the watcher reads the FAILED job's log and exits immediately on a
+  # perfectly healthy resumed run -- which is exactly what happened on the first resume.
+  jid=$(ssh -o BatchMode=yes -o ConnectTimeout=30 "$H" \
+        "squeue -h -u jiaxiwu -o '%i %j' | awk -v L=$LABEL '\$2 == L {print \$1; exit}'" 2>/dev/null)
+  if [ -n "$jid" ]; then
+    L="$R/logs/$LABEL.$jid.log"
+  else
+    L=$(S "ls -1t $R/logs/$LABEL.*.log 2>/dev/null | head -1")
+  fi
   if [ -n "$L" ]; then
     bad=$(S "grep -acE '### FATAL ERROR|Memory access fault|CASE FAILED|Segmentation|nan detected' '$L' | head -1")
     bad=${bad//[^0-9]/}
