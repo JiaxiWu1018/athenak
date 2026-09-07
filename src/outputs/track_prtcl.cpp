@@ -48,12 +48,21 @@ void TrackedParticleOutput::LoadOutputData(Mesh *pm) {
   int npart = pm->nprtcl_thisrank;
   auto &pr = pm->pmb_pack->ppart->prtcl_rdata;
   auto &pi = pm->pmb_pack->ppart->prtcl_idata;
-  int counter=0;
-  int *pcounter = &counter;
+  // Compaction counter. It MUST live in device memory: the previous code took the
+  // address of a host stack int and atomically incremented it from inside the device
+  // kernel, which is a device dereference of a host address. On a CPU backend that
+  // happens to work; on CUDA/HIP it faults immediately -- observed on 4x MI210 as
+  // "Memory access fault by GPU node-N ... on address 0x7ff..." (four distinct host
+  // stacks, one per rank) at the first trk output. The write is also bounded by the
+  // allocated capacity, so a miscounted rank can no longer scribble past the array.
+  DvceArray1D<int> dcount("trk_counter",1);
+  Kokkos::deep_copy(dcount,0);
   int ntrack_ = ntrack;
+  int cap_ = ntrack_thisrank;
   par_for("part_update",DevExeSpace(),0,(npart-1), KOKKOS_LAMBDA(const int p) {
     if (pi(PTAG,p) < ntrack_) {
-      int index = Kokkos::atomic_fetch_add(pcounter,1);
+      int index = Kokkos::atomic_fetch_add(&dcount(0),1);
+      if (index >= cap_) { return; }
       tracked_prtcl.d_view(index).tag = pi(PTAG,p);
       tracked_prtcl.d_view(index).x   = pr(IPX,p);
       tracked_prtcl.d_view(index).y   = pr(IPY,p);
@@ -63,6 +72,15 @@ void TrackedParticleOutput::LoadOutputData(Mesh *pm) {
       tracked_prtcl.d_view(index).vz  = pr(IPVZ,p);
     }
   });
+  auto hcount = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), dcount);
+  int counter = hcount(0);
+  if (counter > cap_) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+      << std::endl << "trk output: " << counter << " particles on this rank carry a tag "
+      << "below <" << out_params.block_name << ">/nparticles = " << ntrack
+      << ", which exceeds the allocated capacity " << cap_ << "." << std::endl;
+    exit(EXIT_FAILURE);
+  }
   npout = counter;
   // share number of tracked particles to be output across all ranks
   npout_eachrank[global_variable::my_rank] = npout;
