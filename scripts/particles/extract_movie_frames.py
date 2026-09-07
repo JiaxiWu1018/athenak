@@ -32,6 +32,22 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pvtk_reader import read_pvtk
 
 
+def find_pvtk(rundir):
+    """Locate the pvtk frames under a run directory.
+
+    AthenaK writes them to <output dir>/pvtk, and this campaign's runner passes
+    -d <run>/out, so the frames live at <run>/out/pvtk. Accept either level so the
+    caller can pass the run root or the output root, and fail loudly rather than
+    silently reducing nothing.
+    """
+    cands = [os.path.join(rundir, "pvtk"), os.path.join(rundir, "out", "pvtk")]
+    for d in cands:
+        f = sorted(glob.glob(os.path.join(d, "*.part.vtk")))
+        if f:
+            return f, d
+    return [], cands
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rundir", required=True)
@@ -41,10 +57,10 @@ def main():
     ap.add_argument("--npair", type=int, default=1056768)
     a = ap.parse_args()
 
-    files = sorted(glob.glob(os.path.join(a.rundir, "pvtk", "*.part.vtk")))
+    files, where = find_pvtk(a.rundir)
     if not files:
-        sys.exit("no pvtk frames under %s/pvtk" % a.rundir)
-    print("%d frames" % len(files), flush=True)
+        sys.exit("no pvtk frames under any of %s" % (where,))
+    print("%d frames in %s" % (len(files), where), flush=True)
 
     npair_keep = max(1, a.nsub//2)
     stride = max(1, a.npair//npair_keep)

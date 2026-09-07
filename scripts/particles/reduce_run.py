@@ -38,6 +38,22 @@ from sph_real import ylm_all
 FOURPI = 4.0*np.pi
 
 
+def find_pvtk(rundir):
+    """Locate the pvtk frames under a run directory.
+
+    AthenaK writes them to <output dir>/pvtk, and this campaign's runner passes
+    -d <run>/out, so the frames live at <run>/out/pvtk. Accept either level so the
+    caller can pass the run root or the output root, and fail loudly rather than
+    silently reducing nothing.
+    """
+    cands = [os.path.join(rundir, "pvtk"), os.path.join(rundir, "out", "pvtk")]
+    for d in cands:
+        f = sorted(glob.glob(os.path.join(d, "*.part.vtk")))
+        if f:
+            return f, d
+    return [], cands
+
+
 def by_tag(arr, tag, n):
     """Reindex rows so row i is tag i.  Returns (out, alive_mask)."""
     shape = (n,) + arr.shape[1:]
@@ -87,10 +103,10 @@ def main():
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
 
-    files = sorted(glob.glob(os.path.join(a.rundir, "pvtk", "*.part.vtk")))
+    files, where = find_pvtk(a.rundir)
     if not files:
-        sys.exit("no pvtk frames under %s" % a.rundir)
-    print("# %d pvtk frames in %s" % (len(files), a.rundir), flush=True)
+        sys.exit("no pvtk frames under any of %s" % (where,))
+    print("# %d pvtk frames in %s" % (len(files), where), flush=True)
     want = {"pos", "ptag", "prtcl_vel", "prtcl_energy", "prtcl_mass"}
 
     # ---- frame 0 defines the cohorts, the invariant references and the shot floor ----
