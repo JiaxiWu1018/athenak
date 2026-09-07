@@ -7,8 +7,8 @@
 //! \brief death-record ledger and end-of-run accounting for destroyed particles
 //! (NRPIC Stage 3c). Every destroyed particle gets one CSV row with its exact state at
 //! the marking step -- cycle, time, tag, reason (exit|sphere|lapse|horizon), position,
-//! owning gid/rank, and the criterion value -- so destruction events are never lost
-//! between (possibly widely spaced) particle output dumps. The record is exact AT
+//! owning gid/rank, criterion value, and rest mass -- so destruction events are never
+//! lost between (possibly widely spaced) particle output dumps. The record is exact AT
 //! marking: the first state that violates the criterion, i.e. within one dt of the true
 //! crossing; the pre-violation state is reconstructible as x - v*dt (exact for the
 //! drift pusher, first order for gr_boris).
@@ -36,14 +36,13 @@
 namespace particles {
 
 namespace {
-// one death record, POD for the byte-wise MPI_Gatherv (3 ints + pad + 7 Reals)
+// one death record, POD for the byte-wise MPI_Gatherv (3 ints + pad + 8 Reals)
 struct DeathRec {
   int tag, gid, reason;
-  Real r[7];   // {x, y, z, vx, vy, vz, crit}
+  Real r[8];   // {x, y, z, vx, vy, vz, crit, rest_mass}
 };
 // indexed by ParticlesDeathReason. Adding a name extends the set of values the `reason`
-// column of <basename>.prtcl_destroy.csv can take; the column set, the header line and
-// every existing value are unchanged.
+// column of <basename>.prtcl_destroy.csv can take.
 const char *reason_name[NPRTCL_DEATH_REASON] = {"exit", "sphere", "lapse", "horizon"};
 } // namespace
 
@@ -55,7 +54,7 @@ void Particles::FlushDeathLog() {
   int nloc = pbval_part->nprtcl_destroy;
 
   // pack this rank's records from the device record arrays.
-  // The record arrays are (7, cap) / (3, cap) LayoutRight and cap is grow-only, so a
+  // The record arrays are (8, cap) / (3, cap) LayoutRight and cap is grow-only, so a
   // column subview (ALL, 0:nloc) is NON-CONTIGUOUS whenever nloc < cap. Mirroring such a
   // strided device view to the host has no available copy mechanism on a separate-memory
   // -space backend (HIP/CUDA) and Kokkos throws
@@ -72,7 +71,7 @@ void Particles::FlushDeathLog() {
       loc[n].tag    = hi(0,n);
       loc[n].gid    = hi(1,n);
       loc[n].reason = hi(2,n);
-      for (int k=0; k<7; ++k) {loc[n].r[k] = hr(k,n);}
+      for (int k=0; k<8; ++k) {loc[n].r[k] = hr(k,n);}
     }
   }
 
@@ -122,18 +121,19 @@ void Particles::FlushDeathLog() {
   }
   std::fseek(pfile, 0, SEEK_END);
   if (std::ftell(pfile) == 0) {
-    std::fprintf(pfile, "# cycle,time,tag,reason,x1,x2,x3,v1,v2,v3,gid,rank,crit\n");
+    std::fprintf(pfile,
+        "# cycle,time,tag,reason,x1,x2,x3,v1,v2,v3,gid,rank,crit,rest_mass\n");
   }
   int n = 0;
   for (int r=0; r<nranks; ++r) {
     for (int q=0; q<nrec_eachrank[r]; ++q, ++n) {
       const DeathRec &d = all[n];
       std::fprintf(pfile,
-          "%d,%.17g,%d,%s,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%d,%d,%.17g\n",
+          "%d,%.17g,%d,%s,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%d,%d,%.17g,%.17g\n",
           cycle, tdeath, d.tag,
           (d.reason >= 0 && d.reason < NPRTCL_DEATH_REASON) ? reason_name[d.reason]
                                                             : "unknown",
-          d.r[0], d.r[1], d.r[2], d.r[3], d.r[4], d.r[5], d.gid, r, d.r[6]);
+          d.r[0], d.r[1], d.r[2], d.r[3], d.r[4], d.r[5], d.gid, r, d.r[6], d.r[7]);
     }
   }
   std::fclose(pfile);

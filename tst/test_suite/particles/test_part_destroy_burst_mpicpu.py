@@ -3,7 +3,7 @@
 A 32^3 lattice drains through outflow boundaries, producing a >1000-particle destruction
 burst followed by dozens of progressively SMALLER events. That is exactly the sequence
 that leaves nloc < capacity in Particles::FlushDeathLog, which used to abort HIP/CUDA
-runs (a column subview of the (7, cap) LayoutRight record arrays is non-contiguous, so it
+runs (a column subview of the (8, cap) LayoutRight record arrays is non-contiguous, so it
 cannot be mirrored to the host) and which must never leak the unused capacity tail into
 the CSV on any backend.
 
@@ -69,6 +69,9 @@ def test_death_ledger_survives_shrinking_events():
             assert all(row["reason"] == "exit" for row in rows), (
                 f"unexpected destruction reasons: "
                 f"{sorted({row['reason'] for row in rows})}"
+            )
+            assert all(row["rest_mass"] == 1.0 for row in rows), (
+                "death ledger did not preserve the per-particle rest mass"
             )
             assert f"destroyed: exit={len(rows)} " in log, (
                 "in-code census disagrees with the CSV row count"

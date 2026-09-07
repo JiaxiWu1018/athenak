@@ -274,6 +274,7 @@ def read_death_csv(path):
                     "vy": float(row[8]),
                     "vz": float(row[9]),
                     "crit": float(row[12]),
+                    "rest_mass": float(row[13]),
                 }
             )
     return rows
@@ -294,5 +295,6 @@ def death_key(row):
             "vy",
             "vz",
             "crit",
+            "rest_mass",
         )
     )

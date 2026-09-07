@@ -141,7 +141,7 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   if (ndest_ub > destroy_rec_r.extent_int(1)) {
     int old_cap = destroy_rec_r.extent_int(1);
     int new_cap = std::max(ndest_ub, old_cap + std::max(old_cap/8, 1));
-    Kokkos::realloc(destroy_rec_r, 7, new_cap);
+    Kokkos::realloc(destroy_rec_r, 8, new_cap);
     Kokkos::realloc(destroy_rec_i, 3, new_cap);
   }
   par_for("part_update",DevExeSpace(),0,(npart-1), KOKKOS_LAMBDA(const int p) {
@@ -188,6 +188,7 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
       drr(4,slot) = pr(IPVY,p);
       drr(5,slot) = three_d ? pr(IPVZ,p) : 0.0;
       drr(6,slot) = (reason > 0) ? ecrit(p) : 0.0;  // r or alpha at marking
+      drr(7,slot) = pr(IPM,p);                       // particle rest mass
       dri(0,slot) = pi(PTAG,p);
       dri(1,slot) = pi(PGID,p);
       dri(2,slot) = reason;
