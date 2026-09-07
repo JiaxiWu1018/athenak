@@ -21,6 +21,7 @@ S() { ssh -o BatchMode=yes -o ConnectTimeout=30 $H "$@" 2>/dev/null || true; }
 
 last=-1
 fired=0
+absent=0
 for i in $(seq 1 900); do
   L=$(S "ls -1t $R/logs/$LABEL.*.log 2>/dev/null | head -1")
   if [ -n "$L" ]; then
@@ -63,12 +64,16 @@ for i in $(seq 1 900); do
       fi
     fi
   fi
-  n=$(S "squeue -h -u jiaxiwu -o %j | grep -cx '$LABEL' | head -1")
-  n=${n//[^0-9]/}
-  if [ -z "$n" ] || [ "$n" = "0" ]; then
-    echo "PROD $LABEL: no job of that name in the queue (segment ended or chain finished)"
-    S "grep -aoE 'CASE (DONE|FAILED|INCOMPLETE) \($LABEL\)[^,]{0,60}' '$L' | tail -1"
-    break
+  # Same care as the chain driver: an ssh failure is not evidence the job ended. Check
+  # ssh's exit status, ignore failed probes, require three consecutive absences.
+  qout=$(ssh -o BatchMode=yes -o ConnectTimeout=30 "$H" "squeue -h -u jiaxiwu -o %j" 2>/dev/null)
+  if [ $? -eq 0 ]; then
+    if printf '%s\n' "$qout" | grep -qx "$LABEL"; then absent=0; else absent=$((absent + 1)); fi
+    if [ "$absent" -ge 3 ]; then
+      echo "PROD $LABEL: no job of that name in the queue (segment ended or chain finished)"
+      S "grep -aoE 'CASE (DONE|FAILED|INCOMPLETE) \($LABEL\)[^,]{0,60}' '$L' | tail -1"
+      break
+    fi
   fi
   sleep "$POLL"
 done

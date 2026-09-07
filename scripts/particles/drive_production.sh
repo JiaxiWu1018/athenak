@@ -22,8 +22,8 @@ DECK=nr_pic_plummer
 S() { ssh -o BatchMode=yes -o ConnectTimeout=30 $H "$@" 2>/dev/null; }
 
 S "mkdir -p $R/runs/$LABEL && touch $R/runs/$LABEL/.protect_all_rst"
-# A cancelled segment leaves no verdict banner. Distinguish that from a genuine failure by
-# reporting it and stopping, which is what the operator wants either way.
+# A cancelled segment leaves no verdict banner. A storage-watchdog cancellation is
+# distinguished below and resumed from the last checkpoint; anything else stops the chain.
 
 for seg in $(seq 1 "$MAXSEG"); do
   # Adopt an already-queued or running segment rather than submitting a duplicate: the
@@ -38,9 +38,24 @@ for seg in $(seq 1 "$MAXSEG"); do
     if [ -z "$j" ]; then echo "PROD: segment $seg SUBMIT FAILED"; exit 1; fi
     echo "PROD: segment $seg submitted as job $j (${SEGH} h)"
   fi
-  for i in $(seq 1 2000); do
-    S "squeue -h -j $j -o %T" | grep -q . || break
-    sleep 60
+  # Wait for the segment. A transient ssh failure returns nothing, which says NOTHING
+  # about the job; treating empty output as "finished" ended this chain spuriously while
+  # job 407606 was still running at cycle 3000. So check ssh's own exit status, ignore
+  # failed probes entirely, and require three CONSECUTIVE successful probes reporting the
+  # job absent (squeue forgets a finished job quickly, so one absence is not evidence).
+  miss=0; sfail=0
+  for i in $(seq 1 4000); do
+    out=$(ssh -o BatchMode=yes -o ConnectTimeout=30 "$H" "squeue -h -j $j -o %T" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+      sfail=$((sfail + 1))
+      [ "$sfail" = "20" ] && echo "PROD: 20 consecutive ssh probe failures for job $j; not assuming it ended"
+      sleep 60
+      continue
+    fi
+    sfail=0
+    if [ -n "$out" ]; then miss=0; else miss=$((miss + 1)); fi
+    [ "$miss" -ge 3 ] && break
+    sleep 30
   done
   L=$R/logs/$LABEL.$j.log
   v=$(S "grep -aoE 'CASE (DONE|FAILED|INCOMPLETE) \($LABEL\)[^,]{0,60}' $L | tail -1")
