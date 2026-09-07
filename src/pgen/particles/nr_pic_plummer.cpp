@@ -140,13 +140,18 @@ Real plummer_shell_rmax = 400.0;
 std::string plummer_shell_fname;
 std::string plummer_cohort_fname;
 std::string plummer_field_fname;
-bool plummer_shell_header_written = false;
-bool plummer_cohort_header_written = false;
-bool plummer_field_header_written = false;
 
 constexpr int NYLM_MAX = 25;      // (lmax+1)^2 with lmax = 4
 constexpr int NQ_SHELL_BASE = 8;  // count,mass,r,vr,vr2,vt2,energy,|L|
 constexpr int NQ_COHORT = 8;
+
+//! True if the named file is absent or empty.  A module-scope "header written" bool is
+//! reset by a restart, which would inject a second header block into the middle of an
+//! existing CSV; the file itself is the only durable record.
+bool FileIsEmpty(const std::string &fname) {
+  std::ifstream f(fname, std::ios::ate | std::ios::binary);
+  return !f.good() || f.tellg() == static_cast<std::streampos>(0);
+}
 
 [[noreturn]] void Fatal(const std::string &message) {
   std::cout << "### FATAL ERROR in " << __FILE__ << std::endl
@@ -297,17 +302,22 @@ PlummerFieldHealth MeasurePlummerFieldHealth(Mesh *pm, Real time, int ncycle,
                                              bool write_csv) {
   PlummerFieldHealth health;
   MeshBlockPack *pmbp = pm->pmb_pack;
-  if (pmbp->pz4c == nullptr) { return health; }
   auto &indcs = pm->mb_indcs;
   const int is = indcs.is, ie = indcs.ie;
   const int js = indcs.js, je = indcs.je;
   const int ks = indcs.ks, ke = indcs.ke;
   const int nmb = pmbp->nmb_thispack;
   auto &size = pmbp->pmb->mb_size;
-  auto u0 = pmbp->pz4c->u0;
-  auto ucon = pmbp->pz4c->u_con;
+  // In the frozen-metric mode (<adm>, no <z4c>) there are no evolved fields and no
+  // constraint arrays, but the lapse is still worth monitoring, so read it from the ADM
+  // array and skip everything that needs u_con.
+  const bool live = (pmbp->pz4c != nullptr);
   const int nx1 = indcs.nx1, nx2 = indcs.nx2, nx3 = indcs.nx3;
   const int ncells = nmb*nx3*nx2*nx1;
+  DvceArray5D<Real> uadm = pmbp->padm->u_adm;
+  DvceArray5D<Real> u0, ucon;
+  if (live) { u0 = pmbp->pz4c->u0; ucon = pmbp->pz4c->u_con; }
+  const int ia_alpha = adm::ADM::I_ADM_ALPHA;
 
   Real amin = std::numeric_limits<Real>::max();
   Real hmax = 0.0;
@@ -318,13 +328,16 @@ PlummerFieldHealth MeasurePlummerFieldHealth(Mesh *pm, Real time, int ncycle,
     const int j = (idx/nx1) % nx2;
     const int k = (idx/(nx1*nx2)) % nx3;
     const int m = idx/(nx1*nx2*nx3);
-    const Real a = u0(m, z4c::Z4c::I_Z4C_ALPHA, k+ks, j+js, i+is);
-    const Real h = Kokkos::fabs(ucon(m, z4c::Z4c::I_CON_H, k+ks, j+js, i+is));
+    const Real a = live ? u0(m, z4c::Z4c::I_Z4C_ALPHA, k+ks, j+js, i+is)
+                        : uadm(m, ia_alpha, k+ks, j+js, i+is);
+    const Real h = live ? Kokkos::fabs(ucon(m, z4c::Z4c::I_CON_H, k+ks, j+js, i+is))
+                        : 0.0;
     lamin = Kokkos::fmin(lamin, a);
     lhmax = Kokkos::fmax(lhmax, h);
   }, Kokkos::Min<Real>(amin), Kokkos::Max<Real>(hmax));
 
-  Real sums[3] = {0.0, 0.0, 0.0};  // sum H^2 dV, sum M^2 dV, sum dV
+  Real sums[3] = {0.0, 0.0, 0.0};  // sum H^2 dV, sum |M|^2 dV, sum dV
+  if (live) {
   Kokkos::parallel_reduce("plummer constraint norms",
       Kokkos::RangePolicy<>(DevExeSpace(), 0, ncells),
   KOKKOS_LAMBDA(const int idx, Real &lh, Real &lm2, Real &lv) {
@@ -334,11 +347,14 @@ PlummerFieldHealth MeasurePlummerFieldHealth(Mesh *pm, Real time, int ncycle,
     const int m = idx/(nx1*nx2*nx3);
     const Real dv = size.d_view(m).dx1*size.d_view(m).dx2*size.d_view(m).dx3;
     const Real hh = ucon(m, z4c::Z4c::I_CON_H, k+ks, j+js, i+is);
+    // I_CON_M is ALREADY the norm squared of the momentum-constraint vector
+    // (z4c_adm.cpp:510, con.M += g_ab M^a M^b), so it must NOT be squared again.
     const Real mm = ucon(m, z4c::Z4c::I_CON_M, k+ks, j+js, i+is);
     lh += hh*hh*dv;
-    lm2 += mm*mm*dv;
+    lm2 += mm*dv;
     lv += dv;
   }, sums[0], sums[1], sums[2]);
+  }
 
 #if MPI_PARALLEL_ENABLED
   MPI_Allreduce(MPI_IN_PLACE, sums, 3, MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
@@ -368,6 +384,7 @@ PlummerFieldHealth MeasurePlummerFieldHealth(Mesh *pm, Real time, int ncycle,
   DvceArray1D<Real> facc("plummer field acc", static_cast<std::size_t>(nfb)*NQ_FIELD);
   Kokkos::deep_copy(facc, 0.0);
   Real msums[2] = {0.0, 0.0};   // sum H^2 dV, sum dV, both restricted to R <= R_t
+  if (live) {
   Kokkos::parallel_reduce("plummer field profile",
       Kokkos::RangePolicy<>(DevExeSpace(), 0, ncells),
   KOKKOS_LAMBDA(const int idx, Real &lh, Real &lv) {
@@ -390,9 +407,9 @@ PlummerFieldHealth MeasurePlummerFieldHealth(Mesh *pm, Real time, int ncycle,
     // areal radius from the evolved conformal factor: gamma_ij = chi^{-1} gt_ij and
     // gt_ij = delta_ij at t = 0, so r_areal = R chi^{-1/2} up to the conformal
     // deformation, which is what the tangential average measures.
-    const Real gtan = 0.5*(u0(m, z4c::Z4c::I_Z4C_GXX, k+ks, j+js, i+is)
-                         + u0(m, z4c::Z4c::I_Z4C_GYY, k+ks, j+js, i+is)
-                         + u0(m, z4c::Z4c::I_Z4C_GZZ, k+ks, j+js, i+is))/3.0;
+    const Real gtan = (u0(m, z4c::Z4c::I_Z4C_GXX, k+ks, j+js, i+is)
+                     + u0(m, z4c::Z4c::I_Z4C_GYY, k+ks, j+js, i+is)
+                     + u0(m, z4c::Z4c::I_Z4C_GZZ, k+ks, j+js, i+is))/3.0;
     const Real rar = (ch > 0.0) ? R*Kokkos::sqrt(Kokkos::fmax(gtan, 0.0)/ch) : R;
     if (R <= Rt_cut) { lh += hh*hh*dv; lv += dv; }
     int ib = static_cast<int>((Kokkos::log(Kokkos::fmax(R, 1.0e-12)) - flrmin)*finv_dlr);
@@ -403,7 +420,7 @@ PlummerFieldHealth MeasurePlummerFieldHealth(Mesh *pm, Real time, int ncycle,
     Kokkos::atomic_add(&facc(o + FQ_DV), dv);
     Kokkos::atomic_add(&facc(o + FQ_ABSH), Kokkos::fabs(hh)*dv);
     Kokkos::atomic_add(&facc(o + FQ_H2), hh*hh*dv);
-    Kokkos::atomic_add(&facc(o + FQ_M2), mm*mm*dv);
+    Kokkos::atomic_add(&facc(o + FQ_M2), mm*dv);   // I_CON_M is already |M|^2
     Kokkos::atomic_add(&facc(o + FQ_ALPHA), al*dv);
     Kokkos::atomic_add(&facc(o + FQ_CHI), ch*dv);
     Kokkos::atomic_add(&facc(o + FQ_E), ee*dv);
@@ -412,6 +429,7 @@ PlummerFieldHealth MeasurePlummerFieldHealth(Mesh *pm, Real time, int ncycle,
     Kokkos::atomic_add(&facc(o + FQ_KHAT2), kh*kh*dv);
     Kokkos::atomic_add(&facc(o + FQ_DX), dx1*dv);
   }, msums[0], msums[1]);
+  }
   Kokkos::fence();
 
   auto hfacc = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), facc);
@@ -423,10 +441,10 @@ PlummerFieldHealth MeasurePlummerFieldHealth(Mesh *pm, Real time, int ncycle,
 #endif
   health.ham_l2_matter = (msums[1] > 0.0) ? std::sqrt(msums[0]/msums[1]) : 0.0;
 
-  if (write_csv && global_variable::my_rank == 0) {
+  if (write_csv && live && global_variable::my_rank == 0) {
     std::ofstream ff(plummer_field_fname, std::ios::app);
     if (ff.good()) {
-      if (!plummer_field_header_written) {
+      if (FileIsEmpty(plummer_field_fname)) {
         ff << "# Plummer cluster cell-based radial field/constraint profile.  Bins are "
               "uniform in log(R) over [" << frmin << ", " << frmax << "] M in ISOTROPIC "
               "coordinate radius with " << nfb << " bins.  All columns except count and "
@@ -436,7 +454,6 @@ PlummerFieldHealth MeasurePlummerFieldHealth(Mesh *pm, Real time, int ncycle,
               "dx/dV identifies the refinement level occupying the bin.\n"
            << "time,cycle,bin,r_lo,r_hi,count,dV,absH_dV,H2_dV,M2_dV,alpha_dV,chi_dV,"
               "E_dV,rareal_dV,Khat_dV,Khat2_dV,dx_dV\n";
-        plummer_field_header_written = true;
       }
       ff << std::setprecision(12);
       for (int ib = 0; ib < nfb; ++ib) {
@@ -763,7 +780,7 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
   if (write_csv && global_variable::my_rank == 0) {
     std::ofstream fs(plummer_shell_fname, std::ios::app);
     if (fs.good()) {
-      if (!plummer_shell_header_written) {
+      if (FileIsEmpty(plummer_shell_fname)) {
         fs << "# Plummer cluster radial shell ledger.  Bins are uniform in "
               "log(r_areal) over [" << rmin << ", " << rmax << "] M with "
            << nbin << " bins; r_areal = R_iso sqrt(g_tangent) from the EVOLVED "
@@ -775,7 +792,6 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
         for (int q = 0; q < nylm; ++q) { fs << ",c" << q; }
         for (int q = 0; q < nylm; ++q) { fs << ",d" << q; }
         fs << "\n";
-        plummer_shell_header_written = true;
       }
       fs << std::setprecision(12);
       for (int ib = 0; ib < nbin; ++ib) {
@@ -793,13 +809,12 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
     }
     std::ofstream fc(plummer_cohort_fname, std::ios::app);
     if (fc.good()) {
-      if (!plummer_cohort_header_written) {
+      if (FileIsEmpty(plummer_cohort_fname)) {
         fc << "# Plummer cluster Lagrangian cohort ledger.  Cohort = contiguous band of "
               "the stratified radial quantile, cohort = floor((tag/2)*ncohort/N_pair); "
               "because the stratum index equals the pair index and the quantile is "
               "monotone in it, cohort is an exact equal-rest-mass initial radial band.\n"
            << "time,cycle,cohort,count,mass,m_r,m_r2,m_vr,m_vr2,m_vt2,m_alphaW\n";
-        plummer_cohort_header_written = true;
       }
       fc << std::setprecision(12);
       for (int ic = 0; ic < ncoh; ++ic) {
@@ -879,9 +894,11 @@ void PlummerClusterHistory(HistoryData *pdata, Mesh *pm) {
   pdata->hdata[15] = F.alpha_min;
   pdata->hdata[16] = F.ham_l2;
   pdata->hdata[17] = F.ham_l2_matter;
-  pdata->hdata[18] = static_cast<Real>(pm->pmb_pack->ppart->boris_nfail_cum);
   pdata->hdata[19] = H.nonfinite;
+  // Mask the already-global columns to rank 0 (see above), THEN add the one genuinely
+  // per-rank column, which history.cpp's MPI_SUM is supposed to accumulate.
   for (int n = 0; n < pdata->nhist; ++n) { pdata->hdata[n] *= w; }
+  pdata->hdata[18] = static_cast<Real>(pm->pmb_pack->ppart->boris_nfail_cum);
 }
 
 //----------------------------------------------------------------------------------------
@@ -936,8 +953,18 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   if (M <= 0.0 || bscale <= 0.0 || rt <= 3.0*M || npair <= 0) {
     Fatal("Require plummer_mass>0, plummer_b>0, plummer_rt>3M, plummer_npair>0.");
   }
-  if (plummer_lmax < 0 || plummer_lmax > 4) {
-    Fatal("plummer_lmax must be in 0..4 (the Cartesian Y_lm table stops at l=4).");
+  if (plummer_lmax < 1 || plummer_lmax > 4) {
+    Fatal("plummer_lmax must be in 1..4 (the Cartesian Y_lm table stops at l=4, and the "
+          "history reports A_1, so l=0 alone is not a supported configuration).");
+  }
+  if (plummer_shell_nbin < 1 || plummer_cohort_nbin < 1 || plummer_field_nbin < 1) {
+    Fatal("plummer_shell_nbin, plummer_cohort_nbin and plummer_field_nbin must all be "
+          ">= 1: a non-positive bin count makes the bin clamp emit a negative index and "
+          "every particle/cell would do an out-of-range device atomic_add.");
+  }
+  if (!(plummer_shell_rmax > plummer_shell_rmin && plummer_shell_rmin > 0.0) ||
+      !(plummer_field_rmax > plummer_field_rmin && plummer_field_rmin > 0.0)) {
+    Fatal("shell/field binning requires 0 < rmin < rmax (the bins are uniform in log r).");
   }
   const std::int64_t ntotal64 = 2LL*npair;
   if (ntotal64 > INT_MAX) {
