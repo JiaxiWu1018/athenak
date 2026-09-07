@@ -126,17 +126,23 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
 #if MPI_PARALLEL_ENABLED
   // serial builds never append to sendlist (UpdateGID is MPI-only): skip the growth
   if (ncross > static_cast<int>(sendlist.extent(0))) {
-    Kokkos::realloc(sendlist, ncross);
+    int old_cap = sendlist.extent_int(0);
+    int new_cap = std::max(ncross, old_cap + std::max(old_cap/8, 1));
+    Kokkos::realloc(sendlist, new_cap);
   }
 #else
   (void)ncross;
 #endif
   if (ndest_ub > static_cast<int>(destroylist.extent(0))) {
-    Kokkos::realloc(destroylist, ndest_ub);
+    int old_cap = destroylist.extent_int(0);
+    int new_cap = std::max(ndest_ub, old_cap + std::max(old_cap/8, 1));
+    Kokkos::realloc(destroylist, new_cap);
   }
   if (ndest_ub > destroy_rec_r.extent_int(1)) {
-    Kokkos::realloc(destroy_rec_r, 7, ndest_ub);
-    Kokkos::realloc(destroy_rec_i, 3, ndest_ub);
+    int old_cap = destroy_rec_r.extent_int(1);
+    int new_cap = std::max(ndest_ub, old_cap + std::max(old_cap/8, 1));
+    Kokkos::realloc(destroy_rec_r, 7, new_cap);
+    Kokkos::realloc(destroy_rec_i, 3, new_cap);
   }
   par_for("part_update",DevExeSpace(),0,(npart-1), KOKKOS_LAMBDA(const int p) {
     int m = pi(PGID,p) - gids;
@@ -343,8 +349,10 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
     std::exit(EXIT_FAILURE);
   }
 #endif
-  Kokkos::resize(sendlist, nprtcl_send);
-  // sync sendlist device array with host
+  // Keep the allocation at its high-water capacity.  Shrinking this DualView to the
+  // logical count every cycle changes its HIP pointer on the next growth and can force
+  // HIP/UCX allocation and registration churn.  Consumers below use nprtcl_send as the
+  // logical length.
   sendlist.template modify<DevExeSpace>();
   sendlist.template sync<HostMemSpace>();
 
@@ -364,14 +372,14 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
               << " destroyed > " << ndest_ub << " counted" << std::endl;
     std::exit(EXIT_FAILURE);
   }
-  Kokkos::resize(destroylist, nprtcl_destroy);
   destroylist.template modify<DevExeSpace>();
   destroylist.template sync<HostMemSpace>();
   // ascending index order is required by the merged hole compaction (atomic fill order
   // is arbitrary); only the host view is consumed downstream, so no device sync-back
   {
     namespace KE = Kokkos::Experimental;
-    std::sort(KE::begin(destroylist.h_view), KE::end(destroylist.h_view));
+    std::sort(KE::begin(destroylist.h_view),
+              KE::begin(destroylist.h_view) + nprtcl_destroy);
   }
   // accumulate the destroyed-side conservation checksums (per-rank cumulative)
   if (dbg > 0 && nprtcl_destroy > 0) {
@@ -440,7 +448,8 @@ TaskStatus ParticlesBoundaryValues::CountSendsAndRecvs() {
 #if MPI_PARALLEL_ENABLED
   // Sort sendlist on host by destrank.
   namespace KE = Kokkos::Experimental;
-  std::sort(KE::begin(sendlist.h_view), KE::end(sendlist.h_view), SortByRank);
+  std::sort(KE::begin(sendlist.h_view),
+            KE::begin(sendlist.h_view) + nprtcl_send, SortByRank);
   // sync sendlist host array with device.  This results in sorted array on device
   sendlist.template modify<HostMemSpace>();
   sendlist.template sync<DevExeSpace>();
@@ -555,8 +564,18 @@ TaskStatus ParticlesBoundaryValues::InitPrtclRecv() {
 
   // Allocate receive buffer (skip the zero-extent reallocs on quiet cycles)
   if (nprtcl_recv > 0) {
-    Kokkos::realloc(prtcl_rrecvbuf, (pmy_part->nrdata)*nprtcl_recv);
-    Kokkos::realloc(prtcl_irecvbuf, (pmy_part->nidata)*nprtcl_recv);
+    int rneed = (pmy_part->nrdata)*nprtcl_recv;
+    int ineed = (pmy_part->nidata)*nprtcl_recv;
+    if (rneed > prtcl_rrecvbuf.extent_int(0)) {
+      int old_cap = prtcl_rrecvbuf.extent_int(0);
+      int new_cap = std::max(rneed, old_cap + std::max(old_cap/8, 1));
+      Kokkos::realloc(prtcl_rrecvbuf, new_cap);
+    }
+    if (ineed > prtcl_irecvbuf.extent_int(0)) {
+      int old_cap = prtcl_irecvbuf.extent_int(0);
+      int new_cap = std::max(ineed, old_cap + std::max(old_cap/8, 1));
+      Kokkos::realloc(prtcl_irecvbuf, new_cap);
+    }
   }
 
   // Post non-blocking receives
@@ -625,9 +644,20 @@ TaskStatus ParticlesBoundaryValues::PackAndSendPrtcls() {
 
   bool no_errors=true;
   if (nprtcl_send > 0) {
-    // Allocate send buffer
-    Kokkos::realloc(prtcl_rsendbuf, (pmy_part->nrdata)*nprtcl_send);
-    Kokkos::realloc(prtcl_isendbuf, (pmy_part->nidata)*nprtcl_send);
+    // Retain send buffers at their high-water capacities.  Only the logical prefixes
+    // posted to MPI are overwritten and consumed in this cycle.
+    int rneed = (pmy_part->nrdata)*nprtcl_send;
+    int ineed = (pmy_part->nidata)*nprtcl_send;
+    if (rneed > prtcl_rsendbuf.extent_int(0)) {
+      int old_cap = prtcl_rsendbuf.extent_int(0);
+      int new_cap = std::max(rneed, old_cap + std::max(old_cap/8, 1));
+      Kokkos::realloc(prtcl_rsendbuf, new_cap);
+    }
+    if (ineed > prtcl_isendbuf.extent_int(0)) {
+      int old_cap = prtcl_isendbuf.extent_int(0);
+      int new_cap = std::max(ineed, old_cap + std::max(old_cap/8, 1));
+      Kokkos::realloc(prtcl_isendbuf, new_cap);
+    }
 
     // sendlist on device is already sorted by destrank in CountSendAndRecvs()
     // Use sendlist on device to load particles into send buffer ordered by dest_rank
@@ -712,7 +742,8 @@ TaskStatus ParticlesBoundaryValues::RecvAndUnpackPrtcls() {
   // Sort sendlist on host by index in particle array (ascending hole order, required
   // by the merged hole list below)
   namespace KE = Kokkos::Experimental;
-  std::sort(KE::begin(sendlist.h_view), KE::end(sendlist.h_view), SortByIndex);
+  std::sort(KE::begin(sendlist.h_view),
+            KE::begin(sendlist.h_view) + nprtcl_send, SortByIndex);
   // sync sendlist host array with device.  This results in sorted array on device
   sendlist.template modify<HostMemSpace>();
   sendlist.template sync<DevExeSpace>();
@@ -787,10 +818,14 @@ TaskStatus ParticlesBoundaryValues::RecvAndUnpackPrtcls() {
     holelist.template sync<DevExeSpace>();
   }
 
-  // increase size of particle arrays if needed (more receives than holes)
-  if (nrecv > nholes) {
-    Kokkos::resize(pmy_part->prtcl_idata, pmy_part->nidata, new_npart);
-    Kokkos::resize(pmy_part->prtcl_rdata, pmy_part->nrdata, new_npart);
+  // Treat the particle Views as capacity, with nprtcl_thispack as their logical size.
+  // Per-rank populations fluctuate whenever particles cross rank boundaries; resizing
+  // them down and back up changed large HIP allocation addresses nearly every cycle.
+  int old_cap = pmy_part->prtcl_rdata.extent_int(1);
+  if (new_npart > old_cap) {
+    int new_cap = std::max(new_npart, old_cap + std::max(old_cap/8, 1));
+    Kokkos::resize(pmy_part->prtcl_idata, pmy_part->nidata, new_cap);
+    Kokkos::resize(pmy_part->prtcl_rdata, pmy_part->nrdata, new_cap);
   }
 
 #if MPI_PARALLEL_ENABLED
@@ -881,9 +916,8 @@ TaskStatus ParticlesBoundaryValues::RecvAndUnpackPrtcls() {
         }
       });
     }
-    // shrink particle arrays: the single resize of the whole compaction
-    Kokkos::resize(pmy_part->prtcl_idata, pmy_part->nidata, new_npart);
-    Kokkos::resize(pmy_part->prtcl_rdata, pmy_part->nrdata, new_npart);
+    // Do not shrink the arrays here.  All kernels and restart/output writers use
+    // nprtcl_thispack as the logical count; the retained tail is unreachable capacity.
   }
 
   // ---- refresh the particle-count bookkeeping + the cumulative destroyed ledger ----

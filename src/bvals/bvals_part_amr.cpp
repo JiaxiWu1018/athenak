@@ -6,6 +6,7 @@
 //! \file bvals_part_amr.cpp
 //! \brief Relabel particles after dynamic AMR changes MeshBlock GIDs and owners.
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 
@@ -73,7 +74,9 @@ TaskStatus ParticlesBoundaryValues::SetPrtclGIDForAMR(
     }, Kokkos::Sum<int>(ncross));
 #if MPI_PARALLEL_ENABLED
   if (ncross > sendlist.extent_int(0)) {
-    Kokkos::realloc(sendlist, ncross);
+    int old_cap = sendlist.extent_int(0);
+    int new_cap = std::max(ncross, old_cap + std::max(old_cap/8, 1));
+    Kokkos::realloc(sendlist, new_cap);
   }
 #else
   (void)ncross;
@@ -118,7 +121,8 @@ TaskStatus ParticlesBoundaryValues::SetPrtclGIDForAMR(
     std::exit(EXIT_FAILURE);
   }
 #endif
-  Kokkos::resize(sendlist, nprtcl_send);
+  // Keep the high-water allocation; nprtcl_send is the logical prefix consumed by the
+  // regular migration communication chain.
   sendlist.template modify<DevExeSpace>();
   sendlist.template sync<HostMemSpace>();
   return TaskStatus::complete;
