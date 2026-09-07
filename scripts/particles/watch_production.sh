@@ -41,6 +41,19 @@ for i in $(seq 1 900); do
         sz=$(S "du -sh $R/runs/$LABEL 2>/dev/null | cut -f1")
         ur=$(S "du -sh /work1/eliasmost/jiaxiwu 2>/dev/null | cut -f1")
         echo "PROD $LABEL: t=$t M  t/P=$(python3 -c "print(f'{$t/$P:.4f}')")  $(echo "$line" | grep -oE 'cycle=[0-9]+')  pvtk=$nf  run=$sz  userroot=$ur"
+        # Prune restarts DURING the segment, not only between segments. At the P_1/2/4
+        # cadence a 12 h segment accumulates ~9 checkpoints of 5.3 GB, and the 1.9 TiB
+        # budget is shared with another campaign whose growth we do not control. Keep the
+        # two NEWEST (never touch a file that may still be being written) plus every
+        # integer-P_1/2 checkpoint (rst dt = P/4, so index % 4 == 0).
+        pruned=$(S "cd $R/runs/$LABEL/out/rst 2>/dev/null || exit 0
+          n=\$(ls -1 *.rst 2>/dev/null | wc -l); [ \"\$n\" -le 4 ] && exit 0
+          ls -1t *.rst 2>/dev/null | tail -n +3 | while read -r f; do
+            idx=\$(echo \"\$f\" | grep -oE '[0-9]{5}' | tail -1)
+            if [ -n \"\$idx\" ] && [ \$((10#\$idx % 4)) -eq 0 ]; then continue; fi
+            rm -f \"\$f\" && echo \"\$f\"
+          done")
+        [ -n "$pruned" ] && echo "PROD $LABEL: pruned superseded checkpoints: $(echo $pruned | tr '\n' ' ')"
       fi
       if [ "$fired" = "0" ] && python3 -c "import sys; sys.exit(0 if $t >= $P else 1)" 2>/dev/null; then
         fired=1
