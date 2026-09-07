@@ -1,0 +1,292 @@
+# =============================================================================
+# NRPIC relativistic PLUMMER Einstein cluster -- Session 1 production baseline
+# Campaign: nrpic_plummer_20260906      model: b = 20 M, r_t = 400 M = 20 b
+# Code:     branch project/Plummer-cluster, base origin/NRPIC @ ca0f5298
+#           + cherry-pick cc7a4475 (parabolic H-damping + BSSN hardening,
+#             origin/project/homogeneous-cluster 63a334d0)
+#           + cherry-pick 75c4c28b (optional deposited-Tmunu filter, default off,
+#             origin/project/homogeneous-cluster d8c4f789)
+#           + new pgen src/pgen/particles/nr_pic_plummer.cpp
+#
+# QUESTION.  The established homogeneous R/M = 6.5 tangential-orbit Einstein
+# cluster develops a growing internal, centre-of-mass-removed l = 1 mode at
+# sigma = 3.24 +/- 0.22 e-folds per surface period (2026-09-01 N-scaling
+# campaign, 4 seeds; an 8x range in N changes the seed but not the resolved rate;
+# Lagrange/trilinear/Hermite gather, filtering, higher-order deposition, radial
+# velocity dispersion and gauge/damping changes all failed to remove it).
+# DOES REPLACING THE UNIFORM DENSITY PROFILE WITH A PLUMMER PROFILE CHANGE IT?
+# This deck does not presuppose an answer.
+#
+# CONTINUUM MODEL (G = c = 1; derived in src/pgen/particles/plummer_profile.hpp
+# and independently in analysis/plummer_1d.py):
+#   the STATIC-OBSERVER energy density eps = T_{mu nu} n^mu n^nu is Plummer in
+#   AREAL radius r, hard-cut at r_t with vacuum outside and renormalised to
+#   M_ADM = 1 exactly.  Reference values (both implementations agree to <= 1e-10):
+#     f_t     = 0.996261684666179   (removed mass fraction 0.3738%)
+#     M_P     = 1.003752342774352
+#     M_0     = 1.007376794320      (total REST mass; N mu = M_0 != M_ADM)
+#     mu      = M_0/N = 4.7663100809e-07
+#     r_1/2   = 26.007614229 M      R_1/2 = 25.209342804 M
+#     R_t     = 398.999373433 M
+#     alpha(r_1/2) = 0.969112725    v_c(r_1/2) = 0.141399825
+#     P_1/2   = 1192.496781 M       3 P_1/2 = 3577.490343 M
+#     alpha(0) = 0.949822094        psi(0) = 1.025905202
+#     max m/r = 0.0193172 (<< 1/3, circular orbits exist everywhere)
+#     max v_c = 0.141751632 at r = b sqrt(2) = 28.284271247 M
+#   The two continuum checks Lap psi = -2 pi psi^5 eps and
+#   Lap(alpha psi) = 2 pi alpha psi^5 (eps + 2 S) hold to 4.7e-12 relative over
+#   the whole occupied range (analysis/verify_1d.py).
+#
+# SAMPLING.  Stratified antithetic: N_pair = 1,056,768 co-located +-u_i pairs,
+#   N = 2,113,536 equal-rest-mass particles, seed 1985.  Initial deposited
+#   momentum and total angular momentum vanish EXACTLY (pair cancellation).
+#   The l-mode finite-N noise floor is set by the number of INDEPENDENT angular
+#   positions, N_pair, NOT by N:
+#     A_l^shot = N_pair^-1/2 = 9.727669e-04     [NOT N^-1/2 = 6.878523e-04]
+#   The measured t=0 realization gives A_1 = 9.3988e-04 (analysis/validate_sampler.py).
+#   Because the stratum index equals the pair index equals tag/2 and the radial
+#   quantile is monotone in it, the TAG is an exact initial-radial-group label.
+#
+# MESH.  [-4096,4096]^3, root 128^3 (dx_0 = 64 M), MeshBlocks 32^3, nghost 4,
+#   six static refined levels at block-aligned half-widths
+#   2048/1024/512/256/128/64 M -> dx_fine = 8192/(128*2^6) = 1 M.
+#   Leaf count 6*56 + 64 = 400 MeshBlocks = 13,107,200 active cells.
+#   dx_fine = 1 M gives 20 cells per Plummer scale b and 26 cells per r_1/2.
+#   The cluster half-mass radius R_1/2 = 25.21 M sits 2.54x inside the finest
+#   seam at 64 M; the matter edge R_t = 399.0 M lies inside level 3 (dx = 8 M).
+#   Nominal dt = CFL*dx_min = 0.25 M; the actual timestep is set by the code's
+#   hyperbolic AND parabolic (H-damping) restrictions and is measured at startup.
+#
+# CAUSALITY CAVEAT.  The 1+log gauge speed is sqrt(2/alpha) ~ sqrt(2); a
+#   disturbance launched at the outer boundary R = 4096 M reaches the matter edge
+#   R_t = 399 M after ~ (4096-399)/sqrt(2) = 2614 M = 2.19 P_1/2, i.e. BEFORE the
+#   3 P_1/2 endpoint.  Late-time results must be qualified until inward-moving
+#   boundary features are shown to be absent or negligible.
+#
+# EXCISION IS OFF (excise_lapse = 0, excise_radius = 0, excise_ah = false); this
+#   is a weak-field baseline and no particle should ever be removed.
+# =============================================================================
+
+<comment>
+problem = NRPIC relativistic Plummer Einstein cluster b=20M rt=400M N=2113536 seed=1985 stratified-antithetic BSSN use_z4c=false cH=0.02 filter=OFF dxf=1.0 (pl_b20_rt400_s1985)
+
+<job>
+basename = pl_b20_rt400_s1985
+
+<mesh>
+nghost = 4
+nx1    = 128
+x1min  = -4096.0
+x1max  =  4096.0
+ix1_bc = outflow
+ox1_bc = outflow
+nx2    = 128
+x2min  = -4096.0
+x2max  =  4096.0
+ix2_bc = outflow
+ox2_bc = outflow
+nx3    = 128
+x3min  = -4096.0
+x3max  =  4096.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+
+<mesh_refinement>
+refinement       = static
+max_nmb_per_rank = 1600
+
+<refined_region1>
+level = 1
+x1min = -2048.0
+x1max =  2048.0
+x2min = -2048.0
+x2max =  2048.0
+x3min = -2048.0
+x3max =  2048.0
+
+<refined_region2>
+level = 2
+x1min = -1024.0
+x1max =  1024.0
+x2min = -1024.0
+x2max =  1024.0
+x3min = -1024.0
+x3max =  1024.0
+
+<refined_region3>
+level = 3
+x1min = -512.0
+x1max =  512.0
+x2min = -512.0
+x2max =  512.0
+x3min = -512.0
+x3max =  512.0
+
+<refined_region4>
+level = 4
+x1min = -256.0
+x1max =  256.0
+x2min = -256.0
+x2max =  256.0
+x3min = -256.0
+x3max =  256.0
+
+<refined_region5>
+level = 5
+x1min = -128.0
+x1max =  128.0
+x2min = -128.0
+x2max =  128.0
+x3min = -128.0
+x3max =  128.0
+
+<refined_region6>
+level = 6
+x1min = -64.0
+x1max =  64.0
+x2min = -64.0
+x2max =  64.0
+x3min = -64.0
+x3max =  64.0
+
+<time>
+evolution  = dynamic
+integrator = rk4
+cfl_number = 0.25
+nlim       = 100000000
+tlim       = 3577.490343
+ndiag      = 100
+
+<z4c>
+# --- lapse: 1+log, the AthenaK dust/collapse reference recipe used by every
+#     previous NRPIC cluster campaign (NOT MultiBH's lapse_oplog=1.0, which is
+#     the puncture lineage matched to cfl_number=0.5).
+lapse_harmonic    = 0.0
+lapse_harmonicf   = 1.0
+lapse_oplog       = 2.0
+lapse_advect      = 1.0
+# --- shift: legacy Gamma-driver, identical to the homogeneous production arm
+shift_driver      = legacy
+shift_eta         = 2.0
+shift_advect      = 1.0
+shift_Gamma       = 1.0
+shift_alpha2Gamma = 0.0
+shift_H           = 0.0
+# const_damp=false is puncture-only; with zero compact-object trackers the
+# spatial damping factor is identically 1.0.  Keep it true.
+const_damp        = true
+# --- dissipation / floors (cluster values, inherited from the homogeneous arm)
+diss              = 0.1
+chi_div_floor     = 0.00001
+# --- formulation: BSSN + parabolic Hamiltonian-constraint damping (RP22 Eq. 4
+#     in AthenaK's chi convention).  E is the RAW deposited source since
+#     tmunu_filter_passes = 0.
+use_z4c           = false
+hdamp_cH          = 0.02
+hdamp_par_safety  = 0.5
+# Z4-only, inert in BSSN mode (damp_kappa1 *= use_z4c); set to zero explicitly.
+damp_kappa1       = 0.0
+damp_kappa2       = 0.0
+# No wave extraction: every candidate radius lies inside the matter, where the
+# Weyl scalars are not a wave diagnostic.
+nrad_wave_extraction = 0
+
+<particles>
+particle_type       = dust
+pusher              = gr_boris
+init                = pgen
+feedback            = true
+mass                = 1.0
+debug               = 0
+destroy_log         = true
+# excision OFF: weak-field baseline, no particle may be removed
+excise_radius       = 0.0
+excise_x1           = 0.0
+excise_x2           = 0.0
+excise_x3           = 0.0
+excise_lapse        = 0.0
+excise_ah           = false
+cross_level_deposit = conservative
+# matter-source filtering OFF (ApplyDigitalFilter returns at its first statement
+# and Tmunu allocates no filter scratch or bvals buffers)
+tmunu_filter_passes   = 0
+tmunu_filter_selftest = false
+
+<problem>
+user_hist            = true
+plummer_mass         = 1.0
+plummer_b            = 20.0
+plummer_rt           = 400.0
+plummer_npair        = 1056768
+plummer_seed         = 1985
+plummer_ntable       = 20000
+plummer_nmetric      = 16384
+plummer_metric_R0    = 0.5
+plummer_center_x1    = 0.0
+plummer_center_x2    = 0.0
+plummer_center_x3    = 0.0
+plummer_shell_nbin   = 48
+plummer_shell_rmin   = 0.5
+plummer_shell_rmax   = 800.0
+plummer_cohort_nbin  = 32
+plummer_lmax         = 4
+
+# ---- outputs.  P_1/2 = 1192.496781 M.
+#      hst  at P/200 = 5.962483906 M  (scalars + the two radial-diagnostic CSVs)
+#      pvtk at P/100 = 11.92496781 M  (ALL particles: the scientific reduction)
+#      bin  at P/100                  (slices for movies)
+#      trk  at P/200                  (continuous orbit tracks, inner core)
+#      cbin at P/10  = 119.2496781 M  (coarsened 3D ADM)
+#      rst  at P/4   = 298.124195 M   (13 checkpoints incl. every integer P_1/2)
+
+<output1>
+file_type   = hst
+dt          = 5.962483906
+data_format = %.17e
+
+<output2>
+file_type = pvtk
+variable  = prtcl_all
+dt        = 11.92496781
+
+<output3>
+file_type = bin
+variable  = con
+slice_x3  = 0.0
+dt        = 11.92496781
+
+<output4>
+file_type = bin
+variable  = tmunu
+slice_x3  = 0.0
+dt        = 11.92496781
+
+<output5>
+file_type = bin
+variable  = z4c
+slice_x3  = 0.0
+dt        = 11.92496781
+
+<output6>
+file_type      = cbin
+variable       = adm
+coarsen_factor = 2
+dt             = 119.2496781
+
+<output7>
+file_type = rst
+dt        = 298.124195
+
+# Continuous orbit tracks for the innermost 2048 pairs (tags 0..4095).  Because
+# the tag is monotone in the initial radial quantile this is deliberately an
+# INNER-CORE tracker, not a representative movie subset; the movie subset is a
+# fixed strided set of tags selected in post-processing from the pvtk frames.
+<output8>
+file_type  = trk
+nparticles = 4096
+dt         = 5.962483906
