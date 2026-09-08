@@ -67,7 +67,11 @@ def main():
                         xycoords=("axes fraction", "data"), xytext=(0, 5),
                         textcoords="offset points", color=INK2, fontsize=8)
         ax.set_title(lab, fontsize=10, loc="left")
-        ax.set_ylim(0, 3.0)
+        # Scale each panel to its own data. A fixed 0-3 limit clipped the core band, which
+        # reaches 6.7 -- the single most important number in the figure.
+        top = 1.15*max(
+            [max(src[b].values()) for src, in ((L,), (F,)) if b in src] + [1.2])
+        ax.set_ylim(0, top)
         if k >= 2:
             ax.set_xlabel(r"$t/P_{1/2}$")
         if k % 2 == 0:

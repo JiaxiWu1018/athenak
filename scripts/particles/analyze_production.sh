@@ -19,6 +19,20 @@ C=/data/jiaxiwu/NRPIC/Plummer-cluster
 P=1192.496781
 S() { ssh -o BatchMode=yes -o ConnectTimeout=30 $H "$@" 2>/dev/null; }
 
+# Serialise on the OUTPUT directory. reduce_run.py opens its CSVs with 'w', so two
+# concurrent runs truncate files the other is still writing and leave a hole of NUL bytes
+# rather than a clean overwrite. That happened once: a relaunched watcher has a fresh
+# in-memory "already fired" flag, so it fired a second interim analysis on top of a running
+# one. An in-memory guard cannot survive a restart; a lock on disk can.
+LOCK="$C/reduced/.$LABEL.analyze.lock"
+mkdir -p "$C/reduced"
+exec 9>"$LOCK"
+if ! flock -n 9; then
+  echo "ANALYZE: another analysis of $LABEL is already running (lock $LOCK); refusing to"
+  echo "ANALYZE: run concurrently, because both would write the same CSVs."
+  exit 0
+fi
+
 base=$(S "grep -m1 '^basename' $R/runs/$LABEL/deck.athinput | awk '{print \$3}'")
 [ -n "$base" ] || { echo "ANALYZE: cannot read basename from $LABEL/deck.athinput"; exit 1; }
 nf=$(S "ls -1 $R/runs/$LABEL/out/pvtk/*.part.vtk 2>/dev/null | wc -l")

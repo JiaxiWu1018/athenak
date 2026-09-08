@@ -190,9 +190,18 @@ def main():
         nhc = rel/rrel[:, None]
 
         # --- multipoles: raw, COM-removed, and per macro band (raw) ---
+        # `macro` holds TAG indices; nh is indexed by position within `sel`. Map tags to
+        # sel-positions explicitly: intersecting tags with sel and using the result as an
+        # index into nh only happens to work while every tag is alive (sel == arange(N)),
+        # and would silently mis-assign bands the moment a particle is lost.
+        pos_of_tag = np.full(n, -1, dtype=np.int64)
+        pos_of_tag[sel] = np.arange(sel.size, dtype=np.int64)
+        groups_local = []
+        for g in macro:
+            gl = pos_of_tag[g]
+            groups_local.append(gl[gl >= 0])
         Aall, Agrp = mode_amps(nh[:, 0], nh[:, 1], nh[:, 2], a.lmax,
-                               groups=[np.intersect1d(g, sel, assume_unique=False)
-                                       for g in macro])
+                               groups=groups_local)
         Acom, _ = mode_amps(nhc[:, 0], nhc[:, 1], nhc[:, 2], a.lmax)
         tp = t/a.period
         for l in range(1, a.lmax + 1):
@@ -201,7 +210,7 @@ def main():
                          % (t, tp, band, l, A, shot,
                             np.sqrt(max(0.0, A*A - 1.0/max(nuniq, 1))), nu))
             for gi in range(a.macro):
-                gsz = macro[gi].size
+                gsz = groups_local[gi].size          # LIVE members of the band
                 sh = (gsz/2.0)**-0.5 if gsz else float("nan")
                 fm.write("%.10g,%.10g,m%d,%d,%.10e,%.10e,%.10e,%d\n"
                          % (t, tp, gi, l, Agrp[gi][l], sh,
