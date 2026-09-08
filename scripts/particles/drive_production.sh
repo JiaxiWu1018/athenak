@@ -2,7 +2,12 @@
 # Perseus-side driver for the Plummer production run: 0 -> 3 P_1/2 = 3577.490343 M,
 # chained restart segments on one AMD MI210 node.
 #
-#   usage: drive_production.sh [SEGMENT_HOURS] [MAX_SEGMENTS]
+#   usage: drive_production.sh [SEGMENT_HOURS] [MAX_SEGMENTS] [LABEL] [DECK] [overrides...]
+#
+# LABEL/DECK default to the production run; passing them lets the same chaining,
+# pruning and failure-classification logic drive any other long run on this node
+# (it is used to extend the frozen-metric null control to the production baseline).
+# Any further arguments are passed to Athena verbatim as parameter overrides.
 #
 # The AMD runner (amd_run.sbatch) restarts from the newest checkpoint whenever the same
 # command is resubmitted, and hands Athena a wall budget 15 min short of Slurm's so it
@@ -18,11 +23,13 @@ set -uo pipefail
 # almost free. 12 h segments reached 70 % VRAM; 4 h keeps it near 57 %.
 SEGH=${1:-4}
 MAXSEG=${2:-16}
+LABEL=${3:-prod_plummer}
+DECK=${4:-nr_pic_plummer}
+shift $(( $# < 4 ? $# : 4 ))
+OVR="$*"
 rtry=0
 H=hpcfund.amd.com
 R=/work1/eliasmost/jiaxiwu/plummer_s01_20260906
-LABEL=prod_plummer
-DECK=nr_pic_plummer
 S() { ssh -o BatchMode=yes -o ConnectTimeout=30 $H "$@" 2>/dev/null; }
 
 S "mkdir -p $R/runs/$LABEL && touch $R/runs/$LABEL/.protect_all_rst"
@@ -37,8 +44,11 @@ for seg in $(seq 1 "$MAXSEG"); do
   if [ -n "$j" ]; then
     echo "PROD: segment $seg adopting the existing job $j"
   else
-    j=$(S "cd $R && sbatch -t ${SEGH}:00:00 -J $LABEL scripts/amd_run.sbatch $LABEL $DECK" \
-          | grep -oE 'Submitted batch job [0-9]+' | grep -oE '[0-9]+')
+    # --parsable prints the bare job id. Scraping the id out of the human banner with a
+    # loose digit regex once matched an unrelated 8-digit number in the allocation header
+    # and gave a later segment a dependency on a job that never existed.
+    j=$(S "cd $R && sbatch --parsable -t ${SEGH}:00:00 -J $LABEL scripts/amd_run.sbatch $LABEL $DECK $OVR")
+    j=${j%%;*}; j=${j//[^0-9]/}
     if [ -z "$j" ]; then echo "PROD: segment $seg SUBMIT FAILED"; exit 1; fi
     echo "PROD: segment $seg submitted as job $j (${SEGH} h)"
   fi

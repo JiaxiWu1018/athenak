@@ -83,10 +83,22 @@ def main():
     nH = LogNorm(vmin=a.hmin, vmax=a.hmax)
     nE = LogNorm(vmin=a.emin, vmax=a.emax)
 
+    # A restart that lands exactly on tlim evolves nothing but still writes one output set
+    # before exiting. Its particle data is the restart's and is correct -- the two endpoint
+    # pvtk frames of this campaign are bit-identical -- but the CONSTRAINT arrays are never
+    # computed in that process, so the con dump is identically zero. Plotted on a log norm
+    # that renders as an empty panel, which reads as "the constraints vanished". Skip any
+    # such frame and say so, rather than shipping a movie whose last frame is a lie.
+    kept = 0
     for k in range(n):
         fH = read_bin_slice(con[k])
         fT = read_bin_slice(tmu[k])
         t = fH["time"]
+        if not any(np.any(np.asarray(mb)) for mb in fH["mb_data"]["con_H"]):
+            print("  SKIP frame %d (%s): con_H is identically zero at t=%.6f -- a no-op "
+                  "restart's uninitialised dump, not a physical state"
+                  % (k, os.path.basename(con[k]), t), flush=True)
+            continue
         fig, axes = plt.subplots(2, 2, figsize=(11.4, 10.4))
         bH1 = panel(axes[0, 0], fH, "con_H", a.half_halo, nH, "magma_r")
         bH2 = panel(axes[0, 1], fH, "con_H", a.half_core, nH, "magma_r")
@@ -111,9 +123,10 @@ def main():
         fig.suptitle("Plummer cluster, equatorial $z=0$ slice, fixed 7-level refinement "
                      "(block outlines drawn)    $t/P_{1/2}$ = %.4f   ($t/M$ = %.2f)"
                      % (t/a.period, t), fontsize=10, x=0.008, ha="left")
-        fig.savefig(os.path.join(fr, "f%04d.png" % k), dpi=120,
+        fig.savefig(os.path.join(fr, "f%04d.png" % kept), dpi=120,
                     bbox_inches="tight", facecolor=STYLE["figure.facecolor"])
         plt.close(fig)
+        kept += 1
         if k % 20 == 0 or k == n - 1:
             print("  frame %4d  t/P=%.4f" % (k, t/a.period), flush=True)
 

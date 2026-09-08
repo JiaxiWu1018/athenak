@@ -189,7 +189,18 @@ def main():
         rrel = np.maximum(np.linalg.norm(rel, axis=1), 1e-30)
         nhc = rel/rrel[:, None]
 
-        # --- multipoles: raw, COM-removed, and per macro band (raw) ---
+        # --- multipoles: raw, COM-removed, and per macro band (both references) ---
+        # The band amplitudes were originally built from `nh`, i.e. about the COORDINATE
+        # ORIGIN. That is wrong for the question being asked. For a distribution displaced
+        # from the reference point by s, the unweighted dipole picks up a purely geometric
+        # term (2/3)<1/r> |s|, which is LARGEST where <1/r> is largest -- the core -- and
+        # falls off with radius exactly like <1/r>. An origin-referenced band series
+        # therefore manufactures both a large core amplitude and an apparent "radial
+        # confinement" out of a rigid offset of the cluster from the grid origin, with no
+        # internal structure whatsoever. Bands are now emitted about the whole-cluster CoM
+        # (prefix m) -- the same reference the established A_l diagnostic uses, so bands
+        # and the 'com' row are finally commensurable -- with the old origin-referenced
+        # series kept alongside (prefix o) so the earlier numbers remain reproducible.
         # `macro` holds TAG indices; nh is indexed by position within `sel`. Map tags to
         # sel-positions explicitly: intersecting tags with sel and using the result as an
         # index into nh only happens to work while every tag is alive (sel == arange(N)),
@@ -200,9 +211,10 @@ def main():
         for g in macro:
             gl = pos_of_tag[g]
             groups_local.append(gl[gl >= 0])
-        Aall, Agrp = mode_amps(nh[:, 0], nh[:, 1], nh[:, 2], a.lmax,
+        Aall, Aorg = mode_amps(nh[:, 0], nh[:, 1], nh[:, 2], a.lmax,
                                groups=groups_local)
-        Acom, _ = mode_amps(nhc[:, 0], nhc[:, 1], nhc[:, 2], a.lmax)
+        Acom, Agrp = mode_amps(nhc[:, 0], nhc[:, 1], nhc[:, 2], a.lmax,
+                               groups=groups_local)
         tp = t/a.period
         for l in range(1, a.lmax + 1):
             for band, A, nu in (("all", Aall[l], sel.size), ("com", Acom[l], sel.size)):
@@ -212,10 +224,11 @@ def main():
             for gi in range(a.macro):
                 gsz = groups_local[gi].size          # LIVE members of the band
                 sh = (gsz/2.0)**-0.5 if gsz else float("nan")
-                fm.write("%.10g,%.10g,m%d,%d,%.10e,%.10e,%.10e,%d\n"
-                         % (t, tp, gi, l, Agrp[gi][l], sh,
-                            np.sqrt(max(0.0, Agrp[gi][l]**2 - 1.0/max(gsz/2.0, 1))),
-                            gsz))
+                for pre, Ag in (("m", Agrp), ("o", Aorg)):
+                    fm.write("%.10g,%.10g,%s%d,%d,%.10e,%.10e,%.10e,%d\n"
+                             % (t, tp, pre, gi, l, Ag[gi][l], sh,
+                                np.sqrt(max(0.0, Ag[gi][l]**2 - 1.0/max(gsz/2.0, 1))),
+                                gsz))
 
         # --- dipole direction and signed inner/outer split (about the COM) ---
         d1 = dipole_vector(nhc[:, 0], nhc[:, 1], nhc[:, 2])
