@@ -60,8 +60,10 @@ class MeshBlockPack {
   // following Grid/Physics objects are all pointers so they can be allocated after
   // MeshBlockPack is constructed with pointer to my_pack.
 
-  MeshBlock* pmb;         // MeshBlocks in this MeshBlockPack
-  Coordinates* pcoord;
+  // Mesh-only (-m) exits before these are allocated; null initialization makes the
+  // ordinary destructor safe on that early path.
+  MeshBlock* pmb=nullptr;         // MeshBlocks in this MeshBlockPack
+  Coordinates* pcoord=nullptr;
 
   // physics (controlled by AddPhysics() function in meshblock_pack.cpp)
   hydro::Hydro *phydro=nullptr;
