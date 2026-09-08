@@ -35,7 +35,8 @@
 //----------------------------------------------------------------------------------------
 CompactObjectTracker::CompactObjectTracker(Mesh *pmesh, ParameterInput *pin, int n):
               owns_compact_object{false}, vel{NAN, NAN, NAN},
-              pmesh{pmesh}, out_every{1}, walk_every{1}, pos{NAN, NAN, NAN} {
+              pmesh{pmesh}, out_every{1}, walk_every{1}, pin{pin},
+              persist_state{false}, pos{NAN, NAN, NAN} {
   std::string nstr = std::to_string(n);
   std::string ofname = pin->GetString("job", "basename") + ".";
   ofname += pin->GetOrAddString("z4c", "filename", "co_");
@@ -88,6 +89,27 @@ CompactObjectTracker::CompactObjectTracker(Mesh *pmesh, ParameterInput *pin, int
   core_count = 0.0;
   core_rest_mass = 0.0;
   lapse_min = NAN;
+  persist_state = pin->GetOrAddBoolean(
+      "z4c", "co_" + nstr + "_persist_state", false);
+  const bool restore_state = persist_state && pin->GetOrAddBoolean(
+      "z4c", "co_" + nstr + "_state_valid", false);
+  if (restore_state) {
+    for (int a = 0; a < NDIM; ++a) {
+      const std::string axis(1, static_cast<char>('x' + a));
+      pos[a] = pin->GetReal("z4c", "co_" + nstr + "_state_" + axis);
+      walk_velocity[a] = pin->GetReal(
+          "z4c", "co_" + nstr + "_state_v" + axis);
+      motion_pos[a] = pin->GetReal(
+          "z4c", "co_" + nstr + "_state_motion_" + axis);
+      vel[a] = walk_velocity[a];
+    }
+    walk_last_time = pin->GetReal("z4c", "co_" + nstr + "_state_time");
+    have_motion_pos = pin->GetBoolean(
+        "z4c", "co_" + nstr + "_state_have_motion");
+    horizon_tracking = pin->GetBoolean(
+        "z4c", "co_" + nstr + "_state_horizon_tracking");
+    track_source = pin->GetInteger("z4c", "co_" + nstr + "_state_source");
+  }
   // Particles are attached to MeshBlockPack after Z4c construction, so only validate
   // the input contract here; EvolveParticleLapse dereferences the live particle object.
   if (mode == ParticleLapse && (particle_tag_min < 0
@@ -135,6 +157,30 @@ CompactObjectTracker::CompactObjectTracker(Mesh *pmesh, ParameterInput *pin, int
 
 //----------------------------------------------------------------------------------------
 CompactObjectTracker::~CompactObjectTracker() { }
+
+//----------------------------------------------------------------------------------------
+//! \fn void CompactObjectTracker::PersistState()
+//! \brief Put particle-lapse identity and predictor state into the next restart dump.
+//!
+//! A restored tracker is still required to reacquire a live local lapse neighborhood;
+//! these parameters preserve object identity, the motion predictor, and the irreversible
+//! particle-independent post-horizon switch. They do not publish a horizon or bypass
+//! any live-data check.
+void CompactObjectTracker::PersistState() {
+  if (!persist_state) return;
+  const std::string prefix = "co_" + std::to_string(tracker_index) + "_state_";
+  for (int a = 0; a < NDIM; ++a) {
+    const std::string axis(1, static_cast<char>('x' + a));
+    pin->SetReal("z4c", prefix + axis, pos[a]);
+    pin->SetReal("z4c", prefix + "v" + axis, walk_velocity[a]);
+    pin->SetReal("z4c", prefix + "motion_" + axis, motion_pos[a]);
+  }
+  pin->SetReal("z4c", prefix + "time", walk_last_time);
+  pin->SetBoolean("z4c", prefix + "have_motion", have_motion_pos);
+  pin->SetBoolean("z4c", prefix + "horizon_tracking", horizon_tracking);
+  pin->SetInteger("z4c", prefix + "source", track_source);
+  pin->SetBoolean("z4c", "co_" + std::to_string(tracker_index) + "_state_valid", true);
+}
 
 //----------------------------------------------------------------------------------------
 void CompactObjectTracker::InterpolateVelocity(MeshBlockPack *pmbp) {
@@ -347,6 +393,7 @@ void CompactObjectTracker::EvolveParticleLapse(MeshBlockPack *pmbp) {
   }
   for (int a = 0; a < NDIM; ++a) {vel[a] = walk_velocity[a];}
   walk_last_time = pmesh->time;
+  PersistState();
 }
 
 //----------------------------------------------------------------------------------------

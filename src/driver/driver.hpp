@@ -65,6 +65,9 @@ class Driver {
   Real gamma;                      // gamma value for the IMEX_new integrator
   Kokkos::Timer* pwall_clock_;     // timer for tracking the wall clock
   Real wall_time;
+  std::string stop_file;           // optional shared-file clean-stop request
+  int stop_check_every;            // cycle cadence for the metadata check
+  bool stop_file_triggered;        // report the clean-stop cause distinctly
 
   // functions
   void ExecuteTaskList(Mesh *pm, std::string tl, int stage);

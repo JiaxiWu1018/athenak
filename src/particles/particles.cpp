@@ -111,10 +111,22 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   destroy_log_fname = pin->GetString("job","basename") + ".prtcl_destroy.csv";
   destroy_component_split_tag = pin->GetOrAddInteger(
       "particles", "destroy_component_split_tag", -1);
+  destroy_component_split_tag_2 = pin->GetOrAddInteger(
+      "particles", "destroy_component_split_tag_2", -1);
   if (destroy_component_split_tag < -1) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
               << std::endl << "destroy_component_split_tag must be -1 (unknown) or "
               << "a nonnegative tag boundary" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  if (destroy_component_split_tag_2 < -1
+      || (destroy_component_split_tag_2 >= 0
+          && (destroy_component_split_tag < 0
+              || destroy_component_split_tag_2 <= destroy_component_split_tag))) {
+    std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+              << std::endl << "destroy_component_split_tag_2 must be -1 or a tag "
+              << "boundary strictly larger than destroy_component_split_tag"
+              << std::endl;
     std::exit(EXIT_FAILURE);
   }
 

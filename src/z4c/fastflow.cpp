@@ -102,6 +102,9 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   expand_guess = pin->GetOrAddReal("fastflow", "expand_guess", 1.0);
   reuse_last_surface_shape = pin->GetOrAddBoolean(
       "fastflow", "reuse_last_surface_shape_" + n_str, false);
+  persist_surface_shape = pin->GetOrAddBoolean(
+      "fastflow", "persist_surface_shape_" + n_str, false);
+  restart_surface_guess_valid = false;
 
   // If surface was found prior to checkpoint, read it as warm-up guess
   last_a0 = pin->GetOrAddReal("fastflow", "last_a0_" + n_str, -1.0);
@@ -116,6 +119,8 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   // Punctures
   npunct = pin->GetOrAddInteger("fastflow", "npunct", 0); // Number of punctures
   use_puncture = pin->GetOrAddInteger("fastflow", "use_puncture_" + n_str, -1);
+  consumer_exclude_other_punctures = pin->GetOrAddBoolean(
+      "fastflow", "consumer_exclude_other_punctures_" + n_str, false);
 
   if (use_puncture >= 0) {
     // Center is determined on the fly during the initial guess
@@ -149,12 +154,32 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   Kokkos::realloc(ac, lmpoints);
   Kokkos::realloc(as, lmpoints);
 
-  // Snapshot for consumers. Deliberately NOT seeded from the restart parameter dump,
-  // which carries ah_found but not the shape: ah_surf_valid stays false until a find in
-  // THIS run converges and passes the on-grid test in SnapshotSurface.
+  // Snapshot for consumers. A serialized shape may seed only the next flow iteration:
+  // ah_surf_valid stays false until this process converges and passes every current
+  // consumer gate in SnapshotSurface.
   Kokkos::realloc(a0_surf, lmax1);
   Kokkos::realloc(ac_surf, lmpoints);
   Kokkos::realloc(as_surf, lmpoints);
+  if (persist_surface_shape && pin->GetOrAddBoolean(
+      "fastflow", "surface_state_valid_" + n_str, false)) {
+    for (int l = 0; l < lmax1; ++l) {
+      a0_surf.h_view(l) = pin->GetReal(
+          "fastflow", "surface_state_a0_" + n_str + "_" + std::to_string(l));
+    }
+    for (int lm = 0; lm < lmpoints; ++lm) {
+      ac_surf.h_view(lm) = pin->GetReal(
+          "fastflow", "surface_state_ac_" + n_str + "_" + std::to_string(lm));
+      as_surf.h_view(lm) = pin->GetReal(
+          "fastflow", "surface_state_as_" + n_str + "_" + std::to_string(lm));
+    }
+    a0_surf.template modify<HostMemSpace>();
+    a0_surf.template sync<DevExeSpace>();
+    ac_surf.template modify<HostMemSpace>();
+    ac_surf.template sync<DevExeSpace>();
+    as_surf.template modify<HostMemSpace>();
+    as_surf.template sync<DevExeSpace>();
+    restart_surface_guess_valid = true;
+  }
   ah_surf_valid = false;
   ah_surf_center[0] = ah_surf_center[1] = ah_surf_center[2] = 0.0;
   ah_surf_rmin = -1.0;
@@ -343,7 +368,7 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
           "cycle,time,capability_mode,center_x,center_y,center_z,rmin,rmax,area,hrel,"
           "local_dx,rmin_cells,quality_geometry_ok,quality_streak,quality_persist_ok,"
           "capability_finite_positive,capability_on_grid,capability_center_jump_ok,"
-          "capability_geometry_ok,published_this_candidate\n");
+          "capability_geometry_ok,association_ok,published_this_candidate\n");
       fflush(pofile_consumer);
     }
 
@@ -561,6 +586,19 @@ void FastFlow::Find(int iter, Real time) {
     }, Kokkos::Max<Real>(candidate_rmax));
     const Real candidate_area = ah_prop[harea];
     const Real candidate_hrel = Kokkos::fabs(ah_prop[hhmean]) / candidate_area;
+    bool association_ok = true;
+    if (consumer_exclude_other_punctures && use_puncture >= 0) {
+      for (int p = 0; p < npunct; ++p) {
+        if (p == use_puncture) continue;
+        Real d2 = 0.0;
+        for (int a = 0; a < 3; ++a) {
+          d2 += SQR(center[a] - pmbp->pz4c->ptracker[p]->GetPos(a));
+        }
+        if (!Kokkos::isfinite(d2) || Kokkos::sqrt(d2) <= candidate_rmax) {
+          association_ok = false;
+        }
+      }
+    }
 
     // The protection-only snapshot intentionally has weaker admission criteria than
     // publication: finite positive radii, fully on-grid geometry, and the existing
@@ -586,7 +624,8 @@ void FastFlow::Find(int iter, Real time) {
                           && Kokkos::isfinite(candidate_hrel)
                           && local_dx_ok && rr_min > 0.0 && rr_min >= resolved_rmin
                           && candidate_rmax <= ah_surf_rmax_limit
-                          && candidate_area > 0.0 && candidate_hrel <= ah_surf_hrel_limit;
+                          && candidate_area > 0.0 && candidate_hrel <= ah_surf_hrel_limit
+                          && association_ok;
     if (quality_geometry_ok) {
       ++ah_surf_candidate_streak;
     } else {
@@ -625,7 +664,7 @@ void FastFlow::Find(int iter, Real time) {
             && center_jump <= ah_surf_capability_center_jump);
     const bool capability_geometry_ok = capability_finite_positive
         && capability_on_grid && capability_center_jump_ok
-        && candidate_rmax <= ah_surf_capability_rmax;
+        && candidate_rmax <= ah_surf_capability_rmax && association_ok;
 
     bool published_this_candidate = false;
     if (ah_surf_capability_mode) {
@@ -657,7 +696,8 @@ void FastFlow::Find(int iter, Real time) {
                   << ah_surf_rmin_limit << ", " << ah_surf_rmin_cells
                   << " local cells) = " << resolved_rmin << ", rmax <= "
                   << ah_surf_rmax_limit
-                  << ", area > 0, or |<H>|/area <= " << ah_surf_hrel_limit << "."
+                  << ", area > 0, |<H>|/area <= " << ah_surf_hrel_limit
+                  << ", and association_ok=" << static_cast<int>(association_ok) << "."
                   << std::endl;
       }
     }
@@ -668,7 +708,7 @@ void FastFlow::Find(int iter, Real time) {
           ? rr_min/ah_surf_local_dx : std::numeric_limits<Real>::quiet_NaN();
       fprintf(pofile_consumer,
           "%d,%.17g,%d,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,"
-          "%.17g,%d,%d,%d,%d,%d,%d,%d,%d\n",
+          "%.17g,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
           pmbp->pmesh->ncycle, time, static_cast<int>(ah_surf_capability_mode),
           center[0], center[1], center[2], rr_min, candidate_rmax, candidate_area,
           candidate_hrel, ah_surf_local_dx, rmin_cells,
@@ -678,6 +718,7 @@ void FastFlow::Find(int iter, Real time) {
           static_cast<int>(capability_on_grid),
           static_cast<int>(capability_center_jump_ok),
           static_cast<int>(capability_geometry_ok),
+          static_cast<int>(association_ok),
           static_cast<int>(published_this_candidate));
       fflush(pofile_consumer);
     }
@@ -712,11 +753,11 @@ void FastFlow::InitialGuess() {
     center[1] = pmbp->pz4c->ptracker[use_puncture]->GetPos(1);
     center[2] = pmbp->pz4c->ptracker[use_puncture]->GetPos(2);
 
-    // A published surface is a stronger warm start than the legacy spherical guess:
+    // A published or restart-serialized surface is stronger than a spherical guess:
     // retain all l,m coefficients while translating the expansion origin with the
-    // tracker. This state is deliberately in-run only; after a restart, ah_surf_valid
-    // remains false until a new surface passes the publication gates.
-    if (reuse_last_surface_shape && ah_surf_valid) {
+    // tracker. A restart copy remains only a guess; ah_surf_valid stays false until a
+    // new surface passes the current publication gates.
+    if (reuse_last_surface_shape && (ah_surf_valid || restart_surface_guess_valid)) {
       Kokkos::deep_copy(a0.h_view, a0_surf.h_view);
       Kokkos::deep_copy(ac.h_view, ac_surf.h_view);
       Kokkos::deep_copy(as.h_view, as_surf.h_view);
@@ -1305,7 +1346,32 @@ bool FastFlow::SnapshotSurface() {
   ah_surf_center[1] = center[1];
   ah_surf_center[2] = center[2];
   ah_surf_valid = true;
+  restart_surface_guess_valid = false;
+  PersistSurfaceWarmStart();
   return true;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void FastFlow::PersistSurfaceWarmStart()
+//! \brief Serialize the last accepted full shape as a non-authoritative restart guess.
+//!
+//! Construction restores these coefficients only into the next flow's initial guess.
+//! ah_surf_valid deliberately remains false until that process independently converges
+//! and passes every current consumer gate.
+void FastFlow::PersistSurfaceWarmStart() {
+  if (!persist_surface_shape) return;
+  const std::string n_str = std::to_string(nh);
+  for (int l = 0; l < lmax1; ++l) {
+    pin->SetReal("fastflow", "surface_state_a0_" + n_str + "_" + std::to_string(l),
+                 a0_surf.h_view(l));
+  }
+  for (int lm = 0; lm < lmpoints; ++lm) {
+    pin->SetReal("fastflow", "surface_state_ac_" + n_str + "_" + std::to_string(lm),
+                 ac_surf.h_view(lm));
+    pin->SetReal("fastflow", "surface_state_as_" + n_str + "_" + std::to_string(lm),
+                 as_surf.h_view(lm));
+  }
+  pin->SetBoolean("fastflow", "surface_state_valid_" + n_str, true);
 }
 
 //----------------------------------------------------------------------------------------

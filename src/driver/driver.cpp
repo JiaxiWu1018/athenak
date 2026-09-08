@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <string> // string
+#include <unistd.h>
 
 #include "athena.hpp"
 #include "globals.hpp"
@@ -77,6 +78,8 @@ Driver::Driver(ParameterInput *pin, Mesh *pmesh, Real wtlim, Kokkos::Timer* ptim
   ndiag(1),
   pwall_clock_(ptimer),
   wall_time(wtlim),
+  stop_check_every(0),
+  stop_file_triggered(false),
   nmb_updated_(0),
   npart_updated_(0),
   lb_efficiency_(0) {
@@ -102,6 +105,15 @@ Driver::Driver(ParameterInput *pin, Mesh *pmesh, Real wtlim, Kokkos::Timer* ptim
     tlim = pin->GetReal("time", "tlim");
     nlim = pin->GetOrAddInteger("time", "nlim", -1);
     ndiag = pin->GetOrAddInteger("time", "ndiag", 1);
+    stop_file = pin->GetOrAddString("time", "stop_file", "");
+    stop_check_every = pin->GetOrAddInteger("time", "stop_check_every", 0);
+    if ((!stop_file.empty() && stop_check_every < 1)
+        || (stop_file.empty() && stop_check_every != 0)) {
+      std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                << std::endl << "time/stop_file and a positive time/stop_check_every "
+                << "must be configured together (or both disabled)" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
 
     if (integrator == "rk1") {
       // RK1: first-order Runge-Kutta / the forward Euler (FE) method
@@ -583,6 +595,25 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
            (elapsed_time < wall_time)) {
       if (global_variable::my_rank == 0) {OutputCycleDiagnostics(pmesh);}
       if (wdflag) {WatchDog(0);}
+      if (stop_check_every > 0 && (pmesh->ncycle % stop_check_every) == 0) {
+        int stop_requested = 0;
+        if (global_variable::my_rank == 0 && access(stop_file.c_str(), F_OK) == 0) {
+          stop_requested = 1;
+        }
+#if MPI_PARALLEL_ENABLED
+        MPI_Bcast(&stop_requested, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
+        if (stop_requested != 0) {
+          stop_file_triggered = true;
+          if (global_variable::my_rank == 0) {
+            std::cout << "Clean stop requested by " << stop_file
+                      << " at cycle=" << pmesh->ncycle << " time=" << pmesh->time
+                      << "; leaving the evolution loop so Finalize writes all outputs."
+                      << std::endl;
+          }
+          break;
+        }
+      }
 
       if (sts.enabled) {
         BeginSTSSweep(pmesh, STSSweep::pre);
@@ -708,6 +739,8 @@ void Driver::Finalize(Mesh *pmesh, ParameterInput *pin, Outputs *pout) {
       OutputCycleDiagnostics(pmesh);
       if (pmesh->ncycle == nlim) {
         std::cout << std::endl << "Terminating on cycle limit" << std::endl;
+      } else if (stop_file_triggered) {
+        std::cout << std::endl << "Terminating on clean stop-file request" << std::endl;
       } else if (pmesh->time >= tlim) {
         std::cout << std::endl << "Terminating on time limit" << std::endl;
       } else {

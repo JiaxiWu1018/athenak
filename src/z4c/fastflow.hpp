@@ -57,10 +57,10 @@ class FastFlow {
 
   // ---- Snapshot of the last surface that converged IN THIS RUN -----------------------
   //! Consumers outside FastFlow (particle excision) must key off `ah_surf_valid`, not
-  //! `ah_found`. `ah_found` is reset at the top of every FastFlowLoop, is not updated
-  //! outside [start_time, stop_time], and is restored from the restart parameter dump
-  //! while the l>0 shape coefficients and rr_min are NOT -- so after a restart a restored
-  //! `ah_found == true` can coexist with rr_min == -1 and ac/as == 0. `ah_surf_valid` is
+  //! `ah_found`. `ah_found` is reset at the top of every FastFlowLoop and is not updated
+  //! outside [start_time, stop_time]. An opt-in checkpoint copy of the full shape is only
+  //! a warm guess: after restart, `ah_found == true` can coexist with consumer-invalid
+  //! state until the current run reconverges and passes its gates. `ah_surf_valid` is
   //! sticky and is set only by SnapshotSurface(), after the consumer geometry and
   //! persistence gates pass and the surface is wholly on the mesh.
   bool ah_surf_valid;
@@ -109,6 +109,8 @@ class FastFlow {
   Real rr_min; // Minimum radius
   Real expand_guess; // Expand the initial guess by this factor
   bool reuse_last_surface_shape; // warm-start from the last published full shape
+  bool persist_surface_shape;    // put a full-shape warm start in restart parameters
+  bool restart_surface_guess_valid; // restored guess only; never consumer-valid
   Real center[3]; // Center around which the horizon is searched
 
   // Fast-Flow parameters
@@ -143,6 +145,7 @@ class FastFlow {
   bool wait_until_punc_are_close;
   [[maybe_unused]] bool use_stored_metric_drvts;
   int nhorizon; // Number of horizons
+  bool consumer_exclude_other_punctures;
   std::string flow_function;
   int flowflag = 0;
   int fastflow_iter = 0;
@@ -208,6 +211,7 @@ class FastFlow {
   // Functions used in the fast-flow algorithm
   void FastFlowLoop();
   void InitialGuess();
+  void PersistSurfaceWarmStart();
 
   // Pointers to MeshBlockPack and ParameterInput
   MeshBlockPack *pmbp;

@@ -89,6 +89,9 @@ class CompactObjectTracker {
   bool have_motion_pos, horizon_tracking;
   int track_source;       // 0 ordinary, 1 particle+lapse, 2 horizon+lapse, 3 fallback
   Real core_count, core_rest_mass, lapse_min;
+  ParameterInput *pin;
+  bool persist_state;
+  void PersistState();
   std::ofstream ofile;
   Real pos[NDIM];
 };

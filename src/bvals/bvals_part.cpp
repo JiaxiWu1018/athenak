@@ -102,6 +102,7 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   auto &eflag = pmy_part->excise_flag;
   auto &ecrit = pmy_part->excise_crit;
   int component_split_tag = pmy_part->destroy_component_split_tag;
+  int component_split_tag_2 = pmy_part->destroy_component_split_tag_2;
 
   // Exact list sizing, pass 1 of 2: count (i) the particles that crossed a MeshBlock
   // boundary and (ii) the particles to destroy (mesh exits through non-periodic
@@ -189,8 +190,10 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
       dri(0,slot) = pi(PTAG,p);
       dri(1,slot) = pi(PGID,p);
       dri(2,slot) = reason;
-      dri(3,slot) = (component_split_tag >= 0)
-                    ? ((pi(PTAG,p) < component_split_tag) ? 0 : 1) : -1;
+      dri(3,slot) = (component_split_tag < 0) ? -1
+                    : ((pi(PTAG,p) < component_split_tag) ? 0
+                       : ((component_split_tag_2 >= 0
+                           && pi(PTAG,p) >= component_split_tag_2) ? 2 : 1));
       if (dbg > 0) {
         // destroyed-side checksums of the two-sided conservation ledger (cast BEFORE
         // multiplying: int tag*tag overflows at tag >= 46341)
