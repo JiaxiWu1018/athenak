@@ -1020,25 +1020,35 @@ void PlummerSetupADMMomentum(Mesh *pm, ParameterInput *pin,
 #endif
     plummer_pmom_wt[g].assign(na, 0.0);
     int norphan = 0, nshared = 0;
-    Real wsum_local = 0.0, wsum_all = 0.0;
+    Real wsum_local = 0.0;
     for (int n = 0; n < na; ++n) {
       if (own[n] == 0) { ++norphan; continue; }
       if (own[n] > 1) { ++nshared; }
-      wsum_all += grid->int_weights.h_view(n)/static_cast<Real>(own[n]);
       if (grid->interp_indcs.h_view(n, 0) >= 0) {
         plummer_pmom_wt[g][n] = grid->int_weights.h_view(n)/static_cast<Real>(own[n]);
         wsum_local += plummer_pmom_wt[g][n];
       }
     }
-    if (norphan > 0) {
+    // The closure test must be applied to what the reduction actually sums.  Each of the
+    // own[n] ranks claiming angle n contributes w_n/own[n], so the GLOBAL total is
+    // sum_n w_n = 4 pi exactly -- but only after the MPI reduction.  Summing w_n/own[n]
+    // once per angle instead would undercount every shared angle and is not the
+    // quantity the diagnostic forms.
+    Real wsum_all = wsum_local;
+    int norphan_all = norphan;
+#if MPI_PARALLEL_ENABLED
+    MPI_Allreduce(MPI_IN_PLACE, &wsum_all, 1, MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &norphan_all, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+#endif
+    if (norphan_all > 0) {
       Fatal("ADM-momentum sphere R = " + std::to_string(plummer_pmom_radii[g])
-            + " has " + std::to_string(norphan) + " angles owned by no rank; the radius "
-            "does not lie inside the mesh on every ray.");
+            + " has " + std::to_string(norphan_all) + " angles owned by no rank; the "
+            "radius does not lie inside the mesh on every ray.");
     }
     if (std::fabs(wsum_all - 4.0*M_PI) > 1.0e-10*4.0*M_PI) {
       Fatal("ADM-momentum quadrature weights for R = "
             + std::to_string(plummer_pmom_radii[g]) + " sum to "
-            + std::to_string(wsum_all) + ", not 4 pi.");
+            + std::to_string(wsum_all) + " after the rank reduction, not 4 pi.");
     }
     // report the cell size actually resolving this sphere
     Real dxmin = std::numeric_limits<Real>::max(), dxmax = 0.0;
