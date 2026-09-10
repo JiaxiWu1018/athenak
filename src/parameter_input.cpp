@@ -216,6 +216,10 @@ void ParameterInput::LoadFromStream(std::istream &is) {
 void ParameterInput::LoadFromFile(IOWrapper &input, bool single_file_per_rank) {
   std::stringstream par;
   constexpr int kBufSize = 4096;
+  // Production inputs with many output blocks can produce restart parameter headers
+  // larger than the historical 40 KiB search limit.  Keep a bounded corruption guard,
+  // but leave ample room for a complete ParameterDump before rejecting the file.
+  constexpr IOWrapperSizeT kMaxHeaderSize = 1024 * 1024;
   char buf[kBufSize];
   IOWrapperSizeT header = 0, ret, loc;
 
@@ -242,9 +246,9 @@ void ParameterInput::LoadFromFile(IOWrapper &input, bool single_file_per_rank) {
       header = loc + 10; // store the header length
       break;
     }
-    if (header > kBufSize*10) {
+    if (header > kMaxHeaderSize) {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
-                << std::endl << "<par_end> is not found in the first 40KBytes."
+                << std::endl << "<par_end> is not found in the first 1 MiB."
                 << std::endl << "Probably the file is broken or the wrong file is "
                 << "specified" << std::endl;
       std::exit(EXIT_FAILURE);
