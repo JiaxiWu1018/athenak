@@ -92,6 +92,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -106,6 +107,7 @@
 #include "eos/primitive-solver/geom_math.hpp"
 #include "particles/particles.hpp"
 #include "particles/lagrange_interp.hpp"
+#include "geodesic-grid/gauss_legendre.hpp"
 #include "outputs/outputs.hpp"
 #include "pgen/pgen.hpp"
 #include "plummer_profile.hpp"
@@ -140,6 +142,17 @@ Real plummer_shell_rmax = 400.0;
 std::string plummer_shell_fname;
 std::string plummer_cohort_fname;
 std::string plummer_field_fname;
+
+// Session-2 ADM linear-momentum surface diagnostic.  Extraction spheres are coordinate
+// spheres R = const of the Cartesian grid coordinates; the grids are rebuilt by
+// UserProblem on every start INCLUDING a restart, because this is module state in a
+// fresh process.
+std::vector<GaussLegendreGrid*> plummer_pmom_grids;
+std::vector<Real> plummer_pmom_radii;
+std::vector<std::vector<Real>> plummer_pmom_wt;   // GL weight / #claiming ranks
+int plummer_pmom_ntheta = 32;
+int plummer_pmom_selftest = 1;
+std::string plummer_pmom_fname;
 
 constexpr int NYLM_MAX = 25;      // (lmax+1)^2 with lmax = 4
 constexpr int NQ_SHELL_BASE = 8;  // count,mass,r,vr,vr2,vt2,energy,|L|
@@ -497,6 +510,7 @@ struct PlummerParticleHealth {
   Real r_min = 0.0;
   Real nonfinite = 0.0;
   Real energy = 0.0;
+  Real P_matter[3] = {0.0, 0.0, 0.0};   // sum_p m_p u_i(p), u_i covariant
 };
 
 template <int NGHOST>
@@ -660,6 +674,12 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
       Kokkos::atomic_add(&glob(8), mp*vr*vr);
       Kokkos::atomic_add(&glob(9), mp*vt2);
       Kokkos::atomic_add(&glob(10), mp*alpha*Wlor);
+      // total particle momentum P_i^matter = sum_p m_p u_i, with u_i the COVARIANT
+      // spatial 4-velocity the pusher stores.  Vanishes exactly at t = 0 by the
+      // co-located +/-u_i pair construction, so any drift is dynamical or numerical.
+      Kokkos::atomic_add(&glob(12), mp*u_d[0]);
+      Kokkos::atomic_add(&glob(13), mp*u_d[1]);
+      Kokkos::atomic_add(&glob(14), mp*u_d[2]);
     } else {
       Kokkos::atomic_add(&glob(11), 1.0);
     }
@@ -756,6 +776,9 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
   H.mass_total = mtot;
   H.nonfinite = vglob[11];
   H.energy = vglob[10];
+  H.P_matter[0] = vglob[12];
+  H.P_matter[1] = vglob[13];
+  H.P_matter[2] = vglob[14];
   H.sigma_r = (mtot > 0.0) ? std::sqrt(std::max(vglob[8]/mtot, 0.0)) : 0.0;
   H.sigma_t = (mtot > 0.0) ? std::sqrt(std::max(vglob[9]/mtot, 0.0)) : 0.0;
 
@@ -828,6 +851,409 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
   return H;
 }
 
+// ------------------------------------------------ ADM linear momentum (session 2)
+//! Session 2 adds the ADM linear momentum as a surface diagnostic,
+//!
+//!   P_i = (1/8 pi) oint dS_m ( K^m{}_i - delta^m{}_i K ),
+//!
+//! evaluated on coordinate spheres R = const of the Cartesian grid coordinates.  For
+//! such a sphere the oriented surface element is
+//!
+//!   dS_m = sqrt(gamma) nu_m R^2 dOmega,      nu_m = x_m/R  (FLAT unit radial one-form),
+//!
+//! where sqrt(gamma) = sqrt(det gamma_ij) in CARTESIAN components.  Proof: the unit
+//! normal one-form is s_m = nu_m/sqrt(gamma^{kl} nu_k nu_l), and the proper area element
+//! of the coordinate sphere is
+//!   sqrt(det sigma) dtheta dphi = sqrt(det gamma_cart) sqrt(gamma^{kl} nu_k nu_l) R^2 dOmega,
+//! which follows from det gamma_(R,theta,phi) = det sigma / gamma^{RR} together with
+//! det gamma_(R,theta,phi) = det gamma_cart * R^4 sin^2(theta) and
+//! gamma^{RR} = gamma^{kl} nu_k nu_l.  The normalisation cancels between s_m and
+//! sqrt(det sigma), leaving
+//!
+//!   P_i = (R^2/8 pi) oint sqrt(gamma) [ gamma^{mk} nu_m K_{ki} - nu_i K ] dOmega,
+//!   K = gamma^{ij} K_{ij}.
+//!
+//! Under conformal flatness gamma_ij = psi^4 delta_ij this reduces to the familiar
+//! dS_m = psi^6 n_m R^2 dOmega, and s^i dA = psi^2 n^i R^2 dOmega.
+//!
+//! K_{ij} is read from padm->u_adm[I_ADM_KXX..I_ADM_KZZ], which holds the PHYSICAL
+//! extrinsic curvature: Z4cToADM sets K_ij = psi4 A~_ij + (1/3)(Khat + 2 Theta) g_ij
+//! (z4c/z4c_adm.cpp:234-235), and Z4c::ConvertZ4cToADM is queued every cycle
+//! (z4c/z4c_tasks.cpp:82), so u_adm is current whenever the history hook runs.
+//!
+//! Two null tests and one positive test pin the implementation down:
+//!   * t = 0 is STATIC, so K_ij == 0 identically and P_i must vanish to roundoff plus
+//!     interpolation error.  This is checked and printed at setup.
+//!   * the proper area of each extraction sphere, A = oint sqrt(gamma)
+//!     sqrt(gamma^{kl} nu_k nu_l) R^2 dOmega, must equal 4 pi (R psi^2)^2 at t = 0, i.e.
+//!     A/(4 pi R^2) = psi(R)^4 = (1 + M/(2R))^4 in the vacuum exterior.  This is a
+//!     NONZERO integrand, so it validates the interpolation and quadrature that the
+//!     P_i = 0 null cannot.  Reported every call as `area_ratio`.
+//!   * the Bowen-York positive unit test below.
+
+//! Bowen-York conformally-flat trace-free extrinsic curvature for a linear momentum P,
+//! taken with psi = 1 so that gamma_ij = delta_ij exactly:
+//!   K_ij = (3/(2 R^2)) [ P_i n_j + P_j n_i - (delta_ij - n_i n_j) P.n ].
+//! It is trace-free (delta^{ij}K_ij = (3/2R^2)(2 P.n - 2 P.n) = 0) and the surface
+//! integral above returns EXACTLY P_i at every radius:
+//!   n^k K_{ki} = (3/(2R^2))[P_i + (P.n) n_i],
+//!   oint [P_i + (P.n) n_i] dOmega = 4 pi P_i + (4 pi/3) P_i = (16 pi/3) P_i,
+//!   P_i^meas = (R^2/8 pi)(3/(2 R^2))(16 pi/3) P_i = P_i.
+void BowenYorkFields(const Real x[3], const Real P[3], Real g_dd[6], Real K_dd[6]) {
+  const Real R = std::sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2]);
+  const Real n[3] = {x[0]/R, x[1]/R, x[2]/R};
+  const Real Pn = P[0]*n[0] + P[1]*n[1] + P[2]*n[2];
+  const Real pref = 1.5/(R*R);
+  g_dd[0] = 1.0; g_dd[1] = 0.0; g_dd[2] = 0.0;
+  g_dd[3] = 1.0; g_dd[4] = 0.0; g_dd[5] = 1.0;
+  const int ia[6] = {0, 0, 0, 1, 1, 2};
+  const int ib[6] = {0, 1, 2, 1, 2, 2};
+  for (int q = 0; q < 6; ++q) {
+    const int a = ia[q], b = ib[q];
+    const Real dab = (a == b) ? 1.0 : 0.0;
+    K_dd[q] = pref*(P[a]*n[b] + P[b]*n[a] - (dab - n[a]*n[b])*Pn);
+  }
+}
+
+//! One extraction sphere's contribution.  `f` holds the six g_dd then the six K_dd
+//! components at each angle, in the u_adm ordering (xx, xy, xz, yy, yz, zz).  `wt` is
+//! the Gauss-Legendre solid-angle weight already divided by the number of ranks that
+//! claim that angle, so a node lying exactly on a shared MeshBlock face -- which the
+//! phi = 0 and phi = pi/2 columns of the grid always do, since they land on x = 0 and
+//! y = 0 -- is counted once, not twice.  Angles with zero weight contribute nothing.
+//! Returns the un-normalised angular sums; the caller applies R^2/(8 pi).
+void PlummerMomentumQuadrature(int nangles, const Real *xyz, const Real *f,
+                               const Real *wt, Real R,
+                               Real sumP[3], Real *sum_area, Real *sum_trK,
+                               Real *sum_w) {
+  sumP[0] = sumP[1] = sumP[2] = 0.0;
+  *sum_area = 0.0; *sum_trK = 0.0; *sum_w = 0.0;
+  const int sy[3][3] = {{0, 1, 2}, {1, 3, 4}, {2, 4, 5}};
+  for (int n = 0; n < nangles; ++n) {
+    const Real w = wt[n];
+    if (w == 0.0) { continue; }
+    const Real *g = f + static_cast<std::size_t>(n)*12;
+    const Real *K = g + 6;
+    const Real detg = adm::SpatialDet(g[0], g[1], g[2], g[3], g[4], g[5]);
+    if (!(detg > 0.0) || !std::isfinite(detg)) { continue; }
+    const Real idet = 1.0/detg;
+    Real uxx, uxy, uxz, uyy, uyz, uzz;
+    adm::SpatialInv(idet, g[0], g[1], g[2], g[3], g[4], g[5],
+                    &uxx, &uxy, &uxz, &uyy, &uyz, &uzz);
+    const Real gu[6] = {uxx, uxy, uxz, uyy, uyz, uzz};
+    const Real trK = adm::Trace(idet, g[0], g[1], g[2], g[3], g[4], g[5],
+                                K[0], K[1], K[2], K[3], K[4], K[5]);
+    const Real sg = std::sqrt(detg);
+    const Real nu[3] = {xyz[3*n + 0]/R, xyz[3*n + 1]/R, xyz[3*n + 2]/R};
+    // s^k = gamma^{km} nu_m  (index-raised flat radial one-form)
+    Real su[3];
+    for (int k = 0; k < 3; ++k) {
+      su[k] = gu[sy[k][0]]*nu[0] + gu[sy[k][1]]*nu[1] + gu[sy[k][2]]*nu[2];
+    }
+    const Real gRR = su[0]*nu[0] + su[1]*nu[1] + su[2]*nu[2];   // gamma^{kl} nu_k nu_l
+    for (int i = 0; i < 3; ++i) {
+      const Real Kni = su[0]*K[sy[0][i]] + su[1]*K[sy[1][i]] + su[2]*K[sy[2][i]];
+      sumP[i] += w*sg*(Kni - nu[i]*trK);
+    }
+    *sum_area += w*sg*std::sqrt(std::max(gRR, 0.0));
+    *sum_trK += w*trK;
+    *sum_w += w;
+  }
+}
+
+//! Build the extraction spheres, decide angle ownership once (the mesh is static), and
+//! run the Bowen-York positive unit test.  Called from UserProblem, including on a
+//! restart, because the grids are module state in a fresh process.
+void PlummerSetupADMMomentum(Mesh *pm, ParameterInput *pin,
+                             const std::string &basename) {
+  MeshBlockPack *pmbp = pm->pmb_pack;
+  const int nrad = pin->GetOrAddInteger("problem", "plummer_pmom_nrad", 0);
+  plummer_pmom_ntheta = pin->GetOrAddInteger("problem", "plummer_pmom_ntheta", 32);
+  plummer_pmom_selftest = pin->GetOrAddInteger("problem", "plummer_pmom_selftest", 1);
+  plummer_pmom_fname = basename + ".plummer_admmom.csv";
+  if (nrad <= 0) {
+    if (global_variable::my_rank == 0) {
+      std::cout << "nr_pic_plummer: ADM linear-momentum diagnostic OFF "
+                   "(plummer_pmom_nrad = 0)" << std::endl;
+    }
+    return;
+  }
+  if (plummer_pmom_ntheta < 8 || plummer_pmom_ntheta % 2 != 0) {
+    Fatal("plummer_pmom_ntheta must be even and >= 8 (Gauss-Legendre in cos(theta), "
+          "2*ntheta uniform nodes in phi; an odd ntheta puts a node on the equator "
+          "z = 0, which is a MeshBlock face on this mesh).");
+  }
+  const Real xmin = pm->mesh_size.x1min, xmax = pm->mesh_size.x1max;
+  const Real half = std::min(std::fabs(xmin), std::fabs(xmax));
+
+  for (int k = 0; k < nrad; ++k) {
+    const std::string key = "plummer_pmom_r" + std::to_string(k + 1);
+    const Real R = pin->GetReal("problem", key);
+    if (!(R > 0.0)) { Fatal("plummer_pmom_r* must be positive: " + key); }
+    if (R >= half) {
+      Fatal("extraction radius " + key + " is outside the mesh: R = "
+            + std::to_string(R) + " >= half-width " + std::to_string(half));
+    }
+    plummer_pmom_radii.push_back(R);
+    plummer_pmom_grids.push_back(new GaussLegendreGrid(pmbp, plummer_pmom_ntheta, R));
+  }
+
+  // ---- ownership: how many ranks claim each angle.  The bounds test in
+  // GaussLegendreGrid::SetInterpolationIndices is inclusive at BOTH ends, and this grid
+  // always puts nodes on x = 0 (phi = pi/2) and y = 0 (phi = 0), which are MeshBlock
+  // faces on a mesh centred at the origin.  Such an angle is claimed by every rank
+  // holding a block that touches the face, so summing the raw weights would multiply
+  // those columns.  Dividing each weight by the claim count makes the double count
+  // impossible rather than merely unlikely, and averages the two (identical to
+  // interpolation accuracy) interpolants.
+  const std::size_t ng = plummer_pmom_grids.size();
+  plummer_pmom_wt.resize(ng);
+  for (std::size_t g = 0; g < ng; ++g) {
+    GaussLegendreGrid *grid = plummer_pmom_grids[g];
+    const int na = grid->nangles;
+    std::vector<int> own(na, 0);
+    for (int n = 0; n < na; ++n) {
+      own[n] = (grid->interp_indcs.h_view(n, 0) >= 0) ? 1 : 0;
+    }
+#if MPI_PARALLEL_ENABLED
+    MPI_Allreduce(MPI_IN_PLACE, own.data(), na, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    plummer_pmom_wt[g].assign(na, 0.0);
+    int norphan = 0, nshared = 0;
+    Real wsum_local = 0.0, wsum_all = 0.0;
+    for (int n = 0; n < na; ++n) {
+      if (own[n] == 0) { ++norphan; continue; }
+      if (own[n] > 1) { ++nshared; }
+      wsum_all += grid->int_weights.h_view(n)/static_cast<Real>(own[n]);
+      if (grid->interp_indcs.h_view(n, 0) >= 0) {
+        plummer_pmom_wt[g][n] = grid->int_weights.h_view(n)/static_cast<Real>(own[n]);
+        wsum_local += plummer_pmom_wt[g][n];
+      }
+    }
+    if (norphan > 0) {
+      Fatal("ADM-momentum sphere R = " + std::to_string(plummer_pmom_radii[g])
+            + " has " + std::to_string(norphan) + " angles owned by no rank; the radius "
+            "does not lie inside the mesh on every ray.");
+    }
+    if (std::fabs(wsum_all - 4.0*M_PI) > 1.0e-10*4.0*M_PI) {
+      Fatal("ADM-momentum quadrature weights for R = "
+            + std::to_string(plummer_pmom_radii[g]) + " sum to "
+            + std::to_string(wsum_all) + ", not 4 pi.");
+    }
+    // report the cell size actually resolving this sphere
+    Real dxmin = std::numeric_limits<Real>::max(), dxmax = 0.0;
+    auto &size = pmbp->pmb->mb_size;
+    for (int n = 0; n < na; ++n) {
+      const int m = grid->interp_indcs.h_view(n, 0);
+      if (m < 0) { continue; }
+      dxmin = std::min(dxmin, size.h_view(m).dx1);
+      dxmax = std::max(dxmax, size.h_view(m).dx1);
+    }
+#if MPI_PARALLEL_ENABLED
+    MPI_Allreduce(MPI_IN_PLACE, &dxmin, 1, MPI_ATHENA_REAL, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &dxmax, 1, MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &nshared, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+#endif
+    if (global_variable::my_rank == 0) {
+      const Real R = plummer_pmom_radii[g];
+      std::cout << "nr_pic_plummer: P_ADM sphere " << g + 1 << "/" << ng
+                << "  R = " << R
+                << "  nangles = " << na
+                << "  sum(w) = " << wsum_all
+                << "  dx in [" << dxmin << ", " << dxmax << "]"
+                << "  R/dx = " << R/dxmax
+                << "  angles/cell(equator) = "
+                << (2.0*plummer_pmom_ntheta)/(2.0*M_PI*R/dxmax)
+                << "  shared-face angles = " << nshared
+                << (R > plummer_Rt ? "  [vacuum]" : "  [INSIDE MATTER]")
+                << std::endl;
+    }
+  }
+
+  // ---- positive unit test: Bowen-York analytic fields at the grid nodes.  This
+  // exercises the quadrature and the tensor algebra exactly (no interpolation), and its
+  // answer is known in closed form, so it is a genuine test rather than a null.
+  if ((plummer_pmom_selftest & 1) != 0) {
+    const Real Ptest[3] = {0.3, -0.7, 0.11};
+    Real worst = 0.0;
+    for (std::size_t g = 0; g < ng; ++g) {
+      GaussLegendreGrid *grid = plummer_pmom_grids[g];
+      const int na = grid->nangles;
+      const Real R = plummer_pmom_radii[g];
+      std::vector<Real> xyz(3*static_cast<std::size_t>(na));
+      std::vector<Real> f(12*static_cast<std::size_t>(na));
+      std::vector<Real> w(na);
+      for (int n = 0; n < na; ++n) {
+        Real x[3] = {grid->cart_pos.h_view(n, 0), grid->cart_pos.h_view(n, 1),
+                     grid->cart_pos.h_view(n, 2)};
+        xyz[3*n + 0] = x[0]; xyz[3*n + 1] = x[1]; xyz[3*n + 2] = x[2];
+        BowenYorkFields(x, Ptest, &f[12*n], &f[12*n + 6]);
+        w[n] = grid->int_weights.h_view(n);   // full weights: this is a serial test
+      }
+      Real sumP[3], sarea, strK, sw;
+      PlummerMomentumQuadrature(na, xyz.data(), f.data(), w.data(), R,
+                                sumP, &sarea, &strK, &sw);
+      const Real pref = R*R/(8.0*M_PI);
+      for (int i = 0; i < 3; ++i) {
+        worst = std::max(worst, std::fabs(pref*sumP[i] - Ptest[i]));
+      }
+    }
+    if (global_variable::my_rank == 0) {
+      std::cout << "nr_pic_plummer: P_ADM Bowen-York unit test (P = 0.3, -0.7, 0.11): "
+                << "max |P_measured - P_exact| = " << worst << "  -> "
+                << (worst < 1.0e-12 ? "PASS" : "FAIL") << std::endl;
+    }
+    if (worst >= 1.0e-12) {
+      Fatal("ADM-momentum Bowen-York unit test failed: the quadrature or the tensor "
+            "algebra is wrong, so no measured P_i can be trusted.");
+    }
+  }
+}
+
+//! Evaluate P_i^ADM on every extraction sphere and append one CSV row per sphere.
+//! `Pmatter` is the particle momentum sum from PlummerParticleDiagnostics and `mom_l2`
+//! the volume-weighted momentum-constraint norm from MeasurePlummerFieldHealth; both are
+//! repeated on each row so a single read gives every momentum diagnostic at that time.
+void PlummerADMMomentum(Mesh *pm, Real time, int ncycle, bool write_csv,
+                        const Real Pmatter[3], Real mom_l2, Real Pdep[3]) {
+  const std::size_t ng = plummer_pmom_grids.size();
+  if (ng == 0) { return; }
+  MeshBlockPack *pmbp = pm->pmb_pack;
+  DvceArray5D<Real> uadm = pmbp->padm->u_adm;
+
+  const Real amatter = std::sqrt(Pmatter[0]*Pmatter[0] + Pmatter[1]*Pmatter[1]
+                               + Pmatter[2]*Pmatter[2]);
+  std::vector<Real> rows;
+  rows.reserve(ng*8);
+
+  for (std::size_t g = 0; g < ng; ++g) {
+    GaussLegendreGrid *grid = plummer_pmom_grids[g];
+    const int na = grid->nangles;
+    const Real R = plummer_pmom_radii[g];
+    std::vector<Real> f(12*static_cast<std::size_t>(na), 0.0);
+    // GaussLegendreGrid interpolates ONE component per call and reuses interp_vals, so
+    // copy each out immediately.  Components 0..5 are g_dd, 6..11 are K_dd, in the
+    // u_adm enum order I_ADM_GXX..I_ADM_KZZ.
+    for (int v = 0; v < 12; ++v) {
+      grid->InterpolateToSphere(adm::ADM::I_ADM_GXX + v, uadm);
+      for (int n = 0; n < na; ++n) {
+        f[12*static_cast<std::size_t>(n) + v] = grid->interp_vals.h_view(n);
+      }
+    }
+    std::vector<Real> xyz(3*static_cast<std::size_t>(na));
+    for (int n = 0; n < na; ++n) {
+      xyz[3*n + 0] = grid->cart_pos.h_view(n, 0);
+      xyz[3*n + 1] = grid->cart_pos.h_view(n, 1);
+      xyz[3*n + 2] = grid->cart_pos.h_view(n, 2);
+    }
+    Real sumP[3], sarea, strK, sw;
+    PlummerMomentumQuadrature(na, xyz.data(), f.data(), plummer_pmom_wt[g].data(), R,
+                              sumP, &sarea, &strK, &sw);
+    Real red[6] = {sumP[0], sumP[1], sumP[2], sarea, strK, sw};
+#if MPI_PARALLEL_ENABLED
+    MPI_Allreduce(MPI_IN_PLACE, red, 6, MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    const Real pref = R*R/(8.0*M_PI);
+    const Real P[3] = {pref*red[0], pref*red[1], pref*red[2]};
+    const Real absP = std::sqrt(P[0]*P[0] + P[1]*P[1] + P[2]*P[2]);
+    // A/(4 pi R^2): a NONZERO control integrand.  In the t = 0 vacuum exterior it must
+    // equal psi(R)^4 = (1 + M/(2R))^4.
+    const Real area_ratio = red[3]/(4.0*M_PI);
+    const Real mean_trK = red[4]/(4.0*M_PI);
+    rows.push_back(R);
+    rows.push_back(P[0]); rows.push_back(P[1]); rows.push_back(P[2]);
+    rows.push_back(absP);
+    rows.push_back(area_ratio);
+    rows.push_back(mean_trK);
+    rows.push_back(red[5]);
+  }
+
+  if (write_csv && global_variable::my_rank == 0) {
+    std::ofstream fo(plummer_pmom_fname, std::ios::app);
+    if (fo.good()) {
+      if (FileIsEmpty(plummer_pmom_fname)) {
+        fo << "# Plummer ADM linear-momentum ledger.  One row per extraction sphere per "
+              "history time.\n"
+           << "#   P_i^ADM = (R^2/8 pi) oint sqrt(gamma) [ gamma^{mk} nu_m K_{ki} "
+              "- nu_i K ] dOmega,  nu_i = x_i/R (FLAT unit radial one-form),\n"
+           << "#   sqrt(gamma) = sqrt(det gamma_ij) in Cartesian components, "
+              "K = gamma^{ij} K_{ij}, K_ij the PHYSICAL extrinsic curvature from "
+              "padm->u_adm.\n"
+           << "#   Gauss-Legendre quadrature: ntheta = " << plummer_pmom_ntheta
+           << " nodes in cos(theta) x " << 2*plummer_pmom_ntheta
+           << " uniform in phi = " << 2*plummer_pmom_ntheta*plummer_pmom_ntheta
+           << " angles; each weight divided by the number of ranks claiming that "
+              "angle.\n"
+           << "#   area_ratio = A/(4 pi R^2) with A the PROPER area of the sphere; at "
+              "t = 0 in vacuum this must equal (1 + M/(2R))^4.\n"
+           << "#   P_matter_i = sum_p m_p u_i(p) over ALL particles (u_i covariant); "
+              "P_dep_i = int S_i sqrt(gamma) d^3x from the DEPOSITED source.\n"
+           << "#   mom_l2 = sqrt( int |M|^2 dV / int dV ), coordinate volume, whole box.\n"
+           << "time,cycle,R,Px_adm,Py_adm,Pz_adm,absP_adm,area_ratio,mean_trK,sum_w,"
+              "Px_matter,Py_matter,Pz_matter,absP_matter,Px_dep,Py_dep,Pz_dep,mom_l2\n";
+      }
+      fo << std::setprecision(12);
+      for (std::size_t g = 0; g < ng; ++g) {
+        const Real *r = &rows[8*g];
+        fo << time << "," << ncycle;
+        for (int q = 0; q < 8; ++q) { fo << "," << r[q]; }
+        fo << "," << Pmatter[0] << "," << Pmatter[1] << "," << Pmatter[2]
+           << "," << amatter
+           << "," << Pdep[0] << "," << Pdep[1] << "," << Pdep[2]
+           << "," << mom_l2 << "\n";
+      }
+    }
+  }
+}
+
+//! Volume integral of the DEPOSITED ADM momentum density,
+//!   P_i^dep = int S_i sqrt(gamma) d^3x,   S_i = -T_{mu nu} n^mu gamma^nu{}_i,
+//! taken over the whole mesh with the coordinate cell volume.  This is the momentum the
+//! particles actually hand to the field solver, so comparing it with the particle sum
+//! P_i^matter isolates deposition/gather error, and comparing both with P_i^ADM isolates
+//! the field response.  Returns zero if <tmunu> is absent (frozen-metric mode).
+void PlummerDepositedMomentum(Mesh *pm, Real Pdep[3]) {
+  Pdep[0] = Pdep[1] = Pdep[2] = 0.0;
+  MeshBlockPack *pmbp = pm->pmb_pack;
+  if (pmbp->ptmunu == nullptr) { return; }
+  auto &indcs = pm->mb_indcs;
+  const int is = indcs.is, js = indcs.js, ks = indcs.ks;
+  const int nx1 = indcs.nx1, nx2 = indcs.nx2, nx3 = indcs.nx3;
+  const int nmb = pmbp->nmb_thispack;
+  const int ncells = nmb*nx1*nx2*nx3;
+  auto &size = pmbp->pmb->mb_size;
+  DvceArray5D<Real> ut = pmbp->ptmunu->u_tmunu;
+  DvceArray5D<Real> ua = pmbp->padm->u_adm;
+  // One sweep with three accumulators: sqrt(gamma) is the expensive part and is shared.
+  Real s[3] = {0.0, 0.0, 0.0};
+  const int ivx = Tmunu::I_Tmunu_Sx;
+  Kokkos::parallel_reduce("plummer Pdep",
+      Kokkos::RangePolicy<>(DevExeSpace(), 0, ncells),
+  KOKKOS_LAMBDA(const int idx, Real &ax, Real &ay, Real &az) {
+    const int i = idx % nx1;
+    const int j = (idx/nx1) % nx2;
+    const int k = (idx/(nx1*nx2)) % nx3;
+    const int m = idx/(nx1*nx2*nx3);
+    const Real dv = size.d_view(m).dx1*size.d_view(m).dx2*size.d_view(m).dx3;
+    const Real detg = adm::SpatialDet(
+        ua(m, adm::ADM::I_ADM_GXX, k+ks, j+js, i+is),
+        ua(m, adm::ADM::I_ADM_GXY, k+ks, j+js, i+is),
+        ua(m, adm::ADM::I_ADM_GXZ, k+ks, j+js, i+is),
+        ua(m, adm::ADM::I_ADM_GYY, k+ks, j+js, i+is),
+        ua(m, adm::ADM::I_ADM_GYZ, k+ks, j+js, i+is),
+        ua(m, adm::ADM::I_ADM_GZZ, k+ks, j+js, i+is));
+    const Real wv = ((detg > 0.0) ? Kokkos::sqrt(detg) : 0.0)*dv;
+    ax += ut(m, ivx + 0, k+ks, j+js, i+is)*wv;
+    ay += ut(m, ivx + 1, k+ks, j+js, i+is)*wv;
+    az += ut(m, ivx + 2, k+ks, j+js, i+is)*wv;
+  }, s[0], s[1], s[2]);
+
+#if MPI_PARALLEL_ENABLED
+  MPI_Allreduce(MPI_IN_PLACE, s, 3, MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  Pdep[0] = s[0]; Pdep[1] = s[1]; Pdep[2] = s[2];
+}
+
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -865,6 +1291,14 @@ void PlummerClusterHistory(HistoryData *pdata, Mesh *pm) {
     default: Fatal("nr_pic_plummer diagnostics support nghost=2,3,4.");
   }
   PlummerFieldHealth F = MeasurePlummerFieldHealth(pm, pm->time, pm->ncycle, true);
+
+  // Session-2 momentum diagnostics, appended to their own ledger because the 20 history
+  // columns are saturated (NHISTORY_VARIABLES = 20).
+  if (!plummer_pmom_grids.empty()) {
+    Real Pdep[3] = {0.0, 0.0, 0.0};
+    PlummerDepositedMomentum(pm, Pdep);
+    PlummerADMMomentum(pm, pm->time, pm->ncycle, true, H.P_matter, F.mom_l2, Pdep);
+  }
 
   // EVERY quantity below is already MPI-global (the two diagnostic routines Allreduce
   // internally, because they also drive the CSV ledgers).  HistoryOutput then does
@@ -993,6 +1427,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   plummer_Phalf = Phalf;
   plummer_npair = npair;
   plummer_ntotal = ntotal;
+
+  // ADM linear-momentum extraction spheres.  Built after plummer_Rt is known so the
+  // banner can flag a radius that is not in vacuum.
+  PlummerSetupADMMomentum(pmy_mesh_, pin, basename);
 
   // circular orbits must exist everywhere particles can be placed
   {
