@@ -32,6 +32,28 @@ def w(s=''):
     L.append(s)
 
 
+
+def _align_verdict(c):
+    """Persistence, not the mean.
+
+    A mean of +0.55 from a series that swings over [-0.48, +1.00] is not persistent
+    alignment -- it is a sign-changing oscillation with a positive average, and calling
+    it "translation-like" would be wrong.  Require that one sign actually dominate the
+    TIME, and that the series not change sign repeatedly.
+    """
+    import numpy as np
+    frac_pos = float(np.mean(c > 0))
+    nflip = int(np.sum(np.diff(np.sign(c)) != 0))
+    if nflip >= 2:
+        return ('sign changes %d times over the window: neither a persistent '
+                'translation nor persistent sloshing' % nflip)
+    if frac_pos > 0.9:
+        return '**persistently ALIGNED (translation-like)**'
+    if frac_pos < 0.1:
+        return '**persistently ANTI-ALIGNED (sloshing-like)**'
+    return 'no persistent alignment either way (%.0f %% of the time aligned)' % (100 * frac_pos)
+
+
 def verdict(ok, good, bad):
     return ('**%s**' % good) if ok else ('**%s**' % bad)
 
@@ -81,14 +103,19 @@ def main():
             rows.append((q, s.A_l.iloc[0], s.A_l.max(), s.A_l.iloc[-1],
                          s.A_shot.iloc[-1]))
         if rows:
-            txt = '; '.join('q%d %.2fx (last/null %.2f)'
-                            % (q, mx / s0, la / sh) for q, s0, mx, la, sh in rows)
-            amp = [mx / s0 for _, s0, mx, _, _ in rows]
+            txt = '; '.join('q%d max %.2fx, **last %.2fx** (last/null %.2f)'
+                            % (q, mx / s0, la / s0, la / sh)
+                            for q, s0, mx, la, sh in rows)
+            # A transient maximum is not a level.  q2 in R6p5's first period peaked at
+            # 2.51x and fell back to 0.78 of its own null, which is exactly the
+            # oscillation-versus-growth ambiguity Session 1 warned about, so rank the
+            # bands by where they END, not by their excursion.
+            amp = [la / s0 for _, s0, _, la, _ in rows]
             core_led = amp[0] == max(amp)
             w('| Is growth global or confined to the core? | per-quartile '
               'max/start: %s | %s |'
               % (txt, verdict(max(amp) < 2.0,
-                              'no band above 2x',
+                              'no band sustained above 2x',
                               'largest in %s (%.2fx)'
                               % ('the CORE band' if core_led else
                                  'band q%d' % rows[int(np.argmax(amp))][0],
@@ -128,10 +155,7 @@ def main():
           'range [%+.3f, %+.3f] over %.3f $P_{1/2}$ | %s |'
           % (c01.mean(), c01[-1], c01.min(), c01.max(), K,
              'NOT YET MEANINGFUL (span < 0.5 $P_{1/2}$)' if short
-             else verdict(abs(c01.mean()) < 0.5, 'no persistent alignment either way',
-                          'persistently %s' % ('ALIGNED (translation-like)'
-                                               if c01.mean() > 0 else
-                                               'ANTI-ALIGNED (sloshing-like)'))))
+             else _align_verdict(c01)))
         u = A / np.linalg.norm(A, axis=1)[:, None]
         mn = u.mean(0)
         mn /= np.linalg.norm(mn)
@@ -192,15 +216,46 @@ def main():
         fin = mm[np.isclose(mm.time, tf)]
         if len(fin) > 1:
             spread = [fin.absP_adm.min(), fin.absP_adm.max()]
-        w('| Is ADM linear momentum remaining near zero? | at $R = %.6g$: '
-          '$|P|$ max %.3e, last %.3e; across %d radii at the final time '
-          '$|P| \\in$ [%.3e, %.3e] | %s |'
-          % (Rq, sq.absP_adm.abs().max(), sq.absP_adm.iloc[-1], len(radii),
-             spread[0] if spread else float('nan'),
-             spread[1] if spread else float('nan'),
-             verdict(sq.absP_adm.abs().max() < 1e-4,
-                     'consistent with zero (< 1e-4 M)',
-                     'NONZERO: %.3e M' % sq.absP_adm.abs().max())))
+        # The surface integral is contaminated while the OUTGOING CONSTRAINT FRONT is
+        # crossing the sphere.  The finite-N shot noise in the deposited density launches
+        # a disturbance at t = 0 that propagates outward at ~1.9 and lifts |P| by ten
+        # orders of magnitude as it passes each radius; radii it has not reached sit at
+        # the ~1e-12 quadrature floor.  So the meaningful estimate is the OUTERMOST
+        # sphere the front has not yet crossed, not simply the outermost sphere, and a
+        # radius-independence claim is only meaningful among uncrossed radii.
+        CLEAN = 1.0e-9
+        clean = sorted(float(r) for r in fin.R[fin.absP_adm.abs() < CLEAN])
+        dirty = sorted(float(r) for r in fin.R[fin.absP_adm.abs() >= CLEAN])
+        if clean:
+            Rb = clean[-1]
+            sb = mm[np.isclose(mm.R, Rb)].sort_values('time')
+            vals = fin.absP_adm.abs()[fin.R.isin(clean)]
+            w('| Is ADM linear momentum remaining near zero? | best estimate from the '
+              'outermost sphere the outgoing front has NOT crossed, $R = %.6g$ '
+              '($R/R_t$ = %.2f): $|P|$ last %.3e, max over the run %.3e. Across the '
+              '%d uncrossed radii $|P| \\in$ [%.3e, %.3e] | %s |'
+              % (Rb, Rb / ref['R_t'], sb.absP_adm.iloc[-1], sb.absP_adm.abs().max(),
+                 len(clean), vals.min(), vals.max(),
+                 verdict(sb.absP_adm.abs().max() < 1e-8,
+                         'consistent with zero at the quadrature floor',
+                         'NONZERO: %.3e M' % sb.absP_adm.abs().max())))
+        else:
+            w('| Is ADM linear momentum remaining near zero? | **every** extraction '
+              'sphere has now been crossed by the outgoing front; $|P| \\in$ [%.3e, '
+              '%.3e] across %d radii, so no uncontaminated estimate exists at this '
+              'time | %s |'
+              % (fin.absP_adm.abs().min(), fin.absP_adm.abs().max(), len(radii),
+                 '**NO CLEAN RADIUS — quote with the front caveat**'))
+        if dirty:
+            # locate the front from the crossing pattern
+            w('| Where is the outgoing constraint front? | crossed (|P| > %.0e): %s; '
+              'uncrossed: %s. So the front lies %s at $t/P = %.3f$ | %s |'
+              % (CLEAN, ', '.join('%.4g' % r for r in dirty) or 'none',
+                 ', '.join('%.4g' % r for r in clean) or 'none',
+                 ('between %.4g and %.4g M' % (dirty[-1], clean[0])) if clean
+                 else ('beyond %.4g M' % dirty[-1]),
+                 K,
+                 'expected: it is the finite-N constraint pulse, not a momentum'))
         w('| Matter-side momenta | $|P^{\\rm matter}|$ last %.3e; '
           '$|P^{\\rm dep}|$ last %.3e | %s |'
           % (sq.absP_matter.iloc[-1],

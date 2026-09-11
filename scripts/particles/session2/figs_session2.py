@@ -44,10 +44,18 @@ import matplotlib.pyplot as plt          # noqa: E402
 import s2_style as st                    # noqa: E402
 
 
-def symlog_or_linear(ax, values, floor=1e-16):
-    """symlog is unreadable when the data are identically zero, which is exactly the
-    t = 0 state (K_ij vanishes in static initial data, so P_i is the literal 0).  Use a
-    linear axis with a small symmetric range then, and say so on the panel."""
+def mag_axis(ax, values, floor=1e-16):
+    """Axis for a NON-NEGATIVE magnitude such as |P|.
+
+    Plain log, not symlog.  These runs span |P| from the 1e-12 quadrature floor to the
+    1e-5 the outgoing constraint front produces as it crosses a sphere, and on a symlog
+    axis whose linear threshold is set by the maximum the whole 1e-12 floor collapses
+    onto the zero line -- which is precisely the part that carries the physics, because
+    the radii the front has not reached are the ones that measure the momentum.
+
+    The exception is an identically-zero series (t = 0, where K_ij vanishes in static
+    initial data): log cannot show it, so use a linear axis and say so.
+    """
     v = np.asarray([x for x in np.ravel(values) if np.isfinite(x)])
     if v.size == 0 or np.all(v == 0.0):
         ax.set_ylim(-1.0, 1.0)
@@ -56,8 +64,11 @@ def symlog_or_linear(ax, values, floor=1e-16):
                     xy=(0.5, 0.5), xycoords='axes fraction', ha='center', va='center',
                     fontsize=8, color=st.MUTED)
         return
-    mx = np.abs(v).max()
-    ax.set_yscale('symlog', linthresh=max(floor, 1e-3 * mx))
+    pos = np.abs(v[v != 0.0])
+    if pos.size == 0:
+        return
+    ax.set_yscale('log')
+    ax.set_ylim(max(floor, 0.3 * pos.min()), 3.0 * pos.max())
 
 
 def dedup(df, keys):
@@ -225,7 +236,7 @@ def f4_momentum(rundir, ref, ms, out):
     dep = np.sqrt(s.Px_dep**2 + s.Py_dep**2 + s.Pz_dep**2)
     axes[1].plot(s.t_over_P, dep, label=r'$|P^{\rm dep}| = |\int S_i \sqrt{\gamma}d^3x|$',
                  **st.style(2))
-    symlog_or_linear(axes[1], np.concatenate(
+    mag_axis(axes[1], np.concatenate(
         [np.abs(s.absP_adm.to_numpy()), np.abs(s.absP_matter.to_numpy()),
          dep.to_numpy()]))
     axes[1].set_ylabel(r'$|P|$  [$M$]')
@@ -265,7 +276,7 @@ def f5_radii(rundir, ref, ms, out):
         s = d[d.R == R].sort_values('time')
         axes[0].plot(s.t_over_P, s.absP_adm, color=cols[i], lw=1.3,
                      label=r'$R=%.4g$' % R)
-    symlog_or_linear(axes[0], d.absP_adm.to_numpy())
+    mag_axis(axes[0], d.absP_adm.to_numpy())
     axes[0].set_ylabel(r'$|P^{\rm ADM}|$  [$M$]')
     axes[0].set_title('Extraction-radius consistency: every sphere lies wholly\n'
                       'on one refinement level, in vacuum')
@@ -290,6 +301,15 @@ def f5_radii(rundir, ref, ms, out):
     axes[1].set_ylabel('value at the final stored time')
     axes[1].set_title(r'at $t = %.4g\,M$ ($t/P_{1/2} = %.3f$)'
                       % (tf, tf / ref['P_half']))
+    clean = s.R[s.absP_adm.abs() < 1e-9].to_numpy()
+    if clean.size and clean.size < len(s):
+        axes[1].axvspan(clean.min() / ref['R_t'], s.R.max() / ref['R_t'],
+                        color='#eef4fa', zorder=0)
+        axes[1].annotate('uncrossed by the outgoing constraint front:\n'
+                         'these radii measure the momentum',
+                         xy=(clean.min() / ref['R_t'], 0.03),
+                         xycoords=('data', 'axes fraction'), fontsize=7,
+                         color=st.MUTED, va='bottom', ha='left')
     axes[1].legend(loc='best', fontsize=7.4)
     st.stamp(fig, ref, ms)
     st.save(fig, out, 'f5_momentum_radii')
