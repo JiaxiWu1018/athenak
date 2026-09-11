@@ -122,21 +122,31 @@ def main():
         t = np.array(sorted(set.intersection(*[set(v.index) for v in piv.values()])))
         A, B = piv['m0'].loc[t].to_numpy(), piv['m1'].loc[t].to_numpy()
         c01 = (A * B).sum(1) / (np.linalg.norm(A, axis=1) * np.linalg.norm(B, axis=1))
+        short = K < 0.5
         w('| Are inner shells aligned or anti-aligned? | '
           r'$\cos(\mathbf{D}_0,\mathbf{D}_1)$: mean %+.3f, last %+.3f, '
-          'range [%+.3f, %+.3f] | %s |'
-          % (c01.mean(), c01[-1], c01.min(), c01.max(),
-             verdict(abs(c01.mean()) < 0.5, 'no persistent alignment either way',
-                     'persistently %s' % ('ALIGNED (translation-like)'
-                                          if c01.mean() > 0 else
-                                          'ANTI-ALIGNED (sloshing-like)'))))
+          'range [%+.3f, %+.3f] over %.3f $P_{1/2}$ | %s |'
+          % (c01.mean(), c01[-1], c01.min(), c01.max(), K,
+             'NOT YET MEANINGFUL (span < 0.5 $P_{1/2}$)' if short
+             else verdict(abs(c01.mean()) < 0.5, 'no persistent alignment either way',
+                          'persistently %s' % ('ALIGNED (translation-like)'
+                                               if c01.mean() > 0 else
+                                               'ANTI-ALIGNED (sloshing-like)'))))
         u = A / np.linalg.norm(A, axis=1)[:, None]
         mn = u.mean(0)
         mn /= np.linalg.norm(mn)
         ang = np.degrees(np.arccos(np.clip(u @ mn, -1, 1)))
+        # Direction behaviour needs a decent fraction of a period to mean anything: over
+        # a short span the dipole simply has not had time to turn, so "locked" and
+        # "aligned" would be statements about the sampling, not the physics.  Say so
+        # rather than letting a short milestone read as a result.
+        short = K < 0.5
         w('| Does the dipole direction wander or lock? | core band: mean angle from its '
-          'own time-mean direction %.1f deg (isotropic wander would be 90) | %s |'
-          % (ang.mean(), verdict(ang.mean() > 55, 'wandering', 'LOCKING')))
+          'own time-mean direction %.1f deg over %.3f $P_{1/2}$ '
+          '(isotropic wander would be 90) | %s |'
+          % (ang.mean(), K,
+             'NOT YET MEANINGFUL (span < 0.5 $P_{1/2}$)' if short
+             else verdict(ang.mean() > 55, 'wandering', 'LOCKING')))
     except Exception as e:
         w('| direction | FAILED: %s | - |' % e)
 

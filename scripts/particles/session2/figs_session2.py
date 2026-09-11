@@ -130,13 +130,15 @@ def f2_quartiles(red, ref, ms, out):
         ax.set_title(t)
     axes[0].set_ylabel(r'$A_{1,q}$')
     axes[1].set_ylabel(r'$A_{1,q}/A^{\rm shot}_q$')
-    axes[0].legend(loc='upper left', fontsize=7.4)
+    axes[0].legend(loc='center left', fontsize=7.2)
     axes[1].legend(ncol=2, loc='upper left')
     axes[1].annotate('a ratio > 1 is NOT by itself evidence of instability:\n'
                      'CoM subtraction on a cusped profile lifts the core band\n'
-                     'above its nominal Poisson floor at $t=0$',
-                     xy=(0.02, 0.02), xycoords='axes fraction', fontsize=7,
-                     color=st.MUTED, va='bottom')
+                     'above its nominal Poisson floor already at $t=0$',
+                     xy=(0.98, 0.02), xycoords='axes fraction', fontsize=7,
+                     color=st.MUTED, va='bottom', ha='right',
+                     bbox=dict(boxstyle='round,pad=0.35', fc='white', ec='none',
+                               alpha=0.88))
     st.stamp(fig, ref, ms)
     st.save(fig, out, 'f2_quartile_l1')
     plt.close(fig)
@@ -227,8 +229,24 @@ def f4_momentum(rundir, ref, ms, out):
         [np.abs(s.absP_adm.to_numpy()), np.abs(s.absP_matter.to_numpy()),
          dep.to_numpy()]))
     axes[1].set_ylabel(r'$|P|$  [$M$]')
-    axes[1].set_title('surface vs matter-side momenta (all should stay at zero)')
-    axes[1].legend(loc='upper left', fontsize=7.4)
+    axes[1].set_title('surface vs matter-side momenta')
+    axes[1].legend(loc='center right', fontsize=7.4)
+    # On a shared symlog axis a value nine orders below the others reads as a flat zero,
+    # so state it.  The separation IS the result: the particle momentum sum and the
+    # deposited source both drift (neither is a conserved quantity in curved spacetime),
+    # while the spacetime's total momentum does not.
+    axes[1].annotate(r'$|P^{\rm ADM}|$ stays at $%.1e$ to $%.1e\,M$;'
+                     '\n'
+                     r'$|P^{\rm matter}|$ reaches $%.1e\,M$ -- a factor $%.0e$ larger.'
+                     '\n'
+                     'Matter-side sums are coordinate quantities and are not conserved;\n'
+                     'the ADM surface value is the total momentum of the spacetime.'
+                     % (np.abs(s.absP_adm).min(), np.abs(s.absP_adm).max(),
+                        np.abs(s.absP_matter).max(),
+                        np.abs(s.absP_matter).max()
+                        / max(np.abs(s.absP_adm).max(), 1e-300)),
+                     xy=(0.02, 0.03), xycoords='axes fraction', fontsize=7,
+                     color=st.MUTED, va='bottom')
     for ax in axes:
         st.periods_axis(ax, ref, ms)
     st.stamp(fig, ref, ms)
