@@ -62,6 +62,44 @@ CADENCE = dict(hst=200.0, pvtk=100.0, cart=50.0, binslice=25.0, cbin=5.0, rst=4.
 PERIODS = 5.0                    # production endpoint, 5 P_1/2
 
 
+def seam_free_radii(halfwidth, R_t, nper=2, hi=0.975, lo=1.02):
+    """Extraction radii whose ENTIRE coordinate sphere lies within one refinement level.
+
+    The refined regions are CUBES, not spheres, so "between two seams" is not the same
+    as "outside one cube and inside the next".  On the sphere of radius R the quantity
+    max_i |n_i| ranges over [1/sqrt(3), 1] -- minimal along the body diagonal, maximal
+    along an axis -- so the sphere crosses the cube |x_i| <= H exactly when
+
+        H < R <= sqrt(3) H.
+
+    A sphere therefore lies wholly inside the level-l cube AND wholly outside the
+    level-(l+1) cube iff
+
+        sqrt(3) H_{l+1} < R <= H_l,   i.e.  R/H_l in (sqrt(3)/2, 1] = (0.866, 1],
+
+    because H_{l+1} = H_l/2 in this mesh family.  Anything else samples cells of two
+    different sizes around one sphere, which is what the specification asks us to avoid
+    where possible -- and here it is possible, because each level offers a usable band
+    about 13 % wide in radius.
+
+    `hi` keeps the sphere off the cube face itself; `lo` keeps it off the inner
+    crossing radius.  Only bands entirely in vacuum (R > R_t) are used.
+    """
+    out = []
+    for l in range(len(halfwidth) - 1, 0, -1):
+        H = halfwidth[l]
+        band_lo, band_hi = lo * (3.0 ** 0.5 / 2.0) * H, hi * H
+        if band_hi <= band_lo or band_lo <= R_t:
+            continue
+        if nper == 1:
+            picks = [0.5 * (band_lo + band_hi)]
+        else:
+            picks = [band_lo + (band_hi - band_lo) * k / (nper - 1)
+                     for k in range(nper)]
+        out.extend(round(v, 6) for v in picks)
+    return sorted(out)
+
+
 def derive(label):
     c = dict(CASES[label])
     b = solve_b(c['target'], npanel=NPANEL, ngl=NGL)
@@ -80,6 +118,7 @@ def derive(label):
     hw = [L / 2**l for l in range(N + 1)]
     n_leaf = N * ((NROOT // NBLOCK)**3 - (NROOT // NBLOCK // 2)**3) + (NROOT // NBLOCK)**3
 
+    c['pmom_radii'] = seam_free_radii(hw, mod.Rt, nper=2)
     c.update(
         b=b, rt=rt, M=1.0, f_t=mod.ft, M_P=mod.MP, M_0=mod.M0,
         Npart=2 * NPAIR, npair=NPAIR, mu=mod.M0 / (2 * NPAIR), seed=SEED,
@@ -375,20 +414,31 @@ def deck(c, variant='prod'):
     A('plummer_field_rmax   = %.12g' % c['field_rmax'])
     A('')
     A('# ---- ADM linear momentum (Session 2).  Extraction spheres are coordinate spheres')
-    A('#      R = const; all lie in vacuum outside R_t = %.6g M, each between two' % c['R_t'])
-    A('#      refinement seams (%s M), and they span a factor %.2g in radius across three'
-      % ('/'.join('%g' % h for h in c['halfwidth'][1:]),
-         max(c['pmom_radii']) / min(c['pmom_radii'])))
-    A('#      refinement levels so radius-independence is testable.')
+    A('#      R = const.  All lie in vacuum outside R_t = %.6g M, and each sphere lies'
+      % c['R_t'])
+    A('#      WHOLLY within a single refinement level, so one dx resolves every angle of')
+    A('#      it.  That is a stronger condition than "between two seams": the refined')
+    A('#      regions are CUBES, and on a sphere of radius R the quantity max_i|n_i| runs')
+    A('#      over [1/sqrt(3), 1], so the sphere crosses the cube |x_i| <= H whenever')
+    A('#      H < R <= sqrt(3) H.  With H_{l+1} = H_l/2 the seam-free band is therefore')
+    A('#      R/H_l in (sqrt(3)/2, 1] -- about 13%% of each level half-width.  Level')
+    A('#      half-widths here are %s M.'
+      % '/'.join('%g' % h for h in c['halfwidth'][1:]))
+    A('#      The radii span a factor %.2g across three levels, so radius-independence'
+      % (max(c['pmom_radii']) / min(c['pmom_radii'])))
+    A('#      is testable.')
     A('#      selftest = 1 runs the Bowen-York positive unit test at startup and is FATAL')
     A('#      on failure; t = 0 is static so K_ij == 0 and P_i must vanish there too.')
     A('plummer_pmom_nrad    = %d' % len(c['pmom_radii']))
     A('plummer_pmom_ntheta  = 32')
     A('plummer_pmom_selftest = 1')
     for k, R in enumerate(c['pmom_radii']):
+        # the whole sphere is inside this level's cube (R <= H_l) and outside the next
+        # one's (R > sqrt(3) H_{l+1}), so a single dx resolves every angle
         lev = max(l for l in range(N + 1) if c['halfwidth'][l] >= R)
-        A('plummer_pmom_r%d       = %s   # level %d, dx = %g, R/dx = %.1f'
-          % (k + 1, fmt(R), lev, c['dx'][lev], R / c['dx'][lev]))
+        A('plummer_pmom_r%d       = %s   # wholly on level %d, dx = %g, R/dx = %.1f, '
+          'R/R_t = %.2f'
+          % (k + 1, fmt(R), lev, c['dx'][lev], R / c['dx'][lev], R / c['R_t']))
     A('')
     A('# ---- outputs.  P_1/2 = %.15g M.  Every cadence is an exact fraction of P_1/2,'
       % P)

@@ -277,20 +277,27 @@ plummer_field_rmin   = 0.09375
 plummer_field_rmax   = 1536
 
 # ---- ADM linear momentum (Session 2).  Extraction spheres are coordinate spheres
-#      R = const; all lie in vacuum outside R_t = 49.2197 M, each between two
-#      refinement seams (384/192/96/48/24/12/6 M), and they span a factor 5 in radius across three
-#      refinement levels so radius-independence is testable.
+#      R = const.  All lie in vacuum outside R_t = 49.2197 M, and each sphere lies
+#      WHOLLY within a single refinement level, so one dx resolves every angle of
+#      it.  That is a stronger condition than "between two seams": the refined
+#      regions are CUBES, and on a sphere of radius R the quantity max_i|n_i| runs
+#      over [1/sqrt(3), 1], so the sphere crosses the cube |x_i| <= H whenever
+#      H < R <= sqrt(3) H.  With H_{l+1} = H_l/2 the seam-free band is therefore
+#      R/H_l in (sqrt(3)/2, 1] -- about 13%% of each level half-width.  Level
+#      half-widths here are 384/192/96/48/24/12/6 M.
+#      The radii span a factor 4.4 across three levels, so radius-independence
+#      is testable.
 #      selftest = 1 runs the Bowen-York positive unit test at startup and is FATAL
 #      on failure; t = 0 is static so K_ij == 0 and P_i must vanish there too.
 plummer_pmom_nrad    = 6
 plummer_pmom_ntheta  = 32
 plummer_pmom_selftest = 1
-plummer_pmom_r1       = 60.0   # level 3, dx = 1.5, R/dx = 40.0
-plummer_pmom_r2       = 84.0   # level 3, dx = 1.5, R/dx = 56.0
-plummer_pmom_r3       = 120.0   # level 2, dx = 3, R/dx = 40.0
-plummer_pmom_r4       = 150.0   # level 2, dx = 3, R/dx = 50.0
-plummer_pmom_r5       = 240.0   # level 1, dx = 6, R/dx = 40.0
-plummer_pmom_r6       = 300.0   # level 1, dx = 6, R/dx = 50.0
+plummer_pmom_r1       = 84.801208   # wholly on level 3, dx = 1.5, R/dx = 56.5, R/R_t = 1.72
+plummer_pmom_r2       = 93.6   # wholly on level 3, dx = 1.5, R/dx = 62.4, R/R_t = 1.90
+plummer_pmom_r3       = 169.602415   # wholly on level 2, dx = 3, R/dx = 56.5, R/R_t = 3.45
+plummer_pmom_r4       = 187.2   # wholly on level 2, dx = 3, R/dx = 62.4, R/R_t = 3.80
+plummer_pmom_r5       = 339.20483   # wholly on level 1, dx = 6, R/dx = 56.5, R/R_t = 6.89
+plummer_pmom_r6       = 374.4   # wholly on level 1, dx = 6, R/dx = 62.4, R/R_t = 7.61
 
 # ---- outputs.  P_1/2 = 59.4356979525812 M.  Every cadence is an exact fraction of P_1/2,
 #      so t = n P_1/2 always lands on a written row and the per-period milestone
