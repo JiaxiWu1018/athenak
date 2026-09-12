@@ -68,17 +68,24 @@ if a1 is None or a2 is None: sys.exit('missing history file')
 i1=int(np.argmin(np.abs(a1[:,0]-t))); i2=int(np.argmin(np.abs(a2[:,0]-t)))
 print('production  row t = %.12g' % a1[i1,0])
 print('restarted   row t = %.12g' % a2[i2,0])
+# Columns that are PROCESS-LIFETIME tallies rather than state.  boris_nfail_cum counts
+# GR-Boris pusher fallbacks since the executable started and is not written to the
+# checkpoint, so a restarted segment necessarily reports fewer than a run that has been
+# going since t = 0.  That is correct behaviour, not a discontinuity, and including it in
+# the verdict would fail every restart test that could ever be run.
+SKIP = {'time','dt','boris_nfai','boris_nfail','boris_nfail_cum'}
 worst=0.0; wk=None
 print()
-print('%-14s %22s %22s %12s' % ('column','production','restarted','rel diff'))
+print('%-14s %22s %22s %12s %s' % ('column','production','restarted','rel diff','')) 
 for k,name in enumerate(n1):
-    if name in ('time','dt'): continue
     v1,v2=a1[i1,k],a2[i2,k]
     d=abs(v1-v2)/max(abs(v1),abs(v2),1e-300)
-    if d>worst: worst,wk=d,name
-    print('%-14s %22.14e %22.14e %12.3e' % (name,v1,v2,d))
+    skip = name in SKIP
+    if not skip and d>worst: worst,wk=d,name
+    print('%-14s %22.14e %22.14e %12.3e %s'
+          % (name,v1,v2,d,'(process-lifetime tally, excluded)' if skip else ''))
 print()
-print('WORST relative difference %.3e in %s  ->  %s'
+print('WORST relative difference over STATE columns %.3e in %s  ->  %s'
       % (worst, wk, 'PASS' if worst<1e-10 else ('MARGINAL' if worst<1e-6 else 'FAIL')))
 PY"
 echo "RESTART TEST COMPLETE ($CASE, job $j)"

@@ -280,7 +280,7 @@ def main():
         h = read_hst(hg[0])
         w('| Lapse, constraints, particle count | $\\min\\alpha$ %.6f (continuum '
           '%.6f); $\\|H\\|_2$ matter %.3e -> %.3e; $N_{\\rm alive}$ %d/%d; '
-          'GR-Boris fallbacks %d | %s |'
+          'GR-Boris fallbacks %d **in the current segment** | %s |'
           % (h['alpha_min'].iloc[-1], ref['alpha_min'],
              h['Ham_L2_mat'].iloc[0], h['Ham_L2_mat'].iloc[-1],
              int(round(h['N_alive'].iloc[-1])), ref['Npart'],
