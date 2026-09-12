@@ -43,7 +43,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt                      # noqa: E402
-from matplotlib.colors import LogNorm, TwoSlopeNorm  # noqa: E402
+from matplotlib.colors import LogNorm, SymLogNorm    # noqa: E402
 import s2_style as st                                # noqa: E402
 from cart_reader import read_cart, equatorial        # noqa: E402
 
@@ -94,16 +94,27 @@ def main():
     d0, x, y = equatorial(r0, 'tmunu_E')
     dmax = float(np.nanmax(d0))
     dfloor = dmax * 10.0 ** (-a.floor_decades)
-    hmaxs = []
+    hmaxs, hsmall = [], []
     for p in (ham[:n] if ham else []):
         hh, _, _ = equatorial(read_cart(p), 'con_H')
-        hmaxs.append(float(np.nanpercentile(np.abs(hh), 99.5)))
+        a = np.abs(hh[np.isfinite(hh)])
+        hmaxs.append(float(np.nanpercentile(a, 99.5)))
+        nz = a[a > 0]
+        if nz.size:
+            hsmall.append(float(np.nanpercentile(nz, 5.0)))
     hlim = max(hmaxs) if hmaxs else 1.0
+    # The constraint violation DECAYS by about an order of magnitude over a period as the
+    # parabolic damping works on the initial finite-N violation.  A fixed linear scale set
+    # by the largest frame is honest but renders every later frame blank, hiding exactly
+    # that decay.  A symmetric LOG scale keeps the mapping fixed frame to frame -- so no
+    # autoscaling and no fake motion -- while showing several decades.
+    hthr = max(min(hsmall) if hsmall else hlim * 1e-4, hlim * 1e-5)
     ext = [x[0], x[-1], y[0], y[-1]]
     pix = float(r0['dx'][0])
     print('density colour range [%.3e, %.3e] (%.1f decades, fixed); '
-          'constraint range +/-%.3e (fixed); pixel %.6g M = %.3g dx_fine'
-          % (dfloor, dmax, a.floor_decades, hlim, pix, pix / ref['dx_fine']))
+          'constraint symlog range +/-%.3e with linear core +/-%.3e (fixed); '
+          'pixel %.6g M = %.3g dx_fine'
+          % (dfloor, dmax, a.floor_decades, hlim, hthr, pix, pix / ref['dx_fine']))
 
     tmp = tempfile.mkdtemp(prefix='s2slice_')
     try:
@@ -125,10 +136,12 @@ def main():
                 hh, _, _ = equatorial(rh, 'con_H')
                 ax2 = axes[0][1]
                 im2 = ax2.imshow(hh, origin='lower', extent=ext, cmap='RdBu_r',
-                                 norm=TwoSlopeNorm(vmin=-hlim, vcenter=0.0, vmax=hlim),
+                                 norm=SymLogNorm(linthresh=hthr, vmin=-hlim, vmax=hlim,
+                                                 base=10),
                                  interpolation='nearest')
                 cb2 = fig.colorbar(im2, ax=ax2, fraction=0.046, pad=0.02)
-                cb2.set_label(r'Hamiltonian constraint $H$', fontsize=8)
+                cb2.set_label(r'Hamiltonian constraint $H$ (symmetric log, '
+                              r'linear within $\pm%.1g$)' % hthr, fontsize=8)
                 ax2.set_title('Hamiltonian constraint', fontsize=9.5, loc='left')
             th = np.linspace(0, 2 * np.pi, 400)
             for axx in axes[0]:
