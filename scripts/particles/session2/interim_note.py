@@ -141,6 +141,43 @@ def main():
     except Exception as e:
         w('| dipole amplitude | FAILED: %s | - |' % e)
 
+    # ---- is it specifically l = 1, and is it reference-independent? ---------------
+    # Two discriminators that matter once anything starts growing.
+    #
+    # (a) A displacement of the distribution from the reference point is an l = 1 effect.
+    #     If A_2, A_3 and A_4 grow by comparable factors, the angular distribution is
+    #     being disrupted broadband and calling it "an l = 1 mode" would be wrong.
+    # (b) Session 1's whole correction was that an ORIGIN-referenced band amplitude is
+    #     contaminated by a geometric (2/3)<1/r>|s| term.  If the CoM-referenced and the
+    #     origin-referenced series both grow, the growth is not an artefact of either
+    #     reference choice.
+    try:
+        def last_over_start(band, l):
+            g = m[(m.band == band) & (m.l == l)].sort_values('time')
+            return float(g.A_l.iloc[-1] / g.A_l.iloc[0])
+        gl = [last_over_start('com', l) for l in (1, 2, 3, 4)]
+        w('| Is it specifically $\\ell = 1$? | global CoM growth by $\\ell$: '
+          '$A_1$ %.2fx, $A_2$ %.2fx, $A_3$ %.2fx, $A_4$ %.2fx | %s |'
+          % tuple(gl) + ('',) if False else
+          '| Is it specifically $\\ell = 1$? | global CoM growth by $\\ell$: '
+          '$A_1$ %.2fx, $A_2$ %.2fx, $A_3$ %.2fx, $A_4$ %.2fx | %s |'
+          % (gl[0], gl[1], gl[2], gl[3],
+             verdict(gl[0] > 2.0 * max(gl[1:]),
+                     'dominated by $\\ell=1$',
+                     'NOT an $\\ell=1$ mode alone: higher multipoles grow comparably, '
+                     'so the angular distribution is being disrupted broadband')))
+        core_com = last_over_start('m0', 1)
+        core_org = last_over_start('o0', 1)
+        w('| Is the growth reference-independent? | core band $\\ell=1$ last/start: '
+          'CoM-referenced %.2fx, ORIGIN-referenced %.2fx | %s |'
+          % (core_com, core_org,
+             verdict(min(core_com, core_org) > 0.5 * max(core_com, core_org) or
+                     min(core_com, core_org) > 2.0,
+                     'both references grow, so this is not an artefact of either',
+                     'the two references disagree: treat with the Session-1 caution')))
+    except Exception as e:
+        w('| l-content / reference check | FAILED: %s | - |' % e)
+
     # ---- direction behaviour -----------------------------------------------------
     try:
         d = dedup(pd.read_csv(os.path.join(a.reduced, 'dipoles.csv')), ['time', 'band'])
