@@ -361,13 +361,24 @@ carries the conclusion.
 * **One `N`-pair, one compactness, one time.** This tests the hypotheses at
   `(R/M)_eff = 6.5` and `2 P_1/2`; it does not measure a scaling law and says nothing
   directly about R10. The homogeneous campaign used an `8x` range in `N` and four seeds.
-* **The collapse's origin is separately untested.** The `N/4` run was stopped at
-  `2 P_1/2` by design. At that time the full-`N` minimum lapse has fallen `12.5 %`
-  (`0.603 -> 0.528`) while the `N/4` run's is unchanged at `0.603`, even though the `N/4`
-  inner mass has contracted *more* (`-18.5 %` against `-4.8 %`). The lapse and the
-  enclosed-mass radii disagree about which run is nearer collapse, and neither run was
-  carried far enough in the other's frame to date the event. **No claim is made about
-  whether the collapse itself is `N`-dependent.**
+* **The collapse shares the mode's `N`-independence.** This was initially reported as an
+  open tension on the strength of a *truncated* local copy of the `N/4` history — a
+  partial rsync taken while the run was at 39 %, never refreshed — which gave the `2 P_1/2`
+  lapse as "unchanged at `0.603`". The complete file gives `0.370457`, i.e. `-38.6 %`
+  against the full-`N` run's `-12.5 %`. The correct comparison is not at fixed time but at
+  **matched state**, and it closes the picture:
+
+  | matched on | full-`N` reaches it at | `N/4` reaches it at | offset |
+  |---|---|---|---|
+  | core `A_1 = 0.05 .. 0.20` | `1.390 .. 1.900` | `1.060 .. 1.510` | **`0.365 P_1/2`** |
+  | `min alpha = 0.59 .. 0.40` | `1.735 .. 2.385` | `1.340 .. 1.970` | **`0.406 P_1/2`** |
+
+  The mode and the lapse show the **same** offset. So the `N/4` run is not evolving
+  faster; it begins from a `2.36x` larger seed and therefore arrives at any given state
+  about `0.39 P_1/2` earlier. Rate `N`-independent, seed `sqrt(N)`-dependent, clock
+  shifted — one consistent description of the mode *and* the collapse, which is why the
+  collapse is no longer listed as an unresolved tension.
+
 * The initial matter-region constraint violation scales as pure shot noise (`N/4` is
   exactly `2.00x` full `N` at every time sampled). Since the growth is `N`-independent
   while its seed is not, a constraint-violation-driven mechanism is disfavoured, but not
