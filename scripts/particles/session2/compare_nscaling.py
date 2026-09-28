@@ -32,6 +32,11 @@ import numpy as np
 import pandas as pd
 
 
+# A band must have grown by at least this factor in the FULL-N run before its
+# low-N/full-N ratio means anything.  Below it the comparison is noise over noise.
+MIN_AMP = 3.0
+
+
 def load(red, lmax=4):
     m = pd.read_csv(os.path.join(red, 'modes.csv')).drop_duplicates(
         ['time', 'band', 'l'])
@@ -85,10 +90,19 @@ def main():
         atl, tl = at_time(gl, a.at)
         ampf, ampl = atf / a0f, atl / a0l
         ratio = ampl / ampf
-        # A factor-4 cut in N changes a classical relaxation rate by ~4/ln-corrections,
-        # so relaxation should show up as a clearly faster amplification at low N.
-        v = ('N-INDEPENDENT' if 0.7 <= ratio <= 1.43
-             else ('FASTER at low N' if ratio > 1.43 else 'SLOWER at low N'))
+        # Refuse a verdict when there is no signal to compare.  Before the mode emerges
+        # both runs sit at their own shot floors, amplifications wander over ~0.3-2, and
+        # their RATIO is noise over noise -- which still renders as a confident
+        # "FASTER at low N" unless the threshold is enforced.  Require the full-N band
+        # to have actually grown before reading anything into the comparison.
+        if ampf < MIN_AMP:
+            v = 'no signal yet (full-N amp %.2fx < %.1fx)' % (ampf, MIN_AMP)
+        elif 0.7 <= ratio <= 1.43:
+            v = 'N-INDEPENDENT'
+        elif ratio > 1.43:
+            v = 'FASTER at low N'
+        else:
+            v = 'SLOWER at low N'
         rows.append((band, ampf, ampl, ratio, v))
         print('%-6s %14.3f %14.3f %10.3f  %s' % (band, ampf, ampl, ratio, v))
     print()
@@ -99,6 +113,9 @@ def main():
 
     # supporting scalars: the disruption measures should scale the same way
     print('%-22s %14s %14s %10s' % ('scalar', 'full-N', 'low-N', 'low/full'))
+    # These are per-particle scattering measures.  If the scattering is graininess
+    # driven they should scale with the noise amplitude, i.e. as sqrt(N_full/N_low) = 2
+    # for a fourfold cut -- and that can be true while the MODE is still collective.
     for col, lab in [('dL_rms', '|dL| rms'), ('sigma_r_u', 'sigma_r'),
                      ('Rcom', 'R_CoM')]:
         vf, _ = at_time(sf[['t_over_P', col]].rename(columns={col: 'A_l'}), a.at)
@@ -110,7 +127,15 @@ def main():
     if core:
         _, ampf, ampl, ratio, _ = core[0]
         print('CONCLUSION on the core band:')
-        if 0.7 <= ratio <= 1.43:
+        if ampf < MIN_AMP:
+            print('  NO VERDICT. The full-N core band has amplified only %.2fx at this '
+                  'time, which is' % ampf)
+            print('  within its own shot fluctuation, so the low-N/full-N ratio is noise '
+                  'over noise.')
+            print('  Compare at a time where the signal exists: the full-N R6p5 core '
+                  'reaches 26.8x')
+            print('  at 2 P_1/2 and R10 reaches 86x at 5 P_1/2.')
+        elif 0.7 <= ratio <= 1.43:
             print('  The amplification is N-INDEPENDENT (%.3f of the full-N value at '
                   'N/%d).' % (ratio, round(Nf / Nl)))
             print('  This is the signature of a CONTINUUM instability: cutting the '
