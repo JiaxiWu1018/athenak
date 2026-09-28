@@ -46,6 +46,7 @@ import matplotlib.pyplot as plt                      # noqa: E402
 from matplotlib.colors import LogNorm, SymLogNorm    # noqa: E402
 import s2_style as st                                # noqa: E402
 from cart_reader import read_cart, equatorial        # noqa: E402
+from figs_session2 import valid_window               # noqa: E402
 
 
 def series(cartdir, file_id):
@@ -74,6 +75,20 @@ def main():
         sys.exit('no cart frames for dens_%s under %s' % (a.panel, cart))
     n = min(len(dens), len(ham)) if ham else len(dens)
     print('%d density frames, %d constraint frames -> using %d' % (len(dens), len(ham), n))
+
+    # A failed run keeps writing cart frames.  R6p5's are zeros and NaNs past
+    # t/P = 2.5553, and rendering them would put ~2.4 periods of garbage on the end of
+    # the movie -- worse than a truncated movie, because it looks like data.  Drop every
+    # frame after the last healthy time and say how many.
+    tgood, failed, tfail = valid_window(a.rundir, ref)
+    if failed and tgood is not None:
+        keep = [i for i in range(n) if read_cart(dens[i])['time'] <= tgood + 1e-9]
+        if len(keep) < n:
+            print('  run FAILS at t/P = %.5f: dropping %d of %d frames past the last '
+                  'healthy time t/P = %.5f' % (tfail / P, n - len(keep), n, tgood / P))
+            dens = [dens[i] for i in keep]
+            ham = [ham[i] for i in keep] if ham else ham
+            n = len(keep)
 
     # --- the fixed-grid guarantee, checked rather than assumed ---------------------
     geo = None
@@ -163,6 +178,11 @@ def main():
                          % (ref['label'], ref['RM_eff'], rd['time'] / P,
                             r0['numpoints'][0], r0['numpoints'][1], pix),
                          fontsize=10)
+            if failed:
+                fig.text(0.5, 0.005,
+                         'record ends at $t/P_{1/2} = %.4f$: the run fails at %.4f '
+                         '(core collapse, no excision)' % (tgood / P, tfail / P),
+                         ha='center', fontsize=7.5, color='#b3261e')
             fig.savefig(os.path.join(tmp, 'f%04d.png' % i), dpi=120,
                         bbox_inches='tight')
             plt.close(fig)
