@@ -149,25 +149,49 @@ observation with its tension intact rather than smoothed into the collapse narra
 follow-up wanting to characterise the collapse should dump the 3D density rather than a
 plane, and enable an apparent-horizon finder.
 
-## 3b. What the particle movie adds: the inner shells collapse *coherently*
+## 3b. The Lagrangian shells keep their order, and that is measurable
 
 Movie A colours every particle by its **initial** radial group and keeps that colour for
-all time, so blending on screen is physical shell mixing and nothing else. R6p5's last
-healthy frame shows the innermost cohorts as a **compact, still-distinct dark core**
-inside `R_1/2`, with the outer cohorts spread beyond it — the particles that began
-innermost have contracted together into a dense central concentration rather than being
-scattered through the cluster.
+all time, so blending on screen is physical shell mixing and nothing else. Both cases'
+final frames show the cohorts still radially ordered — a dark inner core, then the
+intermediate groups, then the outer ones — rather than the blended field that scattering
+would produce.
 
-That bears on the continuum-versus-finite-`N` question, and in the opposite direction to
-the raw `|dL|` numbers. Two-body relaxation is a *diffusive* process: it would mix the
-Lagrangian shells, blending the colours as inner and outer particles exchange places. The
-frame instead shows the inner shells retaining their identity while moving inward
-together, which is what a collective mode does.
+That is testable rather than impressionistic. The reduction tracks 32 equal-rest-mass
+Lagrangian cohorts, so the question "have shells interchanged?" is the rank correlation
+between a cohort's **initial** radial index and its **current** mean radius, plus the
+count of adjacent cohort pairs that have swapped:
 
-It is an argument, not a measurement — the `N/4` run is the measurement — and it is
-recorded as such. It is also consistent with the two other arguments already on the
-record: the core-band log slope accelerates rather than growing linearly in time, and the
-growth is faster at higher compactness at fixed `N`.
+| | `t/P = 0` | 1 | 2 | 2.55 | 5 |
+|---|---|---|---|---|---|
+| **R10** Spearman `rho` | 1.000000 | 1.000000 | 1.000000 | 0.999633 | **0.997434** |
+| **R10** adjacent inversions (of 31) | 0 | 0 | 0 | 1 | **3** |
+| **R6p5** Spearman `rho` | 1.000000 | 1.000000 | 0.999633 | **0.993035** | — |
+| **R6p5** adjacent inversions (of 31) | 0 | 0 | 1 | **3** | — |
+
+After five periods and an `86x` mode amplification, **28 of R10's 31 shell boundaries are
+still intact**, and R6p5's ordering is likewise preserved to `rho = 0.993` at its last
+healthy time.
+
+**This is an argument about the bulk motion, and it has a precise limit.** Preserved
+ordering of cohort *mean* radii does not mean individual particles have not mixed — they
+demonstrably have, with rms per-particle angular-momentum changes of `130 %` and
+`1930 %`. What the measurement shows is that the mass distribution is being reorganised
+**coherently**: the shells move, strongly, without passing through one another. A
+diffusive process driven by graininess would progressively scramble that ordering, and
+it does not.
+
+So the picture is a collective mode carrying the bulk, with strong individual scattering
+on top — not scattering alone. That is a third argument for a continuum instability,
+alongside the accelerating core log slope and the compactness dependence at fixed `N`.
+It remains an argument: the `N/4` run is the measurement.
+
+One number in this table resists the simple collapse narrative and is left standing:
+R6p5's innermost cohort mean radius goes `0.392 -> 0.730 M` by `2 P_1/2` and is back to
+`0.563 M` at `2.55`, i.e. it does not simply contract, even while the `10 %` and `25 %`
+enclosed-rest-mass radii fall by `36 %`. Those measure different things — a fixed
+particle set's mean radius versus the radius enclosing a fixed mass fraction — and
+reconciling them needs the 3D density this session did not dump.
 
 ## 4. The momentum question, answered
 
