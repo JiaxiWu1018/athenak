@@ -21,10 +21,19 @@ RUN=runs/prod_$CASE
 OUT=movies/$CASE
 mkdir -p "$OUT"
 hostname; date -Is
+rc_all=0
 echo "=== Movie B: equatorial slices on the FIXED UNIFORM cart grid ==="
 for panel in core wide; do
-  python3 analysis/render_slice_movie_s2.py --rundir "$RUN" --ref "$REF" \
-    --panel "$panel" --out "$OUT/slices_H_and_E_equatorial_${panel}.mp4" --fps "$FPS"
+  mp4=$OUT/slices_H_and_E_equatorial_${panel}.mp4
+  if python3 analysis/render_slice_movie_s2.py --rundir "$RUN" --ref "$REF" \
+       --panel "$panel" --out "$mp4" --fps "$FPS"; then
+    # a zero exit is not proof of a movie: require the file, non-empty
+    if [ ! -s "$mp4" ]; then
+      echo "FAIL: $panel renderer exited 0 but wrote no movie"; rc_all=1
+    fi
+  else
+    echo "FAIL: $panel renderer exited non-zero"; rc_all=1
+  fi
 done
 echo "=== Movie A: particles, core and halo ==="
 NPZ=$OUT/${CASE}_particles.npz
@@ -36,4 +45,8 @@ else
     --out "$OUT/particles_core_and_halo.mp4" --fps "$FPS"
 fi
 date -Is
+if [ "$rc_all" -ne 0 ]; then
+  echo "MOVIES INCOMPLETE ($CASE): at least one renderer failed above"
+  exit 1
+fi
 echo "MOVIES DONE ($CASE)"
