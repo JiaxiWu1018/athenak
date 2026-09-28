@@ -118,6 +118,37 @@ The collapse is reached through the instability, not independently of it: the ta
 support that holds an Einstein cluster up is precisely what the broadband angular
 scattering destroys.
 
+## 3a. Morphology, and one tension in the record
+
+The uniform-grid equatorial slices (Movie B, one pixel per finest cell) show what the
+scalars cannot. At R6p5's last healthy frame the core is a sharp bright concentration
+ringed by a distinct shell near `R ~ 2.5-3 M`, and the Hamiltonian-constraint panel
+carries a strong, tightly localised violation exactly at the centre — the same place the
+lapse collapses. R10's final frame instead shows a broadly flattened core.
+
+The azimuthally averaged slice profiles agree on flattening but not on concentration:
+
+| | central `E` at `t = 0` | at the end |
+|---|---|---|
+| R10 (`5 P_1/2`) | `4e-03` | `8e-04` |
+| R6p5 (`2.54 P_1/2`) | `1e-02` | `5e-03` |
+
+**For R10 this is consistent** with everything else: the slice flattens and the inner
+Lagrangian shells expand `+21.8 %`.
+
+**For R6p5 it is in apparent tension** with the enclosed-rest-mass radii, which contract
+`-35.6 %` (`r_q10`) and `-36.1 %` (`r_q25`). A 3D Lagrangian shell moving inward while the
+equatorial-slice density at small radius falls by a factor two is not a contradiction —
+the enclosed-mass radii are 3D and measured over all particles, the slice is one plane —
+but it does require the collapsing region to be markedly **non-spherical**, which the
+broadband `l`-content independently implies. The coordinate centre of mass is far too
+small (`0.023 R_1/2 = 0.056 M`) to explain it as a displacement.
+
+This session does not resolve which geometry the core takes. It is recorded as an
+observation with its tension intact rather than smoothed into the collapse narrative; a
+follow-up wanting to characterise the collapse should dump the 3D density rather than a
+plane, and enable an apparent-horizon finder.
+
 ## 4. The momentum question, answered
 
 Session 2's required new diagnostic asked whether the dipole and centre-of-mass behaviour
