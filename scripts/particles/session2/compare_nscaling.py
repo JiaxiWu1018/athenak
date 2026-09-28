@@ -1,23 +1,33 @@
 #!/usr/bin/env python3
-"""The `N`-scaling test: is the instability a continuum property or finite-`N` relaxation?
+"""The `N`-scaling test: is the measured growth a continuum property or finite-`N`?
 
-Session 2's two production runs both used `N = 2,113,536`, so nothing in them separates a
-physical instability from graininess-driven relaxation of a cluster whose only support is
-tangential. The measured per-particle rms angular-momentum change is `130 %` (R10) and
-`1930 %` (R6p5), which is large enough that the question is real.
+**Read this before trusting any number it prints.** The first version of this tool
+compared each band's *amplification against its own `t = 0` value*, and that was wrong in
+a way that inverted the conclusion.
 
-The discriminator is how the growth scales with the particle number at fixed everything
-else. A continuum instability has a rate set by the model, so the amplification at a given
-`t/P_1/2` is `N`-independent. Two-body / graininess relaxation has a rate that falls with
-`N` (roughly as `N/ln N` in the classical estimate), so a four-fold cut in `N` should make
-the growth visibly faster, not equal.
+The denominator is the trap. For the centre-of-mass-referenced bands, `A_1` at `t = 0` is
+**not** shot noise: it is dominated by the geometric `(2/3)<1/r>|s|` term that a displaced
+reference point manufactures on a centrally peaked profile — Session 1's central
+correction. Measured on these runs, the core band's `t = 0` value is `4.98x` its own shot
+floor at full `N` and `2.05x` at `N/4`, and it is *larger at full `N`* (`9.69e-03`) than at
+`N/4` (`8.00e-03`), which a genuine shot seed cannot be. Dividing by it does not normalise
+the growth, it divides by an artifact — and because the artifact scales with the CoM offset
+rather than with `sqrt(N)`, the two runs' denominators are wrong by different factors.
 
-Read two reductions at the same physical time and compare. Amplitudes are always quoted
-against each run's own `t = 0` value and against each band's own finite-`N` null, because
-those nulls differ between the runs by construction: `A^shot = n_uniq^{-1/2}` with
-`n_uniq = N/2`, so cutting `N` by four raises every null by a factor two. Comparing raw
-amplitudes instead of amplification factors would show a difference that is pure shot
-noise.
+The consequence is not subtle. On the same particles and the same physics, the core band's
+amplification ratio reads `2.94` ("FASTER at low N") when referenced to the CoM and `0.84`
+("SLOWER at low N") when referenced to the origin. The verdict flipped with the choice of
+reference point, which no physical result may do.
+
+**The reference-free measure is `A_1(t)` divided by that run's OWN `A_shot`.** Both runs'
+modes are seeded by shot noise whose amplitude is exactly `(N/2)^{-1/2}`, so dividing by it
+removes the `N` dependence of the SEED and leaves the `N` dependence of the GROWTH — which
+is the quantity in question. On these runs it gives `1.178 +/- 0.028` across six bands
+against the `2.357 +/- 0.056` of the raw amplitudes, i.e. the growth is `N`-independent to
+about 18 %, where a relaxation rate `~1/N` would require a factor of order 2-4.
+
+That measure is now primary; the `t = 0`-referenced amplification is printed alongside it
+and explicitly labelled unreliable for CoM bands.
 
 Usage
     compare_nscaling.py --full reduced/R6p5_P2 --low reduced/R6p5_N4_P2 \
@@ -77,9 +87,14 @@ def main():
     print()
 
     rows = []
-    print('%-6s %14s %14s %10s %10s' % ('band', 'full-N amp', 'low-N amp',
-                                        'low/full', 'verdict'))
-    for band in ['m0', 'm1', 'm2', 'm3', 'com']:
+    print('PRIMARY (reference-free): A_1 at the comparison time divided by that run\'s')
+    print('OWN A_shot.  Removes the N dependence of the SEED, leaves that of the GROWTH.')
+    print()
+    print('%-6s %13s %13s %10s %11s %10s' % ('band', 'full A/shot', 'low A/shot',
+                                             'low/full', 't0-ref amp', 'verdict'))
+    # 'all' first: it is the only band whose t = 0 value is pure shot noise in both runs,
+    # so it is the one band where the t = 0-referenced number is also trustworthy.
+    for band in ['all', 'com', 'm0', 'm1', 'm2', 'm3']:
         gf = mf[(mf.band == band) & (mf.l == 1)].sort_values('time')
         gl = ml[(ml.band == band) & (ml.l == 1)].sort_values('time')
         if not len(gf) or not len(gl):
@@ -89,22 +104,27 @@ def main():
         a0l, _ = at_time(gl, 0.0)
         atl, tl = at_time(gl, a.at)
         ampf, ampl = atf / a0f, atl / a0l
-        ratio = ampl / ampf
+        amp_ratio_t0 = ampl / ampf
+        # reference-free: normalise by each run's own finite-N floor
+        shot_f = float(mf[(mf.band == band) & (mf.l == 1)].A_shot.iloc[0])
+        shot_l = float(ml[(ml.band == band) & (ml.l == 1)].A_shot.iloc[0])
+        ratio = (atl / shot_l) / (atf / shot_f)
         # Refuse a verdict when there is no signal to compare.  Before the mode emerges
         # both runs sit at their own shot floors, amplifications wander over ~0.3-2, and
         # their RATIO is noise over noise -- which still renders as a confident
         # "FASTER at low N" unless the threshold is enforced.  Require the full-N band
         # to have actually grown before reading anything into the comparison.
-        if ampf < MIN_AMP:
-            v = 'no signal yet (full-N amp %.2fx < %.1fx)' % (ampf, MIN_AMP)
+        if atf / shot_f < MIN_AMP:
+            v = 'no signal (full-N is %.2fx its own floor)' % (atf / shot_f)
         elif 0.7 <= ratio <= 1.43:
             v = 'N-INDEPENDENT'
         elif ratio > 1.43:
             v = 'FASTER at low N'
         else:
             v = 'SLOWER at low N'
-        rows.append((band, ampf, ampl, ratio, v))
-        print('%-6s %14.3f %14.3f %10.3f  %s' % (band, ampf, ampl, ratio, v))
+        rows.append((band, atf / shot_f, atl / shot_l, ratio, v, amp_ratio_t0))
+        print('%-6s %13.3f %13.3f %10.3f %11.3f  %s'
+              % (band, atf / shot_f, atl / shot_l, ratio, amp_ratio_t0, v))
     print()
     print('  (amplification = A_1 at the comparison time divided by the same run\'s '
           't = 0 value)')
@@ -123,13 +143,22 @@ def main():
         print('%-22s %14.4g %14.4g %10.3f' % (lab, vf, vl, vl / max(vf, 1e-300)))
     print()
 
+    # summarise the reference-free ratio over every band that has a signal
+    sig = [r for r in rows if r[1] >= MIN_AMP]
+    if sig:
+        v = np.array([r[3] for r in sig])
+        print('REFERENCE-FREE ratio over %d bands with signal: %.3f +/- %.3f'
+              % (len(sig), v.mean(), v.std()))
+        print('  1.00 = N-independent growth (continuum).  A relaxation rate ~1/N would')
+        print('  need a factor of order 2-4 here.')
+        print()
     core = [r for r in rows if r[0] == 'm0']
     if core:
-        _, ampf, ampl, ratio, _ = core[0]
+        _, ampf, ampl, ratio, _, amp_t0 = core[0]
         print('CONCLUSION on the core band:')
         if ampf < MIN_AMP:
-            print('  NO VERDICT. The full-N core band has amplified only %.2fx at this '
-                  'time, which is' % ampf)
+            print('  NO VERDICT. The full-N core band is only %.2fx its own floor, '
+                  'which is' % ampf)
             print('  within its own shot fluctuation, so the low-N/full-N ratio is noise '
                   'over noise.')
             print('  Compare at a time where the signal exists: the full-N R6p5 core '

@@ -5,8 +5,9 @@ Companion to [`REPORT_Plummer_session2.md`](REPORT_Plummer_session2.md) (scienti
 [`../SESSION_LOG.md`](../SESSION_LOG.md) (chronology).
 
 **Status: complete.** R10 completed all five milestones healthy; R6p5 collapsed and
-failed at `t/P_1/2 = 2.55535`; the supplementary `N/4` run finished and showed the growth
-to be **finite-`N` relaxation-dominated**, which changed the session's conclusion.
+failed at `t/P_1/2 = 2.55535`; the supplementary `N/4` run finished and shows the growth
+to be **`N`-independent to within 18 %**. A first, incorrect analysis of that run is
+documented in §8.4 — it is the session's one substantive analysis error.
 
 ---
 
@@ -410,27 +411,51 @@ whether the instability is a continuum property or finite-`N` relaxation.
 | endpoint | `2 P_1/2` exactly, inside R6p5's healthy window |
 | reduction | job `442123`; `reduce_run.py` measured `n_uniq = 264,192` itself (`N/n_uniq = 2.0000`) and derived `A_shot = 1.945540e-03`, exactly twice the full-`N` floor |
 
-**Result** (`analysis/compare_nscaling.py`, `initial_data/nscaling_R6p5.json`):
+**Result** (`analysis/compare_nscaling.py`, `initial_data/nscaling_R6p5.json`). The
+measure is `A_1` at the comparison time divided by **that run's own** `A^shot`, which
+removes the `N`-dependence of the seed and leaves that of the growth:
 
-| band | full-`N` | `N/4` | ratio |
+| band | full-`N` `A_1/A^shot` | `N/4` | ratio |
 |---|---|---|---|
-| core `q0` | 26.82x | **78.86x** | **2.94** |
-| `q1` | 18.08x | 27.18x | 1.50 |
-| global CoM | 19.07x | 34.17x | 1.79 |
-| `sigma_r` | 0.0966 | 0.3112 | 3.22 |
-| `\|dL\|` rms | 1.091 | 1.531 | 1.40 |
+| `all` | 58.56 | 68.72 | 1.174 |
+| `com` | 55.02 | 65.98 | 1.199 |
+| `m0` core | 133.61 | 162.04 | 1.213 |
+| `m1` | 24.76 | 28.09 | 1.135 |
+| | | mean | **1.180 +/- 0.030** |
 
-A continuum instability predicts `1.00`. The measurement is `2.94`, between pure `1/N`
-(`4.00`) and `1/N` with a Coulomb-log correction (`3.55`). Robustness checks: the `N/4`
-run ends `2.4x` higher in **absolute** amplitude, not only in amplification, and its
-growth is `159x` its own larger noise floor, so it is signal.
+Continuum predicts `1.00`; a `~1/N` relaxation rate predicts `2`–`4`. Corroborated by the
+raw amplitudes: `N/4` ends `2.357 +/- 0.056` times higher against the `2.000` an
+`N`-independent growth of a `sqrt(N)`-smaller seed predicts — the same 18 %, stable to
+2.4 % over six bands.
 
-**Consequence for the session's conclusion.** The growth measured in both production runs
-— and the R6p5 core collapse it produced — is relaxation-dominated at
-`N = 2,113,536`. Both cases are reclassified from "clear growing instability" to
-**inconclusive for the continuum**. Three arguments for a continuum origin that had been
-assembled from the production data alone are retracted in §5 of the scientific report,
-with the reason each failed.
+### 8.4a The error that preceded it
+
+The first analysis normalised each band by its own `t = 0` amplitude and reported
+`2.94x faster at N/4`, concluding finite-`N` relaxation. Reports, README, session log and
+classifications were rewritten on that basis before an adversarial review of the
+conclusion caught it.
+
+**Cause.** For a CoM-referenced band, `A_1(t = 0)` is the geometric `(2/3)<1/r>|s|` term,
+not a shot seed: it is `4.98x` the shot floor at full `N`, `2.05x` at `N/4`, and *larger
+at full `N`* in absolute terms, which a shot seed cannot be. Exact decomposition:
+`2.941 = 2.426 x 1.212`, where the second factor would be `0.500` for a properly scaling
+reference — so the denominator *was* the result.
+
+**Two diagnostics that were available and not run.** The verdict flips with the reference
+point (core band `2.94` CoM-referenced, `0.84` origin-referenced, same particles); and the
+band-to-band scatter of the amplification ratio is `46 %` against `2.4 %` for the absolute
+ratio, i.e. fifteen times the physical scatter. Either one falsifies the measure. The
+`all` band, the only one with a clean `t = 0` reference, was excluded because the loop
+covered only `m0..m3` and `com`.
+
+**Fixes.** `compare_nscaling.py` now uses the reference-free measure as primary,
+documents the trap in its module docstring, prints the old number beside the new one
+labelled unreliable, and includes the `all` band.
+
+**Why it matters beyond this number.** Session 1's central correction is precisely that a
+displaced-reference band dipole carries this geometric term. This session quoted that
+warning in four places and then used the contaminated quantity as a denominator. Citing a
+caveat is not the same as applying it.
 
 ### 8.5 Two methodological notes from this run
 
