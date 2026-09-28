@@ -194,6 +194,40 @@ radius remains**; the R10 endpoint momentum is reported with that caveat, not as
 measurement. See
 [`../evidence/pmom_radii_seam_free_20260911/RECORD.md`](../evidence/pmom_radii_seam_free_20260911/RECORD.md).
 
+## 4a. Direct comparison (specification section 14)
+
+Every row is measured at each run's own endpoint — `5.000 P_1/2` for R10, the last
+numerically healthy time `2.550 P_1/2` for R6p5 — with Session 1 shown where the same
+quantity exists.
+
+| | Session 1 | **R10** | **R6p5** |
+|---|---|---|---|
+| achieved `(R/M)_eff` | 51.767276 | **10** (err `3.6e-15`) | **6.5** (err `8.9e-16`) |
+| `b` | 20 M | 3.86344456867 M | 2.51123896964 M |
+| `r_t = 20 b` | 400 M | 77.2688913734 M | 50.2247793927 M |
+| `P_1/2` | 1192.496781 M | 107.500505 M | 59.435698 M |
+| `dx_fine`; cells per `b` / `r_1/2` / `R_1/2` | 1 M; 20.0 / 26.0 / 25.2 | 0.15625 M; 24.7 / 32.2 / 27.0 | 0.09375 M; 26.8 / 34.8 / 26.1 |
+| leaf MeshBlocks; `dt` | 400; 0.25 | 456; 0.0390625 | 456; 0.0234375 |
+| run length reached | `3 P_1/2` | **`5.000 P_1/2`** | **`2.550 P_1/2`** (fails at 2.555) |
+| boundary signal arrival | 2.19 `P_1/2`, before its own endpoint | 7.92 `P_1/2` | 8.55 `P_1/2` |
+| global `A_1^CoM`, last/start | — | 71.1x | 68.2x |
+| **core `q0` `A_1`**, last/start | — | **86.3x** | **85.7x, in half the time** |
+| `A_2 / A_3 / A_4`, last/start | — | 124 / 76 / 83x | 199 / 137 / 243x |
+| radial localisation | inner quartile only | q0 86x, q1 51x, **q2 104x**, q3 14x — spreads outward | q0 86x, q1 20x, q2 8.9x, q3 3.8x — stays in the inner half |
+| dipole direction | — | sign of `cos(D_0,D_1)` changes 4x; core within 13.2 deg of its own time-mean | changes 3x; core within 10.1 deg |
+| CoM motion, `R_CoM/R_1/2` | — | 0.042 | 0.023 |
+| ADM momentum | — | at or below `3.1e-12` while a clean radius existed; none left by `5 P_1/2` | at or below `5.5e-12`; two clean radii remain |
+| radial equilibrium, `r_q10`/`r_q25`/`r_q50` | held | **+21.8 / -2.5 / -2.2 per cent** (expands) | **-35.6 / -36.1 / +13.8 per cent** (core collapses) |
+| `sigma_r/sigma_t`; per-particle `dL` rms | ~0 | 0.42; 1.30 | 0.66; 19.3 |
+| minimum lapse (continuum value) | — | 0.629 (0.741) | **0.115** (0.603) |
+| matter-region `H` norm, start to end | — | `7.4e-04` to `5.9e-05`, falls | `2.2e-03` to `1.8e-03`, then diverges |
+| particles lost; non-finite states | none | **none; none** | none, then all at once |
+| **classification (section 13)** | weak/local mode, globally stable | **clear growing instability** | **clear growing instability terminating in core collapse; numerically compromised beyond `2.555 P_1/2`** |
+
+The scan is monotonic in compactness in every measure that tracks the instability, and the
+two cases differ in **outcome**, not only in degree: R10 disrupts and **expands**, R6p5
+disrupts and its core **collapses**.
+
 ## 5. What is not established
 
 **Whether this instability is a property of the continuum model or of the finite-`N`
