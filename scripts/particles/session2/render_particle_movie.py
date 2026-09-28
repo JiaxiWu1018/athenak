@@ -49,8 +49,15 @@ def set_model(ref_path):
 
 def panel(ax, x, y, c, half, cmax, slab_z, z, title):
     m = np.abs(z) < slab_z
-    ax.scatter(x[m], y[m], c=c[m], s=0.35, cmap="cividis", vmin=0, vmax=cmax,
-               linewidths=0, rasterized=True)
+    xs, ys, cs = x[m], y[m], c[m]
+    # The npz is ordered by tag, i.e. by initial radius, so a plain scatter draws every
+    # outer-cohort point on top of the inner ones and the core panel reads as uniformly
+    # "outer" regardless of what is there.  Shuffle with a FIXED seed: the draw order is
+    # then unbiased and still identical in every frame, so nothing in the movie moves
+    # because the ordering changed.
+    order = np.random.default_rng(1985).permutation(xs.size)
+    ax.scatter(xs[order], ys[order], c=cs[order], s=0.35, cmap="cividis",
+               vmin=0, vmax=cmax, linewidths=0, rasterized=True)
     th = np.linspace(0, 2*np.pi, 400)
     for rr, lab, col in ((R_HALF_ISO, r"$R_{1/2}$", "#e34948"),
                          (R_T_ISO, r"$R_t$", "#2a78d6")):
@@ -77,12 +84,23 @@ def main():
     ap.add_argument("--period", type=float, default=None,
                     help="P_1/2; defaults to the value in --ref")
     ap.add_argument("--fps", type=int, default=12)
-    ap.add_argument("--half-halo", type=float, default=450.0)
-    ap.add_argument("--half-core", type=float, default=45.0)
+    # Session 1's defaults (450 / 45 M) belong to its b = 20 M, R_t = 399 M cluster.
+    # For R6p5 (R_t = 49 M) a 450 M halo panel renders the whole cluster as a dot, so
+    # both scales now default to the case's own model via --ref.
+    ap.add_argument("--half-halo", type=float, default=None,
+                    help="halo panel half-width; defaults to 1.15 R_t from --ref")
+    ap.add_argument("--half-core", type=float, default=None,
+                    help="core panel half-width; defaults to 5 R_1/2 from --ref")
     a = ap.parse_args()
     ref = set_model(a.ref)
     if a.period is None:
         a.period = ref['P_half']
+    if a.half_halo is None:
+        a.half_halo = 1.15*ref['R_t']
+    if a.half_core is None:
+        a.half_core = 5.0*ref['R_half']
+    print("panel half-widths: halo %.4g M (R_t = %.4g), core %.4g M (R_1/2 = %.4g)"
+          % (a.half_halo, ref['R_t'], a.half_core, ref['R_half']), flush=True)
     plt.rcParams.update(STYLE)
     fr = os.path.join(a.out, "frames_particles")
     os.makedirs(fr, exist_ok=True)
