@@ -5,28 +5,30 @@
 
 ## Answer
 
-> **As the Plummer Einstein-cluster family is made more relativistic, the weak core-local
-> `l = 1` signal of Session 1 does not merely strengthen — it is replaced by a strong,
-> broadband angular disruption of the whole inner cluster, and at `(R/M)_eff = 6.5` that
-> disruption destroys the cluster's tangential support and drives its core into
-> gravitational collapse within `2.6` half-mass periods.**
+> **The growth seen in both runs is dominated by finite-`N` relaxation, not by a
+> continuum instability.** A supplementary run at `N/4` amplifies the core band
+> **2.94x faster** at the same physical time — the signature of a rate that rises as the
+> particle number falls. The Plummer Einstein cluster's *continuum* stability at
+> `(R/M)_eff = 10` and `6.5` is therefore **not determined** by this session, and the
+> `86x` amplifications must be read as properties of a `N = 2,113,536` realisation rather
+> than of the model. The R6p5 core collapse is a separate matter left open: its lapse
+> signature does **not** scale with `N` the way the mode amplitude does (§5).
 
-Neither case remains stable, and neither is well described as a dipole instability.
+This reverses the reading that the two production runs alone supported, and it is the
+reason the `N/4` run was worth its 8 node-hours. What the session does establish:
 
 | | Session 1 | **R10** | **R6p5** |
 |---|---|---|---|
 | `(R/M)_eff` | 51.77 | 10 | 6.5 |
-| interval established | `3 P_1/2` | **`5 P_1/2`** (complete) | **`2.550 P_1/2`** (run fails at `2.555`) |
-| classification (§13) | weak/local mode, globally stable | **clear growing instability** | **clear growing instability terminating in core collapse; numerically compromised beyond `2.555 P_1/2`** |
-| core `q0` `A_1^CoM` last/start | — | `86.3x` | `85.7x` **in half the time** |
-| global `A_1 / A_2 / A_3 / A_4` | — | `71x / 124x / 76x / 83x` | `68x / 199x / 137x / 243x` |
-| `sigma_r/sigma_t` | ~0 | `0.42` | `0.66` |
-| `\|dL\|` rms per particle | — | `1.30` | **`19.3`** |
-| inner tenth of the mass | — | **expands `+21.8 %`** | **contracts `-35.6 %`** |
-| minimum lapse | — | `0.741 -> 0.629` (`-15 %`) | **`0.603 -> 0.115`** (`-81 %`) |
-| matter-region `‖H‖_2` | — | `7.4e-04 -> 5.9e-05` (falls) | `2.2e-03 -> 1.8e-03`, then diverges |
-| particles lost | — | **none** | none until failure, then all |
-| `P^ADM` | — | `0` while a clean radius existed | `0` while a clean radius existed |
+| interval | `3 P_1/2` | `5 P_1/2` (complete) | `2.550 P_1/2` (run fails at `2.555`) |
+| what happens | weak core-local `l=1` | broadband angular disruption, cluster expands | broadband disruption, **core collapses** |
+| core `A_1` last/start | — | `86.3x` | `85.7x` in half the time |
+| growth origin | not tested | not tested | **finite-`N` relaxation** (`2.94x` faster at `N/4`) |
+| **classification (§13)** | weak/local mode, globally stable | **inconclusive for the continuum**: strong growth measured, but of demonstrated finite-`N` origin at the one compactness tested | **inconclusive for the continuum**, and **numerically compromised** beyond `2.555 P_1/2` |
+
+The honest summary is that Session 2 measured a real and dramatic effect, identified it,
+and found it to be a property of the discretisation rather than of the physics it was
+meant to probe.
 
 ## 1. What was run
 
@@ -181,10 +183,13 @@ demonstrably have, with rms per-particle angular-momentum changes of `130 %` and
 diffusive process driven by graininess would progressively scramble that ordering, and
 it does not.
 
-So the picture is a collective mode carrying the bulk, with strong individual scattering
-on top — not scattering alone. That is a third argument for a continuum instability,
-alongside the accelerating core log slope and the compactness dependence at fixed `N`.
-It remains an argument: the `N/4` run is the measurement.
+So the bulk is reorganised coherently, with strong individual scattering on top.
+
+**This was originally offered as evidence for a continuum mode, and that inference was
+wrong — see §5.** Secular relaxation-driven core collapse is itself a process in which
+shells contract *in order*, so preserved ordering excludes nothing. The measurement it
+was meant to anticipate went the other way. The ordering result stands as a description
+of the motion; the conclusion drawn from it does not.
 
 One number in this table resists the simple collapse narrative and is left standing:
 R6p5's innermost cohort mean radius goes `0.392 -> 0.730 M` by `2 P_1/2` and is back to
@@ -246,42 +251,108 @@ quantity exists.
 | minimum lapse (continuum value) | — | 0.629 (0.741) | **0.115** (0.603) |
 | matter-region `H` norm, start to end | — | `7.4e-04` to `5.9e-05`, falls | `2.2e-03` to `1.8e-03`, then diverges |
 | particles lost; non-finite states | none | **none; none** | none, then all at once |
-| **classification (section 13)** | weak/local mode, globally stable | **clear growing instability** | **clear growing instability terminating in core collapse; numerically compromised beyond `2.555 P_1/2`** |
+| growth origin | not tested | not tested | **finite-`N` relaxation** (`2.94x` faster at `N/4`, §5) |
+| **classification (section 13)** | weak/local mode, globally stable | **inconclusive for the continuum** — strong growth measured, of demonstrated finite-`N` origin at the compactness tested | **inconclusive for the continuum**; **numerically compromised** beyond `2.555 P_1/2` |
 
-The scan is monotonic in compactness in every measure that tracks the instability, and the
-two cases differ in **outcome**, not only in degree: R10 disrupts and **expands**, R6p5
-disrupts and its core **collapses**.
+The scan is monotonic in compactness in every measure, and the two cases differ in
+**outcome**, not only in degree: R10 disrupts and **expands**, R6p5 disrupts and its core
+**collapses**. Both descriptions are of a `N = 2,113,536` realisation whose growth §5
+shows to be relaxation-dominated; neither is established as continuum behaviour.
 
-## 5. What is not established
+## 5. The `N`-scaling test, and the retraction it forces
 
-**Whether this instability is a property of the continuum model or of the finite-`N`
-realisation is not settled by these two runs, and it is the single most important open
-question.** The growth is accompanied by rms per-particle angular-momentum changes of
-`130 %` (R10) and `1930 %` (R6p5). Graininess in a cluster supported entirely by
-tangential orbits is a plausible mechanism for exactly this, and `N = 2,113,536` is the
-same in both runs, so nothing here separates the two.
+Both production runs used `N = 2,113,536`, so neither could separate a continuum
+instability from graininess-driven relaxation of a cluster whose only support is
+tangential. A supplementary run repeated R6p5 at `N = 528,384` — one quarter the
+particles, with the mesh, seed, gauge, damping and every other setting byte-identical —
+to `2 P_1/2`, inside the healthy window. It completed cleanly, all 528,384 particles
+alive.
 
-The homogeneous campaign settled the analogous question with an `N`-scaling study across
-an `8x` range, which found the rate unchanged. A supplementary `N/4` run
-(`N = 528,384`, same mesh, seed and deck, to `2 P_1/2`) is in flight for R6p5 to give one
-point of that comparison; its result is recorded in
-[`../SESSION_LOG.md`](../SESSION_LOG.md) and this section will be updated. Two arguments
-bear on it now, neither decisive: the core-band log slope *accelerates* (`+0.44` then
-`+2.66` per period for R6p5), whereas diffusive relaxation would be closer to linear in
-time; and the growth is faster at higher compactness at fixed `N`, which a purely
-numerical relaxation rate should not care about. Both are arguments, not measurements.
+Amplification is compared against each run's **own** `t = 0` value, because
+`A^shot = (N/2)^{-1/2}` and cutting `N` fourfold raises every null by a factor two:
 
-No growth rate is fitted. The sliding one-period log slopes are `+0.13, +2.27, +1.43,
-+0.34, +0.10` (R10) and `+0.44, +2.66` (R6p5) — accelerating then decelerating, not a
-constant exponential — and Session 1 withdrew three published rates for less scatter than
-this. For scale only: R6p5's second period corresponds to `2.6` e-folds, the same order as
-the homogeneous cluster's `3.24 +/- 0.22` e-folds per surface period at the same
-`R/M = 6.5`.
+| band | full-`N` amp at `2 P_1/2` | `N/4` amp | ratio |
+|---|---|---|---|
+| **core `q0`** | 26.82x | **78.86x** | **2.94** |
+| `q1` | 18.08x | 27.18x | 1.50 |
+| global (CoM) | 19.07x | 34.17x | 1.79 |
+| `sigma_r` | 0.0966 | 0.3112 | 3.22 |
+| `\|dL\|` rms | 1.091 | 1.531 | 1.40 |
 
-Also unestablished: horizon formation in R6p5 (no horizon finder was enabled); the
-behaviour of R6p5 beyond `2.555 P_1/2` (the specification's `5 P_1/2` endpoint is
-unreachable for this configuration with this setup); and whether R10 would eventually
-collapse too, given that it is still disrupting at its endpoint.
+**A continuum instability has a rate set by the model and predicts a ratio of 1.00.** The
+measurement is `2.94`, sitting between the `4.00` of a pure `1/N` relaxation rate and the
+`3.55` of the same rate with a Coulomb-logarithm correction. The result is robust: the
+`N/4` run ends `2.4x` higher in *absolute* amplitude, not merely in amplification, and its
+growth stands at `159x` its own (larger) noise floor, so it is signal and not shot noise.
+
+### Three arguments I had assembled for a continuum origin, all wrong
+
+Before this measurement, three observations pointed the other way. Each is retracted, and
+each failed for an instructive reason:
+
+1. **"The core log slope accelerates, where diffusion would be linear in time."** Wrong.
+   Relaxation-driven core collapse — the gravothermal catastrophe — is itself a runaway
+   and accelerates. Acceleration does not distinguish the hypotheses.
+2. **"Growth is faster at higher compactness at fixed `N`, which a numerical rate should
+   not care about."** Weakened, not refuted, and it should never have been offered as
+   evidence: the relaxation time in units of the dynamical time is `~N/ln N`, so the
+   compactness scaling of the *measured* rate depends on details this session did not
+   work out.
+3. **"The Lagrangian shells keep their radial order (`rho = 0.997` after `86x`), where
+   diffusion would scramble it."** Wrong, and the most seductive of the three. Secular
+   relaxation-driven core collapse is precisely a process in which shells contract *in
+   order* — the ordering is preserved by construction, so its preservation excludes
+   nothing.
+
+All three were plausible, mutually consistent, and pointed the same way. That is exactly
+the configuration in which a direct measurement is worth more than any amount of
+argument, and the measurement disagreed with all three.
+
+### What this does and does not mean
+
+* The measured **`l`-mode growth** is relaxation-dominated at `N = 2,113,536`, and the
+  **core mass concentration** scales the same way: at `2 P_1/2` the `N/4` run's inner
+  tenth has contracted `-18.5 %` against the full-`N` run's `-4.8 %`, and its inner
+  quarter `-17.0 %` against `-0.2 %`.
+* **The lapse collapse does not follow that scaling, and this is left as an open
+  tension rather than resolved.** At the same `2 P_1/2` the full-`N` minimum lapse has
+  fallen `12.5 %` (`0.603 -> 0.528`, on its way to failure at `2.555`) while the `N/4`
+  run's is unchanged at `0.603` (`-0.05 %`). If the collapse were simply relaxation
+  driven, the lower-`N` run should be further along, and by the lapse it is not — even
+  though by the enclosed-mass radii it is. The two measures disagree about which run is
+  closer to collapse, the same kind of disagreement §3a records between the slice density
+  and the 3D radii. **No claim is made here that the R6p5 collapse is a discretisation
+  artefact.** The `N/4` run was stopped at `2 P_1/2` by design, so it was never carried
+  far enough to show whether it collapses later, and a single snapshot cannot date an
+  event neither run has reached in the other's time frame.
+* The initial matter-region constraint violation scales as pure shot noise — the `N/4`
+  value is `2.00x` the full-`N` one at every time sampled, exactly `sqrt(4)`. The core
+  amplification ratio is `2.94`, larger than that, so the faster growth is **not** simply
+  the larger initial constraint violation being advected along; but this also means a
+  constraint-violation-driven mechanism cannot be cleanly separated from two-body
+  relaxation by these data alone. "Finite-`N`" is established; "two-body relaxation
+  specifically" is the most natural reading, not a demonstrated one.
+* It does **not** show the continuum model is stable. A continuum instability could be
+  present and simply be subdominant to relaxation at this `N`. The scan does not resolve
+  it either way, which is why both cases are classified **inconclusive for the continuum**
+  rather than stable.
+* It does **not** invalidate the rest of the session. The initial data, the mesh, the
+  constraint behaviour, the ADM-momentum diagnostic and its null and radius-independence
+  results, the restart continuity and the movies all stand; so does the *measurement* of
+  what this realisation does.
+* **One point is one point.** It distinguishes the two hypotheses at `(R/M)_eff = 6.5` and
+  `2 P_1/2`; it does not measure a scaling law, and it says nothing directly about R10.
+  The homogeneous campaign used an `8x` range in `N` and four seeds.
+
+### What a follow-up needs
+
+A third and fourth `N` (the homogeneous campaign's `8x` range) to fit the scaling rather
+than test it; the same at `(R/M)_eff = 10`; more than one seed, since a single realisation
+cannot separate rate from draw; and, if the continuum instability is to be looked for
+underneath, an `N` large enough that the relaxation rate falls below it — which the
+`2.94` ratio makes quantifiable. R6p5's collapse additionally needs excision or a puncture
+gauge to be followed past `2.555 P_1/2`, and an apparent-horizon finder to be
+characterised at all.
 
 ## 6. Reading the products
 

@@ -4,8 +4,9 @@ Reproduction record for the compactness scan at `(R/M)_eff = 10` and `6.5`.
 Companion to [`REPORT_Plummer_session2.md`](REPORT_Plummer_session2.md) (scientific) and
 [`../SESSION_LOG.md`](../SESSION_LOG.md) (chronology).
 
-**Status: both production runs finished.** R10 completed all five milestones healthy;
-R6p5 collapsed and failed at `t/P_1/2 = 2.55535`. A supplementary `N/4` run is in flight.
+**Status: complete.** R10 completed all five milestones healthy; R6p5 collapsed and
+failed at `t/P_1/2 = 2.55535`; the supplementary `N/4` run finished and showed the growth
+to be **finite-`N` relaxation-dominated**, which changed the session's conclusion.
 
 ---
 
@@ -394,25 +395,58 @@ automated verdict read FAIL at `6.98e-01` on a test that passed by twelve orders
 magnitude. The same fact means the fallback count in each interim note is **per segment**,
 not a run total.
 
-### 8.4 The supplementary `N/4` run
+### 8.4 The supplementary `N/4` run — result
 
 Launched at Jiaxi's direction to address the one question the two requested runs cannot:
 whether the instability is a continuum property or finite-`N` relaxation.
 
 | | value |
 |---|---|
-| job | `442036`, `-t 08:00:00`, `prod_R6p5_N4` |
+| job | `442036`, `-t 08:00:00`, `prod_R6p5_N4`, `CASE DONE` in 2 h 51 m |
 | deck | `R6p5_prod` with command-line overrides |
 | overrides | `job/basename=pl_R6p5_N4_s1985`, `problem/plummer_npair=264192`, `time/tlim=118.87139590516237` |
-| `N` | **528,384** (confirmed from the first history row: `5.28384000000019558e+05`) |
-| `M_0` | `1.04976569178031731` — identical to the full-`N` run, as it must be |
-| endpoint | `2 P_1/2`, inside R6p5's healthy window |
+| `N` | **528,384**, confirmed from the first history row and the final particle accounting (`initial=528384 final=528384 ... conservation OK`) |
+| `M_0` | `1.04976569178031731` — identical to full `N`, as it must be |
+| endpoint | `2 P_1/2` exactly, inside R6p5's healthy window |
+| reduction | job `442123`; `reduce_run.py` measured `n_uniq = 264,192` itself (`N/n_uniq = 2.0000`) and derived `A_shot = 1.945540e-03`, exactly twice the full-`N` floor |
 
-Mesh, seed, gauge, damping and every other setting are byte-identical to production, so
-the only difference is the particle count. The comparison is the core-band amplification
-at `2 P_1/2`: `N`-independent means physical, scaling with `N` means relaxation.
+**Result** (`analysis/compare_nscaling.py`, `initial_data/nscaling_R6p5.json`):
+
+| band | full-`N` | `N/4` | ratio |
+|---|---|---|---|
+| core `q0` | 26.82x | **78.86x** | **2.94** |
+| `q1` | 18.08x | 27.18x | 1.50 |
+| global CoM | 19.07x | 34.17x | 1.79 |
+| `sigma_r` | 0.0966 | 0.3112 | 3.22 |
+| `\|dL\|` rms | 1.091 | 1.531 | 1.40 |
+
+A continuum instability predicts `1.00`. The measurement is `2.94`, between pure `1/N`
+(`4.00`) and `1/N` with a Coulomb-log correction (`3.55`). Robustness checks: the `N/4`
+run ends `2.4x` higher in **absolute** amplitude, not only in amplification, and its
+growth is `159x` its own larger noise floor, so it is signal.
+
+**Consequence for the session's conclusion.** The growth measured in both production runs
+— and the R6p5 core collapse it produced — is relaxation-dominated at
+`N = 2,113,536`. Both cases are reclassified from "clear growing instability" to
+**inconclusive for the continuum**. Three arguments for a continuum origin that had been
+assembled from the production data alone are retracted in §5 of the scientific report,
+with the reason each failed.
+
+### 8.5 Two methodological notes from this run
+
+* The comparison must be of **amplification against each run's own `t = 0`**, never of
+  raw amplitudes: the nulls differ by exactly `2.000x` by construction. Note also that
+  the `t = 0` band amplitudes do **not** differ by 2 (`m0` differs by `0.82`), because
+  `A_1` at `t = 0` is dominated by the CoM-subtraction term on the cusped profile rather
+  than by shot noise — Session 1's caution resurfacing.
+* `compare_nscaling.py` was first validated on the partial `N/4` data at `t/P = 0.8`,
+  where it issued five confident per-band verdicts from amplifications of `0.27`–`2.02`,
+  i.e. from noise over noise. It now refuses a verdict unless the full-`N` band has
+  amplified at least `3x`. At the real comparison point the core band is at `26.8x`, well
+  clear of that gate.
 
 ## 9. Diagnostic definitions
+
 
 `A_l = sqrt( 4 pi/(2l+1) sum_m <Y_lm(nhat)>^2 )` with real orthonormal `Y_lm` and an
 unweighted mean over particles (equal rest masses, so unweighted equals mass-weighted) —
