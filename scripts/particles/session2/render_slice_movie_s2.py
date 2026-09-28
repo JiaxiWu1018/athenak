@@ -112,9 +112,9 @@ def main():
     hmaxs, hsmall = [], []
     for p in (ham[:n] if ham else []):
         hh, _, _ = equatorial(read_cart(p), 'con_H')
-        a = np.abs(hh[np.isfinite(hh)])
-        hmaxs.append(float(np.nanpercentile(a, 99.5)))
-        nz = a[a > 0]
+        absh = np.abs(hh[np.isfinite(hh)])
+        hmaxs.append(float(np.nanpercentile(absh, 99.5)))
+        nz = absh[absh > 0]
         if nz.size:
             hsmall.append(float(np.nanpercentile(nz, 5.0)))
     hlim = max(hmaxs) if hmaxs else 1.0
