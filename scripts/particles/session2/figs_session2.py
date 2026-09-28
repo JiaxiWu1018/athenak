@@ -43,6 +43,9 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt          # noqa: E402
 import s2_style as st                    # noqa: E402
 
+# Set by main() from valid_window(); bounds every dataframe and every axis.
+VALID_TMAX = None
+
 
 def mag_axis(ax, values, floor=1e-16):
     """Axis for a NON-NEGATIVE magnitude such as |P|.
@@ -71,6 +74,56 @@ def mag_axis(ax, values, floor=1e-16):
     ax.set_ylim(max(floor, 0.3 * pos.min()), 3.0 * pos.max())
 
 
+def valid_window(rundir, ref):
+    """The last time at which the run was still numerically healthy.
+
+    A run that loses its particles or whose lapse goes non-finite keeps producing
+    output: history rows, ledger rows and pvtk frames all continue, filled with
+    zeros, NaNs and garbage.  R6p5 collapsed and then failed at t/P = 2.5553, and
+    every product past that point is meaningless -- yet it plots, reduces and
+    tabulates exactly like real data, and a figure autoscaled to alpha_min = 1.8e308
+    silently becomes unreadable rather than obviously wrong.
+
+    So every figure and every note is bounded by this function.  Health is judged on
+    the history columns that cannot be wrong in a good state: the full particle count
+    must be alive, no particle may be non-finite, the lapse must be finite and in
+    (0, 1], and the matter-region constraint norm must be finite.
+
+    Returns (t_last_good, failed, t_fail).  `failed` False means the run stayed
+    healthy through its final row.
+    """
+    g = [q for q in glob.glob(os.path.join(rundir, 'out', '*.user.hst'))
+         if '.z4c.' not in q]
+    if not g:
+        return None, False, None
+    h = read_hst(sorted(g, key=len)[0]).sort_values('time')
+    N = ref['Npart']
+    bad = ((h['N_alive'] < N - 0.5) | (h['N_nonfinit'] > 0)
+           | ~np.isfinite(h['alpha_min']) | (h['alpha_min'] > 1.0)
+           | (h['alpha_min'] <= 0.0) | ~np.isfinite(h['Ham_L2_mat']))
+    if not bad.any():
+        return float(h.time.iloc[-1]), False, None
+    i = int(np.argmax(bad.to_numpy()))
+    if i == 0:
+        return float(h.time.iloc[0]), True, float(h.time.iloc[0])
+    return float(h.time.iloc[i - 1]), True, float(h.time.iloc[i])
+
+
+def clip_valid(df, tmax, tcol='time'):
+    return df if tmax is None else df[df[tcol] <= tmax + 1e-9]
+
+
+def mark_failure(ax, tfail, P):
+    """Draw where the run stopped being trustworthy, on every panel."""
+    if tfail is None:
+        return
+    ax.axvline(tfail / P, color='#b3261e', lw=1.3, ls=(0, (3, 1.5)), zorder=5)
+    ax.annotate('run fails here\n$t/P = %.3f$' % (tfail / P),
+                xy=(tfail / P, 0.5), xycoords=('data', 'axes fraction'),
+                fontsize=7, color='#b3261e', ha='right', va='center',
+                rotation=90)
+
+
 def dedup(df, keys):
     """Drop duplicated rows.
 
@@ -79,7 +132,12 @@ def dedup(df, keys):
     tlim = 0, duplicate every row for the same reason.  Deduplicating on the identifying
     keys is therefore mandatory, not defensive.
     """
-    return df.drop_duplicates(subset=keys, keep='last').sort_values('time')
+    out = df.drop_duplicates(subset=keys, keep='last').sort_values('time')
+    # Every figure reads its data through here, so bounding it here bounds the whole
+    # suite: nothing past the last healthy time can reach a panel.
+    if VALID_TMAX is not None and 'time' in out.columns:
+        out = out[out['time'] <= VALID_TMAX + 1e-9]
+    return out
 
 
 def read_hst(path):
@@ -464,7 +522,19 @@ def main():
     st.apply()
     ref = st.load_ref(a.ref)
     ms = a.milestone
+    global VALID_TMAX
+    tgood, failed, tfail = valid_window(a.rundir, ref)
+    VALID_TMAX = tgood
+    st.TFAIL = tfail
+    st.PHALF = ref['P_half']
     print('figs_session2: case %s through %g P_1/2 -> %s' % (a.case, ms, a.out))
+    if failed:
+        print('  RUN FAILED at t = %.6f (t/P = %.5f); every panel is bounded at the '
+              'last healthy time t = %.6f (t/P = %.5f) and marks the failure'
+              % (tfail, tfail / ref['P_half'], tgood, tgood / ref['P_half']))
+        ms = min(ms, tgood / ref['P_half'])
+    else:
+        print('  run healthy through t/P = %.5f' % (tgood / ref['P_half']))
     for fn, args in [(f1_global, (a.reduced, ref, ms, a.out)),
                      (f2_quartiles, (a.reduced, ref, ms, a.out)),
                      (f3_direction, (a.reduced, ref, ms, a.out)),

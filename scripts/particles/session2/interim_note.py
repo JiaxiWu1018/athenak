@@ -23,7 +23,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from figs_session2 import dedup, read_hst    # noqa: E402
+import figs_session2 as F                    # noqa: E402
+from figs_session2 import dedup, read_hst, valid_window    # noqa: E402
 
 L = []
 
@@ -72,6 +73,16 @@ def main():
     P = ref['P_half']
     K = a.milestone
 
+    # Bound every measurement at the last healthy time.  A failed run keeps emitting
+    # history rows, ledger rows and pvtk frames full of zeros and NaNs, and they
+    # tabulate exactly like real data: R6p5's t = 5 P_1/2 note reported min alpha =
+    # 1.8e308, N_alive = 0 and |P| = 0 as though they were measurements.  Setting
+    # F.VALID_TMAX bounds every dedup() call, which is how all these tables are read.
+    tgood, failed, tfail = valid_window(a.rundir, ref)
+    F.VALID_TMAX = tgood
+    if failed:
+        K = min(K, tgood / P)
+
     w('# Interim note: case %s, through %g $P_{1/2}$' % (a.case, K))
     w()
     w('Case **%s**: $(R/M)_{\\rm eff} = %.6g$, $b = %.9g\\,M$, $r_t = 20b = %.9g\\,M$, '
@@ -79,6 +90,14 @@ def main():
       % (ref['label'], ref['RM_eff'], ref['b'], ref['rt'], P, ref['Npart'], ref['seed']))
     w('Covers $t = 0$ to $%.9g\\,M$. Figures: `%s`. Reduction: `%s`.'
       % (K * P, os.path.relpath(a.figdir), os.path.relpath(a.reduced)))
+    if failed:
+        w()
+        w('> **This run FAILED at `t = %.6f M` (`t/P_1/2 = %.5f`).** The last '
+          'numerically healthy row is `t = %.6f M` (`t/P_1/2 = %.5f`), and every '
+          'measurement below is bounded there. Output past that point exists -- '
+          'history rows, ledgers and particle dumps all continue -- but is filled with '
+          'zeros and NaNs, so it is excluded rather than tabulated.'
+          % (tfail, tfail / P, tgood, tgood / P))
     w()
     w('| question | measurement | verdict |')
     w('|---|---|---|')

@@ -29,6 +29,11 @@ INK = '#1a1a1a'
 MUTED = '#6b6b6b'
 GRIDC = '#d9d9d9'
 REFC = '#9a9a9a'          # reference/null lines: recessive, never a series colour
+FAILC = '#b3261e'         # the one alarm colour: where a run stopped being trustworthy
+
+# Set by figs_session2.main() when a run failed, so every axis marks it.
+TFAIL = None
+PHALF = None
 
 
 def apply():
@@ -62,12 +67,23 @@ def ramp(n, name='viridis'):
 
 
 def periods_axis(ax, ref, milestone=None, xmax=None):
-    """x axis in units of that case's own P_1/2, with integer-period markers."""
+    """x axis in units of that case's own P_1/2, with integer-period markers.
+
+    If the run failed, the axis stops at the failure and the failure is drawn, so no
+    panel can imply the record extends further than it does.
+    """
     ax.set_xlabel(r'$t / P_{1/2}$')
     hi = xmax if xmax is not None else (milestone or 5)
+    if TFAIL is not None and PHALF:
+        hi = min(hi, TFAIL / PHALF * 1.02)
     for k in range(1, int(np.ceil(hi)) + 1):
         ax.axvline(k, color=REFC, lw=0.6, ls=(0, (1, 3)), zorder=0)
     ax.set_xlim(0, hi)
+    if TFAIL is not None and PHALF:
+        ax.axvline(TFAIL / PHALF, color=FAILC, lw=1.3, ls=(0, (3, 1.5)), zorder=5)
+        ax.annotate('run fails', xy=(TFAIL / PHALF, 0.5),
+                    xycoords=('data', 'axes fraction'), fontsize=6.8, color=FAILC,
+                    ha='right', va='center', rotation=90)
 
 
 def mark_null(ax, value, label):
@@ -82,9 +98,12 @@ def stamp(fig, ref, milestone, extra=''):
     fig.text(0.005, -0.055,
              r'Plummer session 2, case %s: $(R/M)_{\rm eff} = %.4g$, '
              r'$b = %.6g\,M$, $r_t = 20b$, $P_{1/2} = %.6f\,M$, '
-             r'$N = %d$, seed %d, through $%g\,P_{1/2}$%s'
+             r'$N = %d$, seed %d, through $%g\,P_{1/2}$%s%s'
              % (ref['label'], ref['RM_eff'], ref['b'], ref['P_half'],
-                ref['Npart'], ref['seed'], milestone, extra),
+                ref['Npart'], ref['seed'], milestone, extra,
+                ('' if TFAIL is None else
+                 r'  [RUN FAILS AT $t/P = %.3f$; record truncated there]'
+                 % (TFAIL / PHALF))),
              fontsize=6.4, color=MUTED, ha='left', va='bottom')
 
 
