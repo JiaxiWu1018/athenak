@@ -41,8 +41,16 @@ if [ ! -s "$NPZ" ]; then
   echo "NOTE: $NPZ absent; the particle frames must be extracted on AMD first with"
   echo "      analysis/extract_movie_frames.py --rundir runs/prod_$CASE --out ... --npair 1056768"
 else
-  python3 analysis/render_particle_movie.py --npz "$NPZ" --ref "$REF" \
-    --out "$OUT/particles_core_and_halo.mp4" --fps "$FPS"
+  # --out is a DIRECTORY here: the renderer writes <out>/frames_particles/ and
+  # <out>/particles_core_and_halo.mp4 itself.  Passing a filename creates a directory
+  # with that name and nests the movie inside it.
+  if python3 analysis/render_particle_movie.py --npz "$NPZ" --ref "$REF" \
+       --out "$OUT" --fps "$FPS"; then
+    [ -s "$OUT/particles_core_and_halo.mp4" ] || {
+      echo "FAIL: particle renderer exited 0 but wrote no movie"; rc_all=1; }
+  else
+    echo "FAIL: particle renderer exited non-zero"; rc_all=1
+  fi
 fi
 date -Is
 if [ "$rc_all" -ne 0 ]; then
