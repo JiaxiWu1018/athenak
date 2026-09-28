@@ -9,12 +9,15 @@
 #SBATCH -p mi2101x
 #SBATCH -t 4:00:00
 set -uo pipefail
-CASE=${1:?usage: CASE}
+CASE=${1:?usage: CASE [TMAX]}
+TMAX=${2:-}
 R=/work1/eliasmost/jiaxiwu/plummer_s02_20260910
 cd "$R"
 mkdir -p movies
-python3 analysis/extract_movie_frames.py --rundir "runs/prod_$CASE" \
-  --out "movies/${CASE}_particles.npz" --nsub 200000 --ncohort 32 --npair 1056768
+args=(--rundir "runs/prod_$CASE" --out "movies/${CASE}_particles.npz"
+      --nsub 200000 --ncohort 32 --npair 1056768)
+[ -n "$TMAX" ] && args+=(--tmax "$TMAX")
+python3 analysis/extract_movie_frames.py "${args[@]}"
 rc=$?
 ls -la "movies/${CASE}_particles.npz" 2>/dev/null
 echo "PARTICLE EXTRACT DONE ($CASE) rc=$rc"
