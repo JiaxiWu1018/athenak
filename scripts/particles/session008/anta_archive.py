@@ -53,9 +53,13 @@ def main():
   try:
    archive()
    state=json.loads(remote('cat '+AMD+'/control/state.json'))
+   remote('rm -f '+AMD+'/control/ARCHIVE_ERROR')
    atomic(DEST/'evidence/amd_state.json',state)
    if state['status'] in ('complete_t12','segment_cap','user_stop','resource_limit','configuration_failure','numerical_failure','scheduler_failure','no_progress','emergency_cancel'):
     archive()
+    for name in ('config.json','latest_checkpoint.json'):
+     atomic(DEST/'evidence'/name,json.loads(remote('cat '+AMD+'/control/'+name)))
+    (DEST/'evidence/executable.sha256').write_text(remote('cat '+AMD+'/evidence/executable.sha256'))
     subprocess.run(['/home/jiaxiwu/miniconda3/bin/python',str(DEST/'scripts/analyze_s8.py'),'--root',str(DEST)],check=True,timeout=5400)
     atomic(DEST/'evidence/ARCHIVE_ANALYSIS_COMPLETE.json',dict(state=state,utc=time.time()))
     return
