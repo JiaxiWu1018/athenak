@@ -41,7 +41,7 @@ def archive():
  return changed
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--seconds',type=int,default=19800);a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--seconds',type=int,default=19800);p.add_argument('--once',action='store_true');a=p.parse_args()
  deadline=time.time()+a.seconds
  def heartbeat():
   while time.time()<deadline:
@@ -58,7 +58,7 @@ def main():
    if state['status'] in ('complete_t12','segment_cap','user_stop','resource_limit','configuration_failure','numerical_failure','scheduler_failure','no_progress','emergency_cancel'):
     archive()
     for name in ('config.json','latest_checkpoint.json'):
-     atomic(DEST/'evidence'/name,json.loads(remote('cat '+AMD+'/control/'+name)))
+     atomic(DEST/'evidence'/name,json.loads(remote('if test -f '+AMD+'/control/'+name+'; then cat '+AMD+'/control/'+name+'; else echo "{}"; fi')))
     (DEST/'evidence/executable.sha256').write_text(remote('cat '+AMD+'/evidence/executable.sha256'))
     subprocess.run(['/home/jiaxiwu/miniconda3/bin/python',str(DEST/'scripts/analyze_s8.py'),'--root',str(DEST)],check=True,timeout=5400)
     atomic(DEST/'evidence/ARCHIVE_ANALYSIS_COMPLETE.json',dict(state=state,utc=time.time()))
@@ -68,6 +68,8 @@ def main():
    # Archival failure does not authorize deleting source evidence.
    try:remote('touch '+AMD+'/control/ARCHIVE_ERROR')
    except Exception:pass
+   if a.once:raise
+  if a.once:return
   time.sleep(300)
  atomic(DEST/'evidence/archive_window_closed_'+os.environ.get('SLURM_JOB_ID','manual')+'.json',dict(utc=time.time(),reason='finite polling window exhausted'))
 

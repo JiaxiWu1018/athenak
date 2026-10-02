@@ -42,7 +42,11 @@ def main():
  runs=[root/'runs/gate_output']+sorted((root/'runs').glob('segment_*'))
  runs=[r for r in runs if (r/'ARCHIVE_VERIFIED.json').exists()]
  if not runs:
-  (out/'NO_SCIENCE_DATA.md').write_text('No verified evolution outputs are available. No results inferred.\n');return
+  (out/'NO_SCIENCE_DATA.md').write_text('No verified evolution outputs are available. No results inferred.\n')
+  state=json.loads((root/'evidence/amd_state.json').read_text())
+  (root/'REPORT_Jeans8.md').write_text('# Session 008 assessment halted\n\nNo verified evolution outputs available; no scientific outcome or plots inferred. Workflow status: '+state['status']+'.\n')
+  (root/'REPORT_AGENT.md').write_text('# Session 008 failure record\n\n```json\n'+json.dumps(state,indent=2)+'\n```\n')
+  return
  tracks=[series(runs,'*.co_'+str(i)+'.txt') for i in (0,1)]
  fig,axs=plt.subplots(1,3,figsize=(13,4));metrics={}
  if all(len(t) for t in tracks):
@@ -101,7 +105,7 @@ def main():
    data=np.loadtxt(file,ndmin=2);valid=(data[:,10]>0)&np.isfinite(data).all(axis=1)&(data[:,0]>0)
    ax.semilogy(data[valid,0],np.sqrt(data[valid,3]/data[valid,10]),color='tab:blue',label='H RMS' if run==runs[0] else None)
    ax.semilogy(data[valid,0],np.sqrt(data[valid,4]/data[valid,10]),color='tab:orange',label='M RMS' if run==runs[0] else None)
- ax.set(xlabel='t/M_ref',ylabel='proper-volume RMS; code chi mask, not AH exterior');ax.legend();fig.tight_layout();fig.savefig(out/'constraints.png',dpi=170);plt.close(fig)
+ ax.set(xlabel='t/M_ref',ylabel='proper-volume RMS; chi >= 0.0625, not AH exterior');ax.legend();fig.tight_layout();fig.savefig(out/'constraints.png',dpi=170);plt.close(fig)
  # Raw multipoles are primary evidence. The assessment precedes central signals at
  # extraction spheres; FFI strain is deliberately deferred until causal coverage exists.
  fig,ax=plt.subplots(figsize=(8,4))

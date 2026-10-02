@@ -186,7 +186,8 @@ def permit(segment):
 
 def request_stop(emergency=False):
  s=readstate();s['stop_requested']=True;(CONTROL/'USER_STOP').touch();(CONTROL/'REQUEST_STOP').touch()
- s['status']='emergency_cancel' if emergency else 'stop_requested';save(s)
+ if s['status'] not in TERMINAL:s['status']='emergency_cancel' if emergency else 'stop_requested'
+ save(s)
  if emergency:cancel_future(s)
 
 def main():

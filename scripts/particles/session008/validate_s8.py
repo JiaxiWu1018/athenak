@@ -30,11 +30,15 @@ def main():
   matches=matches and all(abs(vals[x]['volume']-old[x]['volume'])<1e-9*old[x]['volume'] for x in variables)
   ratios[name]={x:(vals[x]['rms']/old[x]['rms'] if old[x]['rms'] else None) for x in variables}
  # A mismatch is recorded, never presented as a matched ratio.
+ physical_momentum={k:float(np.sqrt(sum(vals[x]['rms']**2 for x in ('con_Mx','con_My','con_Mz')))) for k,vals in norms.items()}
+ old_physical={k:float(np.sqrt(sum(baseline['global' if k=='global_region' else k][x]['rms']**2 for x in ('con_Mx','con_My','con_Mz')))) for k in norms}
  result=dict(checks=checks,written=written,logged=logged,ledger_comparison=detail,
  total_P_cov=np.sum([x['P_cov'] for x in logged],axis=0).tolist(),
  total_P_hat=np.sum([x['P_hat'] for x in logged],axis=0).tolist(),
  constraint_time=float(con['time']),constraint_norms=norms,
- constraint_definition='coordinate-volume weighted leaf cells; identical rectangular regions; no field mask',
+ constraint_definition='coordinate-volume weighted leaf cells; identical rectangular regions; no field mask. Raw con_M is already squared; its field RMS is not the momentum-vector RMS.',
+ physical_momentum_vector_rms=physical_momentum,
+ physical_momentum_vector_rms_ratio={k:physical_momentum[k]/old_physical[k] for k in norms} if matches else None,
  session7_comparison_matched=bool(matches),session8_over_session7_rms=ratios if matches else None)
  (a.root/'evidence/initial_validation.json').write_text(json.dumps(result,indent=2)+'\n')
  if not all(checks.values()): raise RuntimeError('initialization gate failed: '+str(checks))

@@ -69,5 +69,15 @@ class Checks(unittest.TestCase):
    w.save(dict(status='running_segment_1',stop_requested=False,time=1.,jobs=[dict(id=123)]))
    with self.assertRaises(SystemExit):w.inspect(1,123)
    self.assertEqual(w.readstate()['status'],'numerical_failure')
+ def test_failed_write_never_displaces_verified_checkpoint(self):
+  run=self.root/'runs/failed';(run/'rst').mkdir(parents=True);p=run/'rst/incomplete.rst';p.write_bytes(b'x')
+  (run/'EXIT_CODE').write_text('1');(run/'run.log').write_text('cycle=10')
+  row=dict(path=str(p),cycle=10,time=1.,sha256='untrusted')
+  with patch.object(r,'checkpoint',return_value=row):kept=r.retain(self.root,True,run)
+  self.assertEqual(kept,[]);self.assertFalse((self.root/'control/latest_checkpoint.json').exists())
+ def test_stop_after_completion_preserves_outcome(self):
+  with patch.object(w,'ROOT',self.root),patch.object(w,'CONTROL',self.root/'control'):
+   w.save(dict(status='complete_t12',stop_requested=False,jobs=[]))
+   w.request_stop();self.assertEqual(w.readstate()['status'],'complete_t12');self.assertTrue(w.readstate()['stop_requested'])
 
 if __name__=='__main__':unittest.main()

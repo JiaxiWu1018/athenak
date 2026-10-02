@@ -87,7 +87,8 @@ def retain(root, closed=False, run=None):
             try:
                 row=checkpoint(p,False)
                 parent=p.parent.parent
-                finished=(parent/'EXIT_CODE').exists() or (closed and run and parent==Path(run))
+                exit_file=parent/'EXIT_CODE'
+                finished=exit_file.exists() and exit_file.read_text().strip()=='0'
                 if not finished and last_cycle(parent/'run.log') <= row['cycle']: continue
                 row=checkpoint(p)
             except (ValueError,OSError,struct.error): continue
