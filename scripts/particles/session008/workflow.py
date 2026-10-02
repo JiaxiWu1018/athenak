@@ -149,7 +149,11 @@ def inspect(segment,jid):
    if (run/'EXIT_CODE').exists() and not (run/'SEALED').exists():seal(run)
   terminal(s,'user_stop','sticky user request; last verified checkpoint retained')
  if job[1].strip()!='COMPLETED' or job[2]!='0:0':
-  terminal(s,'configuration_failure' if segment==0 else 'scheduler_failure','predecessor '+str(job))
+  run=ROOT/'runs'/('segment_'+str(segment).zfill(2)) if segment else None
+  logfile=run/'run.log' if run else None
+  numerical=logfile is not None and logfile.exists() and '### FATAL ERROR' in logfile.read_text(errors='replace')
+  reason='numerical_failure' if numerical else ('configuration_failure' if segment==0 else 'scheduler_failure')
+  terminal(s,reason,'predecessor '+str(job))
  bindings()
  if segment==0:
   receipt=json.loads((ROOT/'evidence/gate_receipt.json').read_text())
@@ -170,6 +174,7 @@ def inspect(segment,jid):
  s['time']=row['time'];s['cycle']=row['cycle'];s['checkpoint']=row;save(s)
  if s['stop_requested'] or (CONTROL/'USER_STOP').exists():terminal(s,'user_stop','sticky user request')
  if (CONTROL/'RESOURCE_STOP.json').exists():terminal(s,'resource_limit',(CONTROL/'RESOURCE_STOP.json').read_text())
+ if (CONTROL/'ARCHIVE_ERROR').exists() and (CONTROL/'REQUEST_STOP').exists():terminal(s,'resource_limit','archival failure/cap/expiry; inspect Anta archive records')
  if row['time']>=12-1e-10:terminal(s,'complete_t12','assessment endpoint reached')
  if segment==3:terminal(s,'segment_cap','three evolution jobs exhausted; review cost toward t50')
  s['status']='ready_segment_'+str(segment+1);save(s)

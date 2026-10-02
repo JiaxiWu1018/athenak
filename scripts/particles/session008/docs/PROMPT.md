@@ -1,6 +1,6 @@
 # Jeans-in-cluster Session 008 request and approved amendments
 
-The originating request was “Jeans-in-cluster Session 008 — companion-supported orbit and GW production on AMD”. The governing request is retained here as an execution specification; the exact conversation remains the original prompt record.
+The originating request was “Jeans-in-cluster Session 008 — companion-supported orbit and GW production on AMD”. The original request text is preserved in `PROMPT_ORIGINAL.md`. This file records the execution specification and approved amendments; `APPROVED_PLAN.md` controls the current bounded stage.
 
 Prepare and, after approval, execute a fresh Session008 on established AMD resources for the NRPIC method paper. Inspect governing instructions, Sessions004–007, actual production inputs, later diagnostic fixes and the October1 Session007 follow-up. Recover the production restart-header repair263dcf21 rather than blindly using preparation36b64e23. Isolate project/GI-in-cluster source, preserve prior evidence, commit andpush relevant work, never commit large data orcredentials.
 

@@ -57,8 +57,12 @@ def main():
    atomic(DEST/'evidence/amd_state.json',state)
    if state['status'] in ('complete_t12','segment_cap','user_stop','resource_limit','configuration_failure','numerical_failure','scheduler_failure','no_progress','emergency_cancel'):
     archive()
+    ids=','.join(str(int(j['id'])) for j in state['jobs'])
+    (DEST/'evidence/amd_accounting.psv').write_text(remote('sacct -X -n -P -j '+ids+' --format=JobIDRaw,State,ExitCode,ElapsedRaw,AllocNodes'))
     for name in ('config.json','latest_checkpoint.json'):
      atomic(DEST/'evidence'/name,json.loads(remote('if test -f '+AMD+'/control/'+name+'; then cat '+AMD+'/control/'+name+'; else echo "{}"; fi')))
+    for name in ('initial_validation.json','restart_validation.json','gate_receipt.json'):
+     atomic(DEST/'evidence'/name,json.loads(remote('if test -f '+AMD+'/evidence/'+name+'; then cat '+AMD+'/evidence/'+name+'; else echo "{}"; fi')))
     (DEST/'evidence/executable.sha256').write_text(remote('cat '+AMD+'/evidence/executable.sha256'))
     subprocess.run(['/home/jiaxiwu/miniconda3/bin/python',str(DEST/'scripts/analyze_s8.py'),'--root',str(DEST)],check=True,timeout=5400)
     atomic(DEST/'evidence/ARCHIVE_ANALYSIS_COMPLETE.json',dict(state=state,utc=time.time()))

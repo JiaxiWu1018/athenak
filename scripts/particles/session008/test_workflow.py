@@ -79,5 +79,11 @@ class Checks(unittest.TestCase):
   with patch.object(w,'ROOT',self.root),patch.object(w,'CONTROL',self.root/'control'):
    w.save(dict(status='complete_t12',stop_requested=False,jobs=[]))
    w.request_stop();self.assertEqual(w.readstate()['status'],'complete_t12');self.assertTrue(w.readstate()['stop_requested'])
+ def test_real_failed_job_with_fatal_is_numerical_failure(self):
+  run=self.root/'runs/segment_01';run.mkdir();(run/'run.log').write_text('### FATAL ERROR particle migration')
+  with patch.object(w,'ROOT',self.root),patch.object(w,'CONTROL',self.root/'control'),patch.object(w,'scheduler_status',return_value=['123','FAILED','1:0','1','3']),patch.object(w.subprocess,'run'):
+   w.save(dict(status='running_segment_1',stop_requested=False,time=1.,jobs=[dict(id=123)]))
+   with self.assertRaises(SystemExit):w.inspect(1,123)
+   self.assertEqual(w.readstate()['status'],'numerical_failure')
 
 if __name__=='__main__':unittest.main()
