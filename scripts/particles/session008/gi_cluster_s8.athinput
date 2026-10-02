@@ -1,0 +1,462 @@
+<comment>
+Session 008 canonical fresh t=0 companion-supported AMD assessment.
+Approved local orthonormal speed = 0.133215; left -y, right +y; CCW from +z.
+Approximate companion motivation: v_new^2 ~ v_old^2 + 0.12/(4*3), G=1.
+This is not exact GR binary equilibrium. No new pusher force or velocity tuning.
+Source masses 0.76+0.12+0.12=1 define M_ref=1 inherited units, not measured ADM,
+rest, or horizon mass. Envelope areal R=30, centers isotropic Cartesian +/-3.
+Approximate conformally flat K_ij=0 leaves the local momentum constraint unsolved.
+Fresh 5,000,000 deterministic particles, seed4001; sampling asymmetry retained.
+Initial coordinate period ~227 in combined metric; t=12 is early assessment only.
+Domain +/-256, root dx=2, root logical3, physical levels0..9, dx_min=1/256.
+Initial compact towers reach dx=1/64; Lohner0.2, tracker_floor=false.
+Outflow/Sommerfeld boundary: sqrt(2) gauge estimate reaches R=30 at ~159.8.
+Extraction40..70 uses inherited dx=2 propagation grid. Raw r*Psi4 ell2..8 retained;
+t=12 does not cover central-collapse waves at these spheres or merger/ringdown.
+No common-horizon, removal-plateau, or mass-plateau early science stop is enabled.
+Assessment endpoint t=12, maximum48 raw AMD node-hours including preparation.
+<job>
+basename = s8_companion_supported
+
+<mesh>
+nghost = 4
+nx1 = 256
+x1min = -256.0
+x1max = 256.0
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 256
+x2min = -256.0
+x2max = 256.0
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 256
+x3min = -256.0
+x3max = 256.0
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+
+<time>
+evolution = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim = 100000000
+tlim = 12.0
+ndiag = 50
+stop_file = REQUEST_STOP
+stop_check_every = 16
+
+<mesh_refinement>
+refinement = adaptive
+num_levels = 10
+max_nmb_per_rank = 240
+ncycle_check = 16
+refinement_interval = 16
+
+<amr_criterion1>
+method = user
+
+<z4c_amr>
+method = loehner
+tracker_floor = false
+loehner_variable = alp_psi7
+loehner_threshold = 0.2
+radius_0_rad = 34.0
+radius_0_reflevel = 1
+radius_1_rad = 18.0
+radius_1_reflevel = 2
+radius_2_rad = 15.0
+radius_2_reflevel = 3
+
+<refined_region1>
+level = 1
+x1min = -34
+x1max = 34
+x2min = -34
+x2max = 34
+x3min = -34
+x3max = 34
+
+<refined_region2>
+level = 2
+x1min = -18
+x1max = 18
+x2min = -18
+x2max = 18
+x3min = -18
+x3max = 18
+
+<refined_region3>
+level = 3
+x1min = -15
+x1max = 15
+x2min = -15
+x2max = 15
+x3min = -15
+x3max = 15
+
+<refined_region4>
+level = 4
+x1min = -6
+x1max = 0
+x2min = -3
+x2max = 3
+x3min = -3
+x3max = 3
+
+<refined_region5>
+level = 5
+x1min = -4.5
+x1max = -1.5
+x2min = -1.5
+x2max = 1.5
+x3min = -1.5
+x3max = 1.5
+
+<refined_region6>
+level = 6
+x1min = -3.75
+x1max = -2.25
+x2min = -0.75
+x2max = 0.75
+x3min = -0.75
+x3max = 0.75
+
+<refined_region7>
+level = 7
+x1min = -3.375
+x1max = -2.625
+x2min = -0.375
+x2max = 0.375
+x3min = -0.375
+x3max = 0.375
+
+<refined_region8>
+level = 4
+x1min = 0
+x1max = 6
+x2min = -3
+x2max = 3
+x3min = -3
+x3max = 3
+
+<refined_region9>
+level = 5
+x1min = 1.5
+x1max = 4.5
+x2min = -1.5
+x2max = 1.5
+x3min = -1.5
+x3max = 1.5
+
+<refined_region10>
+level = 6
+x1min = 2.25
+x1max = 3.75
+x2min = -0.75
+x2max = 0.75
+x3min = -0.75
+x3max = 0.75
+
+<refined_region11>
+level = 7
+x1min = 2.625
+x1max = 3.375
+x2min = -0.375
+x2max = 0.375
+x3min = -0.375
+x3max = 0.375
+
+<z4c>
+lapse_harmonicf = 1.0
+lapse_harmonic = 0.0
+lapse_oplog = 2.0
+lapse_advect = 1.0
+shift_eta = 2.0
+shift_advect = 1.0
+diss = 0.1
+chi_div_floor = 0.00001
+damp_kappa1 = 0.02
+damp_kappa2 = 0.0
+# Multipolar r*Psi4 extraction (l=2..8 in the current implementation).  These radii
+# are initially outside the R=30 envelope; central signals arrive after this stage.
+nrad_wave_extraction = 4
+extraction_radius_0 = 40.0
+extraction_radius_1 = 50.0
+extraction_radius_2 = 60.0
+extraction_radius_3 = 70.0
+extraction_nlev = 40
+waveform_dt = 0.025
+tracker_mode = particle_lapse
+tracker_walk_every = 16
+co_0_type = BH
+co_0_x = -3
+co_0_y = 0
+co_0_z = 0
+co_0_mass = 0.12
+co_0_radius = 0.1875
+co_0_reflevel = 7
+co_0_out_every = 20
+co_0_tag_min = 3000000
+co_0_tag_max = 3999999
+co_0_particle_core_radius = 0.75
+co_0_predict_vx = 0.0
+co_0_predict_vy = -0.08312327269688827
+co_0_predict_vz = 0.0
+co_0_persist_state = true
+co_1_type = BH
+co_1_x = 3
+co_1_y = 0
+co_1_z = 0
+co_1_mass = 0.12
+co_1_radius = 0.1875
+co_1_reflevel = 7
+co_1_out_every = 20
+co_1_tag_min = 4000000
+co_1_tag_max = 4999999
+co_1_particle_core_radius = 0.75
+co_1_predict_vx = 0.0
+co_1_predict_vy = 0.08312327269688827
+co_1_predict_vz = 0.0
+co_1_persist_state = true
+
+<fastflow>
+npunct = 2
+num_horizons = 3
+ntheta = 10
+lmax = 6
+expand_guess = 1.0
+output_ylm = true
+output_grid = false
+verbose = true
+merger_distance = 4.0
+reuse_last_surface_shape_0 = true
+persist_surface_shape_0 = true
+consumer_rmin_0 = 0.0
+consumer_rmin_cells_0 = 4.0
+consumer_rmax_0 = 0.1875
+consumer_hrel_0 = 0.2
+consumer_persist_0 = 3
+consumer_exclude_other_punctures_0 = true
+use_puncture_0 = 0
+initial_radius_0 = 0.06
+flow_iterations_0 = 200
+flow_alpha_beta_const_0 = 0.005
+hmean_tol_0 = 100.0
+mass_tol_0 = 1e-4
+start_time_0 = 2.5
+stop_time_0 = 12.0
+reuse_last_surface_shape_1 = true
+persist_surface_shape_1 = true
+consumer_rmin_1 = 0.0
+consumer_rmin_cells_1 = 4.0
+consumer_rmax_1 = 0.1875
+consumer_hrel_1 = 0.2
+consumer_persist_1 = 3
+consumer_exclude_other_punctures_1 = true
+use_puncture_1 = 1
+initial_radius_1 = 0.06
+flow_iterations_1 = 200
+flow_alpha_beta_const_1 = 0.005
+hmean_tol_1 = 100.0
+mass_tol_1 = 1e-4
+start_time_1 = 2.5
+stop_time_1 = 12.0
+reuse_last_surface_shape_2 = true
+persist_surface_shape_2 = true
+consumer_rmin_2 = 0.0
+consumer_rmin_cells_2 = 4.0
+consumer_rmax_2 = 0.75
+consumer_hrel_2 = 0.2
+consumer_persist_2 = 3
+use_puncture_2 = -1
+use_puncture_massweighted_center_2 = true
+wait_until_punc_are_close_2 = true
+initial_radius_2 = 0.40
+flow_iterations_2 = 300
+flow_alpha_beta_const_2 = 0.005
+hmean_tol_2 = 100.0
+mass_tol_2 = 1e-4
+start_time_2 = 2.5
+stop_time_2 = 12.0
+
+<particles>
+particle_type = dust
+pusher = gr_boris
+fatal_boris_reject = true
+init = pgen
+feedback = true
+mass = 1.0
+debug = 1
+destroy_log = true
+destroy_component_split_tag = 3000000
+destroy_component_split_tag_2 = 4000000
+excise_radius = 0.0
+excise_lapse = 0.05
+excise_lapse_raw_ah = false
+excise_ah = false
+cross_level_deposit = conservative
+
+<problem>
+gi_m0 = 0.76
+gi_r0 = 30.0
+gi_n_env = 3000000
+gi_n_clump = 2000000
+gi_seed = 4001
+gi_profile_dr = 0.001
+gi_nclumps = 2
+gi_clump_mass_scale = 1.0
+gi_clump1_mass = 0.12
+gi_clump1_x1 = -3.0
+gi_clump1_x2 = 0.0
+gi_clump1_x3 = 0.0
+gi_clump1_sigma = 0.70
+gi_clump1_s = 0.02
+gi_clump1_bulk_vy = -0.133215
+gi_clump2_mass = 0.12
+gi_clump2_x1 = 3.0
+gi_clump2_x2 = 0.0
+gi_clump2_x3 = 0.0
+gi_clump2_sigma = 0.70
+gi_clump2_s = 0.02
+gi_clump2_bulk_vy = 0.133215
+gi_dump_profile = gi_profile_M076_two_clump_s7.txt
+
+<output1>
+file_type = hst
+dt = 0.025
+
+<output2>
+file_type = bin
+variable = tmunu
+id = tmunu_xy
+slice_x3 = 0.0
+dt = 0.1
+
+<output3>
+file_type = bin
+variable = con
+id = con_xy
+slice_x3 = 0.0
+dt = 0.1
+
+<output4>
+file_type = bin
+variable = z4c
+id = z4c_xy
+slice_x3 = 0.0
+dt = 0.1
+
+<output5>
+file_type = pvtk
+variable = prtcl_all
+dt = 0.25
+
+<output6>
+file_type = bin
+variable = tmunu_E
+id = E3d
+dt = 1.0
+
+<output7>
+file_type = rst
+dt = 0.5
+
+<output8>
+file_type = cbin
+variable = z4c_chi
+id = mesh
+coarsen_factor = 32
+dt = 0.025
+
+<output9>
+file_type = bin
+variable = tmunu
+id = tmunu_xz
+slice_x2 = 0.0
+dt = 0.1
+
+<output10>
+file_type = bin
+variable = con
+id = con_xz
+slice_x2 = 0.0
+dt = 0.1
+
+<output11>
+file_type = bin
+variable = z4c
+id = z4c_xz
+slice_x2 = 0.0
+dt = 0.1
+
+<output12>
+file_type = bin
+variable = tmunu
+id = tmunu_yz
+slice_x1 = 0.0
+dt = 0.1
+
+<output13>
+file_type = bin
+variable = con
+id = con_yz
+slice_x1 = 0.0
+dt = 0.1
+
+<output14>
+file_type = bin
+variable = z4c
+id = z4c_yz
+slice_x1 = 0.0
+dt = 0.1
+
+<output15>
+file_type = bin
+variable = weyl
+id = weyl_xy
+slice_x3 = 0.0
+dt = 0.1
+
+<output16>
+file_type = bin
+variable = weyl
+id = weyl_xz
+slice_x2 = 0.0
+dt = 0.1
+
+<output17>
+file_type = bin
+variable = weyl
+id = weyl_yz
+slice_x1 = 0.0
+dt = 0.1
+
+<output18>
+file_type = bin
+variable = con
+id = con3d
+dt = 2.0
+
+<output19>
+file_type = bin
+variable = z4c
+id = z4c3d
+dt = 2.0
+
+<output20>
+file_type = bin
+variable = tmunu
+id = tmunu3d
+dt = 2.0
+
+<output21>
+file_type = bin
+variable = weyl
+id = weyl3d
+dt = 2.0
