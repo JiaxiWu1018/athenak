@@ -23,13 +23,13 @@ def assess():
   path=paths[-1];data=bin_convert.read_binary(str(path))
   nx=int(data['nx1_out_mb']);ny=int(data['nx2_out_mb'])
   expected=[];real_values=[];imag_values=[]
-  for g,real,imag in zip(data['mb_geometry'],data['mb_data']['weyl_rpsi4'],data['mb_data']['weyl_ipsi4']):
+  for index,g,real,imag in zip(data['mb_index'],data['mb_geometry'],data['mb_data']['weyl_rpsi4'],data['mb_data']['weyl_ipsi4']):
    x=g[0]+(np.arange(nx)+.5)*(g[1]-g[0])/nx
    y=g[2]+(np.arange(ny)+.5)*(g[3]-g[2])/ny
    xx,yy=np.meshgrid(x,y)
    # Finest existing TT cells near +x: tetrad theta=-z, phi=+y.
    q=(xx>4)&(xx<7)&(np.abs(yy)<.04)
-   zz=(g[4]+g[5])/2
+   zz=g[4]+(index[4]+.5)*(g[5]-g[4])/int(data['nx3_mb'])
    radius=np.sqrt(xx[q]**2+yy[q]**2+zz**2)
    expected.extend(-(2*np.pi/w)**2*1e-5*np.sin(2*np.pi*(xx[q]-float(data['time']))/w))
    real_values.extend(np.asarray(real).reshape(ny,nx)[q]/radius)
