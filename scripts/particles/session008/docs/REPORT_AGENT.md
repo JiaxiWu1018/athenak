@@ -1,3 +1,213 @@
+# Session 008 terminal workflow record
+
+Automatically generated on Anta Slurm; terminal resource accounting and representative visual QA were added on October 5. Configuration, checkpoint, executable digest, initialization/restart receipts, actual AMD accounting and per-run archive manifests are in evidence/ and runs/.
+
+## October 5 terminal status and visual review
+
+The approved early assessment completed at t=12, cycle3964. GPU recovery preflight451757 and continuations451758/451760 completed0:0. Inspectors451759/451761 verified increasing time and the final checkpoint. Inspector451761 returned42 deliberately through the controller's terminal-stop function after setting complete_t12; this scheduler label is not a failed simulation. No numerical retry, speed change or endpoint extension occurred. AMD has no active campaign jobs.
+
+Final checkpoint: AMD runs/segment_04_recovery_20261005/rst/s8_companion_supported.00025.rst,29,759,151,573bytes;51,865-byte header;2,304blocks;3,348,166 particles;1,651,834 lapse removals;SHA256 fb2068f28fd9e58935d9d0160e95ad8e8fe295256171dca95bc45b9126039b2d. The latest three verified checkpoints remain onAMD only.
+
+Accounting from sacct includes all build, gate, successful and failed allocations and inspectors: **32.308888889 raw AMD node-hours**. Final-accounting snapshot is evidence/final_amd_accounting_20261005.psv. Anta jobs2134/2329/2330/2331 completed0:0;2330 took357s and2331 took516s. All completed science segments are checksum-verified, approved AMD binary copies removed, and ARCHIVE_ANALYSIS_COMPLETE.json was recorded. The bounded metadata trigger removed its cron entry. No fifth archival job was submitted.
+
+Visual QA found a horizon-summary join bug. Source FastFlow::Write writes finder iteration in column1, not evolution cycle. The former synthetic fixture incorrectly made these columns identical. A regression fixture now uses actual rounded-time/iteration conventions, checks exclusion of rejected/different/ambiguous surfaces, and allows uncomputed momentum fields without discarding valid mass/spin. The canonical analysis source now imports the same unique time+geometry matching helper used for the correction. Original frozen deployed scripts and original empty plot/summary remain preserved.
+
+Perseus Slurm11036 completed0:0 in1s, passing3 regression checks and correcting only the horizon plot from **3,746,841 logical bytes** of preserved small diagnostic tables. Exact source-table hashes are in analysis/horizon_review_20261005/summary.json;2,127/2,167 accepted rows matched uniquely;common0. Slurm11037 completed0:0 in4s, passing all6 horizon and analysis integration checks. These allocated checks do not rerun physics or add an Anta archival allocation. Corrected source/operations commit and push status are in evidence/TERMINAL_OPERATIONS_REVISION_20261005.txt.
+
+Small diagnostic copies are retained onPerseus under evidence/horizon_review_20261005/runs/ (3,850,240 allocated bytes). Three representative final-frame PNGs are retained under evidence/visual_qa_20261005/ (589,824 allocated bytes). No particle file, volume dump or checkpoint was transferred toPerseus. Figure/movie review copies remain under review_from_anta/; raw full science remains onAnta /data3. These explicitly recorded small QA inputs extend the earlier metadata-only Perseus record. No deletion or unrestricted sync occurred.
+
+Reproduce the small horizon correction within a Slurm allocation:
+
+```sh
+python3 scripts/postprocess_qa_20261005/horizon_review_20261005.py \
+  --runs-root runs --output analysis/horizon_review_20261005
+```
+
+The actual Perseus recipe is evidence/horizon_review_20261005.sbatch; the integration recipe is evidence/horizon_analysis_integration_20261005.sbatch. Anta's corrected full analysis copy is scripts/postprocess_qa_20261005/analyze_s8.py; set PYTHONPATH to the original scripts directory when reproducing it in allocated compute. The actual original full analysis was run by2331; only its horizon panel was recomputed. Other products and their encoder/decode checks were retained. Representative central/context/density final frames and orbit/motion/constraint/corrected-horizon plots were visually inspected.
+
+The approved t12 stage is complete; a longer orbit/GW production stage, strain and multi-radius central-wave comparisons remain unperformed. Source/input/executable physics digests below remain unchanged.
+
+```json
+{
+  "campaign_id": "jeans8_20261002",
+  "status": "complete_t12",
+  "stop_requested": false,
+  "segments_completed": 4,
+  "time": 12.0,
+  "jobs": [
+    {
+      "name": "build",
+      "id": 447620,
+      "nodes": 1,
+      "max_wall_hours": 0.5
+    },
+    {
+      "name": "gate",
+      "id": 447655,
+      "nodes": 3,
+      "max_wall_hours": 2,
+      "dependency": "afterok:447620"
+    },
+    {
+      "name": "inspect0",
+      "id": 447656,
+      "nodes": 1,
+      "max_wall_hours": 0.5,
+      "dependency": "afterany:447655"
+    },
+    {
+      "name": "segment1",
+      "id": 447657,
+      "nodes": 3,
+      "max_wall_hours": 4,
+      "dependency": "afterok:447656"
+    },
+    {
+      "name": "inspect1",
+      "id": 447658,
+      "nodes": 1,
+      "max_wall_hours": 0.5,
+      "dependency": "afterany:447657"
+    },
+    {
+      "name": "segment2",
+      "id": 447659,
+      "nodes": 3,
+      "max_wall_hours": 4,
+      "dependency": "afterok:447658"
+    },
+    {
+      "name": "inspect2",
+      "id": 447660,
+      "nodes": 1,
+      "max_wall_hours": 0.5,
+      "dependency": "afterany:447659"
+    },
+    {
+      "name": "segment3",
+      "id": 447661,
+      "nodes": 3,
+      "max_wall_hours": 4,
+      "dependency": "afterok:447660"
+    },
+    {
+      "name": "inspect3",
+      "id": 447662,
+      "nodes": 1,
+      "max_wall_hours": 0.5,
+      "dependency": "afterany:447661"
+    },
+    {
+      "name": "recovery_20261005_preflight",
+      "id": 451757,
+      "nodes": 3,
+      "max_wall_hours": 0.16666666666666666
+    },
+    {
+      "name": "recovery_20261005_continuation1",
+      "id": 451758,
+      "nodes": 3,
+      "max_wall_hours": 4
+    },
+    {
+      "name": "recovery_20261005_check1",
+      "id": 451759,
+      "nodes": 1,
+      "max_wall_hours": 0.5
+    },
+    {
+      "name": "recovery_20261005_continuation2",
+      "id": 451760,
+      "nodes": 3,
+      "max_wall_hours": 4
+    },
+    {
+      "name": "recovery_20261005_check2",
+      "id": 451761,
+      "nodes": 1,
+      "max_wall_hours": 0.5
+    }
+  ],
+  "pending_submission": null,
+  "updated_utc": 1791205609.818557,
+  "chain_submitted": true,
+  "maximum_reserved_node_hours": 44.5,
+  "accounting": {
+    "447655": [
+      "447655",
+      "COMPLETED",
+      "0:0",
+      "1553",
+      "3"
+    ],
+    "447657": [
+      "447657",
+      "COMPLETED",
+      "0:0",
+      "12123",
+      "3"
+    ],
+    "447659": [
+      "447659",
+      "COMPLETED",
+      "0:0",
+      "12131",
+      "3"
+    ],
+    "447661": [
+      "447661",
+      "FAILED",
+      "1:0",
+      "26",
+      "3"
+    ],
+    "451758": [
+      "451758",
+      "COMPLETED",
+      "0:0",
+      "12130",
+      "3"
+    ],
+    "451760": [
+      "451760",
+      "COMPLETED",
+      "0:0",
+      "619",
+      "3"
+    ]
+  },
+  "gates_passed": true,
+  "cycle": 3964,
+  "checkpoint": {
+    "path": "/work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/runs/segment_04_recovery_20261005/rst/s8_companion_supported.00025.rst",
+    "bytes": 29759151573,
+    "header_bytes": 51865,
+    "time": 12.0,
+    "cycle": 3964,
+    "dt": 0.0015625,
+    "blocks": 2304,
+    "particles": 3348166,
+    "removed": [
+      0,
+      0,
+      1651834
+    ],
+    "sha256": "fb2068f28fd9e58935d9d0160e95ad8e8fe295256171dca95bc45b9126039b2d"
+  },
+  "detail": "Approved assessment endpoint reached.",
+  "recovery_authorized": true,
+  "recovery_continuations_completed": 2,
+  "maximum_possible_total_node_hours": 47.14583333333333,
+  "recovery_chain_submitted": true,
+  "recovery_previous_time": 12.0
+}
+```
+
+Analysis output: /data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/assessment_2331
+
+
+## Preparation record (historical status at submission)
+
 # Session 008 implementation and operations record
 
 **2026-10-05 UTC:** numerical gates passed and t=9.325 is saved; reviewed continuation to the unchanged t=12 endpoint is queued. See `HANDOFF.md` for exact controls.

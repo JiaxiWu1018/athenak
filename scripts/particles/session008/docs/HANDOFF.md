@@ -1,6 +1,12 @@
 # Session 008 durable handoff
 
-## Current state
+## Current state, October 5 17:18 UTC
+
+**Approved early assessment completed at t=12.** Recovery preflight and both continuation jobs finished; final saved cycle3964,3,348,166 particles and a verified29.76GB checkpoint. There are no active Session008 AMD/Anta jobs, and the archive cron entry removed itself after analysis. Actual AMD usage **32.308889 of48 raw node-hours**; AMD session **78.853GiB**, Anta session **123.030GiB** at inspection. No longer evolution is enabled.
+
+All production science segments are checksum-verified onAnta /data3. Plots and three movies are in analysis/assessment_2331/. Use analysis/horizon_review_20261005/accepted_horizons.png for masses/spins: its strict surface match fixes an iteration-versus-cycle parsing error in the original plot. Six focused checks passed; representative plots and final frames were inspected. Both black holes remain separate, with only a small post-formation arc; no complete orbit or merger waveform is claimed. See REPORT_Jeans8.md and REPORT_AGENT.md.
+
+## Earlier October 5 recovery submission
 
 Updated2026-10-05: full GPU gate447655 and production447657/447659 passed, reaching verifiedt9.325. Startup447661 failed before loading the checkpoint because k003-010 selected a communication method incompatible with peers. The user requested continuation after review. No automatic failure retry or t50 extension is enabled.
 
@@ -12,7 +18,7 @@ Perseus10327 passed15 original checks. Recovery10957 reran those and passed6 rec
 
 ```sh
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py status'
-ssh hpcfund.amd.com 'squeue -j 451757,451758,451759,451760,451761'
+ssh hpcfund.amd.com 'sacct -X -j 451757,451758,451759,451760,451761 --format=JobID,State,Elapsed,AllocNodes,ExitCode'
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py stop'
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py cancel'
 ```

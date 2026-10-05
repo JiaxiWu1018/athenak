@@ -1,60 +1,53 @@
-# Jeans-in-cluster Session 008 — available results and continuation
+# Jeans-in-cluster Session 008 assessment
 
-## October 5 status
+Fresh companion-supported initial local boosts: left -y, right +y, magnitude 0.133215. This approximate prescription is not exact GR binary equilibrium. Five million initial particles, source masses 0.76/0.12/0.12; M_ref=1 is the inherited source unit. Approximate K_ij=0 leaves the local momentum constraint unsolved.
 
-The full GPU initialization and restart tests passed. Two production segments reached **t=9.325**, with accepted individual horizons for both clumps. No accepted common horizon is present in the inspected end-of-segment outputs. Sustained orbital motion and gravitational radiation have not yet been established by completed analysis.
+Workflow status: **complete_t12**. Last verified checkpoint time: **12.0**. The approved early assessment used four successful evolution segments after one failed startup, within 48 raw AMD node-hours including preparation. No campaign jobs remain active.
 
-The third job stopped during startup because node k003-010 selected a communication method incompatible with its peers. It took no simulation steps. Completed outputs and the latest three verified checkpoints were preserved.
+## Compiled initialization ledger
 
-The user requested continuation on October 5. A communication/checkpoint check **451757** and at most two continuation jobs **451758 / 451760**, with inspectors **451759 / 451761**, are submitted. They use nodes on which this exact configuration already ran successfully, preserve the physical setup, and retain the **t=12 / 48 raw AMD node-hour** limits. Actual usage before recovery is **21.645833 node-hours**; the new chain's maximum exposure is **25.5**, for a maximum total **47.145833**.
+| Component | Count | Sampled rest mass | Sum(mW) | P_cov,y | J_origin,z |
+|---|---:|---:|---:|---:|---:|
+| envelope | 3000000 | 0.7821717958 | 0.7961148546 | 0 | 0 |
+| left | 1000000 | 0.1312399829 | 0.1324996133 | -0.02152634 | 0.064518169 |
+| right | 1000000 | 0.1312399829 | 0.1324996382 | 0.02152597 | 0.064513473 |
 
-Anta archive job **2329** completed and checksum-verified both production segments before approved AMD science copy cleanup. The archive trigger was repaired to handle completed jobs that have disappeared from the queue, and its metadata window was renewed for 48 hours under this continuation request. The cumulative four-job archive limit remains unchanged. Final plots, movies and visual review are pending.
+Total covariant momentum residual: [0.0, -3.700000000030068e-07, 0.0]. Independent written-particle checks: {'exact_counts': True, 'tags': True, 'finite': True, 'positive_weights': True, 'inside_domain': True, 'ledger': True, 'signs': True, 'Jz': True, 'centers': True, 'widths': True, 'thermal': True}. These sampled quantities are distinct from source masses, horizon masses, and an ADM estimate.
 
-## Scientific setup
+Both individual horizons detected: True; first shared formation time: 8.485937500000432; measured coordinate revolutions after both form: 0.017573613981682643. These are coordinate diagnostics; gaps are flagged. No merger or radiation-driven inspiral claim is made.
 
-Session 008 starts from fresh initial data. The only intended physical change from Session 007 is the approved initial local orthonormal boost: **0.133215**, directed along −y for the left clump and +y for the right clump. Both move counterclockwise viewed from +z. The existing problem generator applies a Lorentz transformation to the thermal samples and regenerates their weights and covariant momenta. No force was added to the evolution.
+The assessment precedes central collapse signals at r=40–70. Raw complex r*Psi4 is retained; strain and merger/ringdown interpretation are deferred. The inherited propagation mesh does not establish high-frequency waveform accuracy.
 
-| Component | Source mass | Center | Initial particles | Local boost |
-|---|---:|---|---:|---|
-| Envelope | 0.76 | (0,0,0) | 3,000,000 | unchanged |
-| Left clump | 0.12 | (−3,0,0) | 1,000,000 | (0,−0.133215,0) |
-| Right clump | 0.12 | (+3,0,0) | 1,000,000 | (0,+0.133215,0) |
+## Review products
 
-The independently solved envelope has areal radius 30. Clump centers use isotropic Cartesian coordinates, with Gaussian width 0.70 and internal orthonormal momentum spread 0.02. Sampling, seed 4001, and immutable component tags are retained. No new spin, radial boost, symmetry, or envelope recoil was imposed.
+- `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/assessment_2331/orbit.png` — Coordinate trajectories, separation and phase within live intervals; inspect gaps and orbital arc.
+- `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/assessment_2331/radial_tangential.png` — Coordinate angular frequency and radial/tangential relative-motion ratio; no derivatives bridge gaps.
+- `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/assessment_2331/envelope_relative.png` — Trajectories relative to the rest-weighted sampled envelope center.
+- `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/horizon_review_20261005/accepted_horizons.png` — Strictly published same-candidate masses and coordinate spin; absent measurements are gaps.
+- `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/assessment_2331/particle_components.png` — Alive component counts and covariant matter angular momentum; no conserved total is implied.
+- `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/assessment_2331/constraints.png` — Proper-volume history norms with the code chi mask, not an AH exterior.
+- `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/assessment_2331/raw_waveform.png` — Both (2,+/-2) early outer-field/initialization response, not a merger waveform.
+- `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/assessment_2331/central.mp4` — Central fixed-tag particle projection and accepted rmin illustrations.
+- `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/assessment_2331/context.mp4` — Envelope/context fixed-tag view.
+- `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/assessment_2331/density.mp4` — Full-particle coordinate rest-mass slab projection on a fixed Cartesian grid; no native-AMR seams.
 
-The companion correction motivates the speed approximately; it is not an exact GR circular orbit. The prescribed conformal geometry depends on the source profile, so changing only the boost does not change that analytic geometry. It is nevertheless freshly initialized, and boost-dependent weights and momenta are regenerated. Approximate `K_ij=0` leaves the local momentum constraint unsolved. Opposite global boosts do not solve it.
+Movies passed encoder/decode checks. Representative final frames of all three movies, the orbit/motion/constraint plots and the corrected horizon plot were inspected on October 5. Component colors, axes and times are consistent; the density view uses a fixed grid. The small dashed horizon circles illustrate rmin, not measured projected horizon shapes. Source, logs, complex multipoles, masks, normalization, cadence and restart validity are preserved with checksum manifests.
 
-All plotted times use the inherited reference unit `M_ref=1`. The source normalization 0.76+0.12+0.12=1 does not equate sampled rest mass, horizon mass, and a measured ADM estimate.
+## October 5 reviewed results
 
-## Numerical setup and assessment limits
+The continuation reached verified **t=12**, cycle3964. The left and right black holes remain separate: no common candidate was published. They move counterclockwise through a small arc; the coordinate diagnostic records **0.01757 revolutions (about6.33degrees)** after both individual horizons are first accepted near t=8.486. This is insufficient to establish sustained orbiting. Separation near the last tracker sample is **6.088** reference units; the available evolution does not show sustained shrinking separation. No radiation-driven inspiral is claimed.
 
-The Session 007 baseline is retained: domain ±256, root spacing 2, 32³ cells per MeshBlock, compact initial refinement around both clumps, minimum spacing 1/256, Löhner refinement of `alpha*psi^7` at threshold 0.2, and `tracker_floor=false`. The logical root level is 3; physical levels 0–9 give logical levels 3–12. Initial towers reach spacing 1/64. RK4/CFL 0.4, gauge/damping, conservative deposition/feedback, and pusher protections are unchanged. Particles are removed at `alpha<0.05`; AH-driven removal is OFF.
+The corrected last accepted horizon measurements near t=11.99844 are:
 
-The approved assessment uses three AMD MI210 nodes and twelve MPI ranks. It targets **t=12**, bounded by **48 total raw AMD node-hours**, including preparation. The original chain reserved at most44.5 raw node-hours. After reviewing its startup failure, the user requested the bounded continuation described above. There is no automatic failure retry or extension toward t=50.
+| Object | Horizon mass / M_ref | Coordinate spin chi |
+|---|---:|---:|
+| Left | 0.111209 | 0.003144 |
+| Right | 0.110847 | 0.005329 |
 
-The initial coordinate period in the combined metric is approximately 227 reference time units, using initial coordinate tangential speed about 0.08312 from `alpha*v_local/psi^2` with zero initial shift. This estimate does not change the approved local boost. This stage can assess collapse and an early orbital arc, not a full post-collapse revolution. The inherited Sommerfeld/outflow boundary and approximately sqrt(2) outer gauge speed put the boundary-to-envelope estimate near t=160, beyond this stage.
+These horizon masses differ from the fixed source/model parameters0.12 and the sampled rest masses. Spin is small and fluctuates; its coordinate prescription and numerical limitations remain relevant. Masses continue growing during this early collapse/accretion interval. The surviving particle count is **3,348,166**, with **1,651,834 lapse removals**; removals are not measured BH masses.
 
-Raw complex `r*Psi4`, ell=2–8 at coordinate radii 40/50/60/70, is retained every 0.025 time units. A central collapse signal from around t=8 cannot reach those radii by t=12. The inherited propagation mesh also does not establish high-frequency merger-wave accuracy. No inspiral, merger, strain, ringdown, or precision waveform result is claimed.
+The original empty horizon plot was a post-processing error: the summary's first column is a finder iteration, while the acceptance table's first column is the simulation cycle. The corrected plot uses unique same-run/time/area/rmin/center matches to strictly accepted candidates. All **2,127 left** and **2,167 right** accepted records matched, with no missing or ambiguous matches. The original plot/summary are retained as superseded evidence; use the corrected horizon directory above.
 
-The outer propagation spacing is 2. A twenty-cells-per-wavelength heuristic corresponds to frequency at most about 0.025 in the inherited units; ten cells correspond to 0.05. These are planning estimates, not convergence evidence. The initial quadrupolar frequency estimate is about 0.0088, but the shortened assessment cannot yet test its radiation at the extraction spheres. A longer waveform production stage requires a separate duration, boundary and wave-zone decision.
+The assessment is too short for collapse radiation to reach radii40–70. Raw complex r*Psi4 is archived; a merger waveform, strain, radiated-energy estimate or a completed inspiral is not claimed. A longer orbital assessment still needs a finite approved endpoint, boundary/wave-zone design and resource budget.
 
-## Completed work and current status
-
-- The independent checkout includes restart-header repair `263dcf21`, recovered from a checksum-verified source bundle. The approved input and operations changes were pushed to `project/GI-in-cluster`.
-- AMD build **447620** completed successfully in 313 seconds with ROCm 6.4.1, HIP GFX90A, and the established GNU/OpenMPI toolchain.
-- Fifteen checks passed in Perseus Slurm job 10327: twelve controller/checkpoint checks and three analysis checks. They cover unfinished-write protection, orbital diagnostic gaps, both (2,+/-2) columns and a synthetic rendering fixture. The AMD gate repeats the twelve operations checks before numerical validation.
-- Full five-million-particle GPU validation **447655** completed successfully in1553seconds, with peak GPU memory **70.4%**. Exact counts/tags, weights, centers, thermal spread, signs and positive orbital J_z passed. Initial total covariant momentum residual was `(0, -3.7e-7, 0)` in inherited units; no new symmetry or recoil was imposed.
-- Production **447657 / 447659** completed; **447661** failed during communication startup. At the latest verified checkpoint, **3,998,466 particles remain** and **1,001,534 were removed by the lapse criterion**, with none removed by AHs. This removal count is a numerical diagnostic, not a measured horizon mass or proof of merger.
-- The lightweight initial constraint comparison matches Session007 at t=0.0125 with identical regions and volume conventions. Full evolution analysis, final plots and movies remain pending.
-
-## Storage and later review
-
-Science data will be retained at:
-
-`anta:/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/`
-
-At inspection, `/data3` had 27.10 TiB available. AMD retains the latest three verified Session 008 checkpoints total, without a Perseus backup. Large completed science binaries are removed from AMD only after Anta independently verifies their checksums. Logs, inputs, manifests, waveform streams, and failure evidence remain.
-
-Anta requires a GPU request for every Slurm job. A finite metadata trigger submits allocations only when transfer or analysis work is ready; it does not reserve a GPU while waiting. The trigger expires after 48 hours and can launch at most four six-hour jobs. Heavy processing remains in Slurm.
-
-After verified data arrive, the pipeline produces absolute/envelope-relative orbit plots, radial/tangential motion, accepted horizon diagnostics, particle counts and covariant angular momentum, constraint histories, both (2,+/-2) waveform plots, and central/context/density movies. Phase and derivatives do not bridge diagnostic gaps. Density uses full-particle rest weights on fixed Cartesian bins and is labelled as a coordinate slab surface density. Horizon illustrations use accepted coordinate `rmin` circles. Final reports are generated on Anta; representative real frames and plots still require visual review. See README.md and HANDOFF.md for exact commands and paths.
+Final actual AMD allocation usage is **32.308889 raw node-hours** out of48. At October5 17:18UTC, AMD session storage was **78.853GiB**, predominantly the latest three verified checkpoints and retained evidence; Anta /data3 science/archive storage was **123.030GiB**. All four bounded archive jobs completed, and the metadata cron entry removed itself. No new continuation or archive job is enabled.

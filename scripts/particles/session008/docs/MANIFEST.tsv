@@ -24,3 +24,8 @@ recovery_tests	Perseus:evidence/recovery_checks.10957.log;evidence/recovery_chec
 recovery_evidence	Perseus:evidence/recovery_20261005/;AMD:evidence/recovery_20261005/	preserved	prior failure/flags, config, verified job dependencies, accounting and storage snapshots
 recovery_plan	Perseus:RECOVERY_PLAN_20261005.md	authorized	t12;48 total rawAMDnodeh; additional maximum25.5; worst total47.145833
 archive_recovery	Anta:runs/segment_01/ARCHIVE_VERIFIED.json;runs/segment_02/ARCHIVE_VERIFIED.json	job2329 completed0:0	science checksum-verified before approved AMD copy cleanup; checkpoint retention separate
+terminal	AMD:control/state.json;Perseus:run_records/latest_amd_state.json	complete_t12	cycle3964; verified final checkpoint; no active campaign jobs
+terminal_accounting	Perseus:evidence/final_amd_accounting_20261005.psv	32.308889 raw AMD node-hours	includes build/gate/inspectors/failed startup; below48
+final_products	Anta:analysis/assessment_2331/;Perseus:review_from_anta/	generated and representative visual QA	three movies plus orbit/motion/matter/constraints/raw-wave plots; no full orbit/waveform claim
+corrected_horizons	Anta:analysis/horizon_review_20261005/;Perseus:analysis/horizon_review_20261005/	passed11036/11037	2127/2167 unique strict accepted matches; original empty panel preserved as superseded
+qa_inputs	Perseus:evidence/horizon_review_20261005/runs/;evidence/visual_qa_20261005/	retained	small diagnostic tables and3 representative PNGs; no particles/volumes/checkpoints

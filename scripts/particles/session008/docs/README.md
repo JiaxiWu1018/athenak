@@ -1,6 +1,8 @@
 # Session 008 companion-supported AMD assessment
 
-**Status, 2026-10-05 UTC:** full GPU validation and two production segments passed, reaching t=9.325 with both individual horizons accepted. The third job failed during communication startup. Reviewed continuation is submitted (451757–451761), archive2329 completed and verified both production segments, and full analysis/plots/movies remain pending. Scientific setup is unchanged; endpointt12 and48 raw AMD node-hours remain in force.
+**Status, October5 17:18UTC:** approved t12 assessment completed; all science archived and plots/three movies generated. The horizon plot was corrected and representative images inspected. Both black holes remain separate; only a small post-formation arc is observed. No active campaign jobs or archive cron remain. Actual AMD use32.308889 node-hours; session storage78.853GiB onAMD and123.030GiB onAnta. A longer orbit/GW stage is not yet approved.
+
+Review products: Anta analysis/assessment_2331/; corrected mass/spin plot: analysis/horizon_review_20261005/. Thin review copies onPerseus: review_from_anta/.
 
 ## Files and locations
 
@@ -23,7 +25,7 @@ AMD data are under `runs/`; state and checkpoint pointers are under `control/`. 
 
 ```sh
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py status'
-ssh hpcfund.amd.com 'squeue -j 451757,451758,451759,451760,451761'
+ssh hpcfund.amd.com 'sacct -X -j 451757,451758,451759,451760,451761 --format=JobID,State,Elapsed,AllocNodes,ExitCode'
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py stop'
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py cancel'
 ```
