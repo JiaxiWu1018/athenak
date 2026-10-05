@@ -160,7 +160,7 @@ def inspect(segment,jid):
  s['time']=row['time'];s['cycle']=row['cycle'];s['checkpoint']=row;s['resources']=budget(s['jobs']);save(s)
  if (CONTROL/'RESOURCE_STOP.json').exists() or (CONTROL/'REQUEST_STOP').exists():terminal(s,'resource_limit','clean resource/archive stop; review evidence');return
  if row['time']>=400-1e-9:terminal(s,'complete_t400','hard physical endpoint; scientific outcome requires analysis');return
- if time.time()>config()['deadline_utc']:terminal(s,'calendar_cap','45-day workflow cap');return
+ if time.time()+13*3600>config()['deadline_utc']:terminal(s,'calendar_cap','insufficient time for a bounded segment and inspection before45-day cap');return
  # A scientific receipt may only be written by the validated Anta ringdown analysis.
  science=CONTROL/'ringdown_stop_receipt.json'
  if science.exists():
@@ -182,7 +182,7 @@ def permit(segment):
  bindings();s=readstate()
  if not s.get('gates_passed') or s['status']!='ready_segment_'+str(segment) or s['stop_requested'] or (CONTROL/'REQUEST_STOP').exists():raise RuntimeError('gate/stop/segment failed')
  if int(os.environ['SLURM_NNODES'])!=12 or int(os.environ['SLURM_NTASKS'])!=48:raise RuntimeError('allocation changed')
- if time.time()>config()['deadline_utc'] or budget(s['jobs'])['maximum_possible_node_hours']>10000:raise RuntimeError('resource/calendar cap')
+ if time.time()+12*3600>config()['deadline_utc'] or budget(s['jobs'])['maximum_possible_node_hours']>10000:raise RuntimeError('resource/calendar cap')
  p=CONTROL/'ARCHIVE_HEARTBEAT'
  if not p.exists() or time.time()-float(p.read_text())>900:raise RuntimeError('archive heartbeat absent/stale')
  row=checkpoint(s['checkpoint']['path'])

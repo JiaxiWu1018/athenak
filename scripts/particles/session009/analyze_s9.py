@@ -61,9 +61,10 @@ def main():
  out=root/'analysis'/('update_'+a.milestone+'_'+os.environ.get('SLURM_JOB_ID','manual'));out.mkdir(parents=True,exist_ok=True)
  preparation=root/'notes/REPORT_AGENT_PREPARATION.md'
  provenance='\n\n## Preparation record (historical status at submission)\n\n'+preparation.read_text() if preparation.exists() else ''
- # Only gate_output supplies the initial checkpoint interval. Other gate repetitions
- # are validation evidence, never multiple physical evolution segments.
- runs=[root/'runs/gate_output']+sorted((root/'runs').glob('segment_*'))
+ # The accepted uninterrupted reference supplies t0 through cycle2, then gate_output
+ # supplies cycle2..5 on the matched restart branch. Split/restart/stop test repeats
+ # are excluded; identical boundary samples are assembled once.
+ runs=[root/'runs/gate_reference',root/'runs/gate_output']+sorted((root/'runs').glob('segment_*'))
  runs=[r for r in runs if (r/'ARCHIVE_VERIFIED.json').exists()]
  if not runs:
   (out/'NO_SCIENCE_DATA.md').write_text('No verified evolution outputs are available. No results inferred.\n')

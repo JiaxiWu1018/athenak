@@ -25,16 +25,20 @@ export RUN=$ROOT/runs/gate_mesh
 mkdir -p "$RUN"
 (cd "$RUN"; prun "$ROOT/scripts/amd_rank_wrapper.sh" "$EXE" --kokkos-map-device-id-by=mpi_rank -i "$DECK" -m) > "$RUN/run.log" 2>&1
 printf '0\n' > "$RUN/EXIT_CODE"
-common=(time/ndiag=1 z4c/co_0_out_every=1 z4c/co_1_out_every=1 fastflow/start_time_0=0 fastflow/start_time_1=0 fastflow/start_time_2=0)
+common=(output7/last_time=0 time/ndiag=1 z4c/co_0_out_every=1 z4c/co_1_out_every=1 fastflow/start_time_0=0 fastflow/start_time_1=0 fastflow/start_time_2=0)
 run_case() {
  export RUN=$ROOT/runs/$1; shift
  stop_path=$ROOT/control/REQUEST_STOP
  if [[ "$RUN" == "$ROOT/runs/gate_clean_stop" ]]; then stop_path=$RUN/REQUEST_STOP; fi
  mkdir -p "$RUN"
+ slim=()
+ if [[ "$RUN" != "$ROOT/runs/gate_reference" && "$RUN" != "$ROOT/runs/gate_output" ]]; then
+  slim=(output6/dt=0 output18/dt=0 output19/dt=0 output20/dt=0 output21/dt=0)
+ fi
  python3 "$ROOT/scripts/runtime.py" monitor --run "$RUN" &
  monitor=$!
  rc=0
- (cd "$RUN"; prun "$ROOT/scripts/amd_rank_wrapper.sh" "$EXE" --kokkos-map-device-id-by=mpi_rank "$@" -i "$DECK" -d "$RUN" -t 00:20:00 "${common[@]}" time/stop_file="$stop_path") > "$RUN/run.log" 2>&1 || rc=$?
+ (cd "$RUN"; prun "$ROOT/scripts/amd_rank_wrapper.sh" "$EXE" --kokkos-map-device-id-by=mpi_rank "$@" -i "$DECK" -d "$RUN" -t 00:20:00 "${common[@]}" "${slim[@]}" time/stop_file="$stop_path") > "$RUN/run.log" 2>&1 || rc=$?
  kill "$monitor" 2>/dev/null || true; wait "$monitor" 2>/dev/null || true
  printf '%s\n' "$rc" > "$RUN/EXIT_CODE"
  test "$rc" -eq 0

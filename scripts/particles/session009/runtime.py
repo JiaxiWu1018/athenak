@@ -153,6 +153,8 @@ def monitor(root,run):
         except Exception as e:
             # A transient du failure never kills the watchdog.
             with (run/'monitor_errors.txt').open('a') as f: f.write(str(e)+'\n')
+        cfg=root/'control/config.json'
+        if cfg.exists() and time.time()>json.loads(cfg.read_text())['deadline_utc']-2400:stop(root,'calendar_cap_finalization')
         cyc=last_cycle(run/'run.log')
         if (root/'control/USER_STOP').exists(): (root/'control/REQUEST_STOP').touch()
         heartbeat=root/'control/ARCHIVE_HEARTBEAT'
