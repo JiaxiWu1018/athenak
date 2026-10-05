@@ -32,6 +32,9 @@ def budget(jobs):
 
 def bindings(executables=True):
  c=config()
+ if (CONTROL/'USER_STOP').exists():raise RuntimeError('sticky user stop prevents new campaign work')
+ if (CONTROL/'REQUEST_STOP').exists():raise RuntimeError('campaign stop prevents new work')
+ if time.time()>c['deadline_utc']:raise RuntimeError('45-day campaign deadline passed')
  if digest(ROOT/'inputs/gi_cluster_s9.athinput')!=c['input_sha256']:raise RuntimeError('canonical input changed')
  if subprocess.check_output(['git','-C',str(ROOT/'athenak'),'rev-parse','HEAD'],text=True).strip()!=c['compiled_source_commit']:raise RuntimeError('source changed')
  for n,h in c['script_hashes'].items():
@@ -214,5 +217,7 @@ if __name__=='__main__':
   if os.environ.get('SLURM_JOB_ID') and (CONTROL/'state.json').exists():
    with locked():
     s=readstate()
-    if s['status'] not in TERMINAL:terminal(s,'configuration_failure',str(e))
+    if s['status'] not in TERMINAL:
+     reason='user_stop' if s.get('stop_requested') or (CONTROL/'USER_STOP').exists() else 'calendar_cap' if time.time()>config()['deadline_utc'] else 'resource_limit' if (CONTROL/'REQUEST_STOP').exists() else 'configuration_failure'
+     terminal(s,reason,str(e))
   raise
