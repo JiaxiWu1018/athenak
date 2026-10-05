@@ -48,7 +48,7 @@ The propagation inputs disabled extraction, so their Weyl fields were uncalculat
 | AMD 452666 | Enabled-extraction convention check | Completed, exit 0; passed |
 | Anta 2333 | Archive and verify wave tests; initial status report | Completed, exit 0 |
 
-Measured AMD usage: **.879722 raw node-hours** (.178889 build + .695 propagation + .005833 convention check). Pending jobs have zero actual cost so far; current registered maximum possible total is 49.379722 node-hours. Anta’s first job used **.031944 node-hours/GPU-hours**; second archive job 2334 was submitted automatically for the convention files. Each counts toward the 96-job cap; latest accounting is in its ledger. Monetary cost is unknown without an actual account tariff.
+Measured AMD usage: **.879722 raw node-hours** (.178889 build + .695 propagation + .005833 convention check). Pending jobs have zero actual cost so far; current registered maximum possible total is 49.379722 node-hours. Anta jobs 2333/2334 both completed, using **.064167 node-hours/GPU-hours** together, two of 96 permitted jobs. All four propagation/convention test runs are checksum-verified on Anta. Monetary cost is unknown without an actual account tariff.
 
 Anta measured **83,226,624 bytes** in the archive at its initial report snapshot; `/data3` had about 27 TiB free. Both propagation runs were copied and verified by checksum. Current AMD campaign/whole-user storage measurements await the full startup watchdog; filesystem-wide free space does not replace the effective user budget.
 

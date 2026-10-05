@@ -20,7 +20,7 @@ AMD currently has20 allocated MI210 nodes and one down node. Latest scheduler es
 
 ## Resources, paths and stops
 
-AMD actual .8797222222 rawnodeh, registered maximum possible49.3797222222; queued jobs currently costzero. Anta first-job actual .0319444444 nodeh/GPUh; second archive2334 automatically submitted, two of96 jobs, initial archive snapshot83,226,624bytes. Current allocated AMD storage measurement is pending startup; later snapshots runs/*/storage_status.json. No monetary tariff available.
+AMD actual .8797222222 rawnodeh, registered maximum possible49.3797222222; queued jobs currently costzero. Anta actual .0641666667 nodeh/GPUh; archive2333/2334 both completed0:0 in115/116seconds, two of96 jobs, initial archive snapshot83,226,624bytes. Current allocated AMD storage measurement is pending startup; later snapshots runs/*/storage_status.json. No monetary tariff available.
 
 AMD /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005
 Anta /data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005
@@ -43,3 +43,7 @@ Exact status/graceful-stop/emergency-cancel commands: README.md. Never cancel un
 Source/operational revisions and exact hashes in REPORT_AGENT.md and evidence/frozen_config.json. Final documentation push receipt: evidence/PUSH_STATUS.txt. Compiled AMD checkout must remain6892be3e; do not rsync later local documentation HEAD over it.
 
 No Session009 particle/volume/checkpoint data onPerseus; source≈57MiB plus small docs/input/QA evidence retained. No scientific plots/movies/results are fabricated. Durable execution/archive/analysis need no persistent agent.
+
+## Final preparation check
+
+Both Anta jobs completed successfully; all four test runs checksum-verified. Full AMD startup452580/inspector452582 remain queued. Final source/input/executable/script bindings pass with no stop flags, and metadata heartbeat/cron are active. Updated documentation/source push receipt is evidence/PUSH_STATUS.txt. No further manual task is needed to trigger the pending continuation chain. Representative science plots/movie review remains pending data.

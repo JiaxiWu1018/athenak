@@ -61,7 +61,7 @@ The lightweight Session007 comparison uses its retained boosted-startup receipt 
 
 ## Accounting, scheduler fixes and limits
 
-AMD actual **.8797222222 raw node-hours** = (644+3×834+3×7)/3600. Registered maximum possible total49.3797222222; pending jobs currently zero actual usage. Anta actual **.0319444444 node-hours/GPU-hours**, one of96 jobs, max4h reserved. Initial archive snapshot83,226,624bytes. Current AMD campaign/whole-user allocated storage sample is pending startup. Anta2334 was automatically submitted for convention archival; its actual usage is recorded separately in the live ledger. No monetary tariff is available.
+AMD actual **.8797222222 raw node-hours** = (644+3×834+3×7)/3600. Registered maximum possible total49.3797222222; pending jobs currently zero actual usage. Anta actual **.0641666667 node-hours/GPU-hours**, two of96 jobs;2333/2334 completed in115/116seconds. Initial archive snapshot83,226,624bytes. Current AMD campaign/whole-user allocated storage sample is pending startup. Anta2334 completed0:0 and verified both convention runs; all four test archives are checksum-verified. No monetary tariff is available.
 
 Initial AMD1.5h devel request was rejected before allocation; corrected to.5h, no scientific retry. Evidence: initial_submission_rejection.md and aborted configuration.
 
