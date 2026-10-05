@@ -27,6 +27,8 @@ The actual Perseus recipe is evidence/horizon_review_20261005.sbatch; the integr
 
 The approved t12 stage is complete; a longer orbit/GW production stage, strain and multi-radius central-wave comparisons remain unperformed. Source/input/executable physics digests below remain unchanged.
 
+October5 mesh/cost follow-up: MESH_AND_HALF_ORBIT_20261005.md records the actual final2304-block mesh and a constant-rate half-turn estimate from the6.3265degree post-formation tracker arc. The tiny264,068-byte final coarsened mesh catalog is retained in evidence/half_orbit_estimate_20261005/ onPerseus solely for header/location metadata inspection; this explicitly extends the earlier QA-copy record. Fine-volume data, particles and checkpoints were not copied for this follow-up. Every block's physical spacing was checked against2/2^level; extraction spheres cross mixed levels rather than a uniformdx2 grid. Recent451758/451760 allocation timings imply3.971651 raw node-hours per simulated unit. No source-physics/input/executable change, build, Slurm job or longer continuation was performed.
+
 ```json
 {
   "campaign_id": "jeans8_20261002",

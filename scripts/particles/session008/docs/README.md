@@ -14,6 +14,7 @@ Review products: Anta analysis/assessment_2331/; corrected mass/spin plot: analy
 | Implementation and tests | `REPORT_AGENT.md` |
 | Durable continuation and review | `HANDOFF.md` |
 | File mapping | `MANIFEST.tsv` |
+| Final mesh and half-orbit cost estimate | `MESH_AND_HALF_ORBIT_20261005.md` |
 | Independent source and scripts | `code/`, branch `project/GI-in-cluster` |
 | Compiled/operations revisions | `evidence/OPERATIONS_REVISION.txt` |
 | AMD root | `/work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/` |
