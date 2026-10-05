@@ -68,9 +68,8 @@ def main():
  runs=[r for r in runs if (r/'ARCHIVE_VERIFIED.json').exists()]
  if not runs:
   (out/'NO_SCIENCE_DATA.md').write_text('No verified evolution outputs are available. No results inferred.\n')
-  state=json.loads((root/'evidence/amd_state.json').read_text())
-  (root/'REPORT_Jeans8.md').write_text('# Session 009 assessment halted\n\nNo verified Session009 evolution outputs available; no scientific outcome or plots inferred. Workflow status: '+state['status']+'.\n')
-  (root/'REPORT_AGENT.md').write_text('# Session 009 failure record\n\n```json\n'+json.dumps(state,indent=2)+'\n```\n'+provenance)
+  from report9 import write_reports
+  write_reports(root,out,{},a.milestone)
   return
  cutoff=float(a.milestone) if a.milestone not in ('final','0') else (float('inf') if a.milestone=='final' else .05)
  tracks=[series(runs,'*.co_'+str(i)+'.txt') for i in (0,1)]

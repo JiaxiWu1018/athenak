@@ -110,11 +110,13 @@ def extended_analysis(root,runs,out,metrics,tracks):
   if t[-1]>100 and convention and np.max(np.diff(t))<=1.5*cadence:
    fig,ax=plt.subplots(figsize=(9,4));cutoffs=(.003,.006,.012)
    for cutoff in cutoffs:
-    q,h=ffi(t,z[:,4],cutoff);np.savetxt(out/f'strain_22_f0_{cutoff}.csv',np.c_[q,q-50,h.real,h.imag],delimiter=',',header='time,t_minus_50,r_hplus,r_minus_hcross')
+    q,h=ffi(t,z[:,4],cutoff);np.savetxt(out/f'strain_22_f0_{cutoff}.csv',np.c_[q,q-50,h.real,h.imag],delimiter=',',header='time,t_minus_50,r_H22_real,r_H22_imag')
     ax.plot(q-50,h.real,label=f'f0={cutoff} cycles/M_ref')
    ax.set(xlabel='approximate retarded time (t-50)/M_ref',ylabel='r h_22 real; finite radius');ax.legend();fig.tight_layout();fig.savefig(out/'strain_cutoff_sensitivity.png',dpi=170);plt.close(fig)
-   atomic(out/'strain_method.json',dict(convention='H=r(hplus-i hcross), Hddot=rPsi4 verified by source TT limit and linear-wave calibration.',method='Fixed-frequency double integration -FFT(rPsi4)/(2pi max(|f|,f0))^2; uniformdt.025 linear interpolation, linear detrend,5% cosine edge taper; cutoffs.003/.006/.012. Edges/transients and finite-radius strain not precision waveform.',gaps=False))
+   atomic(out/'strain_method.json',dict(convention='H=r(hplus-i hcross), Hddot=rPsi4 verified by source TT limit and linear-wave calibration.',method='Fixed-frequency double integration -FFT(rPsi4)/(2pi max(|f|,f0))^2; uniformdt.025 linear interpolation, linear detrend,5% cosine edge taper; cutoffs.003/.006/.012. Edges/transients and finite-radius strain not precision waveform.',gaps=False,frequency_resolution=1/(q[-1]-q[0]),causal_coverage_after_t50=float(t[-1]-50),limited_low_frequency_duration=True))
   else:atomic(out/'strain_method.json',dict(deferred=True,reason='Requires causal coverage>100, uninterrupted waveform and verified sign/normalization calibration; rawPsi4 remains primary.'))
+ from compare8 import compare
+ compare(out)
  # Simultaneous accepted AH distances and full surviving-particle centroid distances.
  subprocess.run([sys.executable,str(root/'scripts/horizon_review_20261005.py'),'--runs-root',str(root/'runs'),'--output',str(out/'horizon_review'),'--max-time',str(cutoff if cutoff is not None else 'inf')],check=True)
  if (out/'horizon_review/accepted_horizon_0.csv').exists() and (out/'horizon_review/accepted_horizon_1.csv').exists() and (out/'particle_components.csv').exists():
