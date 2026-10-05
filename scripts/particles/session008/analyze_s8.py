@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 from matplotlib.colors import LogNorm
 from validate_initial_s7 import read_particles
+from horizon_review_20261005 import accepted_measurements
 
 def orbital_series(times,vec,live):
  """Unwrap/differentiate within contiguous live intervals only."""
@@ -107,18 +108,23 @@ def main():
   if len(t):
    valid=np.isfinite(t[:,15]) & ((t[:,13]>0)|(t[:,16]>0))
    np.savetxt(out/('tracker_'+str(i)+'_validity.csv'),np.c_[t[:,1],valid.astype(int)],delimiter=',',header='time,live_diagnostic_valid')
- # A summary row is a measurement only when its same-run/same-cycle candidate was
- # actually published by the strict consumer with association acceptance.
+ # The summary's first column is the finder iteration, not the evolution cycle.
+ # Match its same-run candidate by printed time AND surface geometry, uniquely,
+ # and require strict consumer publication, persistence and association.
  fig,axes=plt.subplots(1,2,figsize=(10,4));horizon_counts={}
  for index in (0,1,2):
   rows=[]
   for run in runs:
-   good=accepted([run],index)
+   consumers=[]
+   for consumer in run.glob('*.horizon_consumer_'+str(index)+'.csv'):
+    with consumer.open() as stream:consumers.extend(csv.DictReader(stream))
    for file in run.glob('*.horizon_summary_'+str(index)+'.txt'):
     if not any(x.strip() and not x.startswith('#') for x in file.read_text().splitlines()):continue
     data=np.loadtxt(file,ndmin=2)
-    for row in data:
-     if np.isfinite(row).all() and row[2]>0 and any(int(a['cycle'])==int(row[0]) and abs(a['time']-row[1])<=5e-5 for a in good):rows.append(row)
+    matched,counts=accepted_measurements(consumers,sorted(data.tolist(),key=lambda row:row[1]))
+    if counts['unmatched'] or counts['ambiguous']:raise RuntimeError('Accepted horizon lacks a unique summary match: '+str(counts))
+    for candidate,row in matched:
+     row=np.asarray(row);row[0]=int(candidate['cycle']);row[1]=float(candidate['time']);rows.append(row)
   horizon_counts[str(index)]=len(rows)
   if rows:
    data=np.asarray(rows);np.savetxt(out/('accepted_horizon_'+str(index)+'.csv'),data,delimiter=',',header='cycle,time,M_BH,Sx,Sy,Sz,S,area,hrms,hmean,meanradius,minradius,M_irr,chi_BH,Px,Py,Pz,P,center_x,center_y,center_z')

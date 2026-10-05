@@ -61,9 +61,9 @@ class AnalysisChecks(unittest.TestCase):
                 np.savetxt(run/f'waveforms/rpsi4_imag_{radius:04d}.txt', imag)
             for index in range(2):
                 consumer = run/f'fixture.horizon_consumer_{index}.csv'
-                consumer.write_text('published_this_candidate,association_ok,cycle,time,center_x,center_y,center_z,rmin\n1,1,1,0.05,0,0,0,0.2\n0,1,2,0.1,0,0,0,0.2\n')
-                row = np.ones(21); row[0] = 1; row[1] = .05
-                rejected = row.copy(); rejected[0] = 2; rejected[1] = .1
+                consumer.write_text('published_this_candidate,association_ok,quality_geometry_ok,quality_persist_ok,cycle,time,center_x,center_y,center_z,rmin,area\n1,1,1,1,1,0.05,0,0,0,0.2,1\n0,1,1,1,2,0.1,0,0,0,0.2,1\n')
+                row = np.ones(21); row[0] = 4; row[1] = .05; row[11] = .2; row[18:21] = 0
+                rejected = row.copy(); rejected[0] = 4; rejected[1] = .1
                 np.savetxt(run/f'fixture.horizon_summary_{index}.txt', np.vstack([row, rejected]))
             for tm in (0., .25):
                 (run/f'fixture_{tm}.part.vtk').write_text(f'time= {tm}\n')
