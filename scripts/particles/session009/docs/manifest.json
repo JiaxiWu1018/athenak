@@ -17,5 +17,13 @@
   "status": "AMD:control/state.json",
   "resources": "AMD registered sacct; Anta evidence/active_archive_jobs.json; analysis/update_*/resources.json",
   "cleanup": "ChecksumverifiedAnta-first; latestthreeAMDcheckpoints; approvedsealedsciencecleanup",
-  "Perseus_raw_data": "None; source/scripts/inputs/docs and small QA evidence only, retained"
+  "Perseus_raw_data": "None; source/scripts/inputs/docs and small QA evidence only, retained",
+  "compiled_source_commit": "6892be3e3f04ec573f91cb2034bc9d3009a3bdff",
+  "input_sha256": "164002e107ae3023c37b206a4e83923410c38c5de7c18c9f704afd48f947ffff",
+  "frozen_configuration": "evidence/frozen_config.json",
+  "handoff": "evidence/CURRENT_STATUS.md",
+  "push_status": "evidence/PUSH_STATUS.txt",
+  "wave_gate": "evidence/wave_gate.json",
+  "convention": "evidence/weyl_convention.json (passed)",
+  "current_phase": "full-particle gate queued; build, propagation and convention checks passed; no binary production yet"
 }

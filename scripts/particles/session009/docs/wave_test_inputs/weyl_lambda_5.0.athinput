@@ -1,0 +1,83 @@
+<job>
+basename = linear_gw
+<mesh>
+nghost = 4
+nx1 = 320
+x1min = -40
+x1max = 40
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 32
+x2min = -4
+x2max = 4
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 32
+x3min = -4
+x3max = 4
+ix3_bc = periodic
+ox3_bc = periodic
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+<mesh_refinement>
+refinement = static
+num_levels = 3
+max_nmb_per_rank = 240
+<refined_region1>
+level = 1
+x1min = -16
+x1max = 16
+x2min = -4
+x2max = 4
+x3min = -4
+x3max = 4
+<refined_region2>
+level = 2
+x1min = -8
+x1max = 8
+x2min = -2
+x2max = 2
+x3min = -2
+x3max = 2
+<time>
+evolution = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim = 8
+ndiag = 100
+tlim = 16.0
+<z4c>
+lapse_harmonicf = 1.0
+lapse_harmonic = 0.0
+lapse_oplog = 2.0
+lapse_advect = 1.0
+shift_eta = 2.0
+shift_advect = 1.0
+diss = 0.1
+chi_div_floor = 0.00001
+damp_kappa1 = 0.02
+damp_kappa2 = 0.0
+nrad_wave_extraction = 1
+extraction_radius_0 = 1
+extraction_nlev = 3
+waveform_dt = 0.000001
+<problem>
+pgen_name = z4c_linear_wave
+amp = 0.00001
+kx2 = 0
+kx3 = 0
+kx1 = 0.2
+<output1>
+file_type = bin
+variable = z4c_gzz
+id = gw
+slice_x3 = 0
+dt = 80
+<output2>
+file_type = bin
+variable = weyl
+id = weyl
+slice_x3 = 0
+dt = 80

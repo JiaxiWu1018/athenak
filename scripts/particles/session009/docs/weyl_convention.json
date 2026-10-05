@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "wavelength": 2.5,
+      "time": 0.19999999999999998,
+      "cells": 96,
+      "scale": 0.9999647247660314,
+      "relative_residual": 1.0917724882433062e-05,
+      "cross_leakage": 3.687126545302891e-05,
+      "input_sha256": "50b113c71b914b336c08bdce2d92b6b55e4c3999ec3be51ad8123b5667fea327",
+      "snapshot": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/wave_weyl_lambda_2.5/bin/linear_gw.weyl.00001.bin",
+      "snapshot_sha256": "d1ed7a1a95222cbee416ed4b76c26ff4c9cf01358c57f00f805d18d78a64d6fc",
+      "passed": true
+    },
+    {
+      "wavelength": 5.0,
+      "time": 0.19999999999999998,
+      "cells": 96,
+      "scale": 0.9999660143710315,
+      "relative_residual": 1.3703780307597002e-05,
+      "cross_leakage": 3.664307688574004e-05,
+      "input_sha256": "abaaac0fb39084e547f22e2e9a028a94828e14286ff1aea6766096b27458aba8",
+      "snapshot": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/wave_weyl_lambda_5.0/bin/linear_gw.weyl.00001.bin",
+      "snapshot_sha256": "2d993be725b4a7b04df2f99e0aa8102d0a48f15bc799332e73ec6ccbf343671a",
+      "passed": true
+    }
+  ],
+  "convention": "Psi4=ddot(hplus-i*hcross), with the implemented orthonormal theta/phi tetrad; saved fields and multipoles are r*Psi4.",
+  "method": "Eight evolved RK4 cycles, extraction enabled, direct analytic TT comparison at dx1/16 near +x; plus polarization tests scale/sign, negligible cross leakage. Imaginary sign is checked from source tetrad/contraction, not a second polarized numerical test.",
+  "reason": "The original 80M propagation inputs disabled extraction, so their Weyl arrays were zero. Their valid metric propagation measurements are preserved unchanged.",
+  "job": "452666"
+}
