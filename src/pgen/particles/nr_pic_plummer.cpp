@@ -111,12 +111,20 @@
 #include "outputs/outputs.hpp"
 #include "pgen/pgen.hpp"
 #include "plummer_profile.hpp"
+#include "plummer_isotropic_profile.hpp"
 
 #if MPI_PARALLEL_ENABLED
 #include <mpi.h>
 #endif
 
 namespace {
+
+bool plummer_isotropic = false;
+std::string plummer_physical_fname, plummer_health_fname;
+Real plummer_constraint_reference = 0.0;
+int plummer_constraint_strikes = 0;
+std::vector<Real> plummer_proper_volumes;
+DualArray2D<Real> plummer_orbit_reference;
 
 // ------------------------------------------------------------------ module state
 // Set once by UserProblem and read by the history hook.  All are host-side scalars.
@@ -520,6 +528,7 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
   MeshBlockPack *pmbp = pm->pmb_pack;
   particles::Particles *ppart = pmbp->ppart;
   const int npart = ppart->nprtcl_thispack;
+  const int particle_nmb = pmbp->nmb_thispack;
   auto &pr = ppart->prtcl_rdata;
   auto &pi = ppart->prtcl_idata;
   auto &size = pmbp->pmb->mb_size;
@@ -546,6 +555,13 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
   DvceArray1D<Real> acc("plummer shell acc", static_cast<std::size_t>(nbin)*nq);
   DvceArray1D<Real> coh("plummer cohort acc", static_cast<std::size_t>(ncoh)*NQ_COHORT);
   DvceArray1D<Real> glob("plummer global acc", 16);
+  const bool physical = plummer_isotropic;
+  DvceArray1D<Real> phys("plummer physical stress", physical ? nbin*10 : 1);
+  Kokkos::deep_copy(phys, 0.0);
+  DvceArray1D<Real> invariant("plummer frozen invariants", physical ? 5 : 1);
+  Kokkos::deep_copy(invariant,0.0);
+  auto orbit_reference=plummer_orbit_reference.d_view;
+  const bool frozen_invariants=physical && !use_z4c;
   Kokkos::deep_copy(acc, 0.0);
   Kokkos::deep_copy(coh, 0.0);
   Kokkos::deep_copy(glob, 0.0);
@@ -564,6 +580,14 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
     const Real n[3] = {x/rs, y/rs, z/rs};
 
     const int m = pi(PGID, p) - gids;
+    if (m<0 || m>=particle_nmb || !Kokkos::isfinite(xa) ||
+        !Kokkos::isfinite(ya) || !Kokkos::isfinite(za) ||
+        !Kokkos::isfinite(mp) || mp<=0 || !Kokkos::isfinite(u_d[0]) ||
+        !Kokkos::isfinite(u_d[1]) || !Kokkos::isfinite(u_d[2])) {
+      cache(3,p)=0;
+      Kokkos::atomic_add(&glob(11),1.0);
+      return;
+    }
     const Real xabs[3] = {xa, ya, za};
     const Real mb_par[9] = {
       size.d_view(m).x1min, size.d_view(m).x1max, size.d_view(m).dx1,
@@ -597,7 +621,12 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
           adm_metric, adm::ADM::I_ADM_GXX + a, interp_indcs, Lx, Ly, Lz);
     }
     Real g3u[6] = {0.0};
-    Primitive::InvertMatrix(g3u, g3d, Primitive::GetDeterminant(g3d));
+    const Real detg = Primitive::GetDeterminant(g3d);
+    if (physical && (!(g3d[0]>0 && g3d[0]*g3d[3]-g3d[1]*g3d[1]>0 && detg>0) ||
+        !Kokkos::isfinite(detg))) {
+      cache(3,p)=0; Kokkos::atomic_add(&glob(11),1.0); return;
+    }
+    Primitive::InvertMatrix(g3u, g3d, detg);
     Real u_u[3] = {0.0};
     Primitive::RaiseForm(u_u, u_d, g3u);
     const Real Wlor = Kokkos::sqrt(1.0 + Primitive::Contract(u_u, u_d));
@@ -630,12 +659,55 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
     RealYlm(n[0], n[1], n[2], lmax, Y);
 
     if (finite) {
+      if(frozen_invariants) {
+        const int tag=pi(PTAG,p),pair=tag/2;
+        const Real sign=tag%2==0?1.0:-1.0;
+        const Real e0=orbit_reference(0,pair),de=(alpha*Wlor-e0)/e0;
+        const Real dlx=lx-sign*orbit_reference(1,pair),
+                   dly=ly-sign*orbit_reference(2,pair),
+                   dlz=lz-sign*orbit_reference(3,pair);
+        const Real dl2=dlx*dlx+dly*dly+dlz*dlz;
+        Kokkos::atomic_add(&invariant(0),de*de);
+        Kokkos::atomic_max(&invariant(1),Kokkos::fabs(de));
+        Kokkos::atomic_add(&invariant(2),dl2);
+        Kokkos::atomic_max(&invariant(3),Kokkos::sqrt(dl2));
+        const Real l0x=orbit_reference(1,pair),l0y=orbit_reference(2,pair),l0z=orbit_reference(3,pair);
+        Kokkos::atomic_add(&invariant(4),l0x*l0x+l0y*l0y+l0z*l0z);
+      }
       // current-radius shell bin (log-spaced in areal radius, clamped at both ends)
       int ib = static_cast<int>((Kokkos::log(Kokkos::fmax(rareal, 1.0e-12)) - lrmin)
                                 *inv_dlr);
       if (ib < 0) { ib = 0; }
       if (ib > nbin - 1) { ib = nbin - 1; }
       const std::size_t o = static_cast<std::size_t>(ib)*nq;
+      if (physical) {
+        // Orthonormal radial vector normal to the coordinate sphere, followed by
+        // metric Gram-Schmidt for its two tangents. u_i is a covector.
+        Real er[3],et[3]={-n[1],n[0],0.0},ep[3];
+        Primitive::RaiseForm(er,n,g3u);
+        const Real rn=Kokkos::sqrt(Primitive::Contract(er,n));
+        for(int d=0;d<3;++d) er[d]/=rn;
+        if(n[0]*n[0]+n[1]*n[1]<1.e-20) {et[0]=1;et[1]=0;}
+        Real erd[3]; Primitive::LowerVector(erd,er,g3d);
+        Real c=Primitive::Contract(et,erd);
+        for(int d=0;d<3;++d) et[d]-=c*er[d];
+        Real etd[3];Primitive::LowerVector(etd,et,g3d);
+        const Real tn=Kokkos::sqrt(Primitive::Contract(et,etd));
+        for(int d=0;d<3;++d) {et[d]/=tn;etd[d]/=tn;}
+        // Cross product of the lowered basis vectors, divided by sqrt(det g).
+        ep[0]=(erd[1]*etd[2]-erd[2]*etd[1])/Kokkos::sqrt(detg);
+        ep[1]=(erd[2]*etd[0]-erd[0]*etd[2])/Kokkos::sqrt(detg);
+        ep[2]=(erd[0]*etd[1]-erd[1]*etd[0])/Kokkos::sqrt(detg);
+        const Real qr=Primitive::Contract(er,u_d),qt=Primitive::Contract(et,u_d),
+                   qp=Primitive::Contract(ep,u_d);
+        const Real vals[4]={Wlor,qr*qr/Wlor,qt*qt/Wlor,qp*qp/Wlor};
+        const int po=ib*10;
+        Kokkos::atomic_add(&phys(po),1.0);Kokkos::atomic_add(&phys(po+1),mp);
+        for(int d=0;d<4;++d) {
+          Kokkos::atomic_add(&phys(po+2+d),mp*vals[d]);
+          Kokkos::atomic_add(&phys(po+6+d),mp*mp*vals[d]*vals[d]);
+        }
+      }
       Kokkos::atomic_add(&acc(o + 0), 1.0);
       Kokkos::atomic_add(&acc(o + 1), mp);
       Kokkos::atomic_add(&acc(o + 2), mp*rareal);
@@ -702,6 +774,45 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
 #endif
 
   const Real mtot = vglob[0];
+  if(frozen_invariants && write_csv) {
+    auto hi=Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),invariant);
+    Real sums[3]={hi(0),hi(2),hi(4)},maxima[2]={hi(1),hi(3)};
+#if MPI_PARALLEL_ENABLED
+    MPI_Allreduce(MPI_IN_PLACE,sums,3,MPI_ATHENA_REAL,MPI_SUM,MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE,maxima,2,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_WORLD);
+#endif
+    if(global_variable::my_rank==0) {
+      const std::string file=plummer_shell_fname.substr(0,plummer_shell_fname.find(".plummer_shells"))+".plummer_invariants.csv";
+      const bool header=FileIsEmpty(file);std::ofstream out(file,std::ios::app);
+      if(header) out<<"time,cycle,energy_relative_rms,energy_relative_max,angular_vector_rms_normalized,angular_vector_absolute_max\n";
+      out<<std::setprecision(17)<<time<<','<<ncycle<<','<<std::sqrt(sums[0]/plummer_ntotal)<<','
+         <<maxima[0]<<','<<std::sqrt(sums[1]/sums[2])<<','<<maxima[1]<<'\n';
+    }
+  }
+  if (physical && write_csv) {
+    auto hp=Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),phys);
+    std::vector<Real> vp(hp.data(),hp.data()+hp.extent(0));
+#if MPI_PARALLEL_ENABLED
+    MPI_Allreduce(MPI_IN_PLACE,vp.data(),vp.size(),MPI_ATHENA_REAL,MPI_SUM,MPI_COMM_WORLD);
+#endif
+    if(global_variable::my_rank==0) {
+      const bool header=FileIsEmpty(plummer_physical_fname);
+      std::ofstream out(plummer_physical_fname,std::ios::app);
+      if(header) out<<"# Metric orthonormal stresses, integrated over particle rest mass.\n"
+        <<"# E=sum mu W; Sr,Stheta,Sphi=sum mu qhat_i^2/W. Squares retain sampling information.\n"
+        <<"time,cycle,bin,rlo,rhi,N,M0,E,Sr,Stheta,Sphi,E_square,Sr_square,Stheta_square,Sphi_square,proper_volume,Ncells,dx_volume_mean\n";
+      out<<std::setprecision(17);
+      for(int b=0;b<nbin;++b) {
+        out<<time<<','<<ncycle<<','<<b<<','<<std::exp(lrmin+b/inv_dlr)<<','
+           <<std::exp(lrmin+(b+1)/inv_dlr);
+        for(int d=0;d<10;++d) out<<','<<vp[b*10+d];
+        const Real volume=plummer_proper_volumes[b*3];
+        out<<','<<volume<<','<<plummer_proper_volumes[b*3+1]<<','
+           <<(volume>0?plummer_proper_volumes[b*3+2]/volume:0);
+        out<<'\n';
+      }
+    }
+  }
   const Real nalive = vglob[7];
   Real com[3] = {0.0, 0.0, 0.0};
   if (mtot > 0.0) {
@@ -1264,6 +1375,9 @@ void PlummerDepositedMomentum(Mesh *pm, Real Pdep[3]) {
   Pdep[0] = s[0]; Pdep[1] = s[1]; Pdep[2] = s[2];
 }
 
+// Isotropic initialization and shared numerical-health hook.
+#include "plummer_isotropic_init.hpp"
+#include "plummer_isotropic_health.hpp"
 }  // namespace
 
 //----------------------------------------------------------------------------------------
@@ -1271,6 +1385,7 @@ void PlummerDepositedMomentum(Mesh *pm, Real Pdep[3]) {
 //! \brief 20 history columns, all reduced over every particle / cell in double precision.
 
 void PlummerClusterHistory(HistoryData *pdata, Mesh *pm) {
+  if(plummer_isotropic) CheckIsotropicFields(pm);
   pdata->nhist = 20;
   pdata->label[0]  = "N_alive";
   pdata->label[1]  = "M0_alive";
@@ -1301,6 +1416,7 @@ void PlummerClusterHistory(HistoryData *pdata, Mesh *pm) {
     default: Fatal("nr_pic_plummer diagnostics support nghost=2,3,4.");
   }
   PlummerFieldHealth F = MeasurePlummerFieldHealth(pm, pm->time, pm->ncycle, true);
+  if(plummer_isotropic) RecordIsotropicHealth(pm,H,F);
 
   // Session-2 momentum diagnostics, appended to their own ledger because the 20 history
   // columns are saturated (NHISTORY_VARIABLES = 20).
@@ -1369,6 +1485,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     Fatal("Use <adm> with feedback=false for a frozen metric, or <z4c> with "
           "feedback=true for the live self-consistent evolution.");
   }
+  const std::string model=pin->GetOrAddString("problem","plummer_model","circular");
+  plummer_isotropic=(model=="isotropic");
+  if(plummer_isotropic) {InitializeIsotropicPlummer(pmy_mesh_,pin,restart);return;}
+  if(model!="circular") Fatal("plummer_model must be circular or isotropic");
 
   // ---------------------------------------------------------------- parameters
   const Real M = pin->GetOrAddReal("problem", "plummer_mass", 1.0);

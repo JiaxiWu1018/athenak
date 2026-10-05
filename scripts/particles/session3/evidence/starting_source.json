@@ -1,0 +1,16 @@
+{
+  "host": "perseus",
+  "branch": "project/Plummer-cluster",
+  "origin": "git@github.com:JiaxiWu1018/athenak.git",
+  "starting_commit": "aadffae2b15e6ff59c73d7a5c5327a97572d7c4c",
+  "starting_tree": "d96e8deffeaf181a0e05eceb59f897a0a8f4c881",
+  "kokkos_commit": "6739bc623081648af9e752b616d9671527922cbf",
+  "kokkos_version": "4.7.02",
+  "checkout_kind": "independent clone, separate object store and submodule metadata",
+  "initial_tracked_state": "clean",
+  "historical_checkout": "/data/jiaxiwu/NRPIC/Plummer-cluster/code",
+  "session_checkout": "/data/jiaxiwu/NRPIC/Plummer-cluster/session_03_isotropic_benchmark_20261005/src/athenak",
+  "AMD_root": "/work1/eliasmost/jiaxiwu/plummer_s03_20261005",
+  "unrelated_AMD_job_at_start": "452339 s9_prod; preserve",
+  "raw_data_retention": "no session-3 raw output yet; no deletion authorized"
+}

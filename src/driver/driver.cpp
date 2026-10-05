@@ -579,7 +579,7 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
     if (wall_time > 0.) {
       elapsed_time = UpdateWallClock();
     }
-    while ((pmesh->time < tlim) && (pmesh->ncycle < nlim || nlim < 0) &&
+    while (!pmesh->user_stop_requested && (pmesh->time < tlim) && (pmesh->ncycle < nlim || nlim < 0) &&
            (elapsed_time < wall_time)) {
       if (global_variable::my_rank == 0) {OutputCycleDiagnostics(pmesh);}
       if (wdflag) {WatchDog(0);}

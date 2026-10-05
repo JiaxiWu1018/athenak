@@ -1,0 +1,2858 @@
+{
+  "reference": "PDF Eq 9.7, mpmath 70 digits, adaptive quadrature",
+  "tolerance": 1e-08,
+  "passed": true,
+  "max_error": 7.847579253095205e-10,
+  "normalizations": {
+    "1000.0": {
+      "M0": 1.0133372946305388,
+      "M0_inf": 1.0134873008561143,
+      "rest_mass_median": 13.000000002572222,
+      "P_ref": 461.99570043659014,
+      "omitted_rest_mass": 0.00015000622557548304,
+      "omitted_fraction": 0.00014800997057266488
+    },
+    "2000.0": {
+      "M0": 1.0134497989044768,
+      "M0_inf": 1.0134873008561143,
+      "rest_mass_median": 13.0000000025724,
+      "P_ref": 461.99570043659577,
+      "omitted_rest_mass": 3.7501951637430864e-05,
+      "omitted_fraction": 3.7002882626898403e-05
+    }
+  },
+  "checks": [
+    {
+      "name": "M0_1000.0",
+      "actual": 1.0133372946305388,
+      "reference": 1.0133372947156738,
+      "error": 8.401448421634721e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "M0_inf_1000.0",
+      "actual": 1.0134873008561143,
+      "reference": 1.0134873009412573,
+      "error": 8.400993646336593e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "median_1000.0",
+      "actual": 0.5067436504713512,
+      "reference": 0.5067436504706286,
+      "error": 1.4258356148222336e-12,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "period_1000.0",
+      "actual": 461.99570043659014,
+      "reference": 461.99570043659014,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_0.0",
+      "actual": 1.05,
+      "reference": 1.05,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_0.0",
+      "actual": 0.9047619047619047,
+      "reference": 0.9047619047619047,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_0.0",
+      "actual": 0.0001820375051912138,
+      "reference": 0.000182037505207074,
+      "error": 8.712598676879279e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_0.0",
+      "actual": 0.00018705309363538434,
+      "reference": 0.00018705309365294774,
+      "error": 9.389525307982303e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_0.0",
+      "actual": 3.281633220900328e-06,
+      "reference": 3.2816332219815424e-06,
+      "error": 3.2947443867940773e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_0.0",
+      "actual": 0.0001870530936529492,
+      "reference": 0.00018705309365294774,
+      "error": 7.824906310136107e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_0.0",
+      "actual": 3.2816332219816296e-06,
+      "reference": 3.2816332219815424e-06,
+      "error": 2.6585662584958936e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.0_0.0001",
+      "actual": 9.999999992864366e-05,
+      "reference": 0.0001,
+      "error": 7.135634585379164e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.0_0.01",
+      "actual": 0.009999999999661125,
+      "reference": 0.01,
+      "error": 3.388747615851173e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.0_0.1",
+      "actual": 0.09999999999981093,
+      "reference": 0.1,
+      "error": 1.8907098109366416e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.0_0.5",
+      "actual": 0.49999999999994466,
+      "reference": 0.5,
+      "error": 5.5344617777564054e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.0_0.9",
+      "actual": 0.900000000000191,
+      "reference": 0.9,
+      "error": 1.9095836023552692e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.0_0.99",
+      "actual": 0.9900000000000311,
+      "reference": 0.99,
+      "error": 3.108624468950438e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.0_0.9999",
+      "actual": 0.9998999999991236,
+      "reference": 0.9999,
+      "error": 8.764100556390986e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_0.1",
+      "actual": 1.0499975001874844,
+      "reference": 1.0499975001874844,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_0.1",
+      "actual": 0.9047664395799857,
+      "reference": 0.9047664395799857,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_0.1",
+      "actual": 0.00018199443902986782,
+      "reference": 0.0001819944390457242,
+      "error": 8.712560416999235e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_0.1",
+      "actual": 0.00018700856465919975,
+      "reference": 0.0001870085646767588,
+      "error": 9.389442023453829e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_0.1",
+      "actual": 3.2806793477743833e-06,
+      "reference": 3.2806793488552795e-06,
+      "error": 3.2947328524182827e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_0.1",
+      "actual": 0.00018700856467676028,
+      "reference": 0.0001870085646767588,
+      "error": 7.826769513927692e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_0.1",
+      "actual": 3.2806793488553697e-06,
+      "reference": 3.2806793488552795e-06,
+      "error": 2.7497051461021152e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.1_0.0001",
+      "actual": 0.00010000000000684651,
+      "reference": 0.0001,
+      "error": 6.846506326284307e-15,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.1_0.01",
+      "actual": 0.010000000007152692,
+      "reference": 0.01,
+      "error": 7.152691633427466e-12,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.1_0.1",
+      "actual": 0.10000000006214664,
+      "reference": 0.1,
+      "error": 6.214663506032281e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.1_0.5",
+      "actual": 0.5000000001539776,
+      "reference": 0.5,
+      "error": 1.539776084413802e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.1_0.9",
+      "actual": 0.9000000000556644,
+      "reference": 0.9,
+      "error": 5.56643620086561e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.1_0.99",
+      "actual": 0.9900000000063309,
+      "reference": 0.99,
+      "error": 6.330935775622493e-12,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_0.1_0.9999",
+      "actual": 0.9998999999991863,
+      "reference": 0.9999,
+      "error": 8.136824547477772e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_1.0",
+      "actual": 1.0497518595104995,
+      "reference": 1.0497518595104995,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_1.0",
+      "actual": 0.9052121526439614,
+      "reference": 0.9052121526439614,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_1.0",
+      "actual": 0.00017780105097407,
+      "reference": 0.0001778010509895539,
+      "error": 8.708552460688141e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_1.0",
+      "actual": 0.00018267313963873477,
+      "reference": 0.00018267313965587278,
+      "error": 9.381790271858235e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_1.0",
+      "actual": 3.188054428542923e-06,
+      "reference": 3.1880544295932295e-06,
+      "error": 3.2945060325373424e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_1.0",
+      "actual": 0.00018267313965587422,
+      "reference": 0.00018267313965587278,
+      "error": 7.864144018379272e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_1.0",
+      "actual": 3.188054429593311e-06,
+      "reference": 3.1880544295932295e-06,
+      "error": 2.56390476433833e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_1.0_0.0001",
+      "actual": 0.00010000000015382824,
+      "reference": 0.0001,
+      "error": 1.538282305355021e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_1.0_0.01",
+      "actual": 0.010000000021180257,
+      "reference": 0.01,
+      "error": 2.1180257200881236e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_1.0_0.1",
+      "actual": 0.10000000017900702,
+      "reference": 0.1,
+      "error": 1.7900701754225423e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_1.0_0.5",
+      "actual": 0.5000000004428744,
+      "reference": 0.5,
+      "error": 4.4287440381651777e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_1.0_0.9",
+      "actual": 0.9000000001597538,
+      "reference": 0.9,
+      "error": 1.597537657715975e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_1.0_0.99",
+      "actual": 0.9900000000181564,
+      "reference": 0.99,
+      "error": 1.8156365300114885e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_1.0_0.9999",
+      "actual": 0.9998999999993141,
+      "reference": 0.9999,
+      "error": 6.858957846134217e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_5.0",
+      "actual": 1.0447213595499958,
+      "reference": 1.0447213595499958,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_5.0",
+      "actual": 0.9143860530060205,
+      "reference": 0.9143860530060205,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_5.0",
+      "actual": 0.00010719444394895536,
+      "reference": 0.00010719444395820343,
+      "error": 8.627376575650013e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_5.0",
+      "actual": 0.0001098080016167805,
+      "reference": 0.00010980800162691197,
+      "error": 9.226537345623154e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_5.0",
+      "actual": 1.7135534815596835e-06,
+      "reference": 1.7135534821234055e-06,
+      "error": 3.2897836666255516e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_5.0",
+      "actual": 0.00010980800162691283,
+      "reference": 0.00010980800162691197,
+      "error": 7.775473537286207e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_5.0",
+      "actual": 1.7135534821234527e-06,
+      "reference": 1.7135534821234055e-06,
+      "error": 2.7557988298626348e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_5.0_0.0001",
+      "actual": 0.00010000000033089265,
+      "reference": 0.0001,
+      "error": 3.3089264835084453e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_5.0_0.01",
+      "actual": 0.010000000037119865,
+      "reference": 0.01,
+      "error": 3.7119864473855735e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_5.0_0.1",
+      "actual": 0.10000000031348318,
+      "reference": 0.1,
+      "error": 3.1348316997803494e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_5.0_0.5",
+      "actual": 0.5000000007847579,
+      "reference": 0.5,
+      "error": 7.847579253095205e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_5.0_0.9",
+      "actual": 0.9000000002875456,
+      "reference": 0.9,
+      "error": 2.875455429318663e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_5.0_0.99",
+      "actual": 0.9900000000328935,
+      "reference": 0.99,
+      "error": 3.289346572898921e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_5.0_0.9999",
+      "actual": 0.9998999999997289,
+      "reference": 0.9999,
+      "error": 2.7111646261346323e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_10.0",
+      "actual": 1.0353553390593273,
+      "reference": 1.0353553390593273,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_10.0",
+      "actual": 0.9317039518211216,
+      "reference": 0.9317039518211216,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_10.0",
+      "actual": 3.4813694842457796e-05,
+      "reference": 3.481369484541082e-05,
+      "error": 8.482354836281634e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_10.0",
+      "actual": 3.547229312503005e-05,
+      "reference": 3.54722931282039e-05,
+      "error": 8.947413607238935e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_10.0",
+      "actual": 4.3336681409880407e-07,
+      "reference": 4.333668142410512e-07,
+      "error": 3.282372082896486e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_10.0",
+      "actual": 3.547229312820417e-05,
+      "reference": 3.54722931282039e-05,
+      "error": 7.641190326820589e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_10.0",
+      "actual": 4.33366814241064e-07,
+      "reference": 4.333668142410512e-07,
+      "error": 2.95624235779513e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_10.0_0.0001",
+      "actual": 0.00010000000025887836,
+      "reference": 0.0001,
+      "error": 2.5887835440868007e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_10.0_0.01",
+      "actual": 0.01000000002868797,
+      "reference": 0.01,
+      "error": 2.868797040200821e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_10.0_0.1",
+      "actual": 0.10000000024265887,
+      "reference": 0.1,
+      "error": 2.426588652237882e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_10.0_0.5",
+      "actual": 0.500000000619881,
+      "reference": 0.5,
+      "error": 6.198810353907902e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_10.0_0.9",
+      "actual": 0.9000000002327095,
+      "reference": 0.9,
+      "error": 2.3270951832188302e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_10.0_0.99",
+      "actual": 0.9900000000271165,
+      "reference": 0.99,
+      "error": 2.7116531242654673e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_10.0_0.9999",
+      "actual": 0.9999000000001955,
+      "reference": 0.9999,
+      "error": 1.9551027463649007e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_13.0",
+      "actual": 1.0304855380424847,
+      "reference": 1.0304855380424847,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_13.0",
+      "actual": 0.9408326717512308,
+      "reference": 0.9408326717512308,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_13.0",
+      "actual": 1.7035728752820722e-05,
+      "reference": 1.7035728754253404e-05,
+      "error": 8.409864421113098e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_13.0",
+      "actual": 1.7310961263716516e-05,
+      "reference": 1.731096126524111e-05,
+      "error": 8.807107284186476e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_13.0",
+      "actual": 1.8144270104195528e-07,
+      "reference": 1.8144270110145498e-07,
+      "error": 3.279255471274683e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_13.0",
+      "actual": 1.7310961265241233e-05,
+      "reference": 1.731096126524111e-05,
+      "error": 7.045983324422879e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_13.0",
+      "actual": 1.8144270110145966e-07,
+      "reference": 1.8144270110145498e-07,
+      "error": 2.582165587846167e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_13.0_0.0001",
+      "actual": 0.00010000000014792572,
+      "reference": 0.0001,
+      "error": 1.479257119357466e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_13.0_0.01",
+      "actual": 0.010000000017323568,
+      "reference": 0.01,
+      "error": 1.732356792738532e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_13.0_0.1",
+      "actual": 0.10000000014631243,
+      "reference": 0.1,
+      "error": 1.46312420512551e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_13.0_0.5",
+      "actual": 0.5000000003774326,
+      "reference": 0.5,
+      "error": 3.774326406968953e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_13.0_0.9",
+      "actual": 0.9000000001443277,
+      "reference": 0.9,
+      "error": 1.443276609336408e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_13.0_0.99",
+      "actual": 0.990000000016769,
+      "reference": 0.99,
+      "error": 1.676903060854329e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_13.0_0.9999",
+      "actual": 0.999900000000153,
+      "reference": 0.9999,
+      "error": 1.5298873279334657e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_20.0",
+      "actual": 1.022360679774998,
+      "reference": 1.022360679774998,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_20.0",
+      "actual": 0.9562567688344213,
+      "reference": 0.9562567688344213,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_20.0",
+      "actual": 3.7794560179501897e-06,
+      "reference": 3.7794560182636325e-06,
+      "error": 8.293332335417996e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_20.0",
+      "actual": 3.823540453780752e-06,
+      "reference": 3.823540454108814e-06,
+      "error": 8.58007495076008e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_20.0",
+      "actual": 2.9150820043189968e-08,
+      "reference": 2.9150820052737062e-08,
+      "error": 3.275068632610912e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_20.0",
+      "actual": 3.823540454108845e-06,
+      "reference": 3.823540454108814e-06,
+      "error": 7.975117948179817e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_20.0",
+      "actual": 2.9150820052737727e-08,
+      "reference": 2.9150820052737062e-08,
+      "error": 2.2814219678536635e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_20.0_0.0001",
+      "actual": 0.00010000000023714687,
+      "reference": 0.0001,
+      "error": 2.371468635613966e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_20.0_0.01",
+      "actual": 0.010000000024567338,
+      "reference": 0.01,
+      "error": 2.4567337747471996e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_20.0_0.1",
+      "actual": 0.10000000020857039,
+      "reference": 0.1,
+      "error": 2.085703831866681e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_20.0_0.5",
+      "actual": 0.5000000005483264,
+      "reference": 0.5,
+      "error": 5.483263842975816e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_20.0_0.9",
+      "actual": 0.9000000002132322,
+      "reference": 0.9,
+      "error": 2.1323220966706913e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_20.0_0.99",
+      "actual": 0.9900000000253781,
+      "reference": 0.99,
+      "error": 2.5378144030696603e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_20.0_0.9999",
+      "actual": 0.9998999999999075,
+      "reference": 0.9999,
+      "error": 9.248157795127554e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_50.0",
+      "actual": 1.0098058067569091,
+      "reference": 1.0098058067569091,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_50.0",
+      "actual": 0.9805788267579854,
+      "reference": 0.9805788267579854,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_50.0",
+      "actual": 6.563346274533572e-08,
+      "reference": 6.563346275066738e-08,
+      "error": 8.12338995679118e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_50.0",
+      "actual": 6.596122341697852e-08,
+      "reference": 6.596122342241765e-08,
+      "error": 8.245949884423059e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_50.0",
+      "actual": 2.177360813099882e-10,
+      "reference": 2.177360813812091e-10,
+      "error": 3.270973580670663e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_50.0",
+      "actual": 6.59612234224181e-08,
+      "reference": 6.596122342241765e-08,
+      "error": 6.821981611031099e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_50.0",
+      "actual": 2.1773608138121688e-10,
+      "reference": 2.177360813812091e-10,
+      "error": 3.5734397291759095e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_50.0_0.0001",
+      "actual": 0.0001000000001427728,
+      "reference": 0.0001,
+      "error": 1.4277279716552044e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_50.0_0.01",
+      "actual": 0.010000000013819805,
+      "reference": 0.01,
+      "error": 1.3819804675629932e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_50.0_0.1",
+      "actual": 0.10000000012169338,
+      "reference": 0.1,
+      "error": 1.2169337759715404e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_50.0_0.5",
+      "actual": 0.5000000003270239,
+      "reference": 0.5,
+      "error": 3.2702385244220977e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_50.0_0.9",
+      "actual": 0.9000000001312951,
+      "reference": 0.9,
+      "error": 1.3129508591447347e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_50.0_0.99",
+      "actual": 0.9900000000158461,
+      "reference": 0.99,
+      "error": 1.5846102208172397e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_50.0_0.9999",
+      "actual": 0.9998999999992662,
+      "reference": 0.9999,
+      "error": 7.338574192772285e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_100.0",
+      "actual": 1.0049751859510498,
+      "reference": 1.0049751859510498,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_100.0",
+      "actual": 0.9900988879713648,
+      "reference": 0.9900988879713648,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_100.0",
+      "actual": 2.2659076669965265e-09,
+      "reference": 2.2659076671791853e-09,
+      "error": 8.061177985772166e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_100.0",
+      "actual": 2.271596877475151e-09,
+      "reference": 2.2715968776596625e-09,
+      "error": 8.122538063024608e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_100.0",
+      "actual": 3.7860418852258735e-12,
+      "reference": 3.786041886463969e-12,
+      "error": 3.270157974116217e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_100.0",
+      "actual": 2.271596877659677e-09,
+      "reference": 2.2715968776596625e-09,
+      "error": 6.372460211598676e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_100.0",
+      "actual": 3.7860418864641475e-12,
+      "reference": 3.786041886463969e-12,
+      "error": 4.7152774229307204e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_100.0_0.0001",
+      "actual": 0.00010000000022790671,
+      "reference": 0.0001,
+      "error": 2.279067098888074e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_100.0_0.01",
+      "actual": 0.010000000021736009,
+      "reference": 0.01,
+      "error": 2.173600882615645e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_100.0_0.1",
+      "actual": 0.1000000001895478,
+      "reference": 0.1,
+      "error": 1.8954779412716505e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_100.0_0.5",
+      "actual": 0.5000000005146166,
+      "reference": 0.5,
+      "error": 5.146165715785855e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_100.0_0.9",
+      "actual": 0.9000000002098835,
+      "reference": 0.9,
+      "error": 2.0988344395789227e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_100.0_0.99",
+      "actual": 0.990000000025515,
+      "reference": 0.99,
+      "error": 2.5515034529632885e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_100.0_0.9999",
+      "actual": 0.9998999999993156,
+      "reference": 0.9999,
+      "error": 6.84452494681409e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_500.0",
+      "actual": 1.00099980005998,
+      "reference": 1.00099980005998,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_500.0",
+      "actual": 0.9980023970835556,
+      "reference": 0.9980023970835556,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_500.0",
+      "actual": 7.589964672062319e-13,
+      "reference": 7.589964672670367e-13,
+      "error": 8.011215577234753e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_500.0",
+      "actual": 7.593765953424334e-13,
+      "reference": 7.59376595403358e-13,
+      "error": 8.022975554085491e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_500.0",
+      "actual": 2.5332819934336953e-16,
+      "reference": 2.5332819942621354e-16,
+      "error": 3.270224281641852e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_500.0",
+      "actual": 7.593765954033629e-13,
+      "reference": 7.59376595403358e-13,
+      "error": 6.3825530455062844e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_500.0",
+      "actual": 2.5332819942637017e-16,
+      "reference": 2.5332819942621354e-16,
+      "error": 6.183211890651395e-13,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_500.0_0.0001",
+      "actual": 0.00010000000021904237,
+      "reference": 0.0001,
+      "error": 2.19042367794256e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_500.0_0.01",
+      "actual": 0.010000000020783694,
+      "reference": 0.01,
+      "error": 2.078369421010251e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_500.0_0.1",
+      "actual": 0.10000000018137195,
+      "reference": 0.1,
+      "error": 1.813719452403717e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_500.0_0.5",
+      "actual": 0.5000000004961456,
+      "reference": 0.5,
+      "error": 4.961455690732919e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_500.0_0.9",
+      "actual": 0.9000000002044757,
+      "reference": 0.9,
+      "error": 2.044756586272456e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_500.0_0.99",
+      "actual": 0.9900000000250984,
+      "reference": 0.99,
+      "error": 2.5098367828491064e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_500.0_0.9999",
+      "actual": 0.9998999999993495,
+      "reference": 0.9999,
+      "error": 6.504796701278792e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_1000.0_999.0",
+      "actual": 1.0005004754272344,
+      "reference": 1.0005004754272344,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_1000.0_999.0",
+      "actual": 0.9989995498462492,
+      "reference": 0.9989995498462492,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_1000.0_999.0",
+      "actual": 2.392103149301495e-14,
+      "reference": 2.392103149492984e-14,
+      "error": 8.005049565150297e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_1000.0_999.0",
+      "actual": 2.3927023005955034e-14,
+      "reference": 2.3927023007871748e-14,
+      "error": 8.010667576349294e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_1000.0_999.0",
+      "actual": 3.993627732011486e-18,
+      "reference": 3.993627733316808e-18,
+      "error": 3.2685122854044256e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_999.0",
+      "actual": 2.3927023007871884e-14,
+      "reference": 2.3927023007871748e-14,
+      "error": 5.670746237564755e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_999.0",
+      "actual": 3.993627733319961e-18,
+      "reference": 3.993627733316808e-18,
+      "error": 7.893480172612162e-13,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_999.0_0.0001",
+      "actual": 0.00010000000016043443,
+      "reference": 0.0001,
+      "error": 1.60434423450255e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_999.0_0.01",
+      "actual": 0.010000000015121501,
+      "reference": 0.01,
+      "error": 1.512150127336298e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_999.0_0.1",
+      "actual": 0.100000000132745,
+      "reference": 0.1,
+      "error": 1.327449955512705e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_999.0_0.5",
+      "actual": 0.5000000003639443,
+      "reference": 0.5,
+      "error": 3.6394431912611935e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_999.0_0.9",
+      "actual": 0.9000000001503469,
+      "reference": 0.9,
+      "error": 1.5034684608394855e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_999.0_0.99",
+      "actual": 0.9900000000184975,
+      "reference": 0.99,
+      "error": 1.8497536835582196e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_1000.0_999.0_0.9999",
+      "actual": 0.9998999999992914,
+      "reference": 0.9999,
+      "error": 7.086553566182374e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_1000.0_1e-06",
+      "actual": 9.999999995614442e-07,
+      "reference": 1e-06,
+      "error": 4.385557553638871e-16,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_1000.0_0.0001",
+      "actual": 9.999999999790637e-05,
+      "reference": 0.0001,
+      "error": 2.0936350526509773e-15,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_1000.0_0.01",
+      "actual": 0.010000000000029737,
+      "reference": 0.01,
+      "error": 2.973662982519443e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_1000.0_0.1",
+      "actual": 0.1000000000002563,
+      "reference": 0.1,
+      "error": 2.562949852347174e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_1000.0_0.5",
+      "actual": 0.5000000000007078,
+      "reference": 0.5,
+      "error": 7.077671781985373e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_1000.0_0.9",
+      "actual": 0.9000000000002848,
+      "reference": 0.9,
+      "error": 2.8477220581635265e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_1000.0_0.99",
+      "actual": 0.9900000000000332,
+      "reference": 0.99,
+      "error": 3.319566843629218e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_1000.0_0.9999",
+      "actual": 0.9999000000000033,
+      "reference": 0.9999,
+      "error": 3.3306690738754696e-15,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_1000.0_0.999999",
+      "actual": 0.9999990000000002,
+      "reference": 0.999999,
+      "error": 2.220446049250313e-16,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "F_1000.0_1e-12",
+      "actual": 6.550390494276345e-43,
+      "reference": 6.550390494276343e-43,
+      "error": 3.6480845970735897e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_1000.0_1e-08",
+      "actual": 6.550390314158621e-29,
+      "reference": 6.55039031415862e-29,
+      "error": 1.7114075920586543e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_1000.0_1e-05",
+      "actual": 2.0713583888639844e-18,
+      "reference": 2.0713583888639875e-18,
+      "error": 1.4876652575364245e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_1000.0_0.001",
+      "actual": 2.0657213364033095e-11,
+      "reference": 2.0657213364033098e-11,
+      "error": 1.564186906938358e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_1000.0_0.01",
+      "actual": 6.371007898841017e-08,
+      "reference": 6.371007898841014e-08,
+      "error": 4.1547240282832094e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_1000.0_0.025",
+      "actual": 1.5082030946222001e-06,
+      "reference": 1.508203094622199e-06,
+      "error": 7.020216228458938e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_1000.0_0.05",
+      "actual": 1.5844614781332917e-05,
+      "reference": 1.5844614781332914e-05,
+      "error": 2.138349108372692e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_1000.0_0.075",
+      "actual": 6.056915477762384e-05,
+      "reference": 6.056915477762385e-05,
+      "error": 2.2375295157784724e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_1000.0_0.09",
+      "actual": 0.00010916430596460775,
+      "reference": 0.00010916430596460776,
+      "error": 1.2414797159487902e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_1000.0_0.09523809523809534",
+      "actual": 0.00013075308461577226,
+      "reference": 0.00013075308461577223,
+      "error": 2.072995401354228e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "M0_2000.0",
+      "actual": 1.0134497989044768,
+      "reference": 1.01344979898962,
+      "error": 8.401326428599966e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "M0_inf_2000.0",
+      "actual": 1.0134873008561143,
+      "reference": 1.0134873009412573,
+      "error": 8.400993646336593e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "median_2000.0",
+      "actual": 0.5067436504713589,
+      "reference": 0.5067436504706286,
+      "error": 1.4411718921789571e-12,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "period_2000.0",
+      "actual": 461.99570043659577,
+      "reference": 461.99570043659565,
+      "error": 2.4607769642483595e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_0.0",
+      "actual": 1.05,
+      "reference": 1.05,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_0.0",
+      "actual": 0.9047619047619047,
+      "reference": 0.9047619047619047,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_0.0",
+      "actual": 0.0001820375051912138,
+      "reference": 0.000182037505207074,
+      "error": 8.712598676879279e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_0.0",
+      "actual": 0.00018705309363538434,
+      "reference": 0.00018705309365294774,
+      "error": 9.389525307982303e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_0.0",
+      "actual": 3.281633220900328e-06,
+      "reference": 3.2816332219815424e-06,
+      "error": 3.2947443867940773e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_0.0",
+      "actual": 0.0001870530936529492,
+      "reference": 0.00018705309365294774,
+      "error": 7.824906310136107e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_0.0",
+      "actual": 3.2816332219816296e-06,
+      "reference": 3.2816332219815424e-06,
+      "error": 2.6585662584958936e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.0_0.0001",
+      "actual": 9.999999992864366e-05,
+      "reference": 0.0001,
+      "error": 7.135634585379164e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.0_0.01",
+      "actual": 0.009999999999661125,
+      "reference": 0.01,
+      "error": 3.388747615851173e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.0_0.1",
+      "actual": 0.09999999999981093,
+      "reference": 0.1,
+      "error": 1.8907098109366416e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.0_0.5",
+      "actual": 0.49999999999994466,
+      "reference": 0.5,
+      "error": 5.5344617777564054e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.0_0.9",
+      "actual": 0.900000000000191,
+      "reference": 0.9,
+      "error": 1.9095836023552692e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.0_0.99",
+      "actual": 0.9900000000000311,
+      "reference": 0.99,
+      "error": 3.108624468950438e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.0_0.9999",
+      "actual": 0.9998999999991236,
+      "reference": 0.9999,
+      "error": 8.764100556390986e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_0.1",
+      "actual": 1.0499975001874844,
+      "reference": 1.0499975001874844,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_0.1",
+      "actual": 0.9047664395799857,
+      "reference": 0.9047664395799857,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_0.1",
+      "actual": 0.00018199443902986782,
+      "reference": 0.0001819944390457242,
+      "error": 8.712560416999235e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_0.1",
+      "actual": 0.00018700856465919975,
+      "reference": 0.0001870085646767588,
+      "error": 9.389442023453829e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_0.1",
+      "actual": 3.2806793477743833e-06,
+      "reference": 3.2806793488552795e-06,
+      "error": 3.2947328524182827e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_0.1",
+      "actual": 0.00018700856467676028,
+      "reference": 0.0001870085646767588,
+      "error": 7.826769513927692e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_0.1",
+      "actual": 3.2806793488553697e-06,
+      "reference": 3.2806793488552795e-06,
+      "error": 2.7497051461021152e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.1_0.0001",
+      "actual": 0.00010000000000684651,
+      "reference": 0.0001,
+      "error": 6.846506326284307e-15,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.1_0.01",
+      "actual": 0.010000000007152692,
+      "reference": 0.01,
+      "error": 7.152691633427466e-12,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.1_0.1",
+      "actual": 0.10000000006214664,
+      "reference": 0.1,
+      "error": 6.214663506032281e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.1_0.5",
+      "actual": 0.5000000001539776,
+      "reference": 0.5,
+      "error": 1.539776084413802e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.1_0.9",
+      "actual": 0.9000000000556644,
+      "reference": 0.9,
+      "error": 5.56643620086561e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.1_0.99",
+      "actual": 0.9900000000063309,
+      "reference": 0.99,
+      "error": 6.330935775622493e-12,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_0.1_0.9999",
+      "actual": 0.9998999999991863,
+      "reference": 0.9999,
+      "error": 8.136824547477772e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_1.0",
+      "actual": 1.0497518595104995,
+      "reference": 1.0497518595104995,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_1.0",
+      "actual": 0.9052121526439614,
+      "reference": 0.9052121526439614,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_1.0",
+      "actual": 0.00017780105097407,
+      "reference": 0.0001778010509895539,
+      "error": 8.708552460688141e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_1.0",
+      "actual": 0.00018267313963873477,
+      "reference": 0.00018267313965587278,
+      "error": 9.381790271858235e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_1.0",
+      "actual": 3.188054428542923e-06,
+      "reference": 3.1880544295932295e-06,
+      "error": 3.2945060325373424e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_1.0",
+      "actual": 0.00018267313965587422,
+      "reference": 0.00018267313965587278,
+      "error": 7.864144018379272e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_1.0",
+      "actual": 3.188054429593311e-06,
+      "reference": 3.1880544295932295e-06,
+      "error": 2.56390476433833e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_1.0_0.0001",
+      "actual": 0.00010000000015382824,
+      "reference": 0.0001,
+      "error": 1.538282305355021e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_1.0_0.01",
+      "actual": 0.010000000021180257,
+      "reference": 0.01,
+      "error": 2.1180257200881236e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_1.0_0.1",
+      "actual": 0.10000000017900702,
+      "reference": 0.1,
+      "error": 1.7900701754225423e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_1.0_0.5",
+      "actual": 0.5000000004428744,
+      "reference": 0.5,
+      "error": 4.4287440381651777e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_1.0_0.9",
+      "actual": 0.9000000001597538,
+      "reference": 0.9,
+      "error": 1.597537657715975e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_1.0_0.99",
+      "actual": 0.9900000000181564,
+      "reference": 0.99,
+      "error": 1.8156365300114885e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_1.0_0.9999",
+      "actual": 0.9998999999993141,
+      "reference": 0.9999,
+      "error": 6.858957846134217e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_5.0",
+      "actual": 1.0447213595499958,
+      "reference": 1.0447213595499958,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_5.0",
+      "actual": 0.9143860530060205,
+      "reference": 0.9143860530060205,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_5.0",
+      "actual": 0.00010719444394895536,
+      "reference": 0.00010719444395820343,
+      "error": 8.627376575650013e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_5.0",
+      "actual": 0.0001098080016167805,
+      "reference": 0.00010980800162691197,
+      "error": 9.226537345623154e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_5.0",
+      "actual": 1.7135534815596835e-06,
+      "reference": 1.7135534821234055e-06,
+      "error": 3.2897836666255516e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_5.0",
+      "actual": 0.00010980800162691283,
+      "reference": 0.00010980800162691197,
+      "error": 7.775473537286207e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_5.0",
+      "actual": 1.7135534821234527e-06,
+      "reference": 1.7135534821234055e-06,
+      "error": 2.7557988298626348e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_5.0_0.0001",
+      "actual": 0.00010000000033089265,
+      "reference": 0.0001,
+      "error": 3.3089264835084453e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_5.0_0.01",
+      "actual": 0.010000000037119865,
+      "reference": 0.01,
+      "error": 3.7119864473855735e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_5.0_0.1",
+      "actual": 0.10000000031348318,
+      "reference": 0.1,
+      "error": 3.1348316997803494e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_5.0_0.5",
+      "actual": 0.5000000007847579,
+      "reference": 0.5,
+      "error": 7.847579253095205e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_5.0_0.9",
+      "actual": 0.9000000002875456,
+      "reference": 0.9,
+      "error": 2.875455429318663e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_5.0_0.99",
+      "actual": 0.9900000000328935,
+      "reference": 0.99,
+      "error": 3.289346572898921e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_5.0_0.9999",
+      "actual": 0.9998999999997289,
+      "reference": 0.9999,
+      "error": 2.7111646261346323e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_10.0",
+      "actual": 1.0353553390593273,
+      "reference": 1.0353553390593273,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_10.0",
+      "actual": 0.9317039518211216,
+      "reference": 0.9317039518211216,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_10.0",
+      "actual": 3.4813694842457796e-05,
+      "reference": 3.481369484541082e-05,
+      "error": 8.482354836281634e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_10.0",
+      "actual": 3.547229312503005e-05,
+      "reference": 3.54722931282039e-05,
+      "error": 8.947413607238935e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_10.0",
+      "actual": 4.3336681409880407e-07,
+      "reference": 4.333668142410512e-07,
+      "error": 3.282372082896486e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_10.0",
+      "actual": 3.547229312820417e-05,
+      "reference": 3.54722931282039e-05,
+      "error": 7.641190326820589e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_10.0",
+      "actual": 4.33366814241064e-07,
+      "reference": 4.333668142410512e-07,
+      "error": 2.95624235779513e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_10.0_0.0001",
+      "actual": 0.00010000000025887836,
+      "reference": 0.0001,
+      "error": 2.5887835440868007e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_10.0_0.01",
+      "actual": 0.01000000002868797,
+      "reference": 0.01,
+      "error": 2.868797040200821e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_10.0_0.1",
+      "actual": 0.10000000024265887,
+      "reference": 0.1,
+      "error": 2.426588652237882e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_10.0_0.5",
+      "actual": 0.500000000619881,
+      "reference": 0.5,
+      "error": 6.198810353907902e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_10.0_0.9",
+      "actual": 0.9000000002327095,
+      "reference": 0.9,
+      "error": 2.3270951832188302e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_10.0_0.99",
+      "actual": 0.9900000000271165,
+      "reference": 0.99,
+      "error": 2.7116531242654673e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_10.0_0.9999",
+      "actual": 0.9999000000001955,
+      "reference": 0.9999,
+      "error": 1.9551027463649007e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_13.0",
+      "actual": 1.0304855380424847,
+      "reference": 1.0304855380424847,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_13.0",
+      "actual": 0.9408326717512308,
+      "reference": 0.9408326717512308,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_13.0",
+      "actual": 1.7035728752820722e-05,
+      "reference": 1.7035728754253404e-05,
+      "error": 8.409864421113098e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_13.0",
+      "actual": 1.7310961263716516e-05,
+      "reference": 1.731096126524111e-05,
+      "error": 8.807107284186476e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_13.0",
+      "actual": 1.8144270104195528e-07,
+      "reference": 1.8144270110145498e-07,
+      "error": 3.279255471274683e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_13.0",
+      "actual": 1.7310961265241233e-05,
+      "reference": 1.731096126524111e-05,
+      "error": 7.045983324422879e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_13.0",
+      "actual": 1.8144270110145966e-07,
+      "reference": 1.8144270110145498e-07,
+      "error": 2.582165587846167e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_13.0_0.0001",
+      "actual": 0.00010000000014792572,
+      "reference": 0.0001,
+      "error": 1.479257119357466e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_13.0_0.01",
+      "actual": 0.010000000017323568,
+      "reference": 0.01,
+      "error": 1.732356792738532e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_13.0_0.1",
+      "actual": 0.10000000014631243,
+      "reference": 0.1,
+      "error": 1.46312420512551e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_13.0_0.5",
+      "actual": 0.5000000003774326,
+      "reference": 0.5,
+      "error": 3.774326406968953e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_13.0_0.9",
+      "actual": 0.9000000001443277,
+      "reference": 0.9,
+      "error": 1.443276609336408e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_13.0_0.99",
+      "actual": 0.990000000016769,
+      "reference": 0.99,
+      "error": 1.676903060854329e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_13.0_0.9999",
+      "actual": 0.999900000000153,
+      "reference": 0.9999,
+      "error": 1.5298873279334657e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_20.0",
+      "actual": 1.022360679774998,
+      "reference": 1.022360679774998,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_20.0",
+      "actual": 0.9562567688344213,
+      "reference": 0.9562567688344213,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_20.0",
+      "actual": 3.7794560179501897e-06,
+      "reference": 3.7794560182636325e-06,
+      "error": 8.293332335417996e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_20.0",
+      "actual": 3.823540453780752e-06,
+      "reference": 3.823540454108814e-06,
+      "error": 8.58007495076008e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_20.0",
+      "actual": 2.9150820043189968e-08,
+      "reference": 2.9150820052737062e-08,
+      "error": 3.275068632610912e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_20.0",
+      "actual": 3.823540454108845e-06,
+      "reference": 3.823540454108814e-06,
+      "error": 7.975117948179817e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_20.0",
+      "actual": 2.9150820052737727e-08,
+      "reference": 2.9150820052737062e-08,
+      "error": 2.2814219678536635e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_20.0_0.0001",
+      "actual": 0.00010000000023714687,
+      "reference": 0.0001,
+      "error": 2.371468635613966e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_20.0_0.01",
+      "actual": 0.010000000024567338,
+      "reference": 0.01,
+      "error": 2.4567337747471996e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_20.0_0.1",
+      "actual": 0.10000000020857039,
+      "reference": 0.1,
+      "error": 2.085703831866681e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_20.0_0.5",
+      "actual": 0.5000000005483264,
+      "reference": 0.5,
+      "error": 5.483263842975816e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_20.0_0.9",
+      "actual": 0.9000000002132322,
+      "reference": 0.9,
+      "error": 2.1323220966706913e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_20.0_0.99",
+      "actual": 0.9900000000253781,
+      "reference": 0.99,
+      "error": 2.5378144030696603e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_20.0_0.9999",
+      "actual": 0.9998999999999075,
+      "reference": 0.9999,
+      "error": 9.248157795127554e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_50.0",
+      "actual": 1.0098058067569091,
+      "reference": 1.0098058067569091,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_50.0",
+      "actual": 0.9805788267579854,
+      "reference": 0.9805788267579854,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_50.0",
+      "actual": 6.563346274533572e-08,
+      "reference": 6.563346275066738e-08,
+      "error": 8.12338995679118e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_50.0",
+      "actual": 6.596122341697852e-08,
+      "reference": 6.596122342241765e-08,
+      "error": 8.245949884423059e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_50.0",
+      "actual": 2.177360813099882e-10,
+      "reference": 2.177360813812091e-10,
+      "error": 3.270973580670663e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_50.0",
+      "actual": 6.59612234224181e-08,
+      "reference": 6.596122342241765e-08,
+      "error": 6.821981611031099e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_50.0",
+      "actual": 2.1773608138121688e-10,
+      "reference": 2.177360813812091e-10,
+      "error": 3.5734397291759095e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_50.0_0.0001",
+      "actual": 0.0001000000001427728,
+      "reference": 0.0001,
+      "error": 1.4277279716552044e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_50.0_0.01",
+      "actual": 0.010000000013819805,
+      "reference": 0.01,
+      "error": 1.3819804675629932e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_50.0_0.1",
+      "actual": 0.10000000012169338,
+      "reference": 0.1,
+      "error": 1.2169337759715404e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_50.0_0.5",
+      "actual": 0.5000000003270239,
+      "reference": 0.5,
+      "error": 3.2702385244220977e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_50.0_0.9",
+      "actual": 0.9000000001312951,
+      "reference": 0.9,
+      "error": 1.3129508591447347e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_50.0_0.99",
+      "actual": 0.9900000000158461,
+      "reference": 0.99,
+      "error": 1.5846102208172397e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_50.0_0.9999",
+      "actual": 0.9998999999992662,
+      "reference": 0.9999,
+      "error": 7.338574192772285e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_100.0",
+      "actual": 1.0049751859510498,
+      "reference": 1.0049751859510498,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_100.0",
+      "actual": 0.9900988879713648,
+      "reference": 0.9900988879713648,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_100.0",
+      "actual": 2.2659076669965265e-09,
+      "reference": 2.2659076671791853e-09,
+      "error": 8.061177985772166e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_100.0",
+      "actual": 2.271596877475151e-09,
+      "reference": 2.2715968776596625e-09,
+      "error": 8.122538063024608e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_100.0",
+      "actual": 3.7860418852258735e-12,
+      "reference": 3.786041886463969e-12,
+      "error": 3.270157974116217e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_100.0",
+      "actual": 2.271596877659677e-09,
+      "reference": 2.2715968776596625e-09,
+      "error": 6.372460211598676e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_100.0",
+      "actual": 3.7860418864641475e-12,
+      "reference": 3.786041886463969e-12,
+      "error": 4.7152774229307204e-14,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_100.0_0.0001",
+      "actual": 0.00010000000022790671,
+      "reference": 0.0001,
+      "error": 2.279067098888074e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_100.0_0.01",
+      "actual": 0.010000000021736009,
+      "reference": 0.01,
+      "error": 2.173600882615645e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_100.0_0.1",
+      "actual": 0.1000000001895478,
+      "reference": 0.1,
+      "error": 1.8954779412716505e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_100.0_0.5",
+      "actual": 0.5000000005146166,
+      "reference": 0.5,
+      "error": 5.146165715785855e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_100.0_0.9",
+      "actual": 0.9000000002098835,
+      "reference": 0.9,
+      "error": 2.0988344395789227e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_100.0_0.99",
+      "actual": 0.990000000025515,
+      "reference": 0.99,
+      "error": 2.5515034529632885e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_100.0_0.9999",
+      "actual": 0.9998999999993156,
+      "reference": 0.9999,
+      "error": 6.84452494681409e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_500.0",
+      "actual": 1.00099980005998,
+      "reference": 1.00099980005998,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_500.0",
+      "actual": 0.9980023970835556,
+      "reference": 0.9980023970835556,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_500.0",
+      "actual": 7.589964672062319e-13,
+      "reference": 7.589964672670367e-13,
+      "error": 8.011215577234753e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_500.0",
+      "actual": 7.593765953424334e-13,
+      "reference": 7.59376595403358e-13,
+      "error": 8.022975554085491e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_500.0",
+      "actual": 2.5332819934336953e-16,
+      "reference": 2.5332819942621354e-16,
+      "error": 3.270224281641852e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_500.0",
+      "actual": 7.593765954033629e-13,
+      "reference": 7.59376595403358e-13,
+      "error": 6.3825530455062844e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_500.0",
+      "actual": 2.5332819942637017e-16,
+      "reference": 2.5332819942621354e-16,
+      "error": 6.183211890651395e-13,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_500.0_0.0001",
+      "actual": 0.00010000000021904237,
+      "reference": 0.0001,
+      "error": 2.19042367794256e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_500.0_0.01",
+      "actual": 0.010000000020783694,
+      "reference": 0.01,
+      "error": 2.078369421010251e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_500.0_0.1",
+      "actual": 0.10000000018137195,
+      "reference": 0.1,
+      "error": 1.813719452403717e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_500.0_0.5",
+      "actual": 0.5000000004961456,
+      "reference": 0.5,
+      "error": 4.961455690732919e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_500.0_0.9",
+      "actual": 0.9000000002044757,
+      "reference": 0.9,
+      "error": 2.044756586272456e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_500.0_0.99",
+      "actual": 0.9900000000250984,
+      "reference": 0.99,
+      "error": 2.5098367828491064e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_500.0_0.9999",
+      "actual": 0.9998999999993495,
+      "reference": 0.9999,
+      "error": 6.504796701278792e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "psi_2000.0_999.0",
+      "actual": 1.0005004754272344,
+      "reference": 1.0005004754272344,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "alpha_2000.0_999.0",
+      "actual": 0.9989995498462492,
+      "reference": 0.9989995498462492,
+      "error": 0.0,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "rho0_2000.0_999.0",
+      "actual": 2.392103149301495e-14,
+      "reference": 2.392103149492984e-14,
+      "error": 8.005049565150297e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "eps_2000.0_999.0",
+      "actual": 2.3927023005955034e-14,
+      "reference": 2.3927023007871748e-14,
+      "error": 8.010667576349294e-11,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "pressure_2000.0_999.0",
+      "actual": 3.993627732011486e-18,
+      "reference": 3.993627733316808e-18,
+      "error": 3.2685122854044256e-10,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_energy_identity_999.0",
+      "actual": 2.3927023007871884e-14,
+      "reference": 2.3927023007871748e-14,
+      "error": 5.670746237564755e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "python_pressure_identity_999.0",
+      "actual": 3.993627733319961e-18,
+      "reference": 3.993627733316808e-18,
+      "error": 7.893480172612162e-13,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_999.0_0.0001",
+      "actual": 0.00010000000016043443,
+      "reference": 0.0001,
+      "error": 1.60434423450255e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_999.0_0.01",
+      "actual": 0.010000000015121501,
+      "reference": 0.01,
+      "error": 1.512150127336298e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_999.0_0.1",
+      "actual": 0.100000000132745,
+      "reference": 0.1,
+      "error": 1.327449955512705e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_999.0_0.5",
+      "actual": 0.5000000003639443,
+      "reference": 0.5,
+      "error": 3.6394431912611935e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_999.0_0.9",
+      "actual": 0.9000000001503469,
+      "reference": 0.9,
+      "error": 1.5034684608394855e-10,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_999.0_0.99",
+      "actual": 0.9900000000184975,
+      "reference": 0.99,
+      "error": 1.8497536835582196e-11,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "q_cdf_2000.0_999.0_0.9999",
+      "actual": 0.9998999999992914,
+      "reference": 0.9999,
+      "error": 7.086553566182374e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_2000.0_1e-06",
+      "actual": 9.999999993256686e-07,
+      "reference": 1e-06,
+      "error": 6.74331399638621e-16,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_2000.0_0.0001",
+      "actual": 0.00010000000000024833,
+      "reference": 0.0001,
+      "error": 2.483229550806487e-16,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_2000.0_0.01",
+      "actual": 0.010000000000021131,
+      "reference": 0.01,
+      "error": 2.1130666660873487e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_2000.0_0.1",
+      "actual": 0.10000000000024932,
+      "reference": 0.1,
+      "error": 2.493144579673867e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_2000.0_0.5",
+      "actual": 0.50000000000072,
+      "reference": 0.5,
+      "error": 7.19979631469414e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_2000.0_0.9",
+      "actual": 0.9000000000002826,
+      "reference": 0.9,
+      "error": 2.8255175976710234e-13,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_2000.0_0.99",
+      "actual": 0.9900000000000374,
+      "reference": 0.99,
+      "error": 3.7414515929867775e-14,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_2000.0_0.9999",
+      "actual": 0.9999000000000006,
+      "reference": 0.9999,
+      "error": 5.551115123125783e-16,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "radius_cdf_2000.0_0.999999",
+      "actual": 0.9999989999999995,
+      "reference": 0.999999,
+      "error": 4.440892098500626e-16,
+      "relative": false,
+      "passed": true
+    },
+    {
+      "name": "F_2000.0_1e-12",
+      "actual": 6.550390494276345e-43,
+      "reference": 6.550390494276343e-43,
+      "error": 3.6480845970735897e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_2000.0_1e-08",
+      "actual": 6.550390314158621e-29,
+      "reference": 6.55039031415862e-29,
+      "error": 1.7114075920586543e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_2000.0_1e-05",
+      "actual": 2.0713583888639844e-18,
+      "reference": 2.0713583888639875e-18,
+      "error": 1.4876652575364245e-15,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_2000.0_0.001",
+      "actual": 2.0657213364033095e-11,
+      "reference": 2.0657213364033098e-11,
+      "error": 1.564186906938358e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_2000.0_0.01",
+      "actual": 6.371007898841017e-08,
+      "reference": 6.371007898841014e-08,
+      "error": 4.1547240282832094e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_2000.0_0.025",
+      "actual": 1.5082030946222001e-06,
+      "reference": 1.508203094622199e-06,
+      "error": 7.020216228458938e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_2000.0_0.05",
+      "actual": 1.5844614781332917e-05,
+      "reference": 1.5844614781332914e-05,
+      "error": 2.138349108372692e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_2000.0_0.075",
+      "actual": 6.056915477762384e-05,
+      "reference": 6.056915477762385e-05,
+      "error": 2.2375295157784724e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_2000.0_0.09",
+      "actual": 0.00010916430596460775,
+      "reference": 0.00010916430596460776,
+      "error": 1.2414797159487902e-16,
+      "relative": true,
+      "passed": true
+    },
+    {
+      "name": "F_2000.0_0.09523809523809534",
+      "actual": 0.00013075308461577226,
+      "reference": 0.00013075308461577223,
+      "error": 2.072995401354228e-16,
+      "relative": true,
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,227 @@
+# Session 03 isotropic Part I; sampling cut is not an orbital boundary.
+<job>
+basename = halfdt_live
+
+<mesh>
+nghost = 4
+nx1 = 128
+x1min = -20480
+x1max = 20480
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 128
+x2min = -20480
+x2max = 20480
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 128
+x3min = -20480
+x3max = 20480
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+
+<mesh_refinement>
+refinement = static
+
+<refined_region1>
+level = 1
+x1min = -10240.0
+x1max = 10240.0
+x2min = -10240.0
+x2max = 10240.0
+x3min = -10240.0
+x3max = 10240.0
+
+<refined_region2>
+level = 2
+x1min = -5120.0
+x1max = 5120.0
+x2min = -5120.0
+x2max = 5120.0
+x3min = -5120.0
+x3max = 5120.0
+
+<refined_region3>
+level = 3
+x1min = -2560.0
+x1max = 2560.0
+x2min = -2560.0
+x2max = 2560.0
+x3min = -2560.0
+x3max = 2560.0
+
+<refined_region4>
+level = 4
+x1min = -1280.0
+x1max = 1280.0
+x2min = -1280.0
+x2max = 1280.0
+x3min = -1280.0
+x3max = 1280.0
+
+<refined_region5>
+level = 5
+x1min = -640.0
+x1max = 640.0
+x2min = -640.0
+x2max = 640.0
+x3min = -640.0
+x3max = 640.0
+
+<refined_region6>
+level = 6
+x1min = -320.0
+x1max = 320.0
+x2min = -320.0
+x2max = 320.0
+x3min = -320.0
+x3max = 320.0
+
+<refined_region7>
+level = 7
+x1min = -160.0
+x1max = 160.0
+x2min = -160.0
+x2max = 160.0
+x3min = -160.0
+x3max = 160.0
+
+<refined_region8>
+level = 8
+x1min = -80.0
+x1max = 80.0
+x2min = -80.0
+x2max = 80.0
+x3min = -80.0
+x3max = 80.0
+
+<refined_region9>
+level = 9
+x1min = -40.0
+x1max = 40.0
+x2min = -40.0
+x2max = 40.0
+x3min = -40.0
+x3max = 40.0
+
+<refined_region10>
+level = 10
+x1min = -20.0
+x1max = 20.0
+x2min = -20.0
+x2max = 20.0
+x3min = -20.0
+x3max = 20.0
+
+<time>
+evolution = dynamic
+integrator = rk4
+cfl_number = 0.125
+nlim = 100000000
+tlim = 11.549892510914754
+ndiag = 10
+
+<z4c>
+lapse_harmonic = 0.0
+lapse_harmonicf = 1.0
+lapse_oplog = 2.0
+lapse_advect = 1.0
+shift_driver = legacy
+shift_eta = 2.0
+shift_advect = 1.0
+shift_Gamma = 1.0
+shift_alpha2Gamma = 0.0
+shift_H = 0.0
+const_damp = true
+diss = 0.1
+chi_div_floor = 0.00001
+use_z4c = false
+hdamp_cH = 0.02
+hdamp_par_safety = 0.5
+damp_kappa1 = 0.0
+damp_kappa2 = 0.0
+nrad_wave_extraction = 0
+
+<particles>
+particle_type = dust
+pusher = gr_boris
+init = pgen
+feedback = true
+mass = 1
+debug = 0
+destroy_log = true
+excise_radius = 0
+excise_x1 = 0
+excise_x2 = 0
+excise_x3 = 0
+excise_lapse = 0
+excise_ah = false
+cross_level_deposit = conservative
+tmunu_filter_passes = 0
+
+<problem>
+user_hist = true
+plummer_model = isotropic
+plummer_mass = 1
+plummer_isotropic_a = 10
+plummer_sampling_radius = 1000
+plummer_npair = 1056768
+plummer_seed = 1985
+plummer_shell_nbin = 64
+plummer_shell_rmin = 0.3125
+plummer_shell_rmax = 4000
+plummer_cohort_nbin = 32
+plummer_lmax = 4
+plummer_field_nbin = 80
+plummer_field_rmin = 0.3125
+plummer_field_rmax = 30000
+plummer_constraint_reference = 0
+plummer_pmom_nrad = 2
+plummer_pmom_ntheta = 32
+plummer_pmom_selftest = 1
+plummer_pmom_r1 = 9000
+plummer_pmom_r2 = 10000
+
+<output1>
+file_type = pvtk
+variable = prtcl_all
+dt = 4.619957004365902
+
+<output2>
+file_type = bin
+variable = tmunu
+slice_x3 = 0
+dt = 9.239914008731803
+
+<output3>
+file_type = bin
+variable = con
+slice_x3 = 0
+dt = 9.239914008731803
+
+<output4>
+file_type = bin
+variable = adm
+slice_x3 = 0
+dt = 9.239914008731803
+
+<output5>
+file_type = cbin
+variable = adm
+coarsen_factor = 2
+dt = 46.199570043659016
+
+<output6>
+file_type = hst
+dt = 2.309978502182951
+data_format = %.17e
+
+<output7>
+file_type = rst
+dt = 461.99570043659014
+

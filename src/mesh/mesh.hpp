@@ -150,6 +150,9 @@ class Mesh {
   parabolic::STSIntegrator sts_integrator;
   int ncycle;
   bool is_restart=false;   // true if this run was initialized from a restart file
+  // A problem health hook can request normal finalization, including a checkpoint.
+  // Numerical corruption must still abort; this flag is for a finite physical stop.
+  bool user_stop_requested=false;
   EventCounters ecounter;
 
   int nmb_packs_thisrank;                  // number of MBPacks on this rank
