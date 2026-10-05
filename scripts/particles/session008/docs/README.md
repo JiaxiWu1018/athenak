@@ -1,6 +1,6 @@
 # Session 008 companion-supported AMD assessment
 
-**Status, 2026-10-05 UTC:** full GPU validation and two production segments passed, reaching t=9.325 with both individual horizons accepted. The third job failed during communication startup. Reviewed continuation is submitted (451757–451761), archival2329 is running, and full analysis/plots/movies remain pending. Scientific setup is unchanged; endpointt12 and48 raw AMD node-hours remain in force.
+**Status, 2026-10-05 UTC:** full GPU validation and two production segments passed, reaching t=9.325 with both individual horizons accepted. The third job failed during communication startup. Reviewed continuation is submitted (451757–451761), archive2329 completed and verified both production segments, and full analysis/plots/movies remain pending. Scientific setup is unchanged; endpointt12 and48 raw AMD node-hours remain in force.
 
 ## Files and locations
 
@@ -32,13 +32,13 @@ ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scrip
 
 ## Bounds and continuation
 
-The approved target is **t=12**, with **48 total raw AMD node-hours**, including preparation. The finite chain reserves at most 44.5: build 0.5, three-node gate 6, four inspectors 2, and three three-node evolution jobs 36. Each four-hour evolution job reserves forty minutes for finalization. There are no automatic retries or longer extensions.
+The approved target is **t=12**, with **48 total raw AMD node-hours**, including preparation. The original submitted chain reserved at most 44.5: build 0.5, three-node gate 6, four inspectors 2, and three three-node evolution jobs 36. Each four-hour evolution job reserves forty minutes for finalization. There are no automatic retries or longer extensions.
 
 After the reviewed startup failure, the user authorized continuation. Previous actual usage is21.645833 node-hours; the separate recovery chain reserves at most25.5 more, giving a maximum total47.145833. It includes a communication/checkpoint check and at most two conditional continuation jobs. See RECOVERY_PLAN_20261005.md; original scripts/configuration and failed evidence are preserved.
 
 Slurm dependencies, locked persistent state, unique job names and frozen hashes protect continuation. Production requires successful numerical gates, a verified checkpoint, remaining bounds and a fresh Anta archive heartbeat. A failure stops for review. Continuation does not depend on an agent or interactive shell.
 
-Anta's metadata trigger checks every five minutes and expires 48 hours after installation. It submits at most four six-hour archival/analysis Slurm jobs, with the site's mandatory one-GPU request, only when work is ready. Transfers, checksums, reductions and rendering run in those jobs. A missing heartbeat stops production safely. A long queue can exhaust the archive window; extending it requires a new bounded decision.
+Anta's metadata trigger checks every five minutes and expires 48 hours after its reviewed October 5 renewal. It submits at most four six-hour archival/analysis Slurm jobs, with the site's mandatory one-GPU request, only when work is ready. Transfers, checksums, reductions and rendering run in those jobs. A missing heartbeat stops production safely. A long queue can exhaust the archive window; extending it requires a new bounded decision.
 
 AMD retains the **latest three verified Session 008 checkpoints total**, including gate checkpoints, without a Perseus backup. Failed or unfinished writes cannot displace them. Completed science binaries can be removed from AMD only after Anta verifies checksums. Logs, inputs, manifests, raw complex waveforms and failure evidence remain. Limits are 1.25 TiB for this AMD campaign; whole-user warning/stop/projected limits are 1.5/1.7/1.9 TiB. Anta's stage cap is 1 TiB with 512 GiB free reserve.
 
