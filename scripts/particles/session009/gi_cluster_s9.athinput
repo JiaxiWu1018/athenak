@@ -230,8 +230,8 @@ diss = 0.1
 chi_div_floor = 0.00001
 damp_kappa1 = 0.02
 damp_kappa2 = 0.0
-# Multipolar r*Psi4 extraction (l=2..8 in the current implementation).  These radii
-# are initially outside the R=30 envelope; central signals arrive after this stage.
+# Coordinate-r50 r*Psi4 extraction, l2..8; initially outside the R30 envelope.
+# Check evolved matter near the sphere before interpreting the signal.
 nrad_wave_extraction = 1
 extraction_radius_0 = 50.0
 extraction_nlev = 40

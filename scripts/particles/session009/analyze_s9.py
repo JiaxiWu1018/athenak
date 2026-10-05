@@ -133,7 +133,7 @@ def main():
   horizon_counts[str(index)]=len(rows)
   if rows:
    data=np.asarray(rows);np.savetxt(out/('accepted_horizon_'+str(index)+'.csv'),data,delimiter=',',header='cycle,time,M_BH,Sx,Sy,Sz,S,area,hrms,hmean,meanradius,minradius,M_irr,chi_BH,Px,Py,Pz,P,center_x,center_y,center_z')
-   axes[0].plot(data[:,1],data[:,2],label=str(index));axes[1].plot(data[:,1],data[:,13],label=str(index))
+   axes[0].plot(data[:,1],data[:,2],'.',ms=1,label=str(index));axes[1].plot(data[:,1],data[:,13],'.',ms=1,label=str(index))
  axes[0].set(xlabel='t/M_ref',ylabel='accepted M_BH/M_ref');axes[1].set(xlabel='t/M_ref',ylabel='accepted chi_BH (coordinate spin prescription)')
  if any(horizon_counts.values()):axes[0].legend();axes[1].legend()
  fig.tight_layout();fig.savefig(out/'accepted_horizons.png',dpi=170);plt.close(fig);metrics['accepted_horizon_rows']=horizon_counts
@@ -176,9 +176,12 @@ def main():
    import re
    m=re.search(rb'time=\s*([-+0-9.eE]+)',head)
    if m and float(m.group(1))<=cutoff:snapshots[float(m.group(1))]=path
- colors=['#888888','tab:blue','tab:orange'];cohort=None;particle_ledger=[]
+ colors=['#888888','tab:blue','tab:orange'];cohort=None;particle_ledger=[];matter_shell=[]
  for number,(tm,path) in enumerate(sorted(snapshots.items())):
-  pt=read_particles(path);tag=np.rint(pt['tag_float']).astype(np.int64)
+  pt=read_particles(path)
+  rad=np.linalg.norm(pt['position'],axis=1);shell=(rad>=48)&(rad<=52)
+  matter_shell.append([tm,int(shell.sum()),float(pt['mass'][shell].sum()),float(pt['mass'].sum())])
+  tag=np.rint(pt['tag_float']).astype(np.int64)
   if not np.isfinite(pt['position']).all():raise RuntimeError('nonfinite movie particle coordinates')
   for component,(lo,hi) in enumerate([(0,3000000),(3000000,4000000),(4000000,5000000)]):
    q=(tag>=lo)&(tag<hi);xyz_full=pt['position'][q].astype(float);mom=pt['momentum'][q].astype(float);mu=pt['mass'][q].astype(float)
@@ -245,6 +248,9 @@ def main():
   ax.set(xlabel='(x - sampled envelope center)/M_ref',ylabel='(y - sampled envelope center)/M_ref',aspect='equal',title='Coordinate trajectories relative to rest-weighted envelope center')
   fig.tight_layout();fig.savefig(out/'envelope_relative.png',dpi=170);plt.close(fig)
  (out/'summary.json').write_text(json.dumps(metrics,indent=2,allow_nan=False)+'\n')
+ np.savetxt(out/'matter_near_r50.csv',np.asarray(matter_shell).reshape(-1,4),delimiter=',',header='time,particle_count_in_r48_to52,sampled_rest_mass_in_shell,total_alive_rest_mass')
+ from removal9 import assess_removals
+ assess_removals(runs,out,cutoff)
  from science9 import extended_analysis
  extended_analysis(root,runs,out,metrics,tracks)
  from report9 import write_reports

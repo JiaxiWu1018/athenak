@@ -85,7 +85,13 @@ def extended_analysis(root,runs,out,metrics,tracks):
  common,rejected=common_enclosure(runs,tracks)
  if cutoff is not None:common=[c for c in common if c['time']<=cutoff];rejected=[c for c in rejected if c['time']<=cutoff]
  atomic(out/'common_enclosure.json',dict(accepted_enclosing=common,published_without_proven_enclosure=rejected))
- review=ringdown_review(t,z,common,calibration);atomic(out/'ringdown_review.json',review)
+ review=ringdown_review(t,z,common,calibration)
+ shell=np.loadtxt(out/'matter_near_r50.csv',delimiter=',',ndmin=2)
+ near=shell[(shell[:,0]>=review.get('wave_peak_time',float('inf')))&(shell[:,0]<=review.get('wave_peak_time',0)+4*review.get('expected_tau220',1))] if shell.size else np.empty((0,4))
+ matter_clean=bool(len(near) and np.all(near[:,2]/np.maximum(near[:,3],1e-30)<1e-4))
+ review['matter_shell_clean']=matter_clean
+ if not matter_clean:review['ringdown_usable']=False
+ atomic(out/'ringdown_review.json',review)
  if review.get('tail_complete') and all(review[k] for k in ('strict_common_accepted','common_encloses_both','ringdown_usable','gaps_checked','frequency_band_valid')):
   from anta_archive import AMD,SSH
   cmd="import json,sys;sys.path.insert(0,'"+AMD+"/scripts');from runtime import atomic;atomic('"+AMD+"/control/ringdown_stop_receipt.json',json.load(sys.stdin))"
