@@ -28,6 +28,11 @@ def write_reports(root,out,metrics,milestone):
  segment_names={j['id']:j['name'] for j in state['jobs'] if j['name'].startswith('segment')}
  production_nodeh=sum(j['raw_node_hours'] for j in jobs if j['job'] in segment_names)
  covered=float(state.get('time',0));rate=production_nodeh/covered if covered>0 and production_nodeh else None
+ snapshots=[]
+ for run in (root/'runs').glob('*'):
+  p=run/'storage_status.json'
+  if p.exists():snapshots.append(json.loads(p.read_text()))
+ record['AMD_last_allocated_storage_sample']=max(snapshots,key=lambda r:r['utc']) if snapshots else None
  record['mean_production_node_hours_per_M']=rate;record['estimated_remaining_node_hours_to_t400']=rate*(400-covered) if rate else None
  atomic(out/'resources.json',record)
  report=f'''# Jeans-in-cluster Session 009 — update {milestone}
@@ -53,6 +58,14 @@ Recent production estimate: {rate} raw nodeh/M_ref; estimated remaining to400: {
 ## Review products
 
 '''
+ initial_path=root/'evidence/initial_validation.json'
+ if initial_path.exists():
+  initial=json.loads(initial_path.read_text())
+  if initial.get('logged'):
+   report+='## Measured initialization\n\n| Component | Count | Sampled rest mass | Sum(mW) | Pcov,y | Jcov,z |\n|---|---:|---:|---:|---:|---:|\n'
+   for name,r in zip(('envelope','left','right'),initial['logged']):report+=f"| {name} | {r['count']} | {r['rest_mass']:.10g} | {r['sum_mW']:.10g} | {r['P_cov'][1]:.9g} | {r['J_origin_cov'][2]:.9g} |\n"
+   report+='\nTotal covariant momentum residual: '+str(initial['total_P_cov'])+'; cancellation residual fraction: '+str(initial.get('cancelling_linear_momentum_residual_fraction'))+'. No symmetry or recoil was imposed. Source/model masses, sampled rest masses, horizon masses and an ADM estimate are distinct; no ADM estimate is assumed.\n\n'
+ report+='Movie colors: gray envelope, blue left, orange right, green accepted common horizon. Six display frames/sec; particle sampling every0.25M plus restart/final extras, with actual time on each frame. Binary phase/revolutions stop at a proven accepted common horizon or unresolved coincidence; separation of surviving tagged matter remains a distinct diagnostic. Internal mesh-transition reflections are a possible waveform limitation even though the outer boundary is causally buffered; the linear gate is not nonlinear convergence evidence.\n\n'
  captions=[('orbit.png','Coordinate trajectories, separation and phase within contiguous valid intervals.'),('separation/separation_vs_time.png','Full surviving-particle centers, live trackers and simultaneous accepted AH centers versus time; gaps remain visible.'),('radial_tangential.png','Radial/tangential relative motion; small-denominator and diagnostic gaps are masked.'),('accepted_horizons.png','Strict accepted masses/spins; rejected or stale surfaces are excluded.'),('removal_history.png','Component removal counts and covariant removed-matter Jz, displayed separately from horizons.'),('particle_components.png','Component counts and covariant matter Jz; no removed-particle-plus-horizon conserved sum.'),('constraints.png','Inherited proper-volume chi mask, not an AH exterior; norms over differing empty volumes are not comparable.'),('raw_waveform.png','Raw (2,±2) at r50; early transients remain visible.'),('wave_phase_frequency.png','Wave phase/frequency and optional modes; no phase is unwrapped across timestamp gaps.'),('strain_cutoff_sensitivity.png','Conditional finite-radius fixed-frequency strain; cutoff sensitivity and conventions in strain_method.json.'),('central.mp4','Tagged central projection with tracks and accepted rmin illustrations.'),('context.mp4','Envelope/context tagged projection.'),('density.mp4','Full-particle rest weights on fixed Cartesian bins, avoiding native-AMR seams.')]
  for file,caption in captions:
   if (out/file).exists():report+=f'- `{out/file}` — {caption}\n'

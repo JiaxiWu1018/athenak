@@ -75,12 +75,16 @@ def main():
  tracks=[series(runs,'*.co_'+str(i)+'.txt') for i in (0,1)]
  tracks=[t[t[:,1]<=cutoff] if len(t) else t for t in tracks]
  ah_cache=[[r for r in accepted(runs,i) if r["time"]<=cutoff] for i in (0,1,2)]
+ from science9 import common_enclosure
+ common_review=common_enclosure(runs,tracks)
+ binary_end=min((r['time'] for r in common_review[0]),default=np.inf)
  fig,axs=plt.subplots(1,3,figsize=(13,4));metrics={"analysis_cutoff":cutoff if np.isfinite(cutoff) else None}
  if all(len(t) for t in tracks):
   times=np.intersect1d(tracks[0][:,1],tracks[1][:,1])
   left=tracks[0][np.searchsorted(tracks[0][:,1],times)];right=tracks[1][np.searchsorted(tracks[1][:,1],times)]
   vec=right[:,2:5]-left[:,2:5]
   live=np.isfinite(left[:,15]) & np.isfinite(right[:,15]) & ((left[:,13]>0)|(left[:,16]>0)) & ((right[:,13]>0)|(right[:,16]>0))
+  live=live & (times<binary_end) & (np.linalg.norm(vec,axis=1)>4/256)
   d,phase,omega,ddot,ratio,groups=orbital_series(times,vec,live)
   for t,c,label in zip(tracks,['tab:blue','tab:orange'],['left','right']):
    q=t[:,2:5].copy();good=np.isfinite(t[:,15]) & ((t[:,13]>0)|(t[:,16]>0));q[~good]=np.nan
@@ -207,6 +211,10 @@ def main():
     ah=[r for r in ah_cache[i] if 0<=tm-r['time']<=.1]
     if ah:
      r=ah[-1];ax.add_patch(Circle((r['center_x'],r['center_y']),r['rmin'],fill=False,color=c,ls='--'))
+   common=[r for r in ah_cache[2] if 0<=tm-r['time']<=.1]
+   if common:
+    r=common[-1];ax.add_patch(Circle((r['center_x'],r['center_y']),r['rmin'],fill=False,color='green',ls='--'))
+   ax.text(.02,.97,'Gray envelope; blue left; orange right; green common AH',transform=ax.transAxes,va='top',fontsize=7)
    ax.set(xlim=(-lim,lim),ylim=(-lim,lim),aspect='equal',xlabel='x/M_ref',ylabel='y/M_ref',title=f'Session 009 {label}; t/M_ref={tm:.3f}')
    ax.text(.02,.02,'Fixed tagged rendering cohort; dashed AH circles show accepted rmin only',transform=ax.transAxes,fontsize=7)
    fig.tight_layout();fig.savefig(frames/f'{number:05d}.png',dpi=120);plt.close(fig)
@@ -251,7 +259,7 @@ def main():
  from removal9 import assess_removals
  assess_removals(runs,out,cutoff)
  from science9 import extended_analysis
- extended_analysis(root,runs,out,metrics,tracks)
+ extended_analysis(root,runs,out,metrics,tracks,common_review)
  from report9 import write_reports
  write_reports(root,out,metrics,a.milestone)
 

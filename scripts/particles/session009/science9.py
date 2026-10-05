@@ -74,7 +74,7 @@ def ringdown_review(t,z,common,wave_gate):
  result.update(fit_f=frequency,fit_tau=measured_tau,log_amplitude_R2=r2,ringdown_usable=usable,gaps_checked=gaps,frequency_band_valid=bool(frequency<=.4),tail_complete=bool(t[-1]>=peak_time+100),reason='Conservative damped-mode fit; finite-radius approximate QNM agreement is qualitative, not convergence evidence.')
  return result
 
-def extended_analysis(root,runs,out,metrics,tracks):
+def extended_analysis(root,runs,out,metrics,tracks,common_review=None):
  from health9 import assess
  assess(root,runs,out)
  t,z=load_wave(runs)
@@ -82,7 +82,7 @@ def extended_analysis(root,runs,out,metrics,tracks):
  if cutoff is not None:q=t<=cutoff;t=t[q];z=z[q]
  np.savez(out/'raw_complex_all_modes_r50.npz',time=t,modes=z,lm=np.array([(l,m) for l in range(2,9) for m in range(-l,l+1)]))
  calibration=json.loads((root/'evidence/wave_gate.json').read_text())
- common,rejected=common_enclosure(runs,tracks)
+ common,rejected=common_review if common_review is not None else common_enclosure(runs,tracks)
  if cutoff is not None:common=[c for c in common if c['time']<=cutoff];rejected=[c for c in rejected if c['time']<=cutoff]
  atomic(out/'common_enclosure.json',dict(accepted_enclosing=common,published_without_proven_enclosure=rejected))
  review=ringdown_review(t,z,common,calibration)
@@ -121,5 +121,5 @@ def extended_analysis(root,runs,out,metrics,tracks):
  subprocess.run([sys.executable,str(root/'scripts/horizon_review_20261005.py'),'--runs-root',str(root/'runs'),'--output',str(out/'horizon_review'),'--max-time',str(cutoff if cutoff is not None else 'inf')],check=True)
  if (out/'horizon_review/accepted_horizon_0.csv').exists() and (out/'horizon_review/accepted_horizon_1.csv').exists() and (out/'particle_components.csv').exists():
   subprocess.run([sys.executable,str(root/'scripts/plot_separation_20261005.py'),'--tables',str(out),'--horizons',str(out/'horizon_review'),'--output',str(out/'separation')],check=True)
- metrics['accepted_enclosing_common_rows']=len(common);metrics['ringdown_review']=review
+ metrics['merger_claim']=bool(common);metrics['first_accepted_enclosing_common_time']=common[0]['time'] if common else None;metrics['accepted_enclosing_common_rows']=len(common);metrics['ringdown_review']=review
  atomic(out/'summary.json',metrics)
