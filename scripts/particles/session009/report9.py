@@ -35,9 +35,10 @@ def write_reports(root,out,metrics,milestone):
  record['AMD_last_allocated_storage_sample']=max(snapshots,key=lambda r:r['utc']) if snapshots else None
  record['mean_production_node_hours_per_M']=rate;record['estimated_remaining_node_hours_to_t400']=rate*(400-covered) if rate else None
  atomic(out/'resources.json',record)
+ checkpoint_text=f"t={state['checkpoint']['time']:.8g} M_ref" if state.get('checkpoint') else 'not available yet'
  report=f'''# Jeans-in-cluster Session 009 — update {milestone}
 
-Status: **{state['status']}**. Last verified AMD checkpoint: **t={state.get('time',0):.8g} M_ref**. Analysis uses checksum-verified Anta data and may lag AMD. Generated UTC epoch: {record['generated_utc']}.
+Status: **{state['status']}**. Last production checkpoint accepted by the controller: **{checkpoint_text}**. Analysis uses checksum-verified Anta data and may lag AMD. Generated UTC epoch: {record['generated_utc']}.
 
 Fresh t=0; local Lorentz boost0.133215, left−y/right+y. Approximate companion support is not exact GR equilibrium. Five million initial particles; source masses .76/.12/.12, envelope arealR30, clump centers±3, sigma.70, thermal spread.02 and seed4001. K_ij≈0 leaves the local momentum constraint unsolved. M_ref=1 is the inherited unit, not a measured horizon/rest/ADM mass. Sampling residuals are retained.
 
@@ -58,6 +59,10 @@ Recent production estimate: {rate} raw nodeh/M_ref; estimated remaining to400: {
 ## Review products
 
 '''
+ if not metrics:
+  start=report.index('## Available findings')
+  end=report.index('## Resources and limits')
+  report=report[:start]+'## Available findings\n\nNo verified full-particle evolution data are available yet. Separation, orbital motion, horizons and gravitational-wave findings are unknown. No scientific plots or movies have been produced. Startup mesh, memory and restart measurements remain pending; empty evidence files are placeholders.\n\n'+report[end:]
  initial_path=root/'evidence/initial_validation.json'
  if initial_path.exists():
   initial=json.loads(initial_path.read_text())
