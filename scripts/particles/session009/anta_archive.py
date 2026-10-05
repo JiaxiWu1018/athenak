@@ -39,7 +39,7 @@ def snapshot():
  (DEST/'evidence/amd_accounting.psv').write_text(remote('sacct -X -n -P -j '+ids+' --format=JobIDRaw,State,ExitCode,ElapsedRaw,AllocNodes'))
  for name in ('config.json','latest_checkpoint.json'):
   atomic(DEST/'evidence'/name,json.loads(remote('if test -f '+AMD+'/control/'+name+'; then cat '+AMD+'/control/'+name+'; else echo "{}"; fi')))
- for name in ('initial_validation.json','restart_validation.json','gate_receipt.json','wave_gate.json','mesh_audit.json'):
+ for name in ('initial_validation.json','restart_validation.json','gate_receipt.json','wave_gate.json','weyl_convention.json','mesh_audit.json'):
   atomic(DEST/'evidence'/name,json.loads(remote('if test -f '+AMD+'/evidence/'+name+'; then cat '+AMD+'/evidence/'+name+'; else echo "{}"; fi')))
  for name in ('executable.sha256','wave_executable.sha256','build_provenance.txt'):
   (DEST/'evidence'/name).write_text(remote('if test -f '+AMD+'/evidence/'+name+'; then cat '+AMD+'/evidence/'+name+'; fi'))
