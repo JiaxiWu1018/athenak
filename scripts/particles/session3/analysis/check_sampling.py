@@ -9,7 +9,8 @@ def main(run,reference,target):
     run=Path(run);window=require_window(run)
     payload=read_pvtk(sorted((run/'out/pvtk').glob('*.part.vtk'))[0],
                       {'pos','ptag','prtcl_vel','prtcl_mass'})
-    initial=read_rows(next((run/'out').glob('*.isotropic_initial.csv')))[0]
+    initial_files=list((run/'out').glob('*.isotropic_initial.csv'))+list(run.glob('*.isotropic_initial.csv'))
+    initial=read_rows(initial_files[0])[0]
     n=int(initial['N']);cut=float(initial['sampling_radius']);mu=float(initial['mu'])
     tag=payload['ptag'].astype(np.int64);order=np.argsort(tag)
     exact_tags=np.array_equal(tag[order],np.arange(n))
@@ -21,7 +22,7 @@ def main(run,reference,target):
     energy=np.sum(mu*W);pr=np.sum(mu*radial**2/W)
     tangential=np.sum(mu*(q2-radial**2)/W)
     rows=read_rows(next((run/'out').glob('*.plummer_physical.csv')))
-    rows=[row for row in rows if float(row['time'])==0]
+    rows=list({int(row['bin']):row for row in rows if float(row['time'])==0}.values())
     theory={}
     with Path(reference).open() as f:
         for row in csv.reader(f):
@@ -51,8 +52,8 @@ def main(run,reference,target):
     agreements={'energy':abs(E-energy)/max(energy,1.e-300),
                 'radial_stress':abs(Sr-pr)/max(pr,1.e-300),
                 'tangential_stress_sum':abs(St-tangential)/max(tangential,1.e-300)}
-    report=dict(passed=exact_tags and pairpos and pairmomentum and
-      all(c['passed'] for c in checks) and max(agreements.values())<1.e-5,
+    report=dict(passed=bool(exact_tags and pairpos and pairmomentum and
+      all(c['passed'] for c in checks) and max(agreements.values())<1.e-5),
       N=n,exact_contiguous_tags=exact_tags,co_located_pairs=pairpos,
       exact_opposite_stored_momenta=pairmomentum,shell_checks=checks,
       dump_vs_in_code_agreement=agreements,dump_precision='float32; 1e-5 comparison tolerance',

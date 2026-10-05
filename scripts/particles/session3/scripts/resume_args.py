@@ -2,6 +2,7 @@ import hashlib,json,sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'analysis'))
 from health import require_window
+from restart_header import read_header
 run=Path(sys.argv[1]);health=require_window(run,allow_stopped=False)
 state=json.loads((run/'segment_state.json').read_text())
 if state['completed']:raise RuntimeError('endpoint already completed; restart forbidden')
@@ -18,4 +19,5 @@ if digest is None:
         for chunk in iter(lambda:f.read(8*1024*1024),b''):h.update(chunk)
     digest=h.hexdigest()
 if digest!=state['checkpoint_sha256']:raise RuntimeError('checkpoint checksum mismatch')
+if read_header(checkpoint)['time']!=state['checkpoint_time']:raise RuntimeError('checkpoint header time changed')
 print(json.dumps(dict(checkpoint=str(checkpoint),health=health)))

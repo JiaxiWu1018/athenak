@@ -1,4 +1,12 @@
 // Included inside nr_pic_plummer.cpp's anonymous namespace, after its shared helpers.
+void FinalizeIsotropicPlummer(ParameterInput*,Mesh*) {
+  // Module diagnostics own Kokkos views. Release them during normal finalization,
+  // before main calls Kokkos::finalize and static-storage destructors run.
+  plummer_orbit_reference=DualArray2D<Real>();
+  for(auto grid:plummer_pmom_grids) delete grid;
+  plummer_pmom_grids.clear();
+}
+
 void InitializeIsotropicPlummer(Mesh *pm, ParameterInput *pin, bool restart) {
   auto pmbp=pm->pmb_pack;
   const bool live=pmbp->pz4c!=nullptr;

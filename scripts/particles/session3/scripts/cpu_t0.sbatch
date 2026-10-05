@@ -12,7 +12,7 @@ ulimit -c 0
 session=/data/jiaxiwu/NRPIC/Plummer-cluster/session_03_isotropic_benchmark_20261005
 export LD_LIBRARY_PATH=/home/emost/codes/openmpi/lib:${LD_LIBRARY_PATH:-}
 for arm in frozen live; do
-  run=$session/runs/cpu_t0_$arm
+  run=$session/runs/cpu_t0_${arm}_$SLURM_JOB_ID
   mkdir -p "$run/out"
   cd "$run"
   "$session/initial_data/build_cpu/src/athena" -i "$session/inputs/main_$arm.athinput" -d "$run/out" time/nlim=0 > "$run/segment_$SLURM_JOB_ID.log" 2>&1

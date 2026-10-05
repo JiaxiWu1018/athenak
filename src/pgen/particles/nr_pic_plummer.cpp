@@ -1217,7 +1217,8 @@ void PlummerSetupADMMomentum(Mesh *pm, ParameterInput *pin,
                 << "  angles/cell(equator) = "
                 << (2.0*plummer_pmom_ntheta)/(2.0*M_PI*R/dxmax)
                 << "  shared-face angles = " << nshared
-                << (R > plummer_Rt ? "  [vacuum]" : "  [INSIDE MATTER]")
+                << (plummer_isotropic ? "  [untruncated analytic tail; finite sampled matter]" :
+                    (R > plummer_Rt ? "  [vacuum]" : "  [INSIDE MATTER]"))
                 << std::endl;
     }
   }
@@ -1518,7 +1519,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   }
   const std::string model=pin->GetOrAddString("problem","plummer_model","circular");
   plummer_isotropic=(model=="isotropic");
-  if(plummer_isotropic) {InitializeIsotropicPlummer(pmy_mesh_,pin,restart);return;}
+  if(plummer_isotropic) {
+    pgen_final_func=FinalizeIsotropicPlummer;
+    InitializeIsotropicPlummer(pmy_mesh_,pin,restart);return;
+  }
   if(model!="circular") Fatal("plummer_model must be circular or isotropic");
 
   // ---------------------------------------------------------------- parameters

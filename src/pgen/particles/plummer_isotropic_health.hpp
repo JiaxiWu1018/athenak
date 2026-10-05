@@ -109,15 +109,19 @@ void CheckIsotropicFields(Mesh *pm) {
       for(int v=0;v<nc;++v) finite=finite && Kokkos::isfinite(uc(m,v,k,j,i));
       for(int v=0;v<nt;++v) finite=finite && Kokkos::isfinite(ut(m,v,k,j,i));
       Real g[6];for(int d=0;d<6;++d) g[d]=ua(m,adm::ADM::I_ADM_GXX+d,k,j,i);
-      const bool spd=g[0]>0 && g[0]*g[3]-g[1]*g[1]>0 && Primitive::GetDeterminant(g)>0;
+      const Real determinant=Primitive::GetDeterminant(g);
+      const bool spd=g[0]>0 && g[0]*g[3]-g[1]*g[1]>0 && determinant>0 && Kokkos::isfinite(determinant);
       if(!finite || !spd || (live && !(u0(m,z4c::Z4c::I_Z4C_CHI,k,j,i)>0))) {bad+=1;return;}
       Real inverse[6];Primitive::InvertMatrix(inverse,g,Primitive::GetDeterminant(g));
       const Real eigen_bound=Kokkos::fmax(inverse[0]+Kokkos::fabs(inverse[1])+Kokkos::fabs(inverse[2]),
         Kokkos::fmax(inverse[3]+Kokkos::fabs(inverse[1])+Kokkos::fabs(inverse[4]),
                      inverse[5]+Kokkos::fabs(inverse[2])+Kokkos::fabs(inverse[4])));
-      const Real alpha=ua(m,adm::ADM::I_ADM_ALPHA,k,j,i);
-      const Real bx=ua(m,adm::ADM::I_ADM_BETAX,k,j,i),by=ua(m,adm::ADM::I_ADM_BETAY,k,j,i),
-                 bz=ua(m,adm::ADM::I_ADM_BETAZ,k,j,i);
+      // Live ADM storage excludes lapse and shift; their shallow tensor views
+      // refer to Z4c.u0. Access the owning array explicitly in both modes.
+      const Real alpha=live?u0(m,z4c::Z4c::I_Z4C_ALPHA,k,j,i):ua(m,adm::ADM::I_ADM_ALPHA,k,j,i);
+      const Real bx=live?u0(m,z4c::Z4c::I_Z4C_BETAX,k,j,i):ua(m,adm::ADM::I_ADM_BETAX,k,j,i);
+      const Real by=live?u0(m,z4c::Z4c::I_Z4C_BETAY,k,j,i):ua(m,adm::ADM::I_ADM_BETAY,k,j,i);
+      const Real bz=live?u0(m,z4c::Z4c::I_Z4C_BETAZ,k,j,i):ua(m,adm::ADM::I_ADM_BETAZ,k,j,i);
       const Real speed=Kokkos::sqrt(bx*bx+by*by+bz*bz)+Kokkos::sqrt(eigen_bound)*
         Kokkos::fmax(Kokkos::sqrt(2*Kokkos::fabs(alpha)),Kokkos::fabs(alpha)*Kokkos::sqrt(4.0/3));
       Kokkos::atomic_max(&peaks(0),speed);
