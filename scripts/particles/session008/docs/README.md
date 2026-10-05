@@ -1,6 +1,6 @@
 # Session 008 companion-supported AMD assessment
 
-**Status, 2026-10-02 UTC:** build and script checks passed; full GPU validation is queued. Production segments are submitted behind acceptance gates. No evolved scientific results or final plots exist yet.
+**Status, 2026-10-05 UTC:** full GPU validation and two production segments passed, reaching t=9.325 with both individual horizons accepted. The third job failed during communication startup. Reviewed continuation is submitted (451757–451761), archival2329 is running, and full analysis/plots/movies remain pending. Scientific setup is unchanged; endpointt12 and48 raw AMD node-hours remain in force.
 
 ## Files and locations
 
@@ -23,7 +23,7 @@ AMD data are under `runs/`; state and checkpoint pointers are under `control/`. 
 
 ```sh
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py status'
-ssh hpcfund.amd.com 'squeue -j 447655,447656,447657,447658,447659,447660,447661,447662'
+ssh hpcfund.amd.com 'squeue -j 451757,451758,451759,451760,451761'
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py stop'
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py cancel'
 ```
@@ -33,6 +33,8 @@ ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scrip
 ## Bounds and continuation
 
 The approved target is **t=12**, with **48 total raw AMD node-hours**, including preparation. The finite chain reserves at most 44.5: build 0.5, three-node gate 6, four inspectors 2, and three three-node evolution jobs 36. Each four-hour evolution job reserves forty minutes for finalization. There are no automatic retries or longer extensions.
+
+After the reviewed startup failure, the user authorized continuation. Previous actual usage is21.645833 node-hours; the separate recovery chain reserves at most25.5 more, giving a maximum total47.145833. It includes a communication/checkpoint check and at most two conditional continuation jobs. See RECOVERY_PLAN_20261005.md; original scripts/configuration and failed evidence are preserved.
 
 Slurm dependencies, locked persistent state, unique job names and frozen hashes protect continuation. Production requires successful numerical gates, a verified checkpoint, remaining bounds and a fresh Anta archive heartbeat. A failure stops for review. Continuation does not depend on an agent or interactive shell.
 

@@ -2,15 +2,17 @@
 
 ## Current state
 
-Prepared and submitted; full GPU validation is queued. No evolved science data exist yet. AMD build447620 completed; gate447655 precedes inspectors447656/447658/447660/447662 and production447657/447659/447661. All continuation is finite and gated, with maximum44.5 raw AMD node-hours against the approved48. No numerical retries or t50 extension.
+Updated2026-10-05: full GPU gate447655 and production447657/447659 passed, reaching verifiedt9.325. Startup447661 failed before loading the checkpoint because k003-010 selected a communication method incompatible with peers. The user requested continuation after review. No automatic failure retry or t50 extension is enabled.
 
-Perseus Slurm10327 passed fifteen targeted checks (twelve workflow/checkpoint and three analysis), plus syntax checks. The final AMD gate repeats twelve before actual numerical validation. Compiled source is 0c0a5a9b; exact operations revision and verified push are in evidence/OPERATIONS_REVISION.txt. The actual GPU memory/initialization/restart outcome remains pending.
+New chain: preflight451757; continuation451758 -> inspector451759 -> conditional continuation451760 -> inspector451761. All GPU jobs use three nodes/twelve ranks drawn only from six previously successful nodes. It retains t12 and48 raw AMD node-hours. Actual usage before continuation21.645833; additional maximum25.5; maximum total47.145833. Anta archive2329 completed and checksum-verified both production segments; approved AMD science copies were removed. See RECOVERY_PLAN_20261005.md and evidence/recovery_20261005/ for tested scripts, prior state, caps and receipts.
+
+Perseus10327 passed15 original checks. Recovery10957 reran those and passed6 recovery checks;10958 passed the extended7 recovery checks including delayed accounting for newly submitted jobs. Syntax passed. Compiled source remains0c0a5a9b, unchanged input/executable; peak gate VRAM70.4%. Original operations remain frozen. Separate recovery hashes/configuration are in AMD control/recovery_20261005.json; actual restart validation receipt is retained.
 
 ## Commands from Perseus
 
 ```sh
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py status'
-ssh hpcfund.amd.com 'squeue -j 447655,447656,447657,447658,447659,447660,447661,447662'
+ssh hpcfund.amd.com 'squeue -j 451757,451758,451759,451760,451761'
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py stop'
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s008_amd_20261002/scripts/workflow.py cancel'
 ```
@@ -19,11 +21,11 @@ Graceful stop is sticky and requests a checkpoint. Emergency cancel targets only
 
 ## Independent archival trigger
 
-Anta has a supported, active user cron service. One campaign-tagged entry runs lightweight metadata checks every five minutes; it expires 48 hours after installation or removes itself after final analysis. Maximum four active archival/analysis Slurm jobs, six hours each, one required GPU/two CPUs/16 GiB per job. It never allocates GPUs simply to wait. No archival job has been submitted yet because no completed science exists. A stale heartbeat stops production safely.
+Anta's corrected metadata trigger runs every five minutes and expires48 hours after the reviewed October5 renewal, or removes itself after final analysis. The four-job limit is cumulative:2134 and2329 completed, leaving at most two further six-hour allocations. Each uses one mandatory GPU/two CPUs/16GiB for real transfer/analysis work. A stale heartbeat stops production safely.
 
 ```sh
 ssh jiaxiwu@anta.caltech.edu 'cat /data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/evidence/trigger_config.json; crontab -l'
-ssh jiaxiwu@anta.caltech.edu 'python3 /data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/scripts/archive_trigger.py remove'
+ssh jiaxiwu@anta.caltech.edu 'python3 /data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/scripts/recovery_20261005/archive_trigger.py remove'
 ```
 
 Removing the trigger alone does not request a clean stop; use the AMD graceful-stop command first if stopping the workflow. Do not recreate or extend the trigger after its cap/deadline without a new bounded decision.

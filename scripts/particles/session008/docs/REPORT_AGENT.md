@@ -1,8 +1,44 @@
 # Session 008 implementation and operations record
 
-**2026-10-02 UTC:** prepared, built, checked and submitted. Full GPU initialization/restart validation is queued; scientific results remain pending. See `HANDOFF.md` for exact controls.
+**2026-10-05 UTC:** numerical gates passed and t=9.325 is saved; reviewed continuation to the unchanged t=12 endpoint is queued. See `HANDOFF.md` for exact controls.
 
-## Approval and source
+## October 5: reviewed failure and authorized continuation
+
+The completed GPU gate 447655 and production jobs 447657/447659 reached verified **t=9.325**, cycle 2252. There are **3,998,466 surviving particles** and **1,001,534 lapse removals**, with the particle ledger reporting conservation OK. Both separate horizon consumers publish accepted, associated surfaces at the last inspected time; no accepted common surface was present in the inspected output. Orbital and waveform analysis is still pending.
+
+Job 447661 failed during MPI initialization, before checkpoint loading or simulation steps. Its log reports `ob1` on k003-010 and `ucx` on k003-001, followed by an unreachable MPI peer. This identifies incompatible messaging choices at startup; it does not demonstrate a broken physical network or a numerical failure. The user explicitly requested continuation on October 5. Earlier failure logs/state and automatic archive-stop flags were preserved before resuming; human/resource stop intent is never cleared automatically.
+
+The original full-particle gate passed initialization and restart checks. Peak measured VRAM was **70.37%**, below the 85% gate. Total initial covariant momentum residual was `[0, -3.700000000030068e-7, 0]`. The lightweight Session 007 comparison matched t=0.0125 and the documented regions/normalization. The retained real checkpoint has a **51,865-byte parameter header**, greater than the former 40 KiB limit, SHA-256 `981af0bf7deb074b9a0ab2f9fc83cd547baa2b7cdad0cd265d0d9337b1a4be6a`, and size 26,227,169,973 bytes. Recovery preflight rechecks its entire digest on allocated compute.
+
+All C++ physics, compiled source, input, executable and originally frozen scripts remain unchanged. New operations are isolated under `scripts/recovery_20261005/`, with independent frozen hashes in AMD `control/recovery_20261005.json`. The six eligible GPU nodes all ran this configuration successfully before: k005-002/003/004/005/007 and k003-007. This is a bounded recovery recommendation, not a guarantee that future node combinations cannot fail.
+
+| Recovery role | Submitted AMD job | Maximum allocation |
+|---|---:|---|
+| MPI/mesh and checkpoint preflight | 451757 | 3 nodes, 10 minutes |
+| Continuation 1 | 451758 | 3 nodes, 4 hours |
+| Inspector 1 | 451759 | 1 node, 30 minutes |
+| Conditional continuation 2 | 451760 | 3 nodes, 4 hours |
+| Inspector 2 | 451761 | 1 node, 30 minutes |
+
+The five jobs were verified queued with the intended dependencies. Continuation 2 is canceled when the endpoint is reached in continuation 1; any failure stops for review. The physical endpoint remains **t=12**, the total budget **48 raw AMD node-hours**. Historical actual usage is **21.645833 node-hours**; additional maximum exposure is **25.5**, making the worst permitted total **47.145833**. Queue waiting consumes no node-hours. Node-hours count elapsed allocation seconds times allocated nodes / 3600, including build, gate, inspectors and failed startup; this is not GPU-hours or a monetary charge.
+
+Recovery verification used Perseus Slurm **10957** (15 original checks plus 6 recovery checks) and **10958** (7 extended recovery checks), including accounting lag, duplicate/finite submission, preserved stop intent, endpoint cancellation and failure handling. Syntax passed. Logs/recipes are in `evidence/recovery_checks*`. No bulk work was run on login nodes and no new raw science or checkpoint was copied to Perseus.
+
+Anta's previous trigger failed when `squeue -j` no longer recognized a completed job. The separate corrected trigger queries all active user jobs, then accounting for retired jobs. It has a new authorized 48-hour window, retaining the original cumulative four-job limit. Original job 2134 and restored archive job **2329** have completed. Job 2329 finished 0:0 in 888 seconds and verified both production segments before removing only approved AMD science binaries. Independent metadata heartbeat and checkpoint retention remain in place. Final analysis and visual review follow completion or another terminal stop; no full orbit or distant merger waveform is claimed at t<=12.
+
+At **2026-10-05 07:52 UTC**, separate allocated-byte inventories measured:
+
+| Storage scope | Bytes | GiB |
+|---|---:|---:|
+| AMD Session 008 | 82,172,391,424 | 76.53 |
+| Entire AMD user root | 169,274,462,208 | 157.65 |
+| Anta Session 008 on /data3 | 99,611,504,640 | 92.77 |
+
+AMD usage fell after verified archival; the latest three checkpoint files remain on AMD. Whole-user usage includes unrelated campaigns and is measured separately to avoid nested `du` deduplication. Anta /data3 still has about **27.01 TiB available**. These are timestamped measurements, not promised final sizes. Campaign cap 1.25 TiB and whole-user 1.5/1.7/1.9 TiB watchdog thresholds are unchanged.
+
+Exact controls, paths and remaining work are in `HANDOFF.md`; the reviewed execution bounds are in `RECOVERY_PLAN_20261005.md`. The October 2 sections below record the original preparation/submission state and are retained as dated history.
+
+## October 2 preparation: approval and source
 
 The approved bounded assessment is recorded in `APPROVED_PLAN.md`. Governing logistics and Sessions 004–007 were read, including Session 007's October 1 execution/plotting follow-up and corrected analysis. The pre-edit stream inventory read 1,094 Markdown files, 20,336,235 bytes; per-file hashes/headings are in `evidence/MARKDOWN_INVENTORY.json`.
 

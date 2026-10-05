@@ -1,4 +1,14 @@
-# Jeans-in-cluster Session 008 — setup and queued assessment
+# Jeans-in-cluster Session 008 — available results and continuation
+
+## October 5 status
+
+The full GPU initialization and restart tests passed. Two production segments reached **t=9.325**, with accepted individual horizons for both clumps. No accepted common horizon is present in the inspected end-of-segment outputs. Sustained orbital motion and gravitational radiation have not yet been established by completed analysis.
+
+The third job stopped during startup because node k003-010 selected a communication method incompatible with its peers. It took no simulation steps. Completed outputs and the latest three verified checkpoints were preserved.
+
+The user requested continuation on October 5. A communication/checkpoint check **451757** and at most two continuation jobs **451758 / 451760**, with inspectors **451759 / 451761**, are submitted. They use nodes on which this exact configuration already ran successfully, preserve the physical setup, and retain the **t=12 / 48 raw AMD node-hour** limits. Actual usage before recovery is **21.645833 node-hours**; the new chain's maximum exposure is **25.5**, for a maximum total **47.145833**.
+
+Anta archive job **2329** completed and checksum-verified both production segments before approved AMD science copy cleanup. The archive trigger was repaired to handle completed jobs that have disappeared from the queue, and its metadata window was renewed for 48 hours under this continuation request. The cumulative four-job archive limit remains unchanged. Final plots, movies and visual review are pending.
 
 ## Scientific setup
 
@@ -20,7 +30,7 @@ All plotted times use the inherited reference unit `M_ref=1`. The source normali
 
 The Session 007 baseline is retained: domain ±256, root spacing 2, 32³ cells per MeshBlock, compact initial refinement around both clumps, minimum spacing 1/256, Löhner refinement of `alpha*psi^7` at threshold 0.2, and `tracker_floor=false`. The logical root level is 3; physical levels 0–9 give logical levels 3–12. Initial towers reach spacing 1/64. RK4/CFL 0.4, gauge/damping, conservative deposition/feedback, and pusher protections are unchanged. Particles are removed at `alpha<0.05`; AH-driven removal is OFF.
 
-The approved assessment uses three AMD MI210 nodes and twelve MPI ranks. It targets **t=12**, bounded by **48 total raw AMD node-hours**, including preparation. The submitted chain reserves at most 44.5 raw node-hours. There are at most three four-hour evolution jobs and no automatic retries or extension toward t=50.
+The approved assessment uses three AMD MI210 nodes and twelve MPI ranks. It targets **t=12**, bounded by **48 total raw AMD node-hours**, including preparation. The original chain reserved at most44.5 raw node-hours. After reviewing its startup failure, the user requested the bounded continuation described above. There is no automatic failure retry or extension toward t=50.
 
 The initial coordinate period in the combined metric is approximately 227 reference time units, using initial coordinate tangential speed about 0.08312 from `alpha*v_local/psi^2` with zero initial shift. This estimate does not change the approved local boost. This stage can assess collapse and an early orbital arc, not a full post-collapse revolution. The inherited Sommerfeld/outflow boundary and approximately sqrt(2) outer gauge speed put the boundary-to-envelope estimate near t=160, beyond this stage.
 
@@ -33,7 +43,9 @@ The outer propagation spacing is 2. A twenty-cells-per-wavelength heuristic corr
 - The independent checkout includes restart-header repair `263dcf21`, recovered from a checksum-verified source bundle. The approved input and operations changes were pushed to `project/GI-in-cluster`.
 - AMD build **447620** completed successfully in 313 seconds with ROCm 6.4.1, HIP GFX90A, and the established GNU/OpenMPI toolchain.
 - Fifteen checks passed in Perseus Slurm job 10327: twelve controller/checkpoint checks and three analysis checks. They cover unfinished-write protection, orbital diagnostic gaps, both (2,+/-2) columns and a synthetic rendering fixture. The AMD gate repeats the twelve operations checks before numerical validation.
-- Full five-million-particle GPU validation **447655** is **queued for resources**. Production jobs **447657, 447659, 447661** are queued behind its acceptance gates. No Session 008 simulation has started and no scientific findings or final plots exist yet.
+- Full five-million-particle GPU validation **447655** completed successfully in1553seconds, with peak GPU memory **70.4%**. Exact counts/tags, weights, centers, thermal spread, signs and positive orbital J_z passed. Initial total covariant momentum residual was `(0, -3.7e-7, 0)` in inherited units; no new symmetry or recoil was imposed.
+- Production **447657 / 447659** completed; **447661** failed during communication startup. At the latest verified checkpoint, **3,998,466 particles remain** and **1,001,534 were removed by the lapse criterion**, with none removed by AHs. This removal count is a numerical diagnostic, not a measured horizon mass or proof of merger.
+- The lightweight initial constraint comparison matches Session007 at t=0.0125 with identical regions and volume conventions. Full evolution analysis, final plots and movies remain pending.
 
 ## Storage and later review
 
