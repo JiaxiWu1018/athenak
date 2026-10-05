@@ -3,6 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
 #SBATCH --exclusive
+#SBATCH --mem=0
 #SBATCH --time=04:00:00
 #SBATCH --output=/work1/eliasmost/jiaxiwu/plummer_s03_20261005/logs/%x_%j.log
 set -euo pipefail
@@ -36,7 +37,22 @@ if [ -f segment_state.json ]; then
   restart=$(python3 -c 'import json;print(json.load(open("resume.json"))["checkpoint"])')
   args=(-r "$restart")
 fi
-# 15-minute checkpoint allowance in every four-hour segment.
+# Reserve fifteen minutes in four-hour production segments, and twenty percent
+# in short preflights so Slurm can backfill them into smaller queue openings.
+limit=$(squeue -h -j "$SLURM_JOB_ID" -o %l)
+limit_seconds=$(python3 - "$limit" <<'PY'
+import sys
+s=sys.argv[1];days=0
+if '-' in s:days,s=s.split('-');days=int(days)
+parts=list(map(int,s.split(':')))
+seconds=days*86400+(parts[0]*3600+parts[1]*60+parts[2] if len(parts)==3 else parts[0]*60+parts[1])
+print(seconds)
+PY
+)
+allowance=900
+if [ "$limit_seconds" -le 3600 ]; then allowance=$((limit_seconds/5)); fi
+simulation_seconds=$((limit_seconds-allowance))
+athena_time=$(printf '%02d:%02d:%02d' $((simulation_seconds/3600)) $(((simulation_seconds%3600)/60)) $((simulation_seconds%60)))
 source "$root/scripts/amd_watchdog.sh"
 start_storage_watchdog "$root"
 (
@@ -45,12 +61,12 @@ start_storage_watchdog "$root"
 ) > "vram_$SLURM_JOB_ID.log" 2>&1 &
 vram_pid=$!
 trap 'kill "$STORAGE_PID" "$vram_pid" 2>/dev/null || true' EXIT
-printf 'LAUNCH prun %s --kokkos-map-device-id-by=mpi_rank -t 03:45:00 -d %s' "$exe" "$run/out"
+printf 'LAUNCH prun %s --kokkos-map-device-id-by=mpi_rank -t %s -d %s' "$exe" "$athena_time" "$run/out"
 printf ' %q' "${args[@]}" "$@"
 printf '\n'
 started=$(date +%s)
 rc=0
-prun "$exe" --kokkos-map-device-id-by=mpi_rank -t 03:45:00 "${args[@]}" -d "$run/out" "$@" || rc=$?
+prun "$exe" --kokkos-map-device-id-by=mpi_rank -t "$athena_time" "${args[@]}" -d "$run/out" "$@" || rc=$?
 elapsed=$(($(date +%s)-started))
 python3 "$root/scripts/finish_segment.py" "$root" "$label" "$SLURM_JOB_ID" "$rc" "$elapsed"
 exit "$rc"
