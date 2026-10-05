@@ -63,11 +63,16 @@ def main():
   completed=json.loads((DEST/'evidence/updates.json').read_text()) if (DEST/'evidence/updates.json').exists() else []
   milestones=[0,12]+list(range(50,401,50))
   due=[m for m in milestones if m<=covered+1e-8 and m not in completed]
+  has_initial=(DEST/'runs/gate_reference/ARCHIVE_VERIFIED.json').exists()
+  # The wave-only preparation report is not the initial science report. Refresh
+  # t0 as soon as the verified full-particle startup branch becomes available.
+  if has_initial and 0 not in due and not (DEST/'evidence/INITIAL_SCIENCE_REPORT.json').exists():due.insert(0,0)
   terminal=state['status'] in TERMINAL
   if due or (terminal and 'final' not in completed):
    for milestone in list(map(str,due))+(['final'] if terminal else []):
     subprocess.run(['/home/jiaxiwu/miniconda3/bin/python',str(DEST/'scripts/analyze_s9.py'),'--root',str(DEST),'--milestone',milestone],check=True,timeout=5400)
-   completed+=due
+   completed+=[m for m in due if m not in completed]
+   if has_initial and 0 in due:atomic(DEST/'evidence/INITIAL_SCIENCE_REPORT.json',dict(utc=time.time(),job=os.environ.get('SLURM_JOB_ID')))
    if terminal:completed.append('final')
    atomic(DEST/'evidence/updates.json',completed)
   if terminal:atomic(DEST/'evidence/ARCHIVE_ANALYSIS_COMPLETE.json',dict(state=state,covered_time=covered,utc=time.time()))
