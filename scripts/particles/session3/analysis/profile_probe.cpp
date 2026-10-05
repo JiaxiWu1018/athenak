@@ -18,5 +18,24 @@ int main() {
       std::cout << "radius," << cut << ',' << z << ',' << p.InvertF0(z) << '\n';
     for(double b : {1.e-12,1.e-8,1.e-5,.001,.01,.025,.05,.075,.09,p.bmax})
       std::cout << "F," << cut << ',' << b << ',' << p.FhatBinding(b) << '\n';
+    const double lr=std::log(.3125),dl=std::log(4000/.3125)/64;
+    auto iso=[&](double R) {
+      double lo=0,hi=R;
+      for(int k=0;k<60;++k) {double mid=(lo+hi)/2;if(p.areal(mid)>R) hi=mid;else lo=mid;}
+      return (lo+hi)/2;
+    };
+    for(int bin=0;bin<64;++bin) {
+      const double Rlo=bin==0?0:std::exp(lr+bin*dl),Rhi=std::exp(lr+(bin+1)*dl);
+      const double lo=iso(Rlo),hi=iso(Rhi),occupied=std::min(hi,cut);
+      auto volume=[&](double r){return 4*M_PI*r*r*std::pow(p.psi(r),6);};
+      const double V=plummer::GaussLegendre16(volume,lo,hi);
+      double rest=0,energy=0,stress=0;
+      if(occupied>lo) {
+        rest=plummer::GaussLegendre16([&](double r){return p.dM0dr(r);},lo,occupied);
+        energy=plummer::GaussLegendre16([&](double r){return volume(r)*p.eps(r);},lo,occupied);
+        stress=plummer::GaussLegendre16([&](double r){return volume(r)*p.pressure(r);},lo,occupied);
+      }
+      std::cout<<"shell,"<<cut<<','<<bin<<','<<Rlo<<','<<Rhi<<','<<rest<<','<<energy<<','<<stress<<','<<V<<'\n';
+    }
   }
 }

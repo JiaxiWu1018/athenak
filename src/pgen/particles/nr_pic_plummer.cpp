@@ -556,6 +556,10 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
   DvceArray1D<Real> coh("plummer cohort acc", static_cast<std::size_t>(ncoh)*NQ_COHORT);
   DvceArray1D<Real> glob("plummer global acc", 16);
   const bool physical = plummer_isotropic;
+  constexpr int radial_bins=16384;
+  const Real dense_lrmin=std::log(1.e-5),dense_dlr=std::log(plummer_shell_rmax/1.e-5)/radial_bins;
+  DvceArray1D<Real> dense_radii("isotropic enclosed radii",physical?radial_bins:1);
+  Kokkos::deep_copy(dense_radii,0.0);
   DvceArray1D<Real> phys("plummer physical stress", physical ? nbin*10 : 1);
   Kokkos::deep_copy(phys, 0.0);
   DvceArray1D<Real> invariant("plummer frozen invariants", physical ? 5 : 1);
@@ -582,7 +586,7 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
     const int m = pi(PGID, p) - gids;
     if (m<0 || m>=particle_nmb || !Kokkos::isfinite(xa) ||
         !Kokkos::isfinite(ya) || !Kokkos::isfinite(za) ||
-        !Kokkos::isfinite(mp) || mp<=0 || !Kokkos::isfinite(u_d[0]) ||
+        !Kokkos::isfinite(mp) || mp<=0 || pi(PTAG,p)<0 || pi(PTAG,p)>=2*npair || !Kokkos::isfinite(u_d[0]) ||
         !Kokkos::isfinite(u_d[1]) || !Kokkos::isfinite(u_d[2])) {
       cache(3,p)=0;
       Kokkos::atomic_add(&glob(11),1.0);
@@ -681,6 +685,9 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
       if (ib > nbin - 1) { ib = nbin - 1; }
       const std::size_t o = static_cast<std::size_t>(ib)*nq;
       if (physical) {
+        int rb=static_cast<int>((Kokkos::log(Kokkos::fmax(rareal,1.e-12))-dense_lrmin)/dense_dlr);
+        rb=rb<0?0:rb>=radial_bins?radial_bins-1:rb;
+        Kokkos::atomic_add(&dense_radii(rb),mp);
         // Orthonormal radial vector normal to the coordinate sphere, followed by
         // metric Gram-Schmidt for its two tangents. u_i is a covector.
         Real er[3],et[3]={-n[1],n[0],0.0},ep[3];
@@ -774,6 +781,30 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
 #endif
 
   const Real mtot = vglob[0];
+  if(physical && write_csv) {
+    auto hr=Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),dense_radii);
+    std::vector<Real> mass(hr.data(),hr.data()+hr.extent(0));
+#if MPI_PARALLEL_ENABLED
+    MPI_Allreduce(MPI_IN_PLACE,mass.data(),mass.size(),MPI_ATHENA_REAL,MPI_SUM,MPI_COMM_WORLD);
+#endif
+    if(global_variable::my_rank==0) {
+      const std::string file=plummer_shell_fname.substr(0,plummer_shell_fname.find(".plummer_shells"))+".plummer_radii.csv";
+      const bool header=FileIsEmpty(file);std::ofstream out(file,std::ios::app);
+      if(header) out<<"# Evolved metric tangential areal-radius proxy. Dense histogram brackets quantify radius discretization.\n"
+        <<"time,cycle,quantile,r_areal,r_lower,r_upper\n";
+      for(Real fraction:{.01,.1,.25,.5,.75,.9,.99}) {
+        Real sum=0;
+        for(int b=0;b<radial_bins;++b) {
+          if(sum+mass[b]>=fraction*mtot && mass[b]>0) {
+            const Real lo=std::exp(dense_lrmin+b*dense_dlr),hi=std::exp(dense_lrmin+(b+1)*dense_dlr);
+            const Real r=lo+(hi-lo)*(fraction*mtot-sum)/mass[b];
+            out<<std::setprecision(17)<<time<<','<<ncycle<<','<<fraction<<','<<r<<','<<lo<<','<<hi<<'\n';break;
+          }
+          sum+=mass[b];
+        }
+      }
+    }
+  }
   if(frozen_invariants && write_csv) {
     auto hi=Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),invariant);
     Real sums[3]={hi(0),hi(2),hi(4)},maxima[2]={hi(1),hi(3)};

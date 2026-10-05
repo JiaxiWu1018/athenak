@@ -1,4 +1,5 @@
 Real plummer_core_h_l2=0,plummer_core_m_l2=0;
+Real plummer_char_bound=0,plummer_psi_max=0;
 // Cartesian ADM mass: differentiate the same tensor-product Lagrange polynomial
 // used for the extraction. No conformal-flatness assumption is made in evolution.
 void IsotropicADMMass(Mesh *pm) {
@@ -75,7 +76,16 @@ void CheckIsotropicFields(Mesh *pm) {
   auto ua=pack->padm->u_adm;
   DvceArray5D<Real> u0,uc,ut;
   const bool live=pack->pz4c!=nullptr,source=pack->ptmunu!=nullptr;
-  if(live) {u0=pack->pz4c->u0;uc=pack->pz4c->u_con;}
+  if(live) {
+    // In particular at t=0, derived constraints must include the freshly seeded
+    // particle source rather than an uninitialized or vacuum-only diagnostic.
+    switch(pm->mb_indcs.ng) {
+      case 2:pack->pz4c->ADMConstraints<2>(pack);break;
+      case 3:pack->pz4c->ADMConstraints<3>(pack);break;
+      case 4:pack->pz4c->ADMConstraints<4>(pack);break;
+    }
+    u0=pack->pz4c->u0;uc=pack->pz4c->u_con;
+  }
   if(source) ut=pack->ptmunu->u_tmunu;
   const int na=ua.extent(1),nv=live?u0.extent(1):0,nc=live?uc.extent(1):0,
             nt=source?ut.extent(1):0;
@@ -86,7 +96,9 @@ void CheckIsotropicFields(Mesh *pm) {
   const int bins=plummer_shell_nbin;
   const Real lr=std::log(plummer_shell_rmin),ilr=bins/std::log(plummer_shell_rmax/plummer_shell_rmin);
   DvceArray1D<Real> volumes("physical shell volume",bins*3);
+  DvceArray1D<Real> peaks("field propagation bounds",2);
   Kokkos::deep_copy(volumes,0.0);
+  Kokkos::deep_copy(peaks,0.0);
   Real invalid=0,h2=0,m2=0,vol=0;
   Kokkos::parallel_reduce("isotropic field health",Kokkos::RangePolicy<>(DevExeSpace(),0,cells),
     KOKKOS_LAMBDA(int idx,Real &bad,Real &hs,Real &ms,Real &vs) {
@@ -99,6 +111,17 @@ void CheckIsotropicFields(Mesh *pm) {
       Real g[6];for(int d=0;d<6;++d) g[d]=ua(m,adm::ADM::I_ADM_GXX+d,k,j,i);
       const bool spd=g[0]>0 && g[0]*g[3]-g[1]*g[1]>0 && Primitive::GetDeterminant(g)>0;
       if(!finite || !spd || (live && !(u0(m,z4c::Z4c::I_Z4C_CHI,k,j,i)>0))) {bad+=1;return;}
+      Real inverse[6];Primitive::InvertMatrix(inverse,g,Primitive::GetDeterminant(g));
+      const Real eigen_bound=Kokkos::fmax(inverse[0]+Kokkos::fabs(inverse[1])+Kokkos::fabs(inverse[2]),
+        Kokkos::fmax(inverse[3]+Kokkos::fabs(inverse[1])+Kokkos::fabs(inverse[4]),
+                     inverse[5]+Kokkos::fabs(inverse[2])+Kokkos::fabs(inverse[4])));
+      const Real alpha=ua(m,adm::ADM::I_ADM_ALPHA,k,j,i);
+      const Real bx=ua(m,adm::ADM::I_ADM_BETAX,k,j,i),by=ua(m,adm::ADM::I_ADM_BETAY,k,j,i),
+                 bz=ua(m,adm::ADM::I_ADM_BETAZ,k,j,i);
+      const Real speed=Kokkos::sqrt(bx*bx+by*by+bz*bz)+Kokkos::sqrt(eigen_bound)*
+        Kokkos::fmax(Kokkos::sqrt(2*Kokkos::fabs(alpha)),Kokkos::fabs(alpha)*Kokkos::sqrt(4.0/3));
+      Kokkos::atomic_max(&peaks(0),speed);
+      Kokkos::atomic_max(&peaks(1),Kokkos::pow(Primitive::GetDeterminant(g),1.0/12));
       const Real x=CellCenterX(i-is,nx,sz.d_view(m).x1min,sz.d_view(m).x1max)-cx;
       const Real y=CellCenterX(j-js,ny,sz.d_view(m).x2min,sz.d_view(m).x2max)-cy;
       const Real z=CellCenterX(k-ks,nz,sz.d_view(m).x3min,sz.d_view(m).x3max)-cz;
@@ -125,9 +148,13 @@ void CheckIsotropicFields(Mesh *pm) {
   if(red[0]!=0) Fatal("ISOTROPIC_HEALTH_FAIL non-finite field/source or invalid spatial metric at t="+std::to_string(pm->time));
   auto hv=Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),volumes);
   plummer_proper_volumes.assign(hv.data(),hv.data()+hv.extent(0));
+  auto peak_host=Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),peaks);
+  Real peak_values[2]={peak_host(0),peak_host(1)};
 #if MPI_PARALLEL_ENABLED
   MPI_Allreduce(MPI_IN_PLACE,plummer_proper_volumes.data(),plummer_proper_volumes.size(),MPI_ATHENA_REAL,MPI_SUM,MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE,peak_values,2,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_WORLD);
 #endif
+  plummer_char_bound=peak_values[0];plummer_psi_max=peak_values[1];
   plummer_core_h_l2=red[3]>0?std::sqrt(red[1]/red[3]):0;
   plummer_core_m_l2=red[3]>0?std::sqrt(red[2]/red[3]):0;
 }
@@ -149,11 +176,12 @@ void RecordIsotropicHealth(Mesh *pm,const PlummerParticleHealth &H,const Plummer
   if(global_variable::my_rank==0) {
     const bool header=FileIsEmpty(plummer_health_fname);
     std::ofstream out(plummer_health_fname,std::ios::app);
-    if(header) out<<"time,cycle,N,N_expected,M0,M0_expected,mass_error,particle_nonfinite,alpha_min,H_core_L2,M_core_L2,constraint_reference,constraint_strikes,healthy,physical_stop\n";
+    if(header) out<<"time,cycle,N,N_expected,M0,M0_expected,mass_error,particle_nonfinite,alpha_min,H_core_L2,M_core_L2,constraint_reference,constraint_strikes,healthy,physical_stop,constraints_available,coordinate_characteristic_bound,psi_max\n";
     out<<std::setprecision(17)<<pm->time<<','<<pm->ncycle<<','<<count<<','<<plummer_ntotal<<','
        <<H.mass_total<<','<<plummer_M0<<','<<error<<','<<H.nonfinite<<','<<F.alpha_min<<','
        <<plummer_core_h_l2<<','<<plummer_core_m_l2<<','<<plummer_constraint_reference<<','
-       <<plummer_constraint_strikes<<','<<(!hard)<<','<<stopped<<'\n';
+       <<plummer_constraint_strikes<<','<<(!hard)<<','<<stopped<<','<<(pm->pmb_pack->pz4c!=nullptr)<<','
+       <<plummer_char_bound<<','<<plummer_psi_max<<'\n';
   }
   if(hard) Fatal("ISOTROPIC_HEALTH_FAIL particle count, finite state or rest-mass accounting at t="+std::to_string(pm->time));
   if(stopped) {

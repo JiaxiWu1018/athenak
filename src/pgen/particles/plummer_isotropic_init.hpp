@@ -31,7 +31,7 @@ void InitializeIsotropicPlummer(Mesh *pm, ParameterInput *pin, bool restart) {
   plummer_physical_fname=base+".plummer_physical.csv";
   plummer_health_fname=base+".plummer_health.csv";
   plummer_constraint_reference=pin->GetOrAddReal("problem","plummer_constraint_reference",0.0);
-  plummer_constraint_strikes=0;
+  plummer_constraint_strikes=pin->GetOrAddInteger("problem","plummer_constraint_initial_strikes",0);
   plummer::IsotropicProfile prof(M,a,cut);
   const Real mu=prof.M0/ntotal;
   plummer_particle_mass=mu;plummer_M0=prof.M0;plummer_MADM=M;
