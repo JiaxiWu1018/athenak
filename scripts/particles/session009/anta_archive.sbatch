@@ -4,7 +4,7 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -c 8
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:a100:1
 #SBATCH --mem=64G
 #SBATCH -t 04:00:00
 #SBATCH --no-requeue

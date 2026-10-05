@@ -74,7 +74,13 @@ def tick():
   if found:jid=found.pop()
   else:
    jobs['pending']=name;atomic(ledger,jobs)
-   out=subprocess.check_output(['sbatch','--parsable','--job-name='+name,'--output='+str(DEST/'evidence/archive.%j.log'),str(DEST/'scripts/anta_archive.sbatch')],text=True)
+   try:
+    out=subprocess.check_output(['sbatch','--parsable','--job-name='+name,'--output='+str(DEST/'evidence/archive.%j.log'),str(DEST/'scripts/anta_archive.sbatch')],text=True,stderr=subprocess.STDOUT)
+   except subprocess.CalledProcessError as e:
+    atomic(DEST/'evidence/ARCHIVE_HALTED.json',dict(submission=name,error=e.output,utc=time.time()))
+    remote('touch '+AMD+'/control/ARCHIVE_ERROR '+AMD+'/control/REQUEST_STOP')
+    remove_entry()
+    raise RuntimeError('archive submission rejected; stopped for review: '+e.output) from e
    jid=int(out.strip().split(';')[0])
   jobs['jobs'].append(dict(id=jid,name=name,max_gpu_hours=4));jobs['pending']=None;atomic(ledger,jobs)
 
