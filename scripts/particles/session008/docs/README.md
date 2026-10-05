@@ -47,3 +47,7 @@ AMD retains the **latest three verified Session 008 checkpoints total**, includi
 ## Scientific interpretation
 
 Fresh five-million-particle data use the approved local boost 0.133215 and inherited approximate initial data. `M_ref=1` is the inherited source unit, not a measured ADM, rest or horizon mass. The estimated initial coordinate period is about 227 units, so t=12 is an early assessment. It does not cover central-collapse radiation at r=40–70. The inherited propagation mesh does not establish high-frequency merger-wave accuracy. Orbital and waveform outcomes remain pending.
+
+## Separation requested on October 5
+
+Standalone center-distance plot: Anta analysis/separation_20261005/separation_vs_time.png (PDF/CSVs alongside). Current AH distance range6.060–6.090,about0.49%; full surviving-particle centroids changeabout0.52%. These are coordinate diagnostics over a short arc; circularity is not established. See the human report and plot README for center definitions and valid-time gaps.

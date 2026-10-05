@@ -14,7 +14,7 @@ Workflow status: **complete_t12**. Last verified checkpoint time: **12.0**. The 
 
 Total covariant momentum residual: [0.0, -3.700000000030068e-07, 0.0]. Independent written-particle checks: {'exact_counts': True, 'tags': True, 'finite': True, 'positive_weights': True, 'inside_domain': True, 'ledger': True, 'signs': True, 'Jz': True, 'centers': True, 'widths': True, 'thermal': True}. These sampled quantities are distinct from source masses, horizon masses, and an ADM estimate.
 
-Both individual horizons detected: True; first shared formation time: 8.485937500000432; measured coordinate revolutions after both form: 0.017573613981682643. These are coordinate diagnostics; gaps are flagged. No merger or radiation-driven inspiral claim is made.
+Both individual horizons detected: True; later first individual acceptance time: 8.485937500000432; measured coordinate revolutions after both form: 0.017573613981682643. These are coordinate diagnostics; gaps are flagged. No merger or radiation-driven inspiral claim is made.
 
 The assessment precedes central collapse signals at r=40–70. Raw complex r*Psi4 is retained; strain and merger/ringdown interpretation are deferred. The inherited propagation mesh does not establish high-frequency waveform accuracy.
 
@@ -51,3 +51,11 @@ The original empty horizon plot was a post-processing error: the summary's first
 The assessment is too short for collapse radiation to reach radii40–70. Raw complex r*Psi4 is archived; a merger waveform, strain, radiated-energy estimate or a completed inspiral is not claimed. A longer orbital assessment still needs a finite approved endpoint, boundary/wave-zone design and resource budget.
 
 Final actual AMD allocation usage is **32.308889 raw node-hours** out of48. At October5 17:18UTC, AMD session storage was **78.853GiB**, predominantly the latest three verified checkpoints and retained evidence; Anta /data3 science/archive storage was **123.030GiB**. All four bounded archive jobs completed, and the metadata cron entry removed itself. No new continuation or archive job is enabled.
+
+## Requested separation plot, October 5
+
+A standalone plot is at `/data3/jiaxiwu/NRPIC/GI_in_cluster/session_008_companion_supported_orbit_gw_20261002/analysis/separation_20261005/separation_vs_time.png` (PDF and measured-point CSVs in the same directory). It shows full-clump surviving-particle mass centroids, the existing local-lapse trackers, and strictly accepted individual AH centers; a second panel enlarges the AH curve. These are distinct center definitions.
+
+The clump mass-centroid separation changes5.99922→6.03051 over t0–12 (0.52147% endpoint increase). The2114 simultaneous accepted AH pairs cover t8.64531–11.99844 and range6.06036–6.08993 (0.48650% range/mean,0.44396% endpoint increase). One-sided/restart/failed-acceptance gaps remain missing data. Both individual horizons had each been detected by t8.48594, but their first simultaneously accepted pair is later,t8.64531. No stale center was substituted during this interval.
+
+This small variation is consistent with predominantly tangential early motion, but does not establish a nearly circular orbit across the observed short arc (~6degrees after individual formation). Distance is coordinate distance, not proper distance. Remaining-particle centers can shift as particles are removed; grid-based AH centers show small stair steps. The original orbit.png middle panel already plotted tracker separation and is retained.

@@ -29,3 +29,5 @@ terminal_accounting	Perseus:evidence/final_amd_accounting_20261005.psv	32.308889
 final_products	Anta:analysis/assessment_2331/;Perseus:review_from_anta/	generated and representative visual QA	three movies plus orbit/motion/matter/constraints/raw-wave plots; no full orbit/waveform claim
 corrected_horizons	Anta:analysis/horizon_review_20261005/;Perseus:analysis/horizon_review_20261005/	passed11036/11037	2127/2167 unique strict accepted matches; original empty panel preserved as superseded
 qa_inputs	Perseus:evidence/horizon_review_20261005/runs/;evidence/visual_qa_20261005/	retained	small diagnostic tables and3 representative PNGs; no particles/volumes/checkpoints
+separation	Anta:analysis/separation_20261005/;Perseus:analysis/separation_20261005/	job11038 passed; plot/values inspected	47 full-clump centroid snapshots;2114 simultaneous accepted AH pairs;66 one-sided NaN rows; coordinate units, gaps preserved
+separation_inputs	Perseus:evidence/separation_20261005/	small reduced tables retained	input SHA256 in separation summary; no particle/volume/checkpoint transfer

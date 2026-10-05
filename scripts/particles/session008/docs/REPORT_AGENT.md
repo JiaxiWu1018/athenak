@@ -338,3 +338,11 @@ Particle movies use a fixed tagged cohort. Density uses all particle rest weight
 The t=12 stage cannot cover central-collapse waves at r=40–70 or a full initial orbit. Raw r*Psi4 remains primary; strain, merger/ringdown and precision radiation interpretation are deferred. No outcome is fabricated. Anta cannot authenticate back to Perseus; reports are generated there and pulled using `scripts/collect_review.sh`.
 
 Remaining work: actual GPU gates, any accepted evolution, measured resources/accounting/checkpoint history, terminal analysis and visual review. The bounded workflow runs independently of the interactive agent. No Session 008 raw science has been created on Perseus.
+
+## Separation follow-up, October 5
+
+User requested center separation versus time to assess circularity. New source plot_separation_20261005.py reads existing particle_components.csv/orbit.csv plus the corrected accepted_horizon_0/1.csv. Strict AH pairing uses same run/cycle and full-precision time; duplicate/time-inconsistent/nonfinite centers fail.2114 pairs and66 unmatched one-sided rows were found. Gaps/restarts remain broken, with no interpolation or stale/rejected horizon use. Particle centers are the full rest-weighted surviving component means, not rendered subsamples.
+
+Perseus Slurm11038 completed0:0 in2seconds with NumPy/Matplotlib, reading small diagnostic/reduced tables only. Native formula, center definitions, all input SHA256 and statistics are in analysis/separation_20261005/summary.json; point tables and PNG/PDF are retained there. The image and endpoint/range values were inspected. Additional small reduced tables are retained in evidence/separation_20261005/; no particles/volumes/checkpoints transferred and no new AMD/Anta allocation or evolution. Original products remain intact.
+
+Reproduction: see analysis/separation_20261005/README.md and evidence/separation_20261005.sbatch. Source/ops revision and actual push status are in evidence/SEPARATION_REVISION_20261005.txt.
