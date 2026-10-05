@@ -198,8 +198,9 @@ void Z4c::WaveExtr(MeshBlockPack *pmbp) {
       outFile2.open(filename2, std::ios::out | std::ios::app);
 
       // first append time
-      outFile << pmbp->pmesh->time << "\t";
-      outFile2 << pmbp->pmesh->time << "\t";
+      // Preserve distinct samples and checkpoint boundary times in long campaigns.
+      outFile << std::setprecision(17) << pmbp->pmesh->time << "\t";
+      outFile2 << std::setprecision(17) << pmbp->pmesh->time << "\t";
 
       // append waveform
       for (int l = 2; l < lmax+1; ++l) {
