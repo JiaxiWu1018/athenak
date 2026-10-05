@@ -1,0 +1,111 @@
+k005-010.hpcfund
+Mon Oct  5 10:39:29 PM UTC 2026
+
+Currently Loaded Modules:
+  1) gnu12/12.2.0   3) openmpi4/4.1.8   5) prun/2.3
+  2) ucx/1.18.1     4) cmake/3.25.2     6) rocm/6.4.1
+
+ 
+
+4ebd7565d6d9c29700608620117cac0073e50a68
+ 6739bc623081648af9e752b616d9671527922cbf kokkos (4.7.02)
+32cc99d530d3defaeada5c4a34489b08ec9c1f11065a7614d580cae8c25ca74d  /work1/eliasmost/jiaxiwu/plummer_s03_20261005/builds/4ebd7565d6d9c29700608620117cac0073e50a68/src/athena
+93851177dc48f15aca1e90d516433f846b3a564bdf8edd50596bbe5c39c1a474  input_452595.athinput
+LAUNCH prun /work1/eliasmost/jiaxiwu/plummer_s03_20261005/builds/4ebd7565d6d9c29700608620117cac0073e50a68/src/athena --kokkos-map-device-id-by=mpi_rank -t 00:24:00 -d /work1/eliasmost/jiaxiwu/plummer_s03_20261005/runs/preflight_live/out -i input_452595.athinput
+[prun] Master compute host = k005-010
+[prun] Resource manager = slurm
+[prun] Launch cmd = mpirun /work1/eliasmost/jiaxiwu/plummer_s03_20261005/builds/4ebd7565d6d9c29700608620117cac0073e50a68/src/athena --kokkos-map-device-id-by=mpi_rank -t 00:24:00 -i input_452595.athinput -d /work1/eliasmost/jiaxiwu/plummer_s03_20261005/runs/preflight_live/out (family=openmpi4)
+
+Root grid = 4 x 4 x 4 MeshBlocks
+Total number of MeshBlocks = 624
+Number of logical  levels of refinement = 12 (13 levels total)
+Number of physical levels of refinement = 10 (11 levels total)
+  Physical level = 0 (logical level = 2): 56 MeshBlocks, cost = 56
+  Physical level = 1 (logical level = 3): 56 MeshBlocks, cost = 56
+  Physical level = 2 (logical level = 4): 56 MeshBlocks, cost = 56
+  Physical level = 3 (logical level = 5): 56 MeshBlocks, cost = 56
+  Physical level = 4 (logical level = 6): 56 MeshBlocks, cost = 56
+  Physical level = 5 (logical level = 7): 56 MeshBlocks, cost = 56
+  Physical level = 6 (logical level = 8): 56 MeshBlocks, cost = 56
+  Physical level = 7 (logical level = 9): 56 MeshBlocks, cost = 56
+  Physical level = 8 (logical level = 10): 56 MeshBlocks, cost = 56
+  Physical level = 9 (logical level = 11): 56 MeshBlocks, cost = 56
+  Physical level = 10 (logical level = 12): 64 MeshBlocks, cost = 64
+Number of parallel ranks = 4
+  Rank = 0: 156 MeshBlocks, cost = 156
+  Rank = 1: 156 MeshBlocks, cost = 156
+  Rank = 2: 156 MeshBlocks, cost = 156
+  Rank = 3: 156 MeshBlocks, cost = 156
+Load Balancing:
+  Maximum normalized cost = 1, Average = 1
+# [z4c] formulation: BSSN (Theta frozen at 0; kappa damping disabled)
+# [z4c] parabolic H-damping ON: c_H = 0.02 M, chi-term coeff = 0.01, chi exponent = -0.25, par_safety = 0.5
+AssembleZ4cTasks
+AssembleZ4cTasks
+AssembleZ4cTasks
+AssembleZ4cTasks
+nr_pic_plummer: P_ADM sphere 1/2  R = 9000  nangles = 2048  sum(w) = 12.5664  dx in [160, 160]  R/dx = 56.25  angles/cell(equator) = 0.181083  shared-face angles = 32  [untruncated analytic tail; finite sampled matter]
+nr_pic_plummer: P_ADM sphere 2/2  R = 10000  nangles = 2048  sum(w) = 12.5664  dx in [160, 160]  R/dx = 62.5  angles/cell(equator) = 0.162975  shared-face angles = 32  [untruncated analytic tail; finite sampled matter]
+nr_pic_plummer: P_ADM Bowen-York unit test (P = 0.3, -0.7, 0.11): max |P_measured - P_exact| = 4.44089e-16  -> PASS
+ISOTROPIC_PLUMMER M0=1.0133372946305388 M0_inf=1.0134873008561143 P_ref=461.99570043659014 N=2113536 sampling_radius=1000 omitted_M0=0.00015000622557548304
+# [z4c] hdamp dt: dt_hyp = 0.078125, dt_par = 0.35715164645648018 (psi_max = 1.0499816995052735, safety = 0.5); hyperbolic bound controls, dt_par/dt_hyp = 4.5715410746429459
+
+Setup complete, executing task list(s)...
+
+elapsed=3.207816e+01 cycle=0 time=0.000000e+00 dt=7.812500e-02
+# [z4c] hdamp dt: dt_hyp = 7.812500e-02, dt_par = 3.571516e-01 (psi_max = 1.049982e+00, safety = 5.000000e-01); hyperbolic bound controls, dt_par/dt_hyp = 4.571540e+00
+elapsed=7.620362e+01 cycle=10 time=7.812500e-01 dt=7.812500e-02
+elapsed=1.245337e+02 cycle=20 time=1.562500e+00 dt=7.812500e-02
+elapsed=1.921897e+02 cycle=30 time=2.343750e+00 dt=7.812500e-02
+elapsed=2.444840e+02 cycle=40 time=3.125000e+00 dt=7.812500e-02
+elapsed=2.976700e+02 cycle=50 time=3.906250e+00 dt=7.812500e-02
+elapsed=3.671280e+02 cycle=60 time=4.687500e+00 dt=7.812500e-02
+elapsed=4.209475e+02 cycle=70 time=5.468750e+00 dt=7.812500e-02
+elapsed=4.753050e+02 cycle=80 time=6.250000e+00 dt=7.812500e-02
+elapsed=5.454458e+02 cycle=90 time=7.031250e+00 dt=7.812500e-02
+### WARNING gr_boris: fixed-point did not converge, forward-Euler fallback used | tag=496104 gid=77 x=(-3.879538e+00,-7.964911e+00,-1.484703e+00) u_i=(-2.052882e-01,-1.257209e-01,-2.924422e-02) dt=7.812500e-02
+### WARNING in /work1/eliasmost/jiaxiwu/plummer_s03_20261005/src/athenak/src/particles/gr_boris.cpp: gr_boris implicit geodesic substep did not converge for the first time this run (rank 0, cycle 91, dt = 7.812500e-02).
+    The step falls back to forward Euler, which is a documented first-order fallback, not a crash.
+    It is expected at large CFL and disappears as dt is reduced; if it persists, reduce <time> cfl_number.
+    Per-particle detail is printed for at most 3 particles per cycle; every failure is counted in the per-cycle summary below.
+### gr_boris non-convergence: rank 0 cycle 91: 1 of 529454 particles fell back to forward Euler (rank total 1)
+elapsed=6.277462e+02 cycle=100 time=7.812500e+00 dt=7.812500e-02
+
+Terminating on cycle limit
+time=7.812500e+00 cycle=100
+tlim=2.309979e+03 nlim=100
+
+particles: initial=2113536 final=2113536 destroyed: exit=0 sphere=0 lapse=0 horizon=0  [conservation OK]
+
+MeshBlock-cycles = 62400
+cpu time used  = 5.956680e+02
+zone-cycles/cpu_second = 3.432656e+06
+particle-updates/cpu_second = 3.548178e+05
+{
+  "job_id": "452595",
+  "returncode": 0,
+  "elapsed_seconds": 630,
+  "node_hours": 0.175,
+  "health": {
+    "valid": true,
+    "reason": null,
+    "physical_stop": false,
+    "last_healthy_time": 7.8125,
+    "ledger": "/work1/eliasmost/jiaxiwu/plummer_s03_20261005/runs/preflight_live/out/preflight_live.plummer_health.csv",
+    "samples": 5
+  },
+  "completed": true,
+  "cycle_limit": true,
+  "slurm_state": "COMPLETED",
+  "resource_failure": false,
+  "checkpoint": "/work1/eliasmost/jiaxiwu/plummer_s03_20261005/runs/preflight_live/out/rst/preflight_live.00001.rst",
+  "checkpoint_time": 7.8125,
+  "checkpoint_header": {
+    "time": 7.8125,
+    "dt": 0.078125,
+    "cycle": 100,
+    "nmb": 624,
+    "root_level": 2
+  },
+  "checkpoint_sha256": "179448855f9f6fbe3ae43bea17fd7c16f65d6b81e8bec89469dd3e480adb47c9"
+}

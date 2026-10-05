@@ -1,0 +1,18 @@
+# Plummer ADM linear-momentum ledger.  One row per extraction sphere per history time.
+#   P_i^ADM = (R^2/8 pi) oint sqrt(gamma) [ gamma^{mk} nu_m K_{ki} - nu_i K ] dOmega,  nu_i = x_i/R (FLAT unit radial one-form),
+#   sqrt(gamma) = sqrt(det gamma_ij) in Cartesian components, K = gamma^{ij} K_{ij}, K_ij the PHYSICAL extrinsic curvature from padm->u_adm.
+#   Gauss-Legendre quadrature: ntheta = 32 nodes in cos(theta) x 64 uniform in phi = 2048 angles; each weight divided by the number of ranks claiming that angle.
+#   area_ratio = A/(4 pi R^2) with A the PROPER area of the sphere; at t = 0 in vacuum this must equal (1 + M/(2R))^4.
+#   P_matter_i = sum_p m_p u_i(p) over ALL particles (u_i covariant); P_dep_i = int S_i sqrt(gamma) d^3x from the DEPOSITED source.
+#   mom_l2 = sqrt( int |M|^2 dV / int dV ), coordinate volume, whole box.
+time,cycle,R,Px_adm,Py_adm,Pz_adm,absP_adm,area_ratio,mean_trK,sum_w,Px_matter,Py_matter,Pz_matter,absP_matter,Px_dep,Py_dep,Pz_dep,mom_l2
+0,0,9000,0,0,0,0,1.0002222406,0,12.5663706144,0,0,0,0,0,0,0,0
+0,0,10000,0,0,0,0,1.0002000149,0,12.5663706144,0,0,0,0,0,0,0,0
+2.34375,30,9000,0,0,0,0,1.0002222406,0,12.5663706144,-7.49669505499e-08,2.85370546893e-06,-1.3668518648e-06,3.16504959951e-06,0,0,0,0
+2.34375,30,10000,0,0,0,0,1.0002000149,0,12.5663706144,-7.49669505499e-08,2.85370546893e-06,-1.3668518648e-06,3.16504959951e-06,0,0,0,0
+4.6875,60,9000,0,0,0,0,1.0002222406,0,12.5663706144,-1.45818808755e-07,5.70905524213e-06,-2.74608083282e-06,6.33683949797e-06,0,0,0,0
+4.6875,60,10000,0,0,0,0,1.0002000149,0,12.5663706144,-1.45818808755e-07,5.70905524213e-06,-2.74608083282e-06,6.33683949797e-06,0,0,0,0
+6.953125,89,9000,0,0,0,0,1.0002222406,0,12.5663706144,-2.0704953159e-07,8.47259510019e-06,-4.10220728439e-06,9.41572311851e-06,0,0,0,0
+6.953125,89,10000,0,0,0,0,1.0002000149,0,12.5663706144,-2.0704953159e-07,8.47259510019e-06,-4.10220728439e-06,9.41572311851e-06,0,0,0,0
+7.8125,100,9000,0,0,0,0,1.0002222406,0,12.5663706144,-2.27889191121e-07,9.52214823601e-06,-4.6245661107e-06,1.0588194002e-05,0,0,0,0
+7.8125,100,10000,0,0,0,0,1.0002000149,0,12.5663706144,-2.27889191121e-07,9.52214823601e-06,-4.6245661107e-06,1.0588194002e-05,0,0,0,0

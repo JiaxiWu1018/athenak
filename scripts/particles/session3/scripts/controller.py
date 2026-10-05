@@ -84,9 +84,13 @@ class Controller:
                 if records[job]['state']!='COMPLETED' or not s or not s['health']['valid']:
                     return self.halt('preflight '+arm+' failed; diagnosis required')
             self.submit('budget','analysis','budget',.5,'amd_analysis.sbatch',('budget',))
-            if not self.complete('budget',records):return
             budget=read(self.root/'evidence/budget_preflight.json')
-            if not budget or not budget['passed']:return self.halt('measured matrix exceeds the 200-node-hour budget; revised scope required')
+            job=self.state['jobs']['budget']
+            if job not in records or records[job]['state'] in ACTIVE:return
+            if budget and not budget['passed']:
+                return self.halt(f'measured matrix projects {budget["projected_node_hours"]:.2f} node-hours, above 200; revised budget discussion required')
+            if not self.complete('budget',records):return
+            if not budget:raise RuntimeError('budget analysis completed without its evidence')
             self.state['stage']='pilot';self.save();return
         if stage=='pilot':
             validated=read(self.root/'state/validated_build.json')
@@ -129,6 +133,7 @@ def main():
     with (a.root/'state/controller.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         controller=Controller(a.root)
+        controller.save()
         while True:
             try:controller.tick()
             except Exception as error:

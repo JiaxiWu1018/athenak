@@ -1,0 +1,89 @@
+{
+  "passed": false,
+  "budget_node_hours": 200,
+  "projected_node_hours": 403.07579043557627,
+  "matrix_estimates": [
+    {
+      "name": "main_frozen",
+      "steps": 29568,
+      "node_hours": 48.08208533333336
+    },
+    {
+      "name": "main_live",
+      "steps": 29568,
+      "node_hours": 57.60897706666663
+    },
+    {
+      "name": "tail_frozen",
+      "steps": 29568,
+      "node_hours": 48.08208533333336
+    },
+    {
+      "name": "tail_live",
+      "steps": 29568,
+      "node_hours": 57.60897706666663
+    },
+    {
+      "name": "coarse_frozen",
+      "steps": 11828,
+      "node_hours": 19.23413505555557
+    },
+    {
+      "name": "coarse_live",
+      "steps": 11828,
+      "node_hours": 23.0451495111111
+    },
+    {
+      "name": "lowN_frozen",
+      "steps": 11828,
+      "node_hours": 19.23413505555557
+    },
+    {
+      "name": "lowN_live",
+      "steps": 11828,
+      "node_hours": 23.0451495111111
+    }
+  ],
+  "measured": {
+    "frozen": {
+      "seconds_per_step": 5.854150000000004,
+      "dt_min": 0.078125,
+      "observed_node_hours": 0.13972222222222222,
+      "job": "452594",
+      "rates": [
+        4.033500000000001,
+        4.138449999999997,
+        4.240970000000004,
+        4.305019999999996,
+        5.434122,
+        5.709729999999999,
+        5.854150000000004
+      ],
+      "output_bytes": 11802547806
+    },
+    "live": {
+      "seconds_per_step": 7.014079999999995,
+      "dt_min": 0.078125,
+      "observed_node_hours": 0.175,
+      "job": "452595",
+      "rates": [
+        5.2294300000000025,
+        5.318600000000001,
+        5.381950000000001,
+        5.435750000000001,
+        6.765599999999999,
+        6.945799999999997,
+        7.014079999999995
+      ],
+      "output_bytes": 16852874003
+    }
+  },
+  "reserves": {
+    "builds": 2.0,
+    "pilots": 18.835200796687424,
+    "reductions": 12.0,
+    "preflights": 0.31472222222222224,
+    "checkpoint_output_margin": 73.98517348333333
+  },
+  "policy": "90th-percentile measured step cost; baseline cost for every control; additional 25%; measured 0.675P-per-arm pilot cost plus 25% and startup reserve; explicit build/reduction/preflight costs"
+}

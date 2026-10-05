@@ -1,12 +1,92 @@
 [
-  {"job_id":"452534","kind":"build","label":"superseded","limit_hours":2},
-  {"job_id":"452548","kind":"preflight","label":"superseded_frozen","limit_hours":4},
-  {"job_id":"452549","kind":"preflight","label":"superseded_live","limit_hours":4},
-  {"job_id":"452552","kind":"build","label":"build_b63917f9","limit_hours":0.5},
-  {"job_id":"452553","kind":"preflight","label":"superseded_frozen_2","limit_hours":4},
-  {"job_id":"452554","kind":"preflight","label":"superseded_live_2","limit_hours":4},
-  {"job_id":"452585","kind":"build","label":"build_4ebd7565","limit_hours":0.5},
-  {"job_id":"452594","kind":"preflight","label":"preflight_frozen","limit_hours":0.5},
-  {"job_id":"452595","kind":"preflight","label":"preflight_live","limit_hours":0.5},
-  {"job_id":"452606","kind":"supplementary_startup","label":"sanity1_live","limit_hours":0.25}
+  {
+    "job_id": "452534",
+    "kind": "build",
+    "label": "superseded",
+    "limit_hours": 2
+  },
+  {
+    "job_id": "452548",
+    "kind": "preflight",
+    "label": "superseded_frozen",
+    "limit_hours": 4
+  },
+  {
+    "job_id": "452549",
+    "kind": "preflight",
+    "label": "superseded_live",
+    "limit_hours": 4
+  },
+  {
+    "job_id": "452552",
+    "kind": "build",
+    "label": "build_b63917f9",
+    "limit_hours": 0.5
+  },
+  {
+    "job_id": "452553",
+    "kind": "preflight",
+    "label": "superseded_frozen_2",
+    "limit_hours": 4
+  },
+  {
+    "job_id": "452554",
+    "kind": "preflight",
+    "label": "superseded_live_2",
+    "limit_hours": 4
+  },
+  {
+    "job_id": "452585",
+    "kind": "build",
+    "label": "build_4ebd7565",
+    "limit_hours": 0.5
+  },
+  {
+    "job_id": "452594",
+    "kind": "preflight",
+    "label": "preflight_frozen",
+    "limit_hours": 0.5
+  },
+  {
+    "job_id": "452595",
+    "kind": "preflight",
+    "label": "preflight_live",
+    "limit_hours": 0.5
+  },
+  {
+    "job_id": "452606",
+    "kind": "supplementary_startup",
+    "label": "sanity1_live",
+    "limit_hours": 0.25
+  },
+  {
+    "job_id": "452612",
+    "kind": "build",
+    "label": "build_5c0f38b0",
+    "limit_hours": 0.5
+  },
+  {
+    "job_id": "452625",
+    "kind": "analysis",
+    "label": "reduce_preflight_frozen",
+    "limit_hours": 0.5
+  },
+  {
+    "job_id": "452637",
+    "kind": "analysis",
+    "label": "budget",
+    "limit_hours": 0.5
+  },
+  {
+    "job_id": "452651",
+    "kind": "analysis",
+    "label": "reduce_preflight_live",
+    "limit_hours": 0.5
+  },
+  {
+    "job_id": "452661",
+    "kind": "inventory",
+    "label": "raw_inventory",
+    "limit_hours": 0.3333333333333333
+  }
 ]

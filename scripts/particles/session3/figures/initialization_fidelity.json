@@ -1,0 +1,9 @@
+{
+  "source_run": "/data/jiaxiwu/NRPIC/Plummer-cluster/session_03_isotropic_benchmark_20261005/runs/cpu_t0_live_11064",
+  "continuum": "/data/jiaxiwu/NRPIC/Plummer-cluster/session_03_isotropic_benchmark_20261005/initial_data/cpp_profile.csv",
+  "time": 0,
+  "N": 2113536,
+  "uncertainty": "1 sigma; N/2 correlated initial pairs",
+  "scope": "Initialization only; no equilibrium or stability claim",
+  "shell_density_volume": "analytic continuum proper shell volume"
+}

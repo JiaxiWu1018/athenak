@@ -27,11 +27,17 @@ for case in matrix:
 base=sum(c['node_hours'] for c in estimates)
 # Cover output bursts, checkpoints, sampling/restart/half-dt pilots, builds and
 # reductions with explicit reserves and a throughput margin.
-reserve=dict(builds=2.,pilots=6.,reductions=12.,checkpoint_output_margin=.25*base)
+pilot_cost=sum(.675*461.99570043659014/c['dt_min']*c['seconds_per_step']/3600 for c in cases.values())
+# Per arm: continuous .30P, interrupted/restarted .30P, short .025P and
+# half-timestep .025P (twice as many steps). Do not retain a six-hour guess
+# once measured performance shows that the actual validation matrix costs more.
+reserve=dict(builds=2.,pilots=1.25*pilot_cost+1.,reductions=12.,
+             preflights=sum(c['observed_node_hours'] for c in cases.values()),
+             checkpoint_output_margin=.25*base)
 projected=base+sum(reserve.values())
 report=dict(passed=projected<=200,budget_node_hours=200,projected_node_hours=projected,
             matrix_estimates=estimates,measured=cases,reserves=reserve,
-            policy='90th-percentile measured step cost; baseline cost for every control; additional 25% plus explicit reserves')
+            policy='90th-percentile measured step cost; baseline cost for every control; additional 25%; measured 0.675P-per-arm pilot cost plus 25% and startup reserve; explicit build/reduction/preflight costs')
 (root/'evidence/budget_preflight.json').write_text(json.dumps(report,indent=2)+'\n')
 if not report['passed']:
     (root/'state/budget_review.json').write_text(json.dumps(report,indent=2)+'\n')

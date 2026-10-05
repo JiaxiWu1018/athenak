@@ -1,0 +1,28 @@
+{
+  "job_id": "452594",
+  "returncode": 0,
+  "elapsed_seconds": 503,
+  "node_hours": 0.13972222222222222,
+  "health": {
+    "valid": true,
+    "reason": null,
+    "physical_stop": false,
+    "last_healthy_time": 7.8125,
+    "ledger": "/work1/eliasmost/jiaxiwu/plummer_s03_20261005/runs/preflight_frozen/out/preflight_frozen.plummer_health.csv",
+    "samples": 5
+  },
+  "completed": true,
+  "cycle_limit": true,
+  "slurm_state": "COMPLETED",
+  "resource_failure": false,
+  "checkpoint": "/work1/eliasmost/jiaxiwu/plummer_s03_20261005/runs/preflight_frozen/out/rst/preflight_frozen.00001.rst",
+  "checkpoint_time": 7.8125,
+  "checkpoint_header": {
+    "time": 7.8125,
+    "dt": 0.078125,
+    "cycle": 100,
+    "nmb": 624,
+    "root_level": 2
+  },
+  "checkpoint_sha256": "64d70744319cdb5aa1d62c179df6eee9a0b8a4a712a6de7f7f3ef29f6a105f02"
+}

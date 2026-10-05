@@ -1,0 +1,9 @@
+{
+  "stage": "stopped",
+  "jobs": {
+    "budget": "452637"
+  },
+  "milestones": {},
+  "retries": {},
+  "reason": "measured matrix projects 403.08 node-hours, above 200; revised budget discussion required"
+}

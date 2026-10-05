@@ -1,0 +1,114 @@
+[
+  {
+    "path": "input_452595.athinput",
+    "size": 3392
+  },
+  {
+    "path": "out/bin/preflight_live.con.00000.bin",
+    "size": 3923918
+  },
+  {
+    "path": "out/bin/preflight_live.con.00001.bin",
+    "size": 3923933
+  },
+  {
+    "path": "out/bin/preflight_live.tmunu.00000.bin",
+    "size": 5595124
+  },
+  {
+    "path": "out/bin/preflight_live.tmunu.00001.bin",
+    "size": 5595155
+  },
+  {
+    "path": "out/bin/preflight_live.z4c_alpha.00000.bin",
+    "size": 581557
+  },
+  {
+    "path": "out/bin/preflight_live.z4c_alpha.00001.bin",
+    "size": 581556
+  },
+  {
+    "path": "out/cbin_adm_2/preflight_live.adm.00000.cbin",
+    "size": 132974600
+  },
+  {
+    "path": "out/cbin_adm_2/preflight_live.adm.00001.cbin",
+    "size": 132974588
+  },
+  {
+    "path": "out/preflight_live.plummer_admmass.csv",
+    "size": 154
+  },
+  {
+    "path": "out/preflight_live.plummer_admmom.csv",
+    "size": 3488
+  },
+  {
+    "path": "out/preflight_live.plummer_cohorts.csv",
+    "size": 21656
+  },
+  {
+    "path": "out/preflight_live.plummer_fields.csv",
+    "size": 81933
+  },
+  {
+    "path": "out/preflight_live.plummer_health.csv",
+    "size": 1230
+  },
+  {
+    "path": "out/preflight_live.plummer_physical.csv",
+    "size": 87881
+  },
+  {
+    "path": "out/preflight_live.plummer_radii.csv",
+    "size": 2861
+  },
+  {
+    "path": "out/preflight_live.plummer_shells.csv",
+    "size": 278392
+  },
+  {
+    "path": "out/preflight_live.user.hst",
+    "size": 3017
+  },
+  {
+    "path": "out/preflight_live.z4c.user.hst",
+    "size": 1522
+  },
+  {
+    "path": "out/pvtk/preflight_live.prtcl_all.00000.part.vtk",
+    "size": 84541821
+  },
+  {
+    "path": "out/pvtk/preflight_live.prtcl_all.00001.part.vtk",
+    "size": 84541827
+  },
+  {
+    "path": "out/pvtk/preflight_live.prtcl_all.00002.part.vtk",
+    "size": 84541828
+  },
+  {
+    "path": "out/rst/preflight_live.00000.rst",
+    "size": 8156307981
+  },
+  {
+    "path": "out/rst/preflight_live.00001.rst",
+    "size": 8156307981
+  },
+  {
+    "path": "preflight_live.isotropic_initial.csv",
+    "size": 307
+  },
+  {
+    "path": "runner.lock",
+    "size": 0
+  },
+  {
+    "path": "segment_452595.log",
+    "size": 5595
+  },
+  {
+    "path": "vram_452595.log",
+    "size": 2640
+  }
+]

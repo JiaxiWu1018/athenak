@@ -2,7 +2,7 @@
   "reference": "PDF Eq 9.7, mpmath 70 digits, adaptive quadrature",
   "tolerance": 1e-08,
   "passed": true,
-  "max_error": 3.7119864473855735e-09,
+  "max_error": 7.847579253095205e-10,
   "normalizations": {
     "1000.0": {
       "M0": 1.0133372946305388,
@@ -114,56 +114,56 @@
       "name": "q_cdf_1000.0_0.0_0.0001",
       "actual": 9.999999992864366e-05,
       "reference": 0.0001,
-      "error": 7.135634585379164e-10,
-      "relative": true,
+      "error": 7.135634585379164e-14,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.0_0.01",
       "actual": 0.009999999999661125,
       "reference": 0.01,
-      "error": 3.388747615851173e-11,
-      "relative": true,
+      "error": 3.388747615851173e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.0_0.1",
       "actual": 0.09999999999981093,
       "reference": 0.1,
-      "error": 1.8907098109366416e-12,
-      "relative": true,
+      "error": 1.8907098109366416e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.0_0.5",
       "actual": 0.49999999999994466,
       "reference": 0.5,
-      "error": 1.1068923555512811e-13,
-      "relative": true,
+      "error": 5.5344617777564054e-14,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.0_0.9",
       "actual": 0.900000000000191,
       "reference": 0.9,
-      "error": 2.1217595581725214e-13,
-      "relative": true,
+      "error": 1.9095836023552692e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.0_0.99",
       "actual": 0.9900000000000311,
       "reference": 0.99,
-      "error": 3.140024716111554e-14,
-      "relative": true,
+      "error": 3.108624468950438e-14,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.0_0.9999",
       "actual": 0.9998999999991236,
       "reference": 0.9999,
-      "error": 8.764977054096396e-13,
-      "relative": true,
+      "error": 8.764100556390986e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -226,56 +226,56 @@
       "name": "q_cdf_1000.0_0.1_0.0001",
       "actual": 0.00010000000000684651,
       "reference": 0.0001,
-      "error": 6.846506326284307e-11,
-      "relative": true,
+      "error": 6.846506326284307e-15,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.1_0.01",
       "actual": 0.010000000007152692,
       "reference": 0.01,
-      "error": 7.152691633427466e-10,
-      "relative": true,
+      "error": 7.152691633427466e-12,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.1_0.1",
       "actual": 0.10000000006214664,
       "reference": 0.1,
-      "error": 6.214663506032281e-10,
-      "relative": true,
+      "error": 6.214663506032281e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.1_0.5",
       "actual": 0.5000000001539776,
       "reference": 0.5,
-      "error": 3.079552168827604e-10,
-      "relative": true,
+      "error": 1.539776084413802e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.1_0.9",
       "actual": 0.9000000000556644,
       "reference": 0.9,
-      "error": 6.1849291120729e-11,
-      "relative": true,
+      "error": 5.56643620086561e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.1_0.99",
       "actual": 0.9900000000063309,
       "reference": 0.99,
-      "error": 6.394884621840902e-12,
-      "relative": true,
+      "error": 6.330935775622493e-12,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_0.1_0.9999",
       "actual": 0.9998999999991863,
       "reference": 0.9999,
-      "error": 8.137638311308903e-13,
-      "relative": true,
+      "error": 8.136824547477772e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -338,56 +338,56 @@
       "name": "q_cdf_1000.0_1.0_0.0001",
       "actual": 0.00010000000015382824,
       "reference": 0.0001,
-      "error": 1.538282305355021e-09,
-      "relative": true,
+      "error": 1.538282305355021e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_1.0_0.01",
       "actual": 0.010000000021180257,
       "reference": 0.01,
-      "error": 2.1180257200881236e-09,
-      "relative": true,
+      "error": 2.1180257200881236e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_1.0_0.1",
       "actual": 0.10000000017900702,
       "reference": 0.1,
-      "error": 1.7900701754225423e-09,
-      "relative": true,
+      "error": 1.7900701754225423e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_1.0_0.5",
       "actual": 0.5000000004428744,
       "reference": 0.5,
-      "error": 8.857488076330355e-10,
-      "relative": true,
+      "error": 4.4287440381651777e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_1.0_0.9",
       "actual": 0.9000000001597538,
       "reference": 0.9,
-      "error": 1.7750418419066388e-10,
-      "relative": true,
+      "error": 1.597537657715975e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_1.0_0.99",
       "actual": 0.9900000000181564,
       "reference": 0.99,
-      "error": 1.8339762929408976e-11,
-      "relative": true,
+      "error": 1.8156365300114885e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_1.0_0.9999",
       "actual": 0.9998999999993141,
       "reference": 0.9999,
-      "error": 6.859643810515269e-13,
-      "relative": true,
+      "error": 6.858957846134217e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -450,56 +450,56 @@
       "name": "q_cdf_1000.0_5.0_0.0001",
       "actual": 0.00010000000033089265,
       "reference": 0.0001,
-      "error": 3.3089264835084453e-09,
-      "relative": true,
+      "error": 3.3089264835084453e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_5.0_0.01",
       "actual": 0.010000000037119865,
       "reference": 0.01,
-      "error": 3.7119864473855735e-09,
-      "relative": true,
+      "error": 3.7119864473855735e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_5.0_0.1",
       "actual": 0.10000000031348318,
       "reference": 0.1,
-      "error": 3.1348316997803494e-09,
-      "relative": true,
+      "error": 3.1348316997803494e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_5.0_0.5",
       "actual": 0.5000000007847579,
       "reference": 0.5,
-      "error": 1.569515850619041e-09,
-      "relative": true,
+      "error": 7.847579253095205e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_5.0_0.9",
       "actual": 0.9000000002875456,
       "reference": 0.9,
-      "error": 3.1949504770207365e-10,
-      "relative": true,
+      "error": 2.875455429318663e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_5.0_0.99",
       "actual": 0.9900000000328935,
       "reference": 0.99,
-      "error": 3.322572295857496e-11,
-      "relative": true,
+      "error": 3.289346572898921e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_5.0_0.9999",
       "actual": 0.9998999999997289,
       "reference": 0.9999,
-      "error": 2.7114357697116033e-13,
-      "relative": true,
+      "error": 2.7111646261346323e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -562,56 +562,56 @@
       "name": "q_cdf_1000.0_10.0_0.0001",
       "actual": 0.00010000000025887836,
       "reference": 0.0001,
-      "error": 2.5887835440868007e-09,
-      "relative": true,
+      "error": 2.5887835440868007e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_10.0_0.01",
       "actual": 0.01000000002868797,
       "reference": 0.01,
-      "error": 2.868797040200821e-09,
-      "relative": true,
+      "error": 2.868797040200821e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_10.0_0.1",
       "actual": 0.10000000024265887,
       "reference": 0.1,
-      "error": 2.426588652237882e-09,
-      "relative": true,
+      "error": 2.426588652237882e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_10.0_0.5",
       "actual": 0.500000000619881,
       "reference": 0.5,
-      "error": 1.2397620707815804e-09,
-      "relative": true,
+      "error": 6.198810353907902e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_10.0_0.9",
       "actual": 0.9000000002327095,
       "reference": 0.9,
-      "error": 2.585661314687589e-10,
-      "relative": true,
+      "error": 2.3270951832188302e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_10.0_0.99",
       "actual": 0.9900000000271165,
       "reference": 0.99,
-      "error": 2.7390435598641086e-11,
-      "relative": true,
+      "error": 2.7116531242654673e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_10.0_0.9999",
       "actual": 0.9999000000001955,
       "reference": 0.9999,
-      "error": 1.9552982761925199e-13,
-      "relative": true,
+      "error": 1.9551027463649007e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -674,56 +674,56 @@
       "name": "q_cdf_1000.0_13.0_0.0001",
       "actual": 0.00010000000014792572,
       "reference": 0.0001,
-      "error": 1.479257119357466e-09,
-      "relative": true,
+      "error": 1.479257119357466e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_13.0_0.01",
       "actual": 0.010000000017323568,
       "reference": 0.01,
-      "error": 1.732356792738532e-09,
-      "relative": true,
+      "error": 1.732356792738532e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_13.0_0.1",
       "actual": 0.10000000014631243,
       "reference": 0.1,
-      "error": 1.46312420512551e-09,
-      "relative": true,
+      "error": 1.46312420512551e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_13.0_0.5",
       "actual": 0.5000000003774326,
       "reference": 0.5,
-      "error": 7.548652813937906e-10,
-      "relative": true,
+      "error": 3.774326406968953e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_13.0_0.9",
       "actual": 0.9000000001443277,
       "reference": 0.9,
-      "error": 1.6036406770404532e-10,
-      "relative": true,
+      "error": 1.443276609336408e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_13.0_0.99",
       "actual": 0.990000000016769,
       "reference": 0.99,
-      "error": 1.6938414756104334e-11,
-      "relative": true,
+      "error": 1.676903060854329e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_13.0_0.9999",
       "actual": 0.999900000000153,
       "reference": 0.9999,
-      "error": 1.5300403319666623e-13,
-      "relative": true,
+      "error": 1.5298873279334657e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -786,56 +786,56 @@
       "name": "q_cdf_1000.0_20.0_0.0001",
       "actual": 0.00010000000023714687,
       "reference": 0.0001,
-      "error": 2.371468635613966e-09,
-      "relative": true,
+      "error": 2.371468635613966e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_20.0_0.01",
       "actual": 0.010000000024567338,
       "reference": 0.01,
-      "error": 2.4567337747471996e-09,
-      "relative": true,
+      "error": 2.4567337747471996e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_20.0_0.1",
       "actual": 0.10000000020857039,
       "reference": 0.1,
-      "error": 2.085703831866681e-09,
-      "relative": true,
+      "error": 2.085703831866681e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_20.0_0.5",
       "actual": 0.5000000005483264,
       "reference": 0.5,
-      "error": 1.0966527685951633e-09,
-      "relative": true,
+      "error": 5.483263842975816e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_20.0_0.9",
       "actual": 0.9000000002132322,
       "reference": 0.9,
-      "error": 2.3692467740785456e-10,
-      "relative": true,
+      "error": 2.1323220966706913e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_20.0_0.99",
       "actual": 0.9900000000253781,
       "reference": 0.99,
-      "error": 2.5634488919895558e-11,
-      "relative": true,
+      "error": 2.5378144030696603e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_20.0_0.9999",
       "actual": 0.9998999999999075,
       "reference": 0.9999,
-      "error": 9.249082703397894e-14,
-      "relative": true,
+      "error": 9.248157795127554e-14,
+      "relative": false,
       "passed": true
     },
     {
@@ -898,56 +898,56 @@
       "name": "q_cdf_1000.0_50.0_0.0001",
       "actual": 0.0001000000001427728,
       "reference": 0.0001,
-      "error": 1.4277279716552044e-09,
-      "relative": true,
+      "error": 1.4277279716552044e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_50.0_0.01",
       "actual": 0.010000000013819805,
       "reference": 0.01,
-      "error": 1.3819804675629932e-09,
-      "relative": true,
+      "error": 1.3819804675629932e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_50.0_0.1",
       "actual": 0.10000000012169338,
       "reference": 0.1,
-      "error": 1.2169337759715404e-09,
-      "relative": true,
+      "error": 1.2169337759715404e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_50.0_0.5",
       "actual": 0.5000000003270239,
       "reference": 0.5,
-      "error": 6.540477048844195e-10,
-      "relative": true,
+      "error": 3.2702385244220977e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_50.0_0.9",
       "actual": 0.9000000001312951,
       "reference": 0.9,
-      "error": 1.458834287938594e-10,
-      "relative": true,
+      "error": 1.3129508591447347e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_50.0_0.99",
       "actual": 0.9900000000158461,
       "reference": 0.99,
-      "error": 1.6006163846638786e-11,
-      "relative": true,
+      "error": 1.5846102208172397e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_50.0_0.9999",
       "actual": 0.9998999999992662,
       "reference": 0.9999,
-      "error": 7.339308123584643e-13,
-      "relative": true,
+      "error": 7.338574192772285e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -1010,56 +1010,56 @@
       "name": "q_cdf_1000.0_100.0_0.0001",
       "actual": 0.00010000000022790671,
       "reference": 0.0001,
-      "error": 2.279067098888074e-09,
-      "relative": true,
+      "error": 2.279067098888074e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_100.0_0.01",
       "actual": 0.010000000021736009,
       "reference": 0.01,
-      "error": 2.173600882615645e-09,
-      "relative": true,
+      "error": 2.173600882615645e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_100.0_0.1",
       "actual": 0.1000000001895478,
       "reference": 0.1,
-      "error": 1.8954779412716505e-09,
-      "relative": true,
+      "error": 1.8954779412716505e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_100.0_0.5",
       "actual": 0.5000000005146166,
       "reference": 0.5,
-      "error": 1.029233143157171e-09,
-      "relative": true,
+      "error": 5.146165715785855e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_100.0_0.9",
       "actual": 0.9000000002098835,
       "reference": 0.9,
-      "error": 2.332038266198803e-10,
-      "relative": true,
+      "error": 2.0988344395789227e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_100.0_0.99",
       "actual": 0.990000000025515,
       "reference": 0.99,
-      "error": 2.577276215114433e-11,
-      "relative": true,
+      "error": 2.5515034529632885e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_100.0_0.9999",
       "actual": 0.9998999999993156,
       "reference": 0.9999,
-      "error": 6.845209467760866e-13,
-      "relative": true,
+      "error": 6.84452494681409e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -1122,56 +1122,56 @@
       "name": "q_cdf_1000.0_500.0_0.0001",
       "actual": 0.00010000000021904237,
       "reference": 0.0001,
-      "error": 2.19042367794256e-09,
-      "relative": true,
+      "error": 2.19042367794256e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_500.0_0.01",
       "actual": 0.010000000020783694,
       "reference": 0.01,
-      "error": 2.078369421010251e-09,
-      "relative": true,
+      "error": 2.078369421010251e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_500.0_0.1",
       "actual": 0.10000000018137195,
       "reference": 0.1,
-      "error": 1.813719452403717e-09,
-      "relative": true,
+      "error": 1.813719452403717e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_500.0_0.5",
       "actual": 0.5000000004961456,
       "reference": 0.5,
-      "error": 9.922911381465838e-10,
-      "relative": true,
+      "error": 4.961455690732919e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_500.0_0.9",
       "actual": 0.9000000002044757,
       "reference": 0.9,
-      "error": 2.271951762524951e-10,
-      "relative": true,
+      "error": 2.044756586272456e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_500.0_0.99",
       "actual": 0.9900000000250984,
       "reference": 0.99,
-      "error": 2.535188669544552e-11,
-      "relative": true,
+      "error": 2.5098367828491064e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_500.0_0.9999",
       "actual": 0.9998999999993495,
       "reference": 0.9999,
-      "error": 6.505447246003393e-13,
-      "relative": true,
+      "error": 6.504796701278792e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -1234,128 +1234,128 @@
       "name": "q_cdf_1000.0_999.0_0.0001",
       "actual": 0.00010000000016043443,
       "reference": 0.0001,
-      "error": 1.60434423450255e-09,
-      "relative": true,
+      "error": 1.60434423450255e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_999.0_0.01",
       "actual": 0.010000000015121501,
       "reference": 0.01,
-      "error": 1.512150127336298e-09,
-      "relative": true,
+      "error": 1.512150127336298e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_999.0_0.1",
       "actual": 0.100000000132745,
       "reference": 0.1,
-      "error": 1.327449955512705e-09,
-      "relative": true,
+      "error": 1.327449955512705e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_999.0_0.5",
       "actual": 0.5000000003639443,
       "reference": 0.5,
-      "error": 7.278886382522387e-10,
-      "relative": true,
+      "error": 3.6394431912611935e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_999.0_0.9",
       "actual": 0.9000000001503469,
       "reference": 0.9,
-      "error": 1.6705205120438726e-10,
-      "relative": true,
+      "error": 1.5034684608394855e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_999.0_0.99",
       "actual": 0.9900000000184975,
       "reference": 0.99,
-      "error": 1.8684380642002218e-11,
-      "relative": true,
+      "error": 1.8497536835582196e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_1000.0_999.0_0.9999",
       "actual": 0.9998999999992914,
       "reference": 0.9999,
-      "error": 7.087262292411615e-13,
-      "relative": true,
+      "error": 7.086553566182374e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_1000.0_1e-06",
       "actual": 9.999999995614442e-07,
       "reference": 1e-06,
-      "error": 4.385557553638871e-10,
-      "relative": true,
+      "error": 4.385557553638871e-16,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_1000.0_0.0001",
       "actual": 9.999999999790637e-05,
       "reference": 0.0001,
-      "error": 2.0936350526509773e-11,
-      "relative": true,
+      "error": 2.0936350526509773e-15,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_1000.0_0.01",
       "actual": 0.010000000000029737,
       "reference": 0.01,
-      "error": 2.9736629825194427e-12,
-      "relative": true,
+      "error": 2.973662982519443e-14,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_1000.0_0.1",
       "actual": 0.1000000000002563,
       "reference": 0.1,
-      "error": 2.562949852347174e-12,
-      "relative": true,
+      "error": 2.562949852347174e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_1000.0_0.5",
       "actual": 0.5000000000007078,
       "reference": 0.5,
-      "error": 1.4155343563970746e-12,
-      "relative": true,
+      "error": 7.077671781985373e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_1000.0_0.9",
       "actual": 0.9000000000002848,
       "reference": 0.9,
-      "error": 3.164135620181696e-13,
-      "relative": true,
+      "error": 2.8477220581635265e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_1000.0_0.99",
       "actual": 0.9900000000000332,
       "reference": 0.99,
-      "error": 3.353097821847695e-14,
-      "relative": true,
+      "error": 3.319566843629218e-14,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_1000.0_0.9999",
       "actual": 0.9999000000000033,
       "reference": 0.9999,
-      "error": 3.331002174092879e-15,
-      "relative": true,
+      "error": 3.3306690738754696e-15,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_1000.0_0.999999",
       "actual": 0.9999990000000002,
       "reference": 0.999999,
-      "error": 2.220448269698583e-16,
-      "relative": true,
+      "error": 2.220446049250313e-16,
+      "relative": false,
       "passed": true
     },
     {
@@ -1530,56 +1530,56 @@
       "name": "q_cdf_2000.0_0.0_0.0001",
       "actual": 9.999999992864366e-05,
       "reference": 0.0001,
-      "error": 7.135634585379164e-10,
-      "relative": true,
+      "error": 7.135634585379164e-14,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.0_0.01",
       "actual": 0.009999999999661125,
       "reference": 0.01,
-      "error": 3.388747615851173e-11,
-      "relative": true,
+      "error": 3.388747615851173e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.0_0.1",
       "actual": 0.09999999999981093,
       "reference": 0.1,
-      "error": 1.8907098109366416e-12,
-      "relative": true,
+      "error": 1.8907098109366416e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.0_0.5",
       "actual": 0.49999999999994466,
       "reference": 0.5,
-      "error": 1.1068923555512811e-13,
-      "relative": true,
+      "error": 5.5344617777564054e-14,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.0_0.9",
       "actual": 0.900000000000191,
       "reference": 0.9,
-      "error": 2.1217595581725214e-13,
-      "relative": true,
+      "error": 1.9095836023552692e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.0_0.99",
       "actual": 0.9900000000000311,
       "reference": 0.99,
-      "error": 3.140024716111554e-14,
-      "relative": true,
+      "error": 3.108624468950438e-14,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.0_0.9999",
       "actual": 0.9998999999991236,
       "reference": 0.9999,
-      "error": 8.764977054096396e-13,
-      "relative": true,
+      "error": 8.764100556390986e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -1642,56 +1642,56 @@
       "name": "q_cdf_2000.0_0.1_0.0001",
       "actual": 0.00010000000000684651,
       "reference": 0.0001,
-      "error": 6.846506326284307e-11,
-      "relative": true,
+      "error": 6.846506326284307e-15,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.1_0.01",
       "actual": 0.010000000007152692,
       "reference": 0.01,
-      "error": 7.152691633427466e-10,
-      "relative": true,
+      "error": 7.152691633427466e-12,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.1_0.1",
       "actual": 0.10000000006214664,
       "reference": 0.1,
-      "error": 6.214663506032281e-10,
-      "relative": true,
+      "error": 6.214663506032281e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.1_0.5",
       "actual": 0.5000000001539776,
       "reference": 0.5,
-      "error": 3.079552168827604e-10,
-      "relative": true,
+      "error": 1.539776084413802e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.1_0.9",
       "actual": 0.9000000000556644,
       "reference": 0.9,
-      "error": 6.1849291120729e-11,
-      "relative": true,
+      "error": 5.56643620086561e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.1_0.99",
       "actual": 0.9900000000063309,
       "reference": 0.99,
-      "error": 6.394884621840902e-12,
-      "relative": true,
+      "error": 6.330935775622493e-12,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_0.1_0.9999",
       "actual": 0.9998999999991863,
       "reference": 0.9999,
-      "error": 8.137638311308903e-13,
-      "relative": true,
+      "error": 8.136824547477772e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -1754,56 +1754,56 @@
       "name": "q_cdf_2000.0_1.0_0.0001",
       "actual": 0.00010000000015382824,
       "reference": 0.0001,
-      "error": 1.538282305355021e-09,
-      "relative": true,
+      "error": 1.538282305355021e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_1.0_0.01",
       "actual": 0.010000000021180257,
       "reference": 0.01,
-      "error": 2.1180257200881236e-09,
-      "relative": true,
+      "error": 2.1180257200881236e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_1.0_0.1",
       "actual": 0.10000000017900702,
       "reference": 0.1,
-      "error": 1.7900701754225423e-09,
-      "relative": true,
+      "error": 1.7900701754225423e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_1.0_0.5",
       "actual": 0.5000000004428744,
       "reference": 0.5,
-      "error": 8.857488076330355e-10,
-      "relative": true,
+      "error": 4.4287440381651777e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_1.0_0.9",
       "actual": 0.9000000001597538,
       "reference": 0.9,
-      "error": 1.7750418419066388e-10,
-      "relative": true,
+      "error": 1.597537657715975e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_1.0_0.99",
       "actual": 0.9900000000181564,
       "reference": 0.99,
-      "error": 1.8339762929408976e-11,
-      "relative": true,
+      "error": 1.8156365300114885e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_1.0_0.9999",
       "actual": 0.9998999999993141,
       "reference": 0.9999,
-      "error": 6.859643810515269e-13,
-      "relative": true,
+      "error": 6.858957846134217e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -1866,56 +1866,56 @@
       "name": "q_cdf_2000.0_5.0_0.0001",
       "actual": 0.00010000000033089265,
       "reference": 0.0001,
-      "error": 3.3089264835084453e-09,
-      "relative": true,
+      "error": 3.3089264835084453e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_5.0_0.01",
       "actual": 0.010000000037119865,
       "reference": 0.01,
-      "error": 3.7119864473855735e-09,
-      "relative": true,
+      "error": 3.7119864473855735e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_5.0_0.1",
       "actual": 0.10000000031348318,
       "reference": 0.1,
-      "error": 3.1348316997803494e-09,
-      "relative": true,
+      "error": 3.1348316997803494e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_5.0_0.5",
       "actual": 0.5000000007847579,
       "reference": 0.5,
-      "error": 1.569515850619041e-09,
-      "relative": true,
+      "error": 7.847579253095205e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_5.0_0.9",
       "actual": 0.9000000002875456,
       "reference": 0.9,
-      "error": 3.1949504770207365e-10,
-      "relative": true,
+      "error": 2.875455429318663e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_5.0_0.99",
       "actual": 0.9900000000328935,
       "reference": 0.99,
-      "error": 3.322572295857496e-11,
-      "relative": true,
+      "error": 3.289346572898921e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_5.0_0.9999",
       "actual": 0.9998999999997289,
       "reference": 0.9999,
-      "error": 2.7114357697116033e-13,
-      "relative": true,
+      "error": 2.7111646261346323e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -1978,56 +1978,56 @@
       "name": "q_cdf_2000.0_10.0_0.0001",
       "actual": 0.00010000000025887836,
       "reference": 0.0001,
-      "error": 2.5887835440868007e-09,
-      "relative": true,
+      "error": 2.5887835440868007e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_10.0_0.01",
       "actual": 0.01000000002868797,
       "reference": 0.01,
-      "error": 2.868797040200821e-09,
-      "relative": true,
+      "error": 2.868797040200821e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_10.0_0.1",
       "actual": 0.10000000024265887,
       "reference": 0.1,
-      "error": 2.426588652237882e-09,
-      "relative": true,
+      "error": 2.426588652237882e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_10.0_0.5",
       "actual": 0.500000000619881,
       "reference": 0.5,
-      "error": 1.2397620707815804e-09,
-      "relative": true,
+      "error": 6.198810353907902e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_10.0_0.9",
       "actual": 0.9000000002327095,
       "reference": 0.9,
-      "error": 2.585661314687589e-10,
-      "relative": true,
+      "error": 2.3270951832188302e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_10.0_0.99",
       "actual": 0.9900000000271165,
       "reference": 0.99,
-      "error": 2.7390435598641086e-11,
-      "relative": true,
+      "error": 2.7116531242654673e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_10.0_0.9999",
       "actual": 0.9999000000001955,
       "reference": 0.9999,
-      "error": 1.9552982761925199e-13,
-      "relative": true,
+      "error": 1.9551027463649007e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -2090,56 +2090,56 @@
       "name": "q_cdf_2000.0_13.0_0.0001",
       "actual": 0.00010000000014792572,
       "reference": 0.0001,
-      "error": 1.479257119357466e-09,
-      "relative": true,
+      "error": 1.479257119357466e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_13.0_0.01",
       "actual": 0.010000000017323568,
       "reference": 0.01,
-      "error": 1.732356792738532e-09,
-      "relative": true,
+      "error": 1.732356792738532e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_13.0_0.1",
       "actual": 0.10000000014631243,
       "reference": 0.1,
-      "error": 1.46312420512551e-09,
-      "relative": true,
+      "error": 1.46312420512551e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_13.0_0.5",
       "actual": 0.5000000003774326,
       "reference": 0.5,
-      "error": 7.548652813937906e-10,
-      "relative": true,
+      "error": 3.774326406968953e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_13.0_0.9",
       "actual": 0.9000000001443277,
       "reference": 0.9,
-      "error": 1.6036406770404532e-10,
-      "relative": true,
+      "error": 1.443276609336408e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_13.0_0.99",
       "actual": 0.990000000016769,
       "reference": 0.99,
-      "error": 1.6938414756104334e-11,
-      "relative": true,
+      "error": 1.676903060854329e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_13.0_0.9999",
       "actual": 0.999900000000153,
       "reference": 0.9999,
-      "error": 1.5300403319666623e-13,
-      "relative": true,
+      "error": 1.5298873279334657e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -2202,56 +2202,56 @@
       "name": "q_cdf_2000.0_20.0_0.0001",
       "actual": 0.00010000000023714687,
       "reference": 0.0001,
-      "error": 2.371468635613966e-09,
-      "relative": true,
+      "error": 2.371468635613966e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_20.0_0.01",
       "actual": 0.010000000024567338,
       "reference": 0.01,
-      "error": 2.4567337747471996e-09,
-      "relative": true,
+      "error": 2.4567337747471996e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_20.0_0.1",
       "actual": 0.10000000020857039,
       "reference": 0.1,
-      "error": 2.085703831866681e-09,
-      "relative": true,
+      "error": 2.085703831866681e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_20.0_0.5",
       "actual": 0.5000000005483264,
       "reference": 0.5,
-      "error": 1.0966527685951633e-09,
-      "relative": true,
+      "error": 5.483263842975816e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_20.0_0.9",
       "actual": 0.9000000002132322,
       "reference": 0.9,
-      "error": 2.3692467740785456e-10,
-      "relative": true,
+      "error": 2.1323220966706913e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_20.0_0.99",
       "actual": 0.9900000000253781,
       "reference": 0.99,
-      "error": 2.5634488919895558e-11,
-      "relative": true,
+      "error": 2.5378144030696603e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_20.0_0.9999",
       "actual": 0.9998999999999075,
       "reference": 0.9999,
-      "error": 9.249082703397894e-14,
-      "relative": true,
+      "error": 9.248157795127554e-14,
+      "relative": false,
       "passed": true
     },
     {
@@ -2314,56 +2314,56 @@
       "name": "q_cdf_2000.0_50.0_0.0001",
       "actual": 0.0001000000001427728,
       "reference": 0.0001,
-      "error": 1.4277279716552044e-09,
-      "relative": true,
+      "error": 1.4277279716552044e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_50.0_0.01",
       "actual": 0.010000000013819805,
       "reference": 0.01,
-      "error": 1.3819804675629932e-09,
-      "relative": true,
+      "error": 1.3819804675629932e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_50.0_0.1",
       "actual": 0.10000000012169338,
       "reference": 0.1,
-      "error": 1.2169337759715404e-09,
-      "relative": true,
+      "error": 1.2169337759715404e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_50.0_0.5",
       "actual": 0.5000000003270239,
       "reference": 0.5,
-      "error": 6.540477048844195e-10,
-      "relative": true,
+      "error": 3.2702385244220977e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_50.0_0.9",
       "actual": 0.9000000001312951,
       "reference": 0.9,
-      "error": 1.458834287938594e-10,
-      "relative": true,
+      "error": 1.3129508591447347e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_50.0_0.99",
       "actual": 0.9900000000158461,
       "reference": 0.99,
-      "error": 1.6006163846638786e-11,
-      "relative": true,
+      "error": 1.5846102208172397e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_50.0_0.9999",
       "actual": 0.9998999999992662,
       "reference": 0.9999,
-      "error": 7.339308123584643e-13,
-      "relative": true,
+      "error": 7.338574192772285e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -2426,56 +2426,56 @@
       "name": "q_cdf_2000.0_100.0_0.0001",
       "actual": 0.00010000000022790671,
       "reference": 0.0001,
-      "error": 2.279067098888074e-09,
-      "relative": true,
+      "error": 2.279067098888074e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_100.0_0.01",
       "actual": 0.010000000021736009,
       "reference": 0.01,
-      "error": 2.173600882615645e-09,
-      "relative": true,
+      "error": 2.173600882615645e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_100.0_0.1",
       "actual": 0.1000000001895478,
       "reference": 0.1,
-      "error": 1.8954779412716505e-09,
-      "relative": true,
+      "error": 1.8954779412716505e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_100.0_0.5",
       "actual": 0.5000000005146166,
       "reference": 0.5,
-      "error": 1.029233143157171e-09,
-      "relative": true,
+      "error": 5.146165715785855e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_100.0_0.9",
       "actual": 0.9000000002098835,
       "reference": 0.9,
-      "error": 2.332038266198803e-10,
-      "relative": true,
+      "error": 2.0988344395789227e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_100.0_0.99",
       "actual": 0.990000000025515,
       "reference": 0.99,
-      "error": 2.577276215114433e-11,
-      "relative": true,
+      "error": 2.5515034529632885e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_100.0_0.9999",
       "actual": 0.9998999999993156,
       "reference": 0.9999,
-      "error": 6.845209467760866e-13,
-      "relative": true,
+      "error": 6.84452494681409e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -2538,56 +2538,56 @@
       "name": "q_cdf_2000.0_500.0_0.0001",
       "actual": 0.00010000000021904237,
       "reference": 0.0001,
-      "error": 2.19042367794256e-09,
-      "relative": true,
+      "error": 2.19042367794256e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_500.0_0.01",
       "actual": 0.010000000020783694,
       "reference": 0.01,
-      "error": 2.078369421010251e-09,
-      "relative": true,
+      "error": 2.078369421010251e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_500.0_0.1",
       "actual": 0.10000000018137195,
       "reference": 0.1,
-      "error": 1.813719452403717e-09,
-      "relative": true,
+      "error": 1.813719452403717e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_500.0_0.5",
       "actual": 0.5000000004961456,
       "reference": 0.5,
-      "error": 9.922911381465838e-10,
-      "relative": true,
+      "error": 4.961455690732919e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_500.0_0.9",
       "actual": 0.9000000002044757,
       "reference": 0.9,
-      "error": 2.271951762524951e-10,
-      "relative": true,
+      "error": 2.044756586272456e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_500.0_0.99",
       "actual": 0.9900000000250984,
       "reference": 0.99,
-      "error": 2.535188669544552e-11,
-      "relative": true,
+      "error": 2.5098367828491064e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_500.0_0.9999",
       "actual": 0.9998999999993495,
       "reference": 0.9999,
-      "error": 6.505447246003393e-13,
-      "relative": true,
+      "error": 6.504796701278792e-13,
+      "relative": false,
       "passed": true
     },
     {
@@ -2650,128 +2650,128 @@
       "name": "q_cdf_2000.0_999.0_0.0001",
       "actual": 0.00010000000016043443,
       "reference": 0.0001,
-      "error": 1.60434423450255e-09,
-      "relative": true,
+      "error": 1.60434423450255e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_999.0_0.01",
       "actual": 0.010000000015121501,
       "reference": 0.01,
-      "error": 1.512150127336298e-09,
-      "relative": true,
+      "error": 1.512150127336298e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_999.0_0.1",
       "actual": 0.100000000132745,
       "reference": 0.1,
-      "error": 1.327449955512705e-09,
-      "relative": true,
+      "error": 1.327449955512705e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_999.0_0.5",
       "actual": 0.5000000003639443,
       "reference": 0.5,
-      "error": 7.278886382522387e-10,
-      "relative": true,
+      "error": 3.6394431912611935e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_999.0_0.9",
       "actual": 0.9000000001503469,
       "reference": 0.9,
-      "error": 1.6705205120438726e-10,
-      "relative": true,
+      "error": 1.5034684608394855e-10,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_999.0_0.99",
       "actual": 0.9900000000184975,
       "reference": 0.99,
-      "error": 1.8684380642002218e-11,
-      "relative": true,
+      "error": 1.8497536835582196e-11,
+      "relative": false,
       "passed": true
     },
     {
       "name": "q_cdf_2000.0_999.0_0.9999",
       "actual": 0.9998999999992914,
       "reference": 0.9999,
-      "error": 7.087262292411615e-13,
-      "relative": true,
+      "error": 7.086553566182374e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_2000.0_1e-06",
       "actual": 9.999999993256686e-07,
       "reference": 1e-06,
-      "error": 6.74331399638621e-10,
-      "relative": true,
+      "error": 6.74331399638621e-16,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_2000.0_0.0001",
       "actual": 0.00010000000000024833,
       "reference": 0.0001,
-      "error": 2.4832295508064872e-12,
-      "relative": true,
+      "error": 2.483229550806487e-16,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_2000.0_0.01",
       "actual": 0.010000000000021131,
       "reference": 0.01,
-      "error": 2.1130666660873487e-12,
-      "relative": true,
+      "error": 2.1130666660873487e-14,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_2000.0_0.1",
       "actual": 0.10000000000024932,
       "reference": 0.1,
-      "error": 2.493144579673867e-12,
-      "relative": true,
+      "error": 2.493144579673867e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_2000.0_0.5",
       "actual": 0.50000000000072,
       "reference": 0.5,
-      "error": 1.439959262938828e-12,
-      "relative": true,
+      "error": 7.19979631469414e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_2000.0_0.9",
       "actual": 0.9000000000002826,
       "reference": 0.9,
-      "error": 3.1394639974122483e-13,
-      "relative": true,
+      "error": 2.8255175976710234e-13,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_2000.0_0.99",
       "actual": 0.9900000000000374,
       "reference": 0.99,
-      "error": 3.7792440333199774e-14,
-      "relative": true,
+      "error": 3.7414515929867775e-14,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_2000.0_0.9999",
       "actual": 0.9999000000000006,
       "reference": 0.9999,
-      "error": 5.551670290154798e-16,
-      "relative": true,
+      "error": 5.551115123125783e-16,
+      "relative": false,
       "passed": true
     },
     {
       "name": "radius_cdf_2000.0_0.999999",
       "actual": 0.9999989999999995,
       "reference": 0.999999,
-      "error": 4.440896539397166e-16,
-      "relative": true,
+      "error": 4.440892098500626e-16,
+      "relative": false,
       "passed": true
     },
     {

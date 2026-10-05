@@ -83,8 +83,8 @@ def main():
                 check(f'{label}_{cut}_{r}',got,ref)
             check(f'python_energy_identity_{r}',eps,analytic)
             check(f'python_pressure_identity_{r}',pr,analytic*u/(3*(1-u)))
-        elif kind=='radius':check(f'radius_cdf_{cut}_{v[1]}',mass(v[2])/mass(cut),v[1],False)
-        elif kind=='q':check(f'q_cdf_{cut}_{v[1]}_{v[2]}',qcdf(v[1],v[3]),v[2],False)
+        elif kind=='radius':check(f'radius_cdf_{cut}_{v[1]}',mass(v[2])/mass(cut),v[1])
+        elif kind=='q':check(f'q_cdf_{cut}_{v[1]}_{v[2]}',qcdf(v[1],v[3]),v[2])
     for cut,(m0,mi,rh,pr) in norms.items():
         norms[cut]=dict(M0=m0,M0_inf=mi,rest_mass_median=rh,P_ref=pr,
                        omitted_rest_mass=mi-m0,omitted_fraction=(mi-m0)/mi)

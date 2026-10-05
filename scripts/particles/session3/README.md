@@ -1,7 +1,12 @@
 # Plummer session 03 — isotropic equilibrium benchmark
 
-Started 2026-10-05 (America/Los_Angeles). Status: implementation and preflight.
-No scientific equilibrium claim has been made.
+Started 2026-10-05 (America/Los_Angeles). Status: initialization and matched
+100-step preflights validated; production stopped at the budget-discussion gate.
+The measured matrix projects403.08 AMD node-hours against the approved200.
+No scientific equilibrium claim has been made. See the
+[scientific report](reports/REPORT_Plummer_session3.md),
+[technical record](reports/REPORT_AGENT_Plummer_session3.md) and
+[budget alternatives](evidence/budget_options.json).
 
 The authoritative specification is `Plummer_Isotropic_Session_Prompt.md` and Part I
 of `Relativistic_Plummer_Step_by_Step.pdf`. Both are checksum-verified copies;

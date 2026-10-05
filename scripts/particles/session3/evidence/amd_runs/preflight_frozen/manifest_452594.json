@@ -1,0 +1,86 @@
+[
+  {
+    "path": "input_452594.athinput",
+    "size": 2791
+  },
+  {
+    "path": "out/cbin_adm_2/preflight_frozen.adm.00000.cbin",
+    "size": 173863656
+  },
+  {
+    "path": "out/cbin_adm_2/preflight_frozen.adm.00001.cbin",
+    "size": 173863692
+  },
+  {
+    "path": "out/preflight_frozen.plummer_admmass.csv",
+    "size": 154
+  },
+  {
+    "path": "out/preflight_frozen.plummer_admmom.csv",
+    "size": 2184
+  },
+  {
+    "path": "out/preflight_frozen.plummer_cohorts.csv",
+    "size": 21692
+  },
+  {
+    "path": "out/preflight_frozen.plummer_health.csv",
+    "size": 1021
+  },
+  {
+    "path": "out/preflight_frozen.plummer_invariants.csv",
+    "size": 615
+  },
+  {
+    "path": "out/preflight_frozen.plummer_physical.csv",
+    "size": 87919
+  },
+  {
+    "path": "out/preflight_frozen.plummer_radii.csv",
+    "size": 2867
+  },
+  {
+    "path": "out/preflight_frozen.plummer_shells.csv",
+    "size": 278373
+  },
+  {
+    "path": "out/preflight_frozen.user.hst",
+    "size": 3017
+  },
+  {
+    "path": "out/pvtk/preflight_frozen.prtcl_all.00000.part.vtk",
+    "size": 84541821
+  },
+  {
+    "path": "out/pvtk/preflight_frozen.prtcl_all.00001.part.vtk",
+    "size": 84541827
+  },
+  {
+    "path": "out/pvtk/preflight_frozen.prtcl_all.00002.part.vtk",
+    "size": 84541828
+  },
+  {
+    "path": "out/rst/preflight_frozen.00000.rst",
+    "size": 5600398570
+  },
+  {
+    "path": "out/rst/preflight_frozen.00001.rst",
+    "size": 5600398570
+  },
+  {
+    "path": "preflight_frozen.isotropic_initial.csv",
+    "size": 307
+  },
+  {
+    "path": "runner.lock",
+    "size": 0
+  },
+  {
+    "path": "segment_452594.log",
+    "size": 4536
+  },
+  {
+    "path": "vram_452594.log",
+    "size": 2159
+  }
+]

@@ -1,0 +1,97 @@
+{
+  "actual_node_hours": 0.6072222222222223,
+  "reserved_remaining_node_hours": 0.0,
+  "records": {
+    "452534": {
+      "state": "CANCELLED",
+      "elapsed_seconds": 0,
+      "nodes": 0,
+      "exit_code": "0:0"
+    },
+    "452548": {
+      "state": "CANCELLED",
+      "elapsed_seconds": 0,
+      "nodes": 0,
+      "exit_code": "0:0"
+    },
+    "452549": {
+      "state": "CANCELLED",
+      "elapsed_seconds": 0,
+      "nodes": 0,
+      "exit_code": "0:0"
+    },
+    "452552": {
+      "state": "COMPLETED",
+      "elapsed_seconds": 294,
+      "nodes": 1,
+      "exit_code": "0:0"
+    },
+    "452553": {
+      "state": "CANCELLED",
+      "elapsed_seconds": 0,
+      "nodes": 0,
+      "exit_code": "0:0"
+    },
+    "452554": {
+      "state": "CANCELLED",
+      "elapsed_seconds": 0,
+      "nodes": 0,
+      "exit_code": "0:0"
+    },
+    "452585": {
+      "state": "COMPLETED",
+      "elapsed_seconds": 338,
+      "nodes": 1,
+      "exit_code": "0:0"
+    },
+    "452594": {
+      "state": "COMPLETED",
+      "elapsed_seconds": 509,
+      "nodes": 1,
+      "exit_code": "0:0"
+    },
+    "452595": {
+      "state": "COMPLETED",
+      "elapsed_seconds": 638,
+      "nodes": 1,
+      "exit_code": "0:0"
+    },
+    "452606": {
+      "state": "FAILED",
+      "elapsed_seconds": 5,
+      "nodes": 1,
+      "exit_code": "2:0"
+    },
+    "452612": {
+      "state": "COMPLETED",
+      "elapsed_seconds": 316,
+      "nodes": 1,
+      "exit_code": "0:0"
+    },
+    "452625": {
+      "state": "COMPLETED",
+      "elapsed_seconds": 16,
+      "nodes": 1,
+      "exit_code": "0:0"
+    },
+    "452637": {
+      "state": "FAILED",
+      "elapsed_seconds": 1,
+      "nodes": 1,
+      "exit_code": "2:0"
+    },
+    "452651": {
+      "state": "COMPLETED",
+      "elapsed_seconds": 16,
+      "nodes": 1,
+      "exit_code": "0:0"
+    },
+    "452661": {
+      "state": "COMPLETED",
+      "elapsed_seconds": 53,
+      "nodes": 1,
+      "exit_code": "0:0"
+    }
+  },
+  "budget": 200.0
+}
