@@ -60,7 +60,11 @@ def main():
     # Shell Ylm ledgers have full history cadence and retain signed coefficients.
     shells=table(next((a.run/'out').glob('*.plummer_shells.csv')),limit,('cycle','bin'))
     save_csv(a.out/'shell_modes.csv',shells)
-    mode_rows=[];particle_rows=[];movie=[];selected=None;bands=None
+    primary=list((a.run/'out').glob('*.plummer_modes.csv'))
+    native_modes=table(primary[0],limit,('cycle','band')) if primary else []
+    if native_modes:save_csv(a.out/'modes_native.csv',native_modes)
+    mode_rows=[];particle_rows=[];movie=[];selected=None
+    bands=np.array([row['rhi'] for row in native_modes if row['cycle']==native_modes[0]['cycle'] and row['band']<3]) if native_modes else None
     healthy_cycles={int(r['cycle']):r['time'] for r in health}
     last_cycle=max(healthy_cycles)
     seen_cycles=set()
@@ -110,7 +114,7 @@ def main():
         np.savez_compressed(a.out/'movie_particles.npz',time=np.array([r['time'] for r in movie]),
                             pos=np.array([r['pos'] for r in movie]),tags=selected)
     report=dict(run=str(a.run),health=window,tmax=limit,reference_period=PREF,
-                particle_frames=len(particle_rows),mode_bands='fixed initial coordinate-radius quartile boundaries; COM directions',
+                particle_frames=len(particle_rows),mode_bands='common untruncated-rest-mass quartiles in COM coordinate radius' if native_modes else 'legacy dump quartiles; diagnostic only',
                 proper_stress_source='in-code orthonormal frame and evolved ADM metric',
                 radius_definition='evolved-metric tangential areal-radius proxy, dense histogram with retained bounds',
                 initial_pair_noise='N/2; later noise measured from matched frozen time series')

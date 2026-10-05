@@ -58,7 +58,7 @@ def deck(name,live,cut=1000,n=2113536,levels=10,cfl=.25,periods=5,nlim=100000000
     if live:
         # Native cell slices preserve the deposited cell averages. Rendering performs
         # area-overlap averaging onto fixed pixels; never interpolate CIC density.
-        for variable in ('tmunu','con','adm'):
+        for variable in ('tmunu','con','z4c_alpha'):
             output.append(dict(file_type='bin',variable=variable,slice_x3=0,dt=REF/50))
     output.append(dict(file_type='cbin',variable='adm',coarsen_factor=2,dt=REF/10))
     # Output types are inserted at the front. Last non-restart declaration makes
@@ -82,10 +82,15 @@ def main():
                                expected_leaf_blocks=64+56*levels,CFL=cfl,periods=periods,
                                P_ref=REF,tlim=periods*REF,finest_dx=320/2**levels))
     for live in (False,True):
-        for prefix,periods,nlim in [('preflight',5,100),('pilot',.25,100000000),
+        for prefix,periods,nlim in [('preflight',5,100),('pilot',.30,100000000),
+                                    ('split',.30,740),('short',.025,100000000),
                                     ('halfdt',.025,100000000)]:
             name=prefix+('_live' if live else '_frozen')
-            (ROOT/'inputs'/f'{name}.athinput').write_text(deck(name,live,cfl=.125 if prefix=='halfdt' else .25,
-                                                              periods=periods,nlim=nlim))
+            text=deck(name,live,cfl=.125 if prefix=='halfdt' else .25,periods=periods,nlim=nlim)
+            if prefix in ('pilot','split'):
+                # Quarter-period checkpoint, plus a 0.05-period post-transient
+                # interval to establish the constraint reference without t=0.
+                text=text.replace('dt = '+format(REF,'.17g'),'dt = '+format(REF/4,'.17g'))
+            (ROOT/'inputs'/f'{name}.athinput').write_text(text)
     (ROOT/'state/matrix.json').write_text(json.dumps(matrix,indent=2)+'\n')
 if __name__=='__main__':main()

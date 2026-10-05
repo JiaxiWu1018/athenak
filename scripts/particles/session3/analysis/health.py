@@ -14,22 +14,27 @@ def evaluate(run):
     run=Path(run);ledgers=list(run.glob('out/*.plummer_health.csv'))
     if len(ledgers)!=1:
         return dict(valid=False,reason='missing or ambiguous health ledger',last_healthy_time=None)
-    rows=read_rows(ledgers[0]);unique={}
+    rows=read_rows(ledgers[0]);unique={};duplicates={}
     for row in rows:
         try:t=float(row['time'])
         except (ValueError,KeyError):continue
+        duplicates.setdefault(t,[]).append(row)
         unique[t]=row
     last=None;reason=None;physical_stop=False
     for t,row in sorted(unique.items()):
-        try:
-            numbers=[float(row[k]) for k in ('N','N_expected','M0','M0_expected',
-                     'mass_error','particle_nonfinite','alpha_min','H_core_L2','M_core_L2')]
-            finite=all(math.isfinite(v) for v in numbers)
-            good=finite and int(row['healthy'])==1 and numbers[0]==numbers[1] and numbers[5]==0 and numbers[4]<=1.e-10
-        except (ValueError,KeyError):good=False
+        good=True;stopped=False
+        # A later duplicate at restart/finalization cannot erase an earlier failure.
+        for repeated in duplicates[t]:
+            try:
+                numbers=[float(repeated[k]) for k in ('N','N_expected','M0','M0_expected',
+                         'mass_error','particle_nonfinite','alpha_min','H_core_L2','M_core_L2')]
+                finite=math.isfinite(t) and all(math.isfinite(v) for v in numbers)
+                good=good and finite and int(repeated['healthy'])==1 and numbers[0]==numbers[1] and numbers[5]==0 and 0<=numbers[4]<=1.e-10
+                stopped=stopped or bool(int(repeated['physical_stop'])) or numbers[6]<.2 or int(repeated['constraint_strikes'])>=3
+            except (ValueError,KeyError):good=False
         if not good:reason=f'numerical health failure at {t:.17g}';break
         last=t
-        if int(row['physical_stop']) or numbers[6]<.2 or int(row['constraint_strikes'])>=3:
+        if stopped:
             physical_stop=True;reason=f'physical/constraint stop at {t:.17g}';break
     # Fatal field checks can abort before a row is appended. Preserve the last good
     # window while forbidding continuation. Logs are part of the health contract.

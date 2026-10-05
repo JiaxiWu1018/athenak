@@ -122,8 +122,12 @@ void CheckIsotropicFields(Mesh *pm) {
       const Real bx=live?u0(m,z4c::Z4c::I_Z4C_BETAX,k,j,i):ua(m,adm::ADM::I_ADM_BETAX,k,j,i);
       const Real by=live?u0(m,z4c::Z4c::I_Z4C_BETAY,k,j,i):ua(m,adm::ADM::I_ADM_BETAY,k,j,i);
       const Real bz=live?u0(m,z4c::Z4c::I_Z4C_BETAZ,k,j,i):ua(m,adm::ADM::I_ADM_BETAZ,k,j,i);
+      // Fixed benchmark gauge: 1+log coefficient 2 and legacy shift_Gamma=1.
+      // The longitudinal shift speed uses the inverse conformal metric, so its
+      // bound includes psi^2, not lapse, before multiplying sqrt(gamma^{-1}).
+      const Real psi2=Kokkos::pow(determinant,1.0/6);
       const Real speed=Kokkos::sqrt(bx*bx+by*by+bz*bz)+Kokkos::sqrt(eigen_bound)*
-        Kokkos::fmax(Kokkos::sqrt(2*Kokkos::fabs(alpha)),Kokkos::fabs(alpha)*Kokkos::sqrt(4.0/3));
+        Kokkos::fmax(Kokkos::sqrt(2*Kokkos::fabs(alpha)),psi2*Kokkos::sqrt(4.0/3));
       Kokkos::atomic_max(&peaks(0),speed);
       Kokkos::atomic_max(&peaks(1),Kokkos::pow(Primitive::GetDeterminant(g),1.0/12));
       const Real x=CellCenterX(i-is,nx,sz.d_view(m).x1min,sz.d_view(m).x1max)-cx;

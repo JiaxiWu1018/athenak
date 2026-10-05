@@ -1,6 +1,6 @@
 # Session 03 isotropic Part I; sampling cut is not an orbital boundary.
 <job>
-basename = lowN_live
+basename = split_live
 
 <mesh>
 nghost = 4
@@ -122,8 +122,8 @@ x3max = 20.0
 evolution = dynamic
 integrator = rk4
 cfl_number = 0.25
-nlim = 100000000
-tlim = 923.99140087318028
+nlim = 740
+tlim = 138.59871013097703
 ndiag = 10
 
 <z4c>
@@ -170,7 +170,7 @@ plummer_model = isotropic
 plummer_mass = 1
 plummer_isotropic_a = 10
 plummer_sampling_radius = 1000
-plummer_npair = 264192
+plummer_npair = 1056768
 plummer_seed = 1985
 plummer_shell_nbin = 64
 plummer_shell_rmin = 0.3125
@@ -223,5 +223,5 @@ data_format = %.17e
 
 <output7>
 file_type = rst
-dt = 461.99570043659014
+dt = 115.49892510914754
 

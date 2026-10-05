@@ -41,6 +41,7 @@ void InitializeIsotropicPlummer(Mesh *pm, ParameterInput *pin, bool restart) {
   plummer_constraint_reference=pin->GetOrAddReal("problem","plummer_constraint_reference",0.0);
   plummer_constraint_strikes=pin->GetOrAddInteger("problem","plummer_constraint_initial_strikes",0);
   plummer::IsotropicProfile prof(M,a,cut);
+  for(int d=0;d<3;++d) plummer_mode_edges[d]=prof.InvertF0((d+1)*.25*prof.M0_inf/prof.M0);
   const Real mu=prof.M0/ntotal;
   plummer_particle_mass=mu;plummer_M0=prof.M0;plummer_MADM=M;
   plummer_bscale=a;plummer_rt=cut;plummer_Rt=cut;

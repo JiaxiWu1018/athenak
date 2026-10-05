@@ -15,6 +15,19 @@ module purge
 module load gnu12/12.2.0 openmpi4/4.1.8 cmake/3.25.2 prun/2.3 rocm/6.4.1
 export OMPI_MCA_btl_vader_single_copy_mechanism=none
 build=$(cat "$root/state/build_path.txt")
+if [[ "$label" == main_* || "$label" == tail_* || "$label" == coarse_* || "$label" == lowN_* ]]; then
+  python3 - "$root/state/production_gate.json" <<'PY'
+import json,sys
+assert json.load(open(sys.argv[1]))['passed'], 'production gate is not satisfied'
+PY
+fi
+if [[ "$label" == pilot_* || "$label" == split_* || "$label" == short_* || "$label" == halfdt_* || "$label" == main_* || "$label" == tail_* || "$label" == coarse_* || "$label" == lowN_* ]]; then
+  build=$(python3 - "$root/state/validated_build.json" <<'PY'
+import json,sys
+record=json.load(open(sys.argv[1]));assert record['passed'];print(record['build_path'])
+PY
+)
+fi
 exe=$build/src/athena
 run=$root/runs/$label
 mkdir -p "$run/out"
@@ -32,10 +45,33 @@ git -C "$root/src/athenak" submodule status
 sha256sum "$exe" "input_$SLURM_JOB_ID.athinput"
 test -x "$exe"
 args=(-i "input_$SLURM_JOB_ID.athinput")
+endpoint=''
+if [ -f "$root/state/run_plan.json" ]; then
+  endpoint=$(python3 - "$root/state/run_plan.json" "$label" <<'PY'
+import json,sys
+print(json.load(open(sys.argv[1])).get(sys.argv[2],{}).get('endpoint',''))
+PY
+)
+fi
 if [ -f segment_state.json ]; then
-  python3 "$root/scripts/resume_args.py" "$run" > resume.json
+  if [ -n "$endpoint" ]; then
+    python3 "$root/scripts/resume_args.py" "$run" "$endpoint" > resume.json
+  else
+    python3 "$root/scripts/resume_args.py" "$run" > resume.json
+  fi
   restart=$(python3 -c 'import json;print(json.load(open("resume.json"))["checkpoint"])')
   args=(-r "$restart")
+fi
+if [ -n "$endpoint" ]; then args+=("time/tlim=$endpoint"); fi
+if [ -f segment_state.json ]; then
+  strikes=$(python3 - "$root/analysis" "$run" <<'PY'
+import sys
+sys.path.insert(0,sys.argv[1])
+from health import read_rows,evaluate
+h=evaluate(sys.argv[2]);rows=read_rows(h['ledger']);print(rows[-1]['constraint_strikes'])
+PY
+)
+  args+=("problem/plummer_constraint_initial_strikes=$strikes")
 fi
 # Reserve fifteen minutes in four-hour production segments, and twenty percent
 # in short preflights so Slurm can backfill them into smaller queue openings.

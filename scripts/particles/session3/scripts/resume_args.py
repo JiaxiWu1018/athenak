@@ -4,8 +4,12 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'analysis'))
 from health import require_window
 from restart_header import read_header
 run=Path(sys.argv[1]);health=require_window(run,allow_stopped=False)
+endpoint=float(sys.argv[2]) if len(sys.argv)>2 else None
 state=json.loads((run/'segment_state.json').read_text())
-if state['completed']:raise RuntimeError('endpoint already completed; restart forbidden')
+if endpoint is not None and endpoint<=state.get('checkpoint_time',float('inf'))+1.e-10:
+    raise RuntimeError('requested endpoint already reached; restart forbidden')
+if state['completed'] and endpoint is None:
+    raise RuntimeError('endpoint already completed; explicit later endpoint required')
 if state['returncode'] and not state.get('resource_failure',False):
     raise RuntimeError('non-resource failure requires diagnosis before retry')
 checkpoint=Path(state['checkpoint'])
@@ -20,4 +24,4 @@ if digest is None:
     digest=h.hexdigest()
 if digest!=state['checkpoint_sha256']:raise RuntimeError('checkpoint checksum mismatch')
 if read_header(checkpoint)['time']!=state['checkpoint_time']:raise RuntimeError('checkpoint header time changed')
-print(json.dumps(dict(checkpoint=str(checkpoint),health=health)))
+print(json.dumps(dict(checkpoint=str(checkpoint),health=health,endpoint=endpoint)))

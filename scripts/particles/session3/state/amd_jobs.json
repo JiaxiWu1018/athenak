@@ -1,0 +1,12 @@
+[
+  {"job_id":"452534","kind":"build","label":"superseded","limit_hours":2},
+  {"job_id":"452548","kind":"preflight","label":"superseded_frozen","limit_hours":4},
+  {"job_id":"452549","kind":"preflight","label":"superseded_live","limit_hours":4},
+  {"job_id":"452552","kind":"build","label":"build_b63917f9","limit_hours":0.5},
+  {"job_id":"452553","kind":"preflight","label":"superseded_frozen_2","limit_hours":4},
+  {"job_id":"452554","kind":"preflight","label":"superseded_live_2","limit_hours":4},
+  {"job_id":"452585","kind":"build","label":"build_4ebd7565","limit_hours":0.5},
+  {"job_id":"452594","kind":"preflight","label":"preflight_frozen","limit_hours":0.5},
+  {"job_id":"452595","kind":"preflight","label":"preflight_live","limit_hours":0.5},
+  {"job_id":"452606","kind":"supplementary_startup","label":"sanity1_live","limit_hours":0.25}
+]

@@ -197,7 +197,7 @@ dt = 9.239914008731803
 
 <output4>
 file_type = bin
-variable = adm
+variable = z4c_alpha
 slice_x3 = 0
 dt = 9.239914008731803
 

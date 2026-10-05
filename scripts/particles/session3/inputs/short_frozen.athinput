@@ -1,6 +1,6 @@
 # Session 03 isotropic Part I; sampling cut is not an orbital boundary.
 <job>
-basename = lowN_live
+basename = short_frozen
 
 <mesh>
 nghost = 4
@@ -123,35 +123,16 @@ evolution = dynamic
 integrator = rk4
 cfl_number = 0.25
 nlim = 100000000
-tlim = 923.99140087318028
+tlim = 11.549892510914754
 ndiag = 10
 
-<z4c>
-lapse_harmonic = 0.0
-lapse_harmonicf = 1.0
-lapse_oplog = 2.0
-lapse_advect = 1.0
-shift_driver = legacy
-shift_eta = 2.0
-shift_advect = 1.0
-shift_Gamma = 1.0
-shift_alpha2Gamma = 0.0
-shift_H = 0.0
-const_damp = true
-diss = 0.1
-chi_div_floor = 0.00001
-use_z4c = false
-hdamp_cH = 0.02
-hdamp_par_safety = 0.5
-damp_kappa1 = 0.0
-damp_kappa2 = 0.0
-nrad_wave_extraction = 0
+<adm>
 
 <particles>
 particle_type = dust
 pusher = gr_boris
 init = pgen
-feedback = true
+feedback = false
 mass = 1
 debug = 0
 destroy_log = true
@@ -170,7 +151,7 @@ plummer_model = isotropic
 plummer_mass = 1
 plummer_isotropic_a = 10
 plummer_sampling_radius = 1000
-plummer_npair = 264192
+plummer_npair = 1056768
 plummer_seed = 1985
 plummer_shell_nbin = 64
 plummer_shell_rmin = 0.3125
@@ -193,35 +174,17 @@ variable = prtcl_all
 dt = 4.619957004365902
 
 <output2>
-file_type = bin
-variable = tmunu
-slice_x3 = 0
-dt = 9.239914008731803
-
-<output3>
-file_type = bin
-variable = con
-slice_x3 = 0
-dt = 9.239914008731803
-
-<output4>
-file_type = bin
-variable = z4c_alpha
-slice_x3 = 0
-dt = 9.239914008731803
-
-<output5>
 file_type = cbin
 variable = adm
 coarsen_factor = 2
 dt = 46.199570043659016
 
-<output6>
+<output3>
 file_type = hst
 dt = 2.309978502182951
 data_format = %.17e
 
-<output7>
+<output4>
 file_type = rst
 dt = 461.99570043659014
 

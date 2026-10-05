@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "health": {
+    "valid": true,
+    "reason": null,
+    "physical_stop": false,
+    "last_healthy_time": 0.0,
+    "ledger": "runs/cpu_ledger_t0_11073/out/main_live.plummer_health.csv",
+    "samples": 1
+  },
+  "mode_times": 1,
+  "characteristic_bound": 1.4141532910677814,
+  "definition": "fixed common untruncated-rest-mass quartiles in COM coordinate radius"
+}

@@ -125,6 +125,7 @@ Real plummer_constraint_reference = 0.0;
 int plummer_constraint_strikes = 0;
 std::vector<Real> plummer_proper_volumes;
 DualArray2D<Real> plummer_orbit_reference;
+Real plummer_mode_edges[3]={0,0,0};
 
 // ------------------------------------------------------------------ module state
 // Set once by UserProblem and read by the history hook.  All are host-side scalars.
@@ -865,6 +866,9 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
   Kokkos::deep_copy(glob2, 0.0);
   const Real comx = com[0], comy = com[1], comz = com[2];
   DvceArray1D<Real> accc("plummer shell acc com", static_cast<std::size_t>(nbin)*nylm);
+  DvceArray1D<Real> modebands("isotropic COM radial bands",physical?4*26:1);
+  Kokkos::deep_copy(modebands,0.0);
+  const Real edge0=plummer_mode_edges[0],edge1=plummer_mode_edges[1],edge2=plummer_mode_edges[2];
   Kokkos::deep_copy(accc, 0.0);
   Kokkos::parallel_for("plummer com moments",
       Kokkos::RangePolicy<>(DevExeSpace(), 0, npart),
@@ -877,6 +881,13 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
     const Real rs = (rr > 1.0e-14) ? rr : 1.0e-14;
     Real Y[NYLM_MAX];
     RealYlm(x/rs, y/rs, z/rs, lmax, Y);
+    if(physical) {
+      // Fixed, common untruncated-rest-mass quartile radii; COM coordinate radius
+      // and direction. No Eulerian band is normalized by its initial amplitude.
+      const int band=rr<edge0?0:rr<edge1?1:rr<edge2?2:3;
+      Kokkos::atomic_add(&modebands(band*26),1.0);
+      for(int q=0;q<nylm;++q) Kokkos::atomic_add(&modebands(band*26+1+q),Y[q]);
+    }
     for (int q = 0; q < nylm; ++q) { Kokkos::atomic_add(&glob2(q), Y[q]); }
     Kokkos::atomic_add(&glob2(NYLM_MAX), 1.0);
     // per-shell COM-subtracted moments, binned by the SAME areal-radius bin as pass 1
@@ -899,6 +910,38 @@ PlummerParticleHealth PlummerParticleDiagnostics(Mesh *pm, Real time, int ncycle
                 MPI_ATHENA_REAL, MPI_SUM, MPI_COMM_WORLD);
 #endif
   const Real n2 = vg2[NYLM_MAX];
+  if(physical && write_csv) {
+    auto hb=Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),modebands);
+    std::vector<Real> bands(hb.data(),hb.data()+hb.extent(0));
+#if MPI_PARALLEL_ENABLED
+    MPI_Allreduce(MPI_IN_PLACE,bands.data(),bands.size(),MPI_ATHENA_REAL,MPI_SUM,MPI_COMM_WORLD);
+#endif
+    if(global_variable::my_rank==0) {
+      const std::string name=plummer_shell_fname.substr(0,plummer_shell_fname.find(".plummer_shells"))+".plummer_modes.csv";
+      const bool header=FileIsEmpty(name);std::ofstream out(name,std::ios::app);
+      if(header) {
+        out<<"# Fixed untruncated-rest-mass quartiles in COM coordinate radius; band 4 is global.\n"
+           <<"time,cycle,band,rlo,rhi,N,A1,A2,A3,A4,dipole_x,dipole_y,dipole_z";
+        for(int q=0;q<25;++q) out<<",sumY"<<q;
+        out<<'\n';
+      }
+      for(int b=0;b<5;++b) {
+        const Real count=b<4?bands[b*26]:n2;
+        Real sums[25];for(int q=0;q<25;++q) sums[q]=b<4?bands[b*26+1+q]:vg2[q];
+        const Real lo=b==0 || b==4?0:plummer_mode_edges[b-1];
+        const Real hi=b<3?plummer_mode_edges[b]:std::numeric_limits<Real>::infinity();
+        out<<std::setprecision(17)<<time<<','<<ncycle<<','<<b<<','<<lo<<','<<hi<<','<<count;
+        for(int l=1;l<=4;++l) {
+          Real norm=0;for(int q=l*l;q<(l+1)*(l+1);++q) norm+=sums[q]*sums[q];
+          out<<','<<(count>0?std::sqrt(4*M_PI/(2*l+1)*norm)/count:0);
+        }
+        const Real factor=count>0?1/(count*std::sqrt(3/(4*M_PI))):0;
+        out<<','<<sums[3]*factor<<','<<sums[1]*factor<<','<<sums[2]*factor;
+        for(int q=0;q<25;++q) out<<','<<sums[q];
+        out<<'\n';
+      }
+    }
+  }
   Real Acom[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
   if (n2 > 0.0) {
     for (int l = 1; l <= lmax; ++l) {

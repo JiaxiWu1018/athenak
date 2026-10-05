@@ -123,7 +123,7 @@ evolution = dynamic
 integrator = rk4
 cfl_number = 0.25
 nlim = 100000000
-tlim = 115.49892510914754
+tlim = 138.59871013097703
 ndiag = 10
 
 <adm>
@@ -186,5 +186,5 @@ data_format = %.17e
 
 <output4>
 file_type = rst
-dt = 461.99570043659014
+dt = 115.49892510914754
 
