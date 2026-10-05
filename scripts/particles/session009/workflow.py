@@ -44,6 +44,7 @@ def bindings(executables=True):
 
 def init():
  if (CONTROL/'config.json').exists():raise RuntimeError('configuration already frozen')
+ jid=int((CONTROL/'build_submission.txt').read_text())
  now=time.time();head=subprocess.check_output(['git','-C',str(ROOT/'athenak'),'rev-parse','HEAD'],text=True).strip()
  c=dict(campaign_id='jeans9_20261005',compiled_source_commit=head,input_sha256=digest(ROOT/'inputs/gi_cluster_s9.athinput'),
  script_hashes={p.name:digest(p) for p in (ROOT/'scripts').iterdir() if p.is_file()},target_time=400,M_ref=1,
@@ -51,8 +52,7 @@ def init():
  checkpoint_keep=3,campaign_storage_cap_bytes=int(1.25*1024**4),anta_storage_cap_bytes=16*1024**4,
  archive_root='/data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005',automatic_retries=0)
  atomic(CONTROL/'config.json',c)
- jid=int((CONTROL/'build_submission.txt').read_text())
- save(dict(campaign_id=c['campaign_id'],status='build_submitted',stop_requested=False,segments_completed=0,time=0,jobs=[dict(name='build',id=jid,nodes=1,max_wall_hours=1.5)],pending_submission=None))
+ save(dict(campaign_id=c['campaign_id'],status='build_submitted',stop_requested=False,segments_completed=0,time=0,jobs=[dict(name='build',id=jid,nodes=1,max_wall_hours=.5)],pending_submission=None))
 
 def recover(name):
  matches=set()
@@ -84,7 +84,7 @@ def submit():
  if s.get('gates_submitted'):return
  wave=submit_one(s,'wave_gate','amd_wave_gate.sbatch',[],3,2,'afterok:'+str(s['jobs'][0]['id']))
  gate=submit_one(s,'gate','amd_gate.sbatch',[],12,4,'afterok:'+str(wave))
- submit_one(s,'inspect0','amd_inspect.sbatch',[0,gate],1,1,'afterany:'+str(gate))
+ submit_one(s,'inspect0','amd_inspect.sbatch',[0,gate],1,.5,'afterany:'+str(gate))
  s['gates_submitted']=True;s['status']='gates_queued';save(s)
 
 def gate_receipt():
@@ -175,7 +175,7 @@ def inspect(segment,jid):
  target=12. if row['time']<12-1e-9 else min(400.,50.*(math.floor((row['time']+1e-8)/50.)+1))
  s['segment_target']=target;s['status']='ready_segment_'+str(nextseg);save(s)
  seg=submit_one(s,'segment'+str(nextseg),'amd_segment.sbatch',[nextseg],12,12,'afterok:'+os.environ['SLURM_JOB_ID'])
- submit_one(s,'inspect'+str(nextseg),'amd_inspect.sbatch',[nextseg,seg],1,1,'afterany:'+str(seg))
+ submit_one(s,'inspect'+str(nextseg),'amd_inspect.sbatch',[nextseg,seg],1,.5,'afterany:'+str(seg))
  s['status']='ready_segment_'+str(nextseg);save(s)
 
 def permit(segment):

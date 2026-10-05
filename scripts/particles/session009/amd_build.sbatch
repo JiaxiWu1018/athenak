@@ -5,7 +5,7 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -c 16
-#SBATCH -t 01:30:00
+#SBATCH -t 00:30:00
 #SBATCH --no-requeue
 set -euo pipefail
 ROOT=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005
