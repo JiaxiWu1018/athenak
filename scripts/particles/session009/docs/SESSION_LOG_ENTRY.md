@@ -1,0 +1,8 @@
+### 2026-10-05 —SESSION009 fresh production workflow submitted
+
+- Userapproved fresht0,5Mparticles/localboost0.133215,12MI210nodes/48ranks, domain±1024, finest1/256, wavefloor.25tor56, single-r50rawrPsi4 ell2..8every.025; independentnewsessioncheckout/roots preserveSession008.
+- Frozen/pushedsource6892be3e3f04ec573f91cb2034bc9d3009a3bdff, Kokkos6739bc6, canonicalinputSHA164002e107ae3023c37b206a4e83923410c38c5de7c18c9f704afd48f947ffff. Preserve263dcf21restart-headerrepair; diagnostic17-digitGWtimestampsseparatefromscientificinput.
+- PerseusSlurm11067 final9targetedtests+syntaxpassed; priorchecks11050/11055/11059/11065/11066 retained. AMDsite rejectedaninitial1.5hdevelrequest beforeallocation; fixedto30min andpreservedabortedconfig/rejection. Acceptedbuild452576running, wavegate452578,12nodefullgate452580,inspect452582queued, maximum55rawnodehexposure. Longproductionnotstartedatthisrecord; depends on actualpropagation/MPI/memory/ledger/restart/outputgates.
+- Durableone-successor12hsegments reservefullnodehourcost≤10000, hardt400/45days; earliestt12collapsecheckretained. Earlyringdownstoponlystrictacceptedcommon enclosure/usableband-limitedsignal/gapschecked/≥100afteroutgoingpeak; mergernotguaranteed.
+- Anta /data3destinationcreated (~27TiBfree), bounded45daymetadata-croninstalled≤96four-hourSlurmjobs,16TiBarchivecap. SealedscienceANDcheckpoints SHAverifiedbeforeAMDcleanup; latestthreeverifiedAMDcheckpoints,session1.25TiB/wholeuserguards. No S9rawdata onPerseus; exactstatus/stop/cancelcommands/reportlimitsinnewsessionREADME/evidence/SUBMISSION.md. NevercancelsotherSTjobss9_prod.
+- Analysis/reports/moviesevery50M areimplemented andpendingdata; no orbit/merger/ringdown findingsorfinalplotsfabricated. Campaignhistoryappendedonly.
