@@ -1,0 +1,21 @@
+{
+  "campaign": "jeans9_20261005",
+  "plan": "notes/APPROVED_PLAN.md",
+  "input": "inputs/gi_cluster_s9.athinput",
+  "source": "code/",
+  "versioned_scripts": "code/scripts/particles/session009/",
+  "AMD": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005",
+  "Anta": "/data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005",
+  "raw_outputs": "Anta:runs/*",
+  "checkpoints": "AMD:control/checkpoints.json and Anta:runs/*/rst/*.rst",
+  "verified_archives": "Anta:runs/*/ARCHIVE_VERIFIED.json",
+  "figures_movies": "Anta:analysis/update_*/",
+  "reports": [
+    "REPORT_Jeans9.md",
+    "REPORT_AGENT.md"
+  ],
+  "status": "AMD:control/state.json",
+  "resources": "AMD registered sacct; Anta evidence/active_archive_jobs.json; analysis/update_*/resources.json",
+  "cleanup": "ChecksumverifiedAnta-first; latestthreeAMDcheckpoints; approvedsealedsciencecleanup",
+  "Perseus_raw_data": "None; source/scripts/inputs/docs and small QA evidence only, retained"
+}
