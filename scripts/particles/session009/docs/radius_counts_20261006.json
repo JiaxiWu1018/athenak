@@ -1,0 +1,113 @@
+{
+  "mesh_only": true,
+  "no_particles_initialized": true,
+  "production_configuration_unchanged": true,
+  "initial_tree_source_identical_to_session9": true,
+  "rows": [
+    {
+      "case": "r50_buffer56",
+      "radius": 50,
+      "fine_extent": 56,
+      "initial_blocks": 7456,
+      "initial_cells": 244318208,
+      "levels": {
+        "0": 448,
+        "1": 448,
+        "2": 448,
+        "3": 296,
+        "4": 1216,
+        "5": 4080,
+        "6": 112,
+        "7": 104,
+        "8": 176,
+        "9": 128
+      },
+      "saved_blocks": 0,
+      "saved_fraction": 0.0
+    },
+    {
+      "case": "r40_floor40",
+      "radius": 40,
+      "fine_extent": 40,
+      "initial_blocks": 5384,
+      "initial_cells": 176422912,
+      "levels": {
+        "0": 448,
+        "1": 448,
+        "2": 448,
+        "3": 296,
+        "4": 1512,
+        "5": 1712,
+        "6": 112,
+        "7": 104,
+        "8": 176,
+        "9": 128
+      },
+      "saved_blocks": 2072,
+      "saved_fraction": 0.2778969957081545
+    },
+    {
+      "case": "r30_floor30",
+      "radius": 30,
+      "fine_extent": 30,
+      "initial_blocks": 4320,
+      "initial_cells": 141557760,
+      "levels": {
+        "0": 448,
+        "1": 448,
+        "2": 448,
+        "3": 296,
+        "4": 1664,
+        "5": 496,
+        "6": 112,
+        "7": 104,
+        "8": 176,
+        "9": 128
+      },
+      "saved_blocks": 3136,
+      "saved_fraction": 0.4206008583690987
+    },
+    {
+      "case": "r40_buffer46",
+      "radius": 40,
+      "fine_extent": 46,
+      "initial_blocks": 5384,
+      "initial_cells": 176422912,
+      "levels": {
+        "0": 448,
+        "1": 448,
+        "2": 448,
+        "3": 296,
+        "4": 1512,
+        "5": 1712,
+        "6": 112,
+        "7": 104,
+        "8": 176,
+        "9": 128
+      },
+      "saved_blocks": 2072,
+      "saved_fraction": 0.2778969957081545
+    },
+    {
+      "case": "r30_buffer36",
+      "radius": 30,
+      "fine_extent": 36,
+      "initial_blocks": 5384,
+      "initial_cells": 176422912,
+      "levels": {
+        "0": 448,
+        "1": 448,
+        "2": 448,
+        "3": 296,
+        "4": 1512,
+        "5": 1712,
+        "6": 112,
+        "7": 104,
+        "8": 176,
+        "9": 128
+      },
+      "saved_blocks": 2072,
+      "saved_fraction": 0.2778969957081545
+    }
+  ]
+}
