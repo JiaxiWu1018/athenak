@@ -13,3 +13,9 @@
 - Short enabled-extraction TT check452666 completed0:0 in7seconds on3MI210nodes; scale .999964725/.999966014 atλ2.5/5, residual<.002%. Saved quantity rPsi4 and implemented plus-polarization strain normalization/sign verified; imaginary sign source-audited. Original80M metric propagation measurements remain unchanged.
 - Actual AMD .879722222rawnodeh; current registered maximum49.379722222. Full5M startup452580/inspector452582 remain queued. No orbit/merger/ringdown result exists. Anta2334 automatically submitted to archive the additional sealed convention runs; node/GPUusage recorded separately.
 - Exact input/snapshot hashes, convention receipt, frozen configuration and current reports copied into versioned Session009 docs. Runtime scripts/source are frozen separately; compiled AMD revision remains6892be3e.
+
+### 2026-10-05 21:04 Pacific — Session009 live status and automation verified
+
+- User requested progress and continuous running/analysis/report/plot monitoring. Live AMD full5M startup452580 remains PENDING(Resources), inspector452582 PENDING(Dependency); no binary evolution/checkpoint or scientific result yet. Scheduler estimate October6 06:26:53Pacific is provisional.
+- Existing five-minute Anta cron verified; direct lightweight tick succeeded and refreshed AMD heartbeat. Frozen bindings pass, no active stop/archive halt. Successful inspectors continue finite checkpointed segments; allocated Anta jobs archive/verify and update initial/t12/every50M/final products without an interactive agent. No redundant monitor added.
+- AMD actual0.879722222rawnodeh; Anta2333/2334 completed0:0, total0.064166667node/GPUh. Queue waits uncharged. Existing physical/resource/calendar limits and failure-for-review policy unchanged. Current status and machine-readable verification retained under Session009 evidence and versioned docs.

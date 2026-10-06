@@ -1,6 +1,6 @@
 # Current status and next action — Session 009
 
-Dated October 5, 2026, afternoon Pacific time. This is a snapshot; AMD control/state.json and live Slurm accounting are authoritative.
+Checked October 5, 2026, 21:04 Pacific (October 6, 04:04 UTC). This is a snapshot; AMD control/state.json and live Slurm accounting are authoritative.
 
 ## Completed
 
@@ -16,7 +16,7 @@ Dated October 5, 2026, afternoon Pacific time. This is a snapshot; AMD control/s
 - AMD452666 completed0:0 in7seconds on3nodes; both enabled-extraction cases passed (scale error<.004%, residual<.002%). Original zero Weyl arrays were uncalculated; the new receipt verifies the convention. Strain still requires sufficient uninterrupted production data.
 - No full production segment is submitted yet. The conditional durable workflow is submitted; no checkpoint/orbit/merger/ringdown result is claimed.
 
-AMD currently has20 allocated MI210 nodes and one down node. Latest scheduler estimate before preparation holds: fullgate2026-10-06T05:56:47CDT (03:56:47Pacific); The short calibration fit into an earlier allocation and has completed. Estimates can change, particularly after holds/releases. No job remains intentionally held. Actual successful full startup, including full balanced mesh/GPU memory, remains required before readiness is claimed.
+Live Slurm shows full startup452580 PENDING(Resources), inspector452582 PENDING(Dependency), and no binary evolution running. Current estimated startup is October6 08:26:53CDT (06:26:53Pacific;13:26:53UTC). This is a scheduler estimate and can change. No job remains intentionally held. Actual successful full startup, including full balanced mesh/GPU memory, remains required before readiness is claimed.
 
 ## Resources, paths and stops
 
@@ -47,3 +47,12 @@ No Session009 particle/volume/checkpoint data onPerseus; source≈57MiB plus sma
 ## Final preparation check
 
 Both Anta jobs completed successfully; all four test runs checksum-verified. Full AMD startup452580/inspector452582 remain queued. Final source/input/executable/script bindings pass with no stop flags, and metadata heartbeat/cron are active. Updated documentation/source push receipt is evidence/PUSH_STATUS.txt. No further manual task is needed to trigger the pending continuation chain. Representative science plots/movie review remains pending data.
+
+## Live automation verification — October 5, 21:04 Pacific
+
+- AMD frozen source/input/executable/script bindings passed. No active USER_STOP, REQUEST_STOP, resource or archive error flag. Historical ERROR_interactive.json remains preserved and is not an active stop.
+- Anta JEANS9_20261005_METADATA cron is installed every five minutes. A direct metadata-only tick completed successfully, refreshed AMD ARCHIVE_HEARTBEAT, and observed no active ARCHIVE_HALTED.json. Heartbeat was16seconds old at the subsequent check. No duplicate monitor was installed.
+- Each successful allocated AMD inspector submits the next finite12-hour production segment and its dependent inspector. The accepted startup checkpoint continues to t12 and then50M milestones; continuation does not need this interactive agent.
+- The Anta trigger submits allocated archive/analysis jobs for sealed outputs, verifies checksums and runs report/plot/movie updates at initial science, t12, every50M and final. Anta2333/2334 both completed successfully; all four wave/convention test runs are archived and verified.
+- Runtime checks cover storage, checkpoint retention, GPU memory, stalled progress, archive heartbeat, stop intent and hard limits. Queue availability or machine/network failures cannot be guaranteed; failures stop for review rather than trigger unbounded retries.
+- Current science state remains t0, no binary checkpoint or orbit/merger/waveform result. Latest Anta analysis/update_0_2333 is the preparation report, not a production result. AMD actual usage0.8797222222rawnodeh; Anta0.0641666667node/GPUh, two of96jobs.
