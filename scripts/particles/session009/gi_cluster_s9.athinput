@@ -6,9 +6,9 @@ Source masses .76/.12/.12, envelope arealR30, isotropic centers +/-3.
 K_ij=0 leaves local momentum constraint unsolved. M_ref=1 is inherited unit,
 not measured rest/horizon/ADM mass. Model and Lorentz momentum conventions unchanged.
 Domain +/-1024, root256^3 dx8, logicalroot3, physicallevels0..11 dx_min1/256.
-Wave floor dx<=.25 throughout r<=56; outer radial floors .5/1/2/4 to72/104/168/296.
+Wave floor dx<=.25 throughout r<=46; outer radial floors .5/1/2/4 to72/104/168/296.
 Static seeding cubes are conservative supersets; actual complete mesh audited at gate.
-r*Psi4 ell2..8 at coordinate r50 only, dt.025; f<=.4 interpretation subject to gate.
+r*Psi4 ell2..8 at coordinate r40 only, dt.025; f<=.4 interpretation subject to gate.
 Particles .25, planes .1, full3D/checkpoints10. Clean stops write final checkpoint.
 Hard t400 or10000 raw AMD nodeh including gates/failed allocations/analysis;45days.
 Scientific early termination needs accepted enclosing common AH, usable band-limited
@@ -72,7 +72,7 @@ radius_2_rad = 104.0
 radius_2_reflevel = 3
 radius_3_rad = 72.0
 radius_3_reflevel = 4
-radius_4_rad = 56.0
+radius_4_rad = 46.0
 radius_4_reflevel = 5
 
 <refined_region1>
@@ -176,12 +176,12 @@ x3max = 0.375
 
 <refined_region12>
 level = 5
-x1min = -56
-x1max = 56
-x2min = -56
-x2max = 56
-x3min = -56
-x3max = 56
+x1min = -46
+x1max = 46
+x2min = -46
+x2max = 46
+x3min = -46
+x3max = 46
 
 <refined_region13>
 level = 1
@@ -230,10 +230,10 @@ diss = 0.1
 chi_div_floor = 0.00001
 damp_kappa1 = 0.02
 damp_kappa2 = 0.0
-# Coordinate-r50 r*Psi4 extraction, l2..8; initially outside the R30 envelope.
+# Coordinate-r40 r*Psi4 extraction, l2..8; initially outside the R30 envelope.
 # Check evolved matter near the sphere before interpreting the signal.
 nrad_wave_extraction = 1
-extraction_radius_0 = 50.0
+extraction_radius_0 = 40.0
 extraction_nlev = 40
 waveform_dt = 0.025
 tracker_mode = particle_lapse
