@@ -1,0 +1,7 @@
+Verified 2026-10-06T22:49:26.272561+00:00
+Branch project/GI-in-cluster; origin git@github.com:JiaxiWu1018/athenak.git
+Local and remote HEAD: 90d4b0dc892a49ca73c0335b477e82f13e36456d
+Working tree clean at verification.
+R40 scientific input ae89f066 pushed. Operations6b9806eb/ddf31ebd pushed. Reports/config/wake docs90d4b0dc pushed.
+Compiled AMD source remains6892be3e3f04ec573f91cb2034bc9d3009a3bdff; no rebuild or scientific-source change.
+This is a timestamped push receipt; later documentation may advance HEAD.
