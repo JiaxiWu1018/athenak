@@ -19,11 +19,21 @@
   "cleanup": "ChecksumverifiedAnta-first; latestthreeAMDcheckpoints; approvedsealedsciencecleanup",
   "Perseus_raw_data": "None; source/scripts/inputs/docs and small QA evidence only, retained",
   "compiled_source_commit": "6892be3e3f04ec573f91cb2034bc9d3009a3bdff",
-  "input_sha256": "164002e107ae3023c37b206a4e83923410c38c5de7c18c9f704afd48f947ffff",
+  "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd",
   "frozen_configuration": "evidence/frozen_config.json",
   "handoff": "evidence/CURRENT_STATUS.md",
   "push_status": "evidence/PUSH_STATUS.txt",
   "wave_gate": "evidence/wave_gate.json",
   "convention": "evidence/weyl_convention.json (passed)",
-  "current_phase": "full-particle gate queued; build, propagation and convention checks passed; no binary production yet"
+  "current_phase": "R40 input preflight passed453630; full startup453631 pendingresources; no binary evolution yet",
+  "extraction_radius": 40,
+  "wave_floor_radius": 46,
+  "initial_blocks": 5384,
+  "operations_revision": "ddf31ebd47f515756637b643656d47cb465c3fa4",
+  "scientific_revision": "ae89f066",
+  "historical_failed_attempts": "history/r50_before_reset_20261006/ and AMD history/r40_receipt_import_failure_453626/",
+  "two_hour_monitor": "code/scripts/particles/session009/wake_check.py; evidence/two_hour_checks.jsonl",
+  "monitors": "Perseus two-hour Codex wake and Anta five-minute archival trigger; original deadline/caps",
+  "AMD_actual_node_hours": 0.9225,
+  "Anta_actual_node_hours": 0.09694444444444444
 }

@@ -1,0 +1,8 @@
+{
+  "utc": 1791326689.5595655,
+  "method": "Minimal cron environment, absolute CLI path, unmodified HOME, PATH=/usr/bin:/bin; codex login status and wake metadata probe",
+  "codex_auth": "Logged in using ChatGPT; exit0",
+  "metadata_probe_passed": true,
+  "active_turn_guard_passed": true,
+  "actual_idle_resume_delivery": "Pending first scheduled check after current active turn ends"
+}

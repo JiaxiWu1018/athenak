@@ -14,8 +14,25 @@ ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scrip
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/workflow.py cancel'
 ```
 
-Stop is sticky and requests a clean checkpointed stop. Cancel is emergency campaign-only cancellation; no guaranteed new checkpoint. Never cancel a generic `s9_prod`: that job name belongs to unrelated ST migration. Status contains exact registered Jeans009 jobIDs. Scheduler: `squeue -u jiaxiwu -o "%i %j %T %R"`; inspect only jn9_20261005*.
+Stop is sticky and requests a clean checkpointed stop. Cancel is emergency campaign-only cancellation; no guaranteed new checkpoint. Never cancel a generic `s9_prod`: that job name belongs to unrelated ST migration. Status contains exact registered Jeans009 jobIDs. Scheduler: `squeue -u jiaxiwu -o "%i %j %T %R"`; inspect only the registered Jeans009 job IDs (current prefix jn9_20261006_r40b_).
 
 On Anta, `evidence/active_archive_jobs.json` records jobs; `evidence/metadata_trigger.log` logs the finite cron. `scripts/archive_trigger.py remove` removes only the JEANS9 metadata entry. Raw science, verified checkpoints and manifests live in runs/. Milestone plots/movies/reports under analysis/update_*; analysis/latest.json identifies most recent products. Human/technical top reports are updated after verified data become available. Source/config/evidence are preserved on Perseus; no large raw data there.
 
-Hard t400/10000rawAMDnodeh/45days; single-r50waveform and approximate initialdata limitations remain. Allheavywork usesSlurm. Failure haltsforreview, noautomaticretries. Anta≤96four-hourjobs/16TiB; AMD1.25TiBsession andwholeuserguards; oldcheckpoints archivedandverified before removal. No runtime depends on the interactive agent.
+Hard t400/10000rawAMDnodeh/45days; single-r40waveform and approximate initialdata limitations remain. Allheavywork usesSlurm. Failure haltsforreview, noautomaticretries. Anta≤96four-hourjobs/16TiB; AMD1.25TiBsession andwholeuserguards; oldcheckpoints archivedandverified before removal. No runtime depends on the interactive agent.
+
+## October 6 reset and two-hour checks
+
+Approved extraction is now R40, with dx<=0.25 through R46 (5,384 initial blocks), the same five million particles and local boost0.133215. The failed R50 startup and its reports remain under history/r50_before_reset_20261006/. Original deadline, node-hour cap and archive job ledger remain cumulative. The AMD binary/source revision is reused unchanged.
+
+The corrected input explicitly supplies output7/last_time. A one-node actual-executable input preflight precedes the full12-node gate. Production continues from its accepted t0 history only after mesh, particles, allGPUmemory, restart and required outputs pass.
+
+Five-minute Anta archival and allocated50M report/plot/movie updates are re-enabled for this attempt. The separate Perseus two-hour wake checks registered AMD jobs and wakes this same Codex thread when idle, avoiding overlapping agent turns. It is bounded by the existing45-day deadline.
+
+```sh
+python3 /data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/code/scripts/particles/session009/wake_check.py probe
+python3 /data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/code/scripts/particles/session009/wake_check.py remove
+```
+
+These commands inspect/remove the two-hour wake only. The AMD `workflow.py stop` command above requests the sticky scientific stop. Evidence/two_hour_check_latest.json and two_hour_checks.jsonl record checks; actual wake delivery is recorded separately from schedule installation.
+
+Current full startup453631 is pendingresources;453630 actual-executable input preflight passed. Inspector453632 will submit production after all full gates pass. See evidence/CURRENT_STATUS.md for measured usage and tested-versus-pending automation.
