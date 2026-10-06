@@ -151,7 +151,7 @@ def main():
  # Raw multipoles are primary evidence. The assessment precedes central signals at
  # extraction spheres; FFI strain is deliberately deferred until causal coverage exists.
  fig,axes_wave=plt.subplots(2,1,figsize=(8,7),sharex=True)
- for radius in (50,):
+ for radius in (40,):
   chunks=[]
   for run in runs:
    rp=run/'waveforms'/('rpsi4_real_'+str(radius).zfill(4)+'.txt');ip=run/'waveforms'/('rpsi4_imag_'+str(radius).zfill(4)+'.txt')
@@ -169,7 +169,7 @@ def main():
    for ax,m,re_col,im_col in zip(axes_wave,(-2,2),(1,3),(2,4)):
     np.savetxt(out/('rpsi4_2'+str(m)+'_r'+str(radius)+'.csv'),np.c_[z[:,0],z[:,0]-radius,z[:,re_col],z[:,im_col]],delimiter=',',header='coordinate_time,approx_retarded_time_t_minus_r,rPsi4_real,rPsi4_imag')
     ax.plot(z[:,0],np.hypot(z[:,re_col],z[:,im_col]),label='r='+str(radius));ax.set(ylabel='|r Psi4(2,'+str(m)+')|');ax.legend()
- axes_wave[-1].set(xlabel='t/M_ref');fig.suptitle('Raw complex extraction at coordinate r=50; M_ref=1');fig.tight_layout();fig.savefig(out/'raw_waveform.png',dpi=170);plt.close(fig)
+ axes_wave[-1].set(xlabel='t/M_ref');fig.suptitle('Raw complex extraction at coordinate r=40; M_ref=1');fig.tight_layout();fig.savefig(out/'raw_waveform.png',dpi=170);plt.close(fig)
  snapshots={}
  initial=next(iter(sorted((root/'runs/gate_reference').rglob('*.part.vtk'))),None)
  if initial:snapshots[0.]=initial
@@ -182,7 +182,7 @@ def main():
  colors=['#888888','tab:blue','tab:orange'];cohort=None;particle_ledger=[];matter_shell=[]
  for number,(tm,path) in enumerate(sorted(snapshots.items())):
   pt=read_particles(path)
-  rad=np.linalg.norm(pt['position'],axis=1);shell=(rad>=48)&(rad<=52)
+  rad=np.linalg.norm(pt['position'],axis=1);shell=(rad>=38)&(rad<=42)
   matter_shell.append([tm,int(shell.sum()),float(pt['mass'][shell].sum()),float(pt['mass'].sum())])
   tag=np.rint(pt['tag_float']).astype(np.int64)
   if not np.isfinite(pt['position']).all():raise RuntimeError('nonfinite movie particle coordinates')
@@ -255,7 +255,7 @@ def main():
   ax.set(xlabel='(x - sampled envelope center)/M_ref',ylabel='(y - sampled envelope center)/M_ref',aspect='equal',title='Coordinate trajectories relative to rest-weighted envelope center')
   fig.tight_layout();fig.savefig(out/'envelope_relative.png',dpi=170);plt.close(fig)
  (out/'summary.json').write_text(json.dumps(metrics,indent=2,allow_nan=False)+'\n')
- np.savetxt(out/'matter_near_r50.csv',np.asarray(matter_shell).reshape(-1,4),delimiter=',',header='time,particle_count_in_r48_to52,sampled_rest_mass_in_shell,total_alive_rest_mass')
+ np.savetxt(out/'matter_near_r40.csv',np.asarray(matter_shell).reshape(-1,4),delimiter=',',header='time,particle_count_in_r38_to42,sampled_rest_mass_in_shell,total_alive_rest_mass')
  from removal9 import assess_removals
  assess_removals(runs,out,cutoff)
  from science9 import extended_analysis

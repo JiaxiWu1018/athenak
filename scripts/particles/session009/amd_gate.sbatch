@@ -12,6 +12,7 @@ set -euo pipefail
 source /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/amd_env.inc
 python3 -m unittest discover -s "$ROOT/scripts" -p test_session9.py
 python3 -m py_compile "$ROOT/scripts/"*.py
+python3 "$ROOT/scripts/input_contract.py" "$DECK"
 python3 "$ROOT/scripts/workflow.py" bindings
 test ! -e "$ROOT/control/REQUEST_STOP"
 test -x "$EXE"

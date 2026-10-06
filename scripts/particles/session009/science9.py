@@ -20,7 +20,7 @@ def ffi(t,z,f0):
 def load_wave(runs):
  chunks=[]
  for run in runs:
-  r=run/'waveforms/rpsi4_real_0050.txt';i=run/'waveforms/rpsi4_imag_0050.txt'
+  r=run/'waveforms/rpsi4_real_0040.txt';i=run/'waveforms/rpsi4_imag_0040.txt'
   if not r.exists() or not i.exists():continue
   real=np.loadtxt(r,ndmin=2);imag=np.loadtxt(i,ndmin=2)
   if real.shape!=imag.shape or real.shape[1]!=78 or not np.array_equal(real[:,0],imag[:,0]):raise RuntimeError('raw multipoles real/imag contract failed')
@@ -80,13 +80,13 @@ def extended_analysis(root,runs,out,metrics,tracks,common_review=None):
  t,z=load_wave(runs)
  cutoff=metrics.get('analysis_cutoff')
  if cutoff is not None:q=t<=cutoff;t=t[q];z=z[q]
- np.savez(out/'raw_complex_all_modes_r50.npz',time=t,modes=z,lm=np.array([(l,m) for l in range(2,9) for m in range(-l,l+1)]))
+ np.savez(out/'raw_complex_all_modes_r40.npz',time=t,modes=z,lm=np.array([(l,m) for l in range(2,9) for m in range(-l,l+1)]))
  calibration=json.loads((root/'evidence/wave_gate.json').read_text())
  common,rejected=common_review if common_review is not None else common_enclosure(runs,tracks)
  if cutoff is not None:common=[c for c in common if c['time']<=cutoff];rejected=[c for c in rejected if c['time']<=cutoff]
  atomic(out/'common_enclosure.json',dict(accepted_enclosing=common,published_without_proven_enclosure=rejected))
  review=ringdown_review(t,z,common,calibration)
- shell=np.loadtxt(out/'matter_near_r50.csv',delimiter=',',ndmin=2)
+ shell=np.loadtxt(out/'matter_near_r40.csv',delimiter=',',ndmin=2)
  near=shell[(shell[:,0]>=review.get('wave_peak_time',float('inf')))&(shell[:,0]<=review.get('wave_peak_time',0)+4*review.get('expected_tau220',1))] if shell.size else np.empty((0,4))
  matter_clean=bool(len(near) and np.all(near[:,2]/np.maximum(near[:,3],1e-30)<1e-4))
  review['matter_shell_clean']=matter_clean
@@ -103,17 +103,17 @@ def extended_analysis(root,runs,out,metrics,tracks,common_review=None):
    for q in groups:
     amp=np.abs(z[q,col]);phase=np.unwrap(np.angle(z[q,col]));valid=amp>max(1e-15,1e-4*amp.max())
     phase[~valid]=np.nan
-    axes[0].plot(t[q]-50,phase,label=label if q[0]==0 else None)
-    if len(q)>2:axes[1].plot(t[q]-50,np.gradient(phase,t[q])/(2*np.pi),label=label if q[0]==0 else None)
-  axes[0].set(ylabel='raw multipole phase [rad]');axes[1].set(xlabel='approximate retarded time (t-50)/M_ref',ylabel='signed phase frequency [cycles/M_ref]',ylim=(-.6,.6));axes[0].legend();axes[1].axhline(.4,ls=':',c='gray');axes[1].axhline(-.4,ls=':',c='gray');fig.tight_layout();fig.savefig(out/'wave_phase_frequency.png',dpi=170);plt.close(fig)
+    axes[0].plot(t[q]-40,phase,label=label if q[0]==0 else None)
+    if len(q)>2:axes[1].plot(t[q]-40,np.gradient(phase,t[q])/(2*np.pi),label=label if q[0]==0 else None)
+  axes[0].set(ylabel='raw multipole phase [rad]');axes[1].set(xlabel='approximate retarded time (t-40)/M_ref',ylabel='signed phase frequency [cycles/M_ref]',ylim=(-.6,.6));axes[0].legend();axes[1].axhline(.4,ls=':',c='gray');axes[1].axhline(-.4,ls=':',c='gray');fig.tight_layout();fig.savefig(out/'wave_phase_frequency.png',dpi=170);plt.close(fig)
   convention=calibration.get('strain_convention_verified',False)
   if t[-1]>100 and convention and np.max(np.diff(t))<=1.5*cadence:
    fig,ax=plt.subplots(figsize=(9,4));cutoffs=(.003,.006,.012)
    for cutoff in cutoffs:
-    q,h=ffi(t,z[:,4],cutoff);np.savetxt(out/f'strain_22_f0_{cutoff}.csv',np.c_[q,q-50,h.real,h.imag],delimiter=',',header='time,t_minus_50,r_H22_real,r_H22_imag')
-    ax.plot(q-50,h.real,label=f'f0={cutoff} cycles/M_ref')
-   ax.set(xlabel='approximate retarded time (t-50)/M_ref',ylabel='r h_22 real; finite radius');ax.legend();fig.tight_layout();fig.savefig(out/'strain_cutoff_sensitivity.png',dpi=170);plt.close(fig)
-   atomic(out/'strain_method.json',dict(convention='H=r(hplus-i hcross), Hddot=rPsi4 verified by source TT limit and linear-wave calibration.',method='Fixed-frequency double integration -FFT(rPsi4)/(2pi max(|f|,f0))^2; uniformdt.025 linear interpolation, linear detrend,5% cosine edge taper; cutoffs.003/.006/.012. Edges/transients and finite-radius strain not precision waveform.',gaps=False,frequency_resolution=1/(q[-1]-q[0]),causal_coverage_after_t50=float(t[-1]-50),limited_low_frequency_duration=True))
+    q,h=ffi(t,z[:,4],cutoff);np.savetxt(out/f'strain_22_f0_{cutoff}.csv',np.c_[q,q-40,h.real,h.imag],delimiter=',',header='time,t_minus_40,r_H22_real,r_H22_imag')
+    ax.plot(q-40,h.real,label=f'f0={cutoff} cycles/M_ref')
+   ax.set(xlabel='approximate retarded time (t-40)/M_ref',ylabel='r h_22 real; finite radius');ax.legend();fig.tight_layout();fig.savefig(out/'strain_cutoff_sensitivity.png',dpi=170);plt.close(fig)
+   atomic(out/'strain_method.json',dict(convention='H=r(hplus-i hcross), Hddot=rPsi4 verified by source TT limit and linear-wave calibration.',method='Fixed-frequency double integration -FFT(rPsi4)/(2pi max(|f|,f0))^2; uniformdt.025 linear interpolation, linear detrend,5% cosine edge taper; cutoffs.003/.006/.012. Edges/transients and finite-radius strain not precision waveform.',gaps=False,frequency_resolution=1/(q[-1]-q[0]),causal_coverage_after_t40=float(t[-1]-40),limited_low_frequency_duration=True))
   else:atomic(out/'strain_method.json',dict(deferred=True,reason='Requires causal coverage>100, uninterrupted waveform and verified sign/normalization calibration; rawPsi4 remains primary.'))
  from compare8 import compare
  compare(out)

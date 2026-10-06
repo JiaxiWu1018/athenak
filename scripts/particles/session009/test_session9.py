@@ -40,7 +40,7 @@ class Session9(unittest.TestCase):
   r=ringdown_review(np.arange(200),np.ones((200,77),complex),[],dict(passed=True))
   self.assertFalse(r['ringdown_usable']);self.assertFalse(r['common_encloses_both'])
  def test_wave_floor_hole_rejected(self):
-  data=dict(mb_geometry=np.array([[48,64,0,16,0,16]]))
+  data=dict(mb_geometry=np.array([[32,48,0,16,0,16]]))
   with tempfile.TemporaryDirectory() as td:
    root=Path(td);(root/'evidence').mkdir()
    with self.assertRaisesRegex(RuntimeError,'propagation floor'):audit(root,data)

@@ -69,7 +69,7 @@ def recover(name):
 def submit_one(s,name,script,args,nodes,wall,dependency):
  old=next((j for j in s['jobs'] if j['name']==name),None)
  if old:return old['id']
- pending=s.get('pending_submission');jobname='jn9_20261005_'+name
+ pending=s.get('pending_submission');jobname=config().get('job_prefix','jn9_20261005_')+name
  if pending and pending['name']!=name:raise RuntimeError('unresolved submission window')
  jid=recover(jobname) if pending else None
  if jid is None:
@@ -85,7 +85,11 @@ def submit():
  s=readstate()
  if s['status'] in TERMINAL or s['stop_requested']:raise RuntimeError('sticky terminal/stop')
  if s.get('gates_submitted'):return
- wave=submit_one(s,'wave_gate','amd_wave_gate.sbatch',[],3,2,'afterok:'+str(s['jobs'][0]['id']))
+ if config().get('reuse_wave_gate'):
+  if not json.loads((ROOT/'evidence/wave_gate.json').read_text())['passed']:raise RuntimeError('reused wave receipt failed')
+  wave=submit_one(s,'input_preflight','amd_input_preflight.sbatch',[],1,.5,None)
+ else:
+  wave=submit_one(s,'wave_gate','amd_wave_gate.sbatch',[],3,2,'afterok:'+str(s['jobs'][0]['id']))
  gate=submit_one(s,'gate','amd_gate.sbatch',[],12,4,'afterok:'+str(wave))
  submit_one(s,'inspect0','amd_inspect.sbatch',[0,gate],1,.5,'afterany:'+str(gate))
  s['gates_submitted']=True;s['status']='gates_queued';save(s)
@@ -113,7 +117,7 @@ def gate_receipt():
  for pattern in required:
   if not list(run.rglob(pattern)):raise RuntimeError('missing output '+pattern)
  for part in ('real','imag'):
-  p=run/'waveforms'/('rpsi4_'+part+'_0050.txt')
+  p=run/'waveforms'/('rpsi4_'+part+'_0040.txt')
   rows=[x.split() for x in p.read_text().splitlines() if x.strip() and not x.startswith('#')]
   if not rows or any(len(r)!=78 or any(not math.isfinite(float(x)) for x in r) for r in rows):raise RuntimeError('invalid raw complex multipoles')
  latest=json.loads((CONTROL/'latest_checkpoint.json').read_text())

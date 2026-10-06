@@ -410,6 +410,8 @@ dt = 10.0
 <output7>
 file_type = rst
 dt = 10.0
+# Explicitly suppress the redundant t0 checkpoint; clean stops always save one.
+last_time = 0.0
 
 <output8>
 file_type = cbin

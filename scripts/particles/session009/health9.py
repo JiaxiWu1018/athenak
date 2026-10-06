@@ -26,6 +26,6 @@ def assess(root,runs,out):
     speed=np.sqrt(2*alp[...,None]*chi[...,None]*np.diagonal(inv,axis1=-2,axis2=-1))+np.abs(beta)
     peaks.append(float(np.max(speed)));alpha.append([float(alp.min()),float(alp.max())])
    maximum=max(peaks,default=None)
-   rows.append(dict(run=run.name,plane=plane,time=float(d['time']),finite=finite,far_field_gauge_speed_max=maximum,far_field_alpha_ranges=alpha,boundary_to_r50_estimate=974/maximum if maximum else None))
+   rows.append(dict(run=run.name,plane=plane,time=float(d['time']),finite=finite,far_field_gauge_speed_max=maximum,far_field_alpha_ranges=alpha,boundary_to_r40_estimate=984/maximum if maximum else None))
    if not finite:raise RuntimeError('nonfinite saved metric plane')
  atomic(out/'numerical_health.json',dict(samples=rows,method='Three saved central diagnostic planes at their latest times; maximum sqrt(2 alpha gamma^ii)+abs(beta^i) in blocks touching |coordinate|>=800. Outflow/Sommerfeld implementation has Khat sqrt2 weak-field mode. Planning boundary-travel estimate, not a proof for every full3D characteristic or boundary reflection.'))
