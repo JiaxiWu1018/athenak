@@ -21,8 +21,9 @@ prun "$EXE" --kokkos-map-device-id-by=mpi_rank -n -i "$DECK" "${common[@]}" time
 prun "$EXE" --kokkos-map-device-id-by=mpi_rank -n -i "$DECK" "${common[@]}" time/nlim=1 output6/dt=0 output18/dt=0 output19/dt=0 output20/dt=0 output21/dt=0 time/stop_check_every=1 time/stop_file="$ROOT/control/REQUEST_STOP" > "$PREFLIGHT/slim_input.log" 2>&1
 prun "$EXE" --kokkos-map-device-id-by=mpi_rank -n -i "$DECK" time/tlim=12 time/stop_file="$ROOT/control/REQUEST_STOP" > "$PREFLIGHT/segment_input.log" 2>&1
 python3 - <<'ENDPY'
-import os,time
+import os,sys,time
 from pathlib import Path
+sys.path.insert(0,str(Path(os.environ['ROOT'])/'scripts'))
 from runtime import atomic,digest
 root=Path(os.environ['ROOT']);atomic(root/'evidence/r40_input_preflight.json',dict(passed=True,job=os.environ['SLURM_JOB_ID'],input_sha256=digest(root/'inputs/gi_cluster_s9.athinput'),utc=time.time(),method='Actual compiled AMD executable -n with full, slim and continuation overrides; no particles or evolution.'))
 ENDPY
