@@ -16,6 +16,7 @@
 #include "mesh/mesh.hpp"
 #include "bvals/bvals.hpp"
 #include "particles.hpp"
+#include "gr_monopole.hpp"
 #include "mhd/mhd.hpp"            // MHD::nmhd/nscalars for gr_boris snapshot sizing
 #include "coordinates/adm.hpp"   // ADM::nadm
 #include "z4c/z4c.hpp"           // Z4c::nz4c, Z4c::pfastflow
@@ -81,6 +82,54 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
         std::exit(EXIT_FAILURE);
       }
       pusher = ParticlesPusher::gr_boris;
+      gr_boris_live_monopole =
+          pin->GetOrAddBoolean("particles", "gr_boris_live_monopole", false);
+      if (gr_boris_diagnostics) {
+        Kokkos::realloc(gr_boris_du_dt, 3, 0);
+        Kokkos::realloc(gr_boris_dL_dt, 3, 0);
+      }
+      if (gr_boris_live_monopole) {
+        if (!pmy_pack->pmesh->three_d || pmy_pack->pmhd != nullptr) {
+          std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                    << std::endl
+                    << "<particles> gr_boris_live_monopole currently requires a 3D "
+                    << "geodesic (no-MHD) particle problem." << std::endl;
+          std::exit(EXIT_FAILURE);
+        }
+        gr_boris_monopole_nr =
+            pin->GetOrAddInteger("particles", "gr_boris_monopole_nr", 512);
+        gr_boris_monopole_rmax =
+            pin->GetOrAddReal("particles", "gr_boris_monopole_rmax", 32.0);
+        gr_boris_monopole_sample_stride =
+            pin->GetOrAddInteger("particles", "gr_boris_monopole_sample_stride", 1);
+        gr_boris_monopole_profile_interval =
+            pin->GetOrAddInteger("particles", "gr_boris_monopole_profile_interval", 0);
+        gr_boris_monopole_center[0] =
+            pin->GetOrAddReal("particles", "gr_boris_monopole_center_x1", 0.0);
+        gr_boris_monopole_center[1] =
+            pin->GetOrAddReal("particles", "gr_boris_monopole_center_x2", 0.0);
+        gr_boris_monopole_center[2] =
+            pin->GetOrAddReal("particles", "gr_boris_monopole_center_x3", 0.0);
+        if (gr_boris_monopole_nr < 8 || gr_boris_monopole_rmax <= 0.0 ||
+            gr_boris_monopole_sample_stride < 1 ||
+            gr_boris_monopole_profile_interval < 0) {
+          std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
+                    << std::endl
+                    << "<particles> live-monopole control requires nr>=8, rmax>0, "
+                    << "sample_stride>=1, and profile_interval>=0." << std::endl;
+          std::exit(EXIT_FAILURE);
+        }
+        gr_boris_monopole_dr =
+            gr_boris_monopole_rmax/static_cast<Real>(gr_boris_monopole_nr);
+        Kokkos::realloc(gr_boris_monopole_profile_old, N_GR_MONO_PROFILE,
+                        gr_boris_monopole_nr);
+        Kokkos::realloc(gr_boris_monopole_profile_new, N_GR_MONO_PROFILE,
+                        gr_boris_monopole_nr);
+        Kokkos::realloc(gr_boris_monopole_accum, N_GR_MONO_AVERAGES,
+                        gr_boris_monopole_nr);
+        gr_boris_monopole_profile_fname =
+            pin->GetString("job", "basename") + ".gr_boris_monopole_profile.csv";
+      }
     } else {
       std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
                 << std::endl << "Particle pusher = '" << ppush

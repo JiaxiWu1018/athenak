@@ -491,7 +491,7 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
     RefreshSTSCycleState(pmesh);
 
     // compute conserved particle energy (IPEN) once so it is valid for the initial output
-    if (ppart != nullptr) {
+    if (ppart != nullptr && !ppart->gr_boris_live_monopole) {
       (void) ppart->EnergyCalculation(this, 1);
     }
 
@@ -508,6 +508,12 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
         Kokkos::deep_copy(DevExeSpace(), ppart->z4c_last, pz4c->u0);
       }
     }
+
+    if (ppart != nullptr && ppart->gr_boris_live_monopole) {
+      ppart->gr_boris_monopole_profile_valid = false;
+      (void) ppart->EnergyCalculation(this, 1);
+    }
+    if (ppart != nullptr) {ppart->AuditFrozenBackground(true);}
 
     // Tmunu is derived state and is not stored in restarts. Seed it after the initial
     // ghost exchange so cycle 1 and the initial output consume a valid deposit.
@@ -681,6 +687,9 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
 //!  and printing diagnostic messages
 
 void Driver::Finalize(Mesh *pmesh, ParameterInput *pin, Outputs *pout) {
+  if (pmesh->pmb_pack->ppart != nullptr) {
+    pmesh->pmb_pack->ppart->AuditFrozenBackground(true, true);
+  }
   // cycle through output Types and load data / write files
   //  This design allows for asynchronous outputs to implemented in the future.
   for (auto &out : pout->pout_list) {

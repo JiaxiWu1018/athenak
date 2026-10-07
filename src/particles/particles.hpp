@@ -253,6 +253,27 @@ class Particles {
   void AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> tl);
   // pusher kernels (particles_pushers.cpp dispatches Push() to these)
   void BorisPush();      // special-relativistic Boris (boris_pusher.cpp)
+  // Optional spherical metric control, ported from the homogeneous campaign.
+  bool gr_boris_live_monopole = false;
+  bool gr_boris_monopole_profile_valid = false;
+  int gr_boris_monopole_nr = 512, gr_boris_monopole_sample_stride = 1;
+  int gr_boris_monopole_profile_interval = 0;
+  Real gr_boris_monopole_rmax = 32.0, gr_boris_monopole_dr = 0.0625;
+  Real gr_boris_monopole_support = 0.0;
+  Real gr_boris_monopole_center[3] = {0.0, 0.0, 0.0};
+  DvceArray2D<Real> gr_boris_monopole_profile_old, gr_boris_monopole_profile_new;
+  DvceArray2D<Real> gr_boris_monopole_accum;
+  std::string gr_boris_monopole_profile_fname;
+  void BuildGRBorisMonopoleProfiles(
+      const DvceArray5D<Real> &adm_old, const DvceArray5D<Real> &adm_new,
+      bool use_z4c, const DvceArray5D<Real> &z4c_old,
+      const DvceArray5D<Real> &z4c_new, bool equal_time);
+  // Full active-block field fingerprints include all physical and ghost cells.
+  void AuditFrozenBackground(bool initial = false, bool final = false);
+  std::uint64_t frozen_z4c_hash = 0, frozen_adm_hash = 0;
+  bool frozen_audit_initialized = false;
+  Real frozen_audit_next = 100.0;
+
   void GR_BorisPush();   // general-relativistic Boris / geodesic (gr_boris.cpp)
   void GRBorisRetry();   // trilinear retry of the substeps it rejected (gr_boris.cpp)
   TaskStatus Push(Driver *pdriver, int stage);

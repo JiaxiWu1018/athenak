@@ -170,6 +170,13 @@ Z4c::Z4c(MeshBlockPack *ppack, ParameterInput *pin) :
     std::exit(EXIT_FAILURE);
   }
 
+  opt.frozen_background = pin->GetOrAddBoolean("z4c", "frozen_background", false);
+  if (opt.frozen_background && (pmy_pack->pmesh->adaptive ||
+      pin->DoesBlockExist("mhd") || pin->DoesBlockExist("hydro") ||
+      !pin->DoesBlockExist("particles"))) {
+    std::cerr << "Frozen background requires static mesh and particles only\n";
+    std::exit(EXIT_FAILURE);
+  }
   opt.use_z4c = pin->GetOrAddBoolean("z4c", "use_z4c", true);
 
   opt.user_Sbc = pin->GetOrAddBoolean("z4c", "user_Sbc", false);
