@@ -6,13 +6,15 @@
 #SBATCH -n 48
 #SBATCH --ntasks-per-node=4
 #SBATCH --exclusive
-#SBATCH --exclude=k003-010
+#SBATCH --exclude=k003-[009-010]
+#SBATCH --nodelist=k002-005,k003-[003-007],k005-[002-006,009]
 #SBATCH -t 12:00:00
 #SBATCH --no-requeue
 set -euo pipefail
 SEGMENT=${1:?segment number}
 source /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/amd_env.inc
 python3 "$ROOT/scripts/workflow.py" permit --segment "$SEGMENT"
+python3 "$ROOT/scripts/mpi_nodes.py"
 RST=$(python3 -c 'import json,os; from pathlib import Path; print(json.loads((Path(os.environ["ROOT"])/"control/latest_checkpoint.json").read_text())["path"])')
 TARGET=$(python3 -c 'import json,os; from pathlib import Path; print(json.loads((Path(os.environ["ROOT"])/"control/state.json").read_text())["segment_target"])')
 prun "$ROOT/build/mpi_probe" > "$ROOT/evidence/mpi_segment_${SEGMENT}.txt" 2>&1

@@ -10,6 +10,7 @@
 set -euo pipefail
 source /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/amd_env.inc
 python3 "$ROOT/scripts/workflow.py" bindings
+python3 "$ROOT/scripts/mpi_nodes.py" --witness-only
 python3 "$ROOT/scripts/input_contract.py" "$DECK"
 python3 -m unittest discover -s "$ROOT/scripts" -p test_session9.py
 python3 -m unittest discover -s "$ROOT/scripts" -p test_r40_operations.py

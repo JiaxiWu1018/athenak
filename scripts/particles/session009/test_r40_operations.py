@@ -18,7 +18,24 @@ class R40Operations(unittest.TestCase):
    text=(root/name).read_text();self.assertIn('_0040.txt',text);self.assertNotIn('_0050.txt',text)
  def test_all_full_allocations_exclude_observed_bad_node(self):
   for name in ('amd_gate.sbatch','amd_segment.sbatch'):
-   self.assertIn('#SBATCH --exclude=k003-010',Path(__file__).with_name(name).read_text())
+   self.assertIn('#SBATCH --exclude=k003-[009-010]',Path(__file__).with_name(name).read_text())
+   from mpi_nodes import NODE_SPEC
+   self.assertIn('#SBATCH --nodelist='+NODE_SPEC,Path(__file__).with_name(name).read_text())
+ def mpi_fixture(self):
+  hosts=['k002-005']+['k003-'+str(i).zfill(3) for i in range(3,8)]+['k005-'+str(i).zfill(3) for i in [2,3,4,5,6,9]]
+  return hosts,'\n'.join('rank='+str(i)+'/48 host='+hosts[i//4]+'.hpcfund alltoall_errors=0' for i in range(48))
+ def test_witness_requires_every_rank_and_zero_errors(self):
+  from mpi_nodes import witness_hosts
+  hosts,text=self.mpi_fixture();self.assertEqual(set(witness_hosts(text)),set(hosts))
+  with self.assertRaises(ValueError):witness_hosts(text.replace('rank=47/48','rank=46/48'))
+  with self.assertRaises(ValueError):witness_hosts(text.replace('alltoall_errors=0','alltoall_errors=1',1))
+ def test_actual_group_with_unwitnessed_node_is_rejected(self):
+  from mpi_nodes import verify_hosts
+  hosts,text=self.mpi_fixture();hosts[0]='k003-009'
+  with self.assertRaises(ValueError):verify_hosts(hosts,text)
+ def test_exact_witnessed_group_accepted_in_any_order(self):
+  from mpi_nodes import verify_hosts
+  hosts,text=self.mpi_fixture();self.assertEqual(set(verify_hosts(list(reversed(hosts)),text)),set(hosts))
  def test_wake_queues_to_existing_writer_without_starting_another(self):
   import subprocess
   with tempfile.TemporaryDirectory() as td:

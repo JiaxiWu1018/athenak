@@ -6,7 +6,8 @@
 #SBATCH -n 48
 #SBATCH --ntasks-per-node=4
 #SBATCH --exclusive
-#SBATCH --exclude=k003-010
+#SBATCH --exclude=k003-[009-010]
+#SBATCH --nodelist=k002-005,k003-[003-007],k005-[002-006,009]
 #SBATCH -t 04:00:00
 #SBATCH --no-requeue
 set -euo pipefail
@@ -15,6 +16,7 @@ python3 -m unittest discover -s "$ROOT/scripts" -p test_session9.py
 python3 -m py_compile "$ROOT/scripts/"*.py
 python3 "$ROOT/scripts/input_contract.py" "$DECK"
 python3 "$ROOT/scripts/workflow.py" bindings
+python3 "$ROOT/scripts/mpi_nodes.py"
 test ! -e "$ROOT/control/REQUEST_STOP"
 test -x "$EXE"
 {
