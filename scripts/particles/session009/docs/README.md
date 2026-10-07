@@ -36,3 +36,7 @@ python3 /data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_202610
 These commands inspect/remove the two-hour wake only. The AMD `workflow.py stop` command above requests the sticky scientific stop. Evidence/two_hour_check_latest.json and two_hour_checks.jsonl record checks; actual wake delivery is recorded separately from schedule installation.
 
 Current full startup453631 is pendingresources;453630 actual-executable input preflight passed. Inspector453632 will submit production after all full gates pass. See evidence/CURRENT_STATUS.md for measured usage and tested-versus-pending automation.
+
+## October7 live recovery
+
+Startup453631 failed beforeinitialization onMPIbackend mismatch atk003-010. Both12-node scripts nowexclude thatnode. Newinputpreflight454537passed; fullstartup454538andinspector454539queued. Operations4c348a50pushed; numericalstate remainsfresh t0. The two-hour wake now uses `codex queue --thread` on the existingdaemon after old `exec resume` failed writer ownership; actualprobe accepted. Antafive-minute cron re-enabled, cumulativecaps unchanged. Current authoritative status is evidence/CURRENT_STATUS.md.

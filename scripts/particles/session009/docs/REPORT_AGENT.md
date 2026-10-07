@@ -1,3 +1,13 @@
+# October7 current update — Session009 startup recovery
+
+As of 2026-10-07T17:40:53.015102+00:00, there is no evolved binary data. Startup453631 failed in6seconds before initialization because nodek003-010 chose a different MPIbackend fromitspeers. Both startup/production scripts now exclude that observedfaultynode. Pushedoperations4c348a505304878bf4a976228964f8151fa6fb07; compiledsource/input/executables and approvedscientific/resource limits unchanged. Failedmetadata/logs preserved underhistory/mpi_failure_453631_20261007/ onAMD/Anta.
+
+AllocatedPerseus11233 passed16checks; AMD454537 inputpreflight passed13checks plusactualcompiledcommandinputs. Fullstartup454538 pendingresources andinspector454539 pendingdependency; successfulfullgate automaticallycontinuesfromacceptedstartupcheckpoint. Physicalt0/no orbit/waveform results. CurrentAMD0.943611111rawnodeh; Anta0.118888889node/GPUh,4/96jobs. Queuewaituncharged; nostoragesampleuntilallocatedwatchdog.
+
+Two-hourmetadata checksran,butoldCLIresumewakesfailedonexistingwriterconflict. Repaired tonativecodexqueueontheexistingdaemon; actualsame-threadmessageaccepted (probe/logreceipt), withcompletedagentcheckseparatelyrecorded. No newagent/thread ordaemonrestart. Antafive-minute archival/reportcron reactivated after failure-status2356. Report/plot/movie updatesinitial/t12/every50M/final awaitverifieddata. Exactcurrentstate/controls inevidence/CURRENT_STATUS.md; frozenbindings updated. Subsequentoldernumbers/jobs beloware the datedOctober6 setuprecord, retainedforprovenance.
+
+## October6 setup record (historical snapshot)
+
 # Session009 R40 technical status and reproducible handoff
 
 Updated 2026-10-06T22:47:06.919839+00:00. Full startup453631 pendingresources; inspector453632 pendingdependency; fresh physicalt0, no checkpoint. Authoritative state/accounting remains onAMD. Original technical preparation report and configurations are preserved in history/r50_before_reset_20261006/.

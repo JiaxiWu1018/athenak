@@ -1,0 +1,8 @@
+{
+  "status": "wake_queued",
+  "wake_log": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/evidence/wake_20261007T173047Z.log",
+  "thread": "01a0f9d8-f1e1-7250-b3b3-0bb0c6dfa014",
+  "method": "Existing daemon queue; accepted delivery is not a completed check.",
+  "utc": 1791394247.873606,
+  "test": "One actual daemon queue delivery during current active turn; completion is checked separately."
+}

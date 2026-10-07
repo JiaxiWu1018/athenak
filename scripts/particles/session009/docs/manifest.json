@@ -25,15 +25,20 @@
   "push_status": "evidence/PUSH_STATUS.txt",
   "wave_gate": "evidence/wave_gate.json",
   "convention": "evidence/weyl_convention.json (passed)",
-  "current_phase": "R40 input preflight passed453630; full startup453631 pendingresources; no binary evolution yet",
+  "current_phase": "Reviewed pre-initialization MPI failure; nodek003-010 excluded; input454537passed; fullstartup454538pendingresources; no evolution",
   "extraction_radius": 40,
   "wave_floor_radius": 46,
   "initial_blocks": 5384,
-  "operations_revision": "ddf31ebd47f515756637b643656d47cb465c3fa4",
+  "operations_revision": "4c348a505304878bf4a976228964f8151fa6fb07",
   "scientific_revision": "ae89f066",
   "historical_failed_attempts": "history/r50_before_reset_20261006/ and AMD history/r40_receipt_import_failure_453626/",
   "two_hour_monitor": "code/scripts/particles/session009/wake_check.py; evidence/two_hour_checks.jsonl",
   "monitors": "Perseus two-hour Codex wake and Anta five-minute archival trigger; original deadline/caps",
-  "AMD_actual_node_hours": 0.9225,
-  "Anta_actual_node_hours": 0.09694444444444444
+  "AMD_actual_node_hours": 0.9436111111111111,
+  "Anta_actual_node_hours": 0.11888888888888889,
+  "excluded_nodes": [
+    "k003-010"
+  ],
+  "two_hour_wake_method": "Existing daemon codex queue; accepted actualprobe; no extra CLI writer",
+  "mpi_failure_history": "history/mpi_failure_453631_20261007/"
 }
