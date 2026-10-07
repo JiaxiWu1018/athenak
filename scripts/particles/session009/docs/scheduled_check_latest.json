@@ -1,0 +1,21 @@
+{
+  "utc": 1791396254.8132143,
+  "checked_Pacific": "October 07, 2026 11:04 AM PDT",
+  "trigger": "Actual regular two-hour cron message received in existing thread",
+  "status": "completed_check",
+  "AMD_status": "gates_queued",
+  "AMD_queue": "454539|jn9_20261007_recovery_inspect0|PENDING|(Dependency)\n454538|jn9_20261007_recovery_gate|PENDING|(Resources)\n",
+  "physical_time": 0,
+  "latest_verified_checkpoint": null,
+  "numerical_health": "Unavailable: startup awaiting allocation, no evolved state",
+  "AMD_node_hours": 0.9436111111111111,
+  "Anta_node_hours": 0.11888888888888889,
+  "Anta_jobs": 4,
+  "Anta_free_TiB": 26.980909932404757,
+  "stop_flags": [],
+  "archive_heartbeat_age_seconds": 123.97855710983276,
+  "report_plot_progress": "No new science data or milestone; archival trigger installed and awaiting sealed outputs",
+  "two_hour_wake": "Cron queued this message and existing thread completed check",
+  "new_submissions": 0,
+  "physics_changes": 0
+}

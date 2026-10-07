@@ -36,3 +36,7 @@ Waitfor454538allocation, inspect actual48rankprobe andfullgate receipts;454539 s
 ## Scheduled-message delivery confirmed
 
 At 2026-10-07T17:46:14.925615+00:00, the queued delivery-test message reached this same thread and triggered this check. Receipt: evidence/wake_queue_delivery_received.json. Live AMD job454538 still waits for resources; inspector454539 waits for it. Time remains0 and there are no stop flags. Both cron entries were verified. The test submitted no duplicate job and started no separate agent. The next regular two-hour check uses the repaired queue command.
+
+## Regular two-hour check — October 07, 2026 11:04 AM PDT
+
+The cron message reached this existing thread and the check completed. Startup454538 remains PENDING(Resources); inspector454539 is PENDING(Dependency). Physical time0; no verified checkpoint or evolved state. No new numerical failure or stop flags in this check; numerical health remains unmeasured until startup runs. AMD usage0.943611111rawnodeh, Anta0.118888889node/GPUh across4/96jobs. Archive heartbeat age124.0s; Anta/data3 free26.98TiB. Both cron entries remain installed; reports/plots await sealed science outputs. CurrentAMDstorage/GPU memory sample still unavailable because no startup allocation has begun. No duplicate job, separate agent, physics change or failure retry. Receipt:evidence/scheduled_check_20261007T180414Z.json. Existing approved limits and sticky-stop behavior apply.
