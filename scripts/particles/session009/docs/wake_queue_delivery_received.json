@@ -1,0 +1,17 @@
+{
+  "utc": 1791395110.9079945,
+  "received_utc": "2026-10-07T17:45:10.907996+00:00",
+  "thread": "01a0f9d8-f1e1-7250-b3b3-0bb0c6dfa014",
+  "queued_message": "01a1176a-f493-70b1-92e3-227042130ebe",
+  "status": "received_in_existing_thread_and_live_check_completed",
+  "duplicate_submission": false,
+  "separate_agent": false,
+  "AMD_job": 454538,
+  "job_state": "PENDING(Resources)",
+  "physical_time": 0,
+  "stop_flags": [],
+  "cron_entries_verified": [
+    "JEANS9_R40_TWO_HOUR_WAKE",
+    "JEANS9_20261005_METADATA"
+  ]
+}

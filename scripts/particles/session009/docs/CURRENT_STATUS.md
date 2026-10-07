@@ -32,3 +32,7 @@ python3 /data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_202610
 ```
 
 Waitfor454538allocation, inspect actual48rankprobe andfullgate receipts;454539 schedulesonefiniteproduction successoronlyonacceptance. Donot manuallyduplicatejobs orchangephysics to bypass checks. Nevercancel unrelatedSTs9_prod. README/manifest maproots. NoSession009rawparticle/volume/checkpointdata onPerseus. Sourcecompiled6892be3e unchanged; canonicalinputSHAdeb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd; frozen_script_bindingsevidence/frozen_config.json. Previousstatus retained in localhistory/mpi_failure_453631_20261007/.
+
+## Scheduled-message delivery confirmed
+
+At 2026-10-07T17:46:14.925615+00:00, the queued delivery-test message reached this same thread and triggered this check. Receipt: evidence/wake_queue_delivery_received.json. Live AMD job454538 still waits for resources; inspector454539 waits for it. Time remains0 and there are no stop flags. Both cron entries were verified. The test submitted no duplicate job and started no separate agent. The next regular two-hour check uses the repaired queue command.
