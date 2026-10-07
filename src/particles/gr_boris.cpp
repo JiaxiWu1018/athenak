@@ -751,6 +751,63 @@ void Particles::BuildGRBorisMonopoleProfiles(
 }
 
 
+// Sample the ACTUAL ordinary/spherical discrete forces before the first push.
+// This runs in a separate kernel so it cannot increase the ordinary pusher's frame.
+template <int NG>
+void AuditMonopoleForces(Particles *pp, MeshBlockPack *pack,
+                        const DvceArray5D<Real>& adm_metric,
+                        const DvceArray5D<Real>& z4c_metric) {
+  int count = pp->nprtcl_thispack, gids = pack->gids;
+  auto pr = pp->prtcl_rdata; auto pi = pp->prtcl_idata;
+  auto size = pack->pmb->mb_size;
+  auto idx = pack->pmesh->mb_indcs;
+  int nc[3] = {idx.nx1, idx.nx2, idx.nx3};
+  auto prof = pp->gr_boris_monopole_profile_new;
+  int nr = pp->gr_boris_monopole_nr;
+  Real dr = pp->gr_boris_monopole_dr, support = pp->gr_boris_monopole_support;
+  Real c0 = pp->gr_boris_monopole_center[0], c1 = pp->gr_boris_monopole_center[1];
+  Real c2 = pp->gr_boris_monopole_center[2];
+  DvceArray2D<Real> samples("mono_force_audit", 11, count);
+  Kokkos::deep_copy(samples, 0.0);
+  par_for("mono_force_audit", DevExeSpace(), 0, count-1,
+  KOKKOS_LAMBDA(int p) {
+    if (pi(PTAG,p)%100 != 0) {return;}
+    int mb = pi(PGID,p)-gids;
+    Real x[3] = {pr(IPX,p),pr(IPY,p),pr(IPZ,p)};
+    Real u[3] = {pr(IPVX,p),pr(IPVY,p),pr(IPVZ,p)};
+    Real bp[9] = {size.d_view(mb).x1min,size.d_view(mb).x1max,size.d_view(mb).dx1,
+                  size.d_view(mb).x2min,size.d_view(mb).x2max,size.d_view(mb).dx2,
+                  size.d_view(mb).x3min,size.d_view(mb).x3max,size.d_view(mb).dx3};
+    Real center[3] = {c0,c1,c2};
+    GeodesicPush<NG,false> raw(x,u,mb,bp,nc,1.0,adm_metric,adm_metric,
+                              true,z4c_metric,z4c_metric);
+    MonopoleGeodesicPush mono(x,u,prof,prof,nr,dr,1.0,center,support);
+    Real xa[3],ua[3],xb[3],ub[3];
+    bool valid = raw(x,u,xa,ua,true) && mono(x,u,xb,ub,true);
+    samples(0,p) = valid ? 1.0 : -1.0;
+    samples(1,p) = pi(PTAG,p);
+    Real xr[3] = {x[0]-c0,x[1]-c1,x[2]-c2};
+    samples(2,p) = sqrt(xr[0]*xr[0]+xr[1]*xr[1]+xr[2]*xr[2]);
+    if (valid) {
+      for (int i = 0; i < 3; ++i) {
+        samples(3+i,p) = ua[i]-u[i]; samples(6+i,p) = ub[i]-u[i];
+        samples(9,p) += (ua[i]-u[i])*xr[i]/samples(2,p);
+        samples(10,p) += (ub[i]-u[i])*xr[i]/samples(2,p);
+      }
+    }
+  });
+  auto host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), samples);
+  std::string name = "monopole_force_audit.rank"+std::to_string(global_variable::my_rank)+".csv";
+  FILE *f = std::fopen(name.c_str(), "w");
+  if (f == nullptr) {std::cerr << "Cannot write force audit\n"; std::exit(EXIT_FAILURE);}
+  std::fprintf(f,"valid,tag,r,raw_fx,raw_fy,raw_fz,mono_fx,mono_fy,mono_fz,raw_fr,mono_fr\n");
+  for (int p = 0; p < count; ++p) {
+    if (host(0,p) == 0) {continue;}
+    for (int n = 0; n < 11; ++n) {std::fprintf(f, n==10 ? "%.17g\n" : "%.17g,",host(n,p));}
+  }
+  std::fclose(f);
+}
+
 void Particles::GR_BorisPush() {
   // GR Boris requires the ADM metric (the constructor enforces this; guard again so
   // misuse fails safe rather than dereferencing a null pointer).
@@ -804,6 +861,13 @@ void Particles::GR_BorisPush() {
   const bool use_monopole = gr_boris_live_monopole;
   if (use_monopole) {
     BuildGRBorisMonopoleProfiles(adm_n, adm_np1, use_z4c, z4c_n, z4c_np1, false);
+    if (pmy_pack->pmesh->ncycle == 0) {
+      switch (ng) {
+        case 2: AuditMonopoleForces<2>(this,pmy_pack,adm_np1,z4c_np1); break;
+        case 3: AuditMonopoleForces<3>(this,pmy_pack,adm_np1,z4c_np1); break;
+        case 4: AuditMonopoleForces<4>(this,pmy_pack,adm_np1,z4c_np1); break;
+      }
+    }
   }
   auto mono_old = gr_boris_monopole_profile_old;
   auto mono_new = gr_boris_monopole_profile_new;

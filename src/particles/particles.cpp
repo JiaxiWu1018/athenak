@@ -84,10 +84,6 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
       pusher = ParticlesPusher::gr_boris;
       gr_boris_live_monopole =
           pin->GetOrAddBoolean("particles", "gr_boris_live_monopole", false);
-      if (gr_boris_diagnostics) {
-        Kokkos::realloc(gr_boris_du_dt, 3, 0);
-        Kokkos::realloc(gr_boris_dL_dt, 3, 0);
-      }
       if (gr_boris_live_monopole) {
         if (!pmy_pack->pmesh->three_d || pmy_pack->pmhd != nullptr) {
           std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
