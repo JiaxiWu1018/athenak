@@ -33,12 +33,14 @@ def activity():
   elif item.get('type')=='event_msg' and payload.get('type') in ('task_complete','turn_completed','turn_aborted'):state='idle'
  return state
 def deliver():
- stamp=time.strftime('%Y%m%dT%H%M%SZ',time.gmtime());log=LOCAL/'evidence'/('wake_'+stamp+'.jsonl');answer=LOCAL/'evidence'/('wake_'+stamp+'.md')
- cmd=[CODEX,'exec','--approve-for-me','--skip-git-repo-check','--cd','/data/jiaxiwu/NRPIC','--json','--output-last-message',str(answer),'resume',THREAD,PROMPT]
+ stamp=time.strftime('%Y%m%dT%H%M%SZ',time.gmtime());log=LOCAL/'evidence'/('wake_'+stamp+'.log')
+ # Queue on the existing daemon owner. Starting a second CLI writer with
+ # exec resume conflicts even while the existing chat is idle.
+ cmd=[CODEX,'queue','--thread',THREAD,'--message',PROMPT]
  with log.open('w') as f:
-  result=subprocess.run(cmd,stdin=subprocess.DEVNULL,stdout=f,stderr=subprocess.STDOUT,timeout=1800)
- if result.returncode:raise RuntimeError('Codex resume wake failed; see '+str(log))
- return dict(status='wake_completed',wake_log=str(log),answer=str(answer))
+  result=subprocess.run(cmd,stdin=subprocess.DEVNULL,stdout=f,stderr=subprocess.STDOUT,timeout=60)
+ if result.returncode:raise RuntimeError('Codex queue wake failed; see '+str(log))
+ return dict(status='wake_queued',wake_log=str(log),thread=THREAD,method='Existing daemon queue; accepted delivery is not a completed check.')
 def metadata():
  code="import json,subprocess;from pathlib import Path;r=Path("+repr(AMD)+");s=json.loads((r/'control/state.json').read_text());ids=','.join(str(j['id']) for j in s['jobs']);print(json.dumps(dict(state=s,queue=subprocess.check_output(['squeue','-h','-u','jiaxiwu','-o','%i|%j|%T|%R'],text=True),accounting=subprocess.check_output(['sacct','-X','-n','-P','-j',ids,'--format=JobIDRaw,State,ExitCode,ElapsedRaw,AllocNodes'],text=True),user_stop=(r/'control/USER_STOP').exists(),heartbeat=(r/'control/ARCHIVE_HEARTBEAT').read_text() if (r/'control/ARCHIVE_HEARTBEAT').exists() else None)))"
  p=subprocess.run(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=20','hpcfund.amd.com','python3 -c '+shlex.quote(code)],text=True,capture_output=True,timeout=120)

@@ -16,6 +16,17 @@ class R40Operations(unittest.TestCase):
   root=Path(__file__).parent
   for name in ('science9.py','workflow.py'):
    text=(root/name).read_text();self.assertIn('_0040.txt',text);self.assertNotIn('_0050.txt',text)
+ def test_all_full_allocations_exclude_observed_bad_node(self):
+  for name in ('amd_gate.sbatch','amd_segment.sbatch'):
+   self.assertIn('#SBATCH --exclude=k003-010',Path(__file__).with_name(name).read_text())
+ def test_wake_queues_to_existing_writer_without_starting_another(self):
+  import subprocess
+  with tempfile.TemporaryDirectory() as td:
+   root=Path(td);(root/'evidence').mkdir()
+   with patch('wake_check.LOCAL',root),patch('wake_check.subprocess.run',return_value=subprocess.CompletedProcess([],0)) as run:
+    result=wake_check.deliver()
+   args=run.call_args.args[0]
+   self.assertEqual(args,[wake_check.CODEX,'queue','--thread',wake_check.THREAD,'--message',wake_check.PROMPT]);self.assertEqual(result['status'],'wake_queued')
  def test_active_thread_is_not_interrupted_by_monitor(self):
   import json,time
   with tempfile.TemporaryDirectory() as td:

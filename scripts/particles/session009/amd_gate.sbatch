@@ -6,6 +6,7 @@
 #SBATCH -n 48
 #SBATCH --ntasks-per-node=4
 #SBATCH --exclusive
+#SBATCH --exclude=k003-010
 #SBATCH -t 04:00:00
 #SBATCH --no-requeue
 set -euo pipefail
