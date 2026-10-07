@@ -14,7 +14,7 @@ ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scrip
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/workflow.py cancel'
 ```
 
-Stop is sticky and requests a clean checkpointed stop. Cancel is emergency campaign-only cancellation; no guaranteed new checkpoint. Never cancel a generic `s9_prod`: that job name belongs to unrelated ST migration. Status contains exact registered Jeans009 jobIDs. Scheduler: `squeue -u jiaxiwu -o "%i %j %T %R"`; inspect only the registered Jeans009 job IDs (current prefix jn9_20261006_r40b_).
+Stop is sticky and requests a clean checkpointed stop. Cancel is emergency campaign-only cancellation; no guaranteed new checkpoint. Never cancel a generic `s9_prod`: that job name belongs to unrelated ST migration. Status contains exact registered Jeans009 jobIDs. Scheduler: `squeue -u jiaxiwu -o "%i %j %T %R"`; inspect only the registered Jeans009 job IDs (current prefix jn9_20261007_known12_).
 
 On Anta, `evidence/active_archive_jobs.json` records jobs; `evidence/metadata_trigger.log` logs the finite cron. `scripts/archive_trigger.py remove` removes only the JEANS9 metadata entry. Raw science, verified checkpoints and manifests live in runs/. Milestone plots/movies/reports under analysis/update_*; analysis/latest.json identifies most recent products. Human/technical top reports are updated after verified data become available. Source/config/evidence are preserved on Perseus; no large raw data there.
 
@@ -35,8 +35,10 @@ python3 /data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_202610
 
 These commands inspect/remove the two-hour wake only. The AMD `workflow.py stop` command above requests the sticky scientific stop. Evidence/two_hour_check_latest.json and two_hour_checks.jsonl record checks; actual wake delivery is recorded separately from schedule installation.
 
-Current full startup453631 is pendingresources;453630 actual-executable input preflight passed. Inspector453632 will submit production after all full gates pass. See evidence/CURRENT_STATUS.md for measured usage and tested-versus-pending automation.
+For current jobs, measured usage and tested-versus-pending automation, read evidence/CURRENT_STATUS.md.
 
-## October7 live recovery
+## October7 scheduled check and reviewed recovery
 
-Startup453631 failed beforeinitialization onMPIbackend mismatch atk003-010. Both12-node scripts nowexclude thatnode. Newinputpreflight454537passed; fullstartup454538andinspector454539queued. Operations4c348a50pushed; numericalstate remainsfresh t0. The two-hour wake now uses `codex queue --thread` on the existingdaemon after old `exec resume` failed writer ownership; actualprobe accepted. Antafive-minute cron re-enabled, cumulativecaps unchanged. Current authoritative status is evidence/CURRENT_STATUS.md.
+Startup454538 failed before initialization on an MPI backend mismatch at k003-009. Failure evidence remains in history/mpi_failure_454538_20261007/. Startup and every production segment now request the exact twelve-node group whose prior48-rank test passed. AMD454731 input checks passed; full startup454732 is pending resources and inspector454733 waits for it. Operationsff4b5cb4 was pushed. Physical time remains0, with no checkpoint or binary science results.
+
+The two-hour nativequeue wake delivered this check to the existing thread. Anta's five-minute archive trigger was reactivated after preserving the failed-startup closeout from2365. Original cumulative caps/deadline and sticky stop remain unchanged. Authoritative evidence and next action: evidence/CURRENT_STATUS.md.

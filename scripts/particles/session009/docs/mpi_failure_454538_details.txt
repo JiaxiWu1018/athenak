@@ -1,0 +1,271 @@
+/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/evidence/gate_provenance.txt Wed Oct  7 06:44:25 PM UTC 2026
+k002-006.hpcfund
+
+Currently Loaded Modules:
+  1) autotools   3) gnu12/12.2.0   5) openmpi4/4.1.8   7) prun/2.3
+  2) hpcfund     4) ucx/1.18.1     6) cmake/3.25.2     8) rocm/6.4.1
+
+ 
+
+JobId=454538 JobName=jn9_20261007_recovery_gate
+   UserId=jiaxiwu(3175) GroupId=eliasmost(2098) MCS_label=N/A
+   Priority=528 Nice=0 Account=eliasmost QOS=alloc_eliasmost_04012026_03312027
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:01 TimeLimit=04:00:00 TimeMin=N/A
+   SubmitTime=2026-10-07T12:35:54 EligibleTime=2026-10-07T12:36:22
+   AccrueTime=2026-10-07T12:36:22
+   StartTime=2026-10-07T13:44:24 EndTime=2026-10-07T17:44:24 Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-07T13:44:24 Scheduler=Main
+   Partition=mi2104x AllocNode:Sid=aus-amd-hpcfund-admin02:3800421
+   ReqNodeList=(null) ExcNodeList=k003-010
+   NodeList=k002-006,k003-[003-004,009],k005-[002-003,005-010]
+   BatchHost=k002-006
+   NumNodes=12 NumCPUs=1536 NumTasks=48 CPUs/Task=1 ReqB:S:C:T=0:0:*:*
+   TRES=cpu=1536,mem=12M,node=12
+   Socks/Node=* NtasksPerN:B:S:C=4:0:*:* CoreSpec=*
+   MinCPUsNode=4 MinMemoryNode=0 MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=(null) Network=(null)
+   Command=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/amd_gate.sbatch
+   WorkDir=/home1/jiaxiwu
+   StdErr=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/logs/454538_gate.log
+   StdIn=/dev/null
+   StdOut=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/logs/454538_gate.log
+   Power=
+   KillOInInvalidDependent=Yes
+   
+
+9717c98bed18a8d4307286115a402920aa2ca2fbf254049841aa3719b806c515  /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/build/src/athena
+deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd  /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/inputs/gi_cluster_s9.athinput
+6892be3e3f04ec573f91cb2034bc9d3009a3bdff
+ 6739bc623081648af9e752b616d9671527922cbf kokkos (6739bc6)
+
+/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/evidence/mpi_48rank_gate.txt [prun] Master compute host = k002-006
+[prun] Resource manager = slurm
+[prun] Launch cmd = mpirun /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/build/mpi_probe (family=openmpi4)
+[k003-009.hpcfund:3717364] [[59132,1],15] selected pml ob1, but peer [[59132,1],0] on k002-006 selected pml ucx
+[k003-009.hpcfund:3717363] [[59132,1],14] selected pml ob1, but peer [[59132,1],0] on k002-006 selected pml ucx
+[k003-009.hpcfund:3717361] [[59132,1],12] selected pml ob1, but peer [[59132,1],0] on k002-006 selected pml ucx
+--------------------------------------------------------------------------
+MPI_INIT has failed because at least one MPI process is unreachable
+from another.  This *usually* means that an underlying communication
+plugin -- such as a BTL or an MTL -- has either not loaded or not
+allowed itself to be used.  Your MPI job will now abort.
+
+You may wish to try to narrow down the problem;
+
+ * Check the output of ompi_info to see which BTL/MTL plugins are
+   available.
+ * Run your application with MPI_THREAD_SINGLE.
+ * Set the MCA parameter btl_base_verbose to 100 (or mtl_base_verbose,
+   if using MTL-based communications) to see exactly which
+   communication plugins were considered and/or discarded.
+--------------------------------------------------------------------------
+[k003-009.hpcfund:3717362] [[59132,1],13] selected pml ob1, but peer [[59132,1],0] on k002-006 selected pml ucx
+[k003-009:3717361] *** An error occurred in MPI_Init
+[k003-009:3717361] *** reported by process [3875274753,12]
+[k003-009:3717361] *** on a NULL communicator
+[k003-009:3717361] *** Unknown error
+[k003-009:3717361] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+[k003-009:3717361] ***    and potentially your MPI job)
+[k002-006.hpcfund:1397263] 3 more processes have sent help message help-mpi-runtime.txt / mpi_init:startup:pml-add-procs-fail
+[k002-006.hpcfund:1397263] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[k002-006.hpcfund:1397263] 3 more processes have sent help message help-mpi-errors.txt / mpi_errors_are_fatal unknown handle
+
+/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/r50_before_reset_20261006/evidence/gate_provenance.txt Tue Oct  6 05:12:11 AM UTC 2026
+k002-005.hpcfund
+
+Currently Loaded Modules:
+  1) autotools   3) gnu12/12.2.0   5) openmpi4/4.1.8   7) prun/2.3
+  2) hpcfund     4) ucx/1.18.1     6) cmake/3.25.2     8) rocm/6.4.1
+
+ 
+
+JobId=452580 JobName=jn9_20261005_gate
+   UserId=jiaxiwu(3175) GroupId=eliasmost(2098) MCS_label=N/A
+   Priority=590 Nice=0 Account=eliasmost QOS=alloc_eliasmost_04012026_03312027
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:02 TimeLimit=04:00:00 TimeMin=N/A
+   SubmitTime=2026-10-05T17:01:45 EligibleTime=2026-10-05T18:29:07
+   AccrueTime=2026-10-05T18:29:07
+   StartTime=2026-10-06T00:12:09 EndTime=2026-10-06T04:12:09 Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-06T00:12:09 Scheduler=Main
+   Partition=mi2104x AllocNode:Sid=aus-amd-hpcfund-admin02:2758575
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=k002-005,k003-[003-007],k005-[002-006,009]
+   BatchHost=k002-005
+   NumNodes=12 NumCPUs=1536 NumTasks=48 CPUs/Task=1 ReqB:S:C:T=0:0:*:*
+   TRES=cpu=1536,mem=12M,node=12
+   Socks/Node=* NtasksPerN:B:S:C=4:0:*:* CoreSpec=*
+   MinCPUsNode=4 MinMemoryNode=0 MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=(null) Network=(null)
+   Command=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/amd_gate.sbatch
+   WorkDir=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005
+   StdErr=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/logs/452580_gate.log
+   StdIn=/dev/null
+   StdOut=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/logs/452580_gate.log
+   Power=
+   KillOInInvalidDependent=Yes
+   
+
+9717c98bed18a8d4307286115a402920aa2ca2fbf254049841aa3719b806c515  /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/build/src/athena
+164002e107ae3023c37b206a4e83923410c38c5de7c18c9f704afd48f947ffff  /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/inputs/gi_cluster_s9.athinput
+6892be3e3f04ec573f91cb2034bc9d3009a3bdff
+ 6739bc623081648af9e752b616d9671527922cbf kokkos (6739bc6)
+
+/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/r50_before_reset_20261006/evidence/mpi_48rank_gate.txt [prun] Master compute host = k002-005
+[prun] Resource manager = slurm
+[prun] Launch cmd = mpirun /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/build/mpi_probe (family=openmpi4)
+rank=0/48 host=k002-005.hpcfund alltoall_errors=0
+rank=1/48 host=k002-005.hpcfund alltoall_errors=0
+rank=2/48 host=k002-005.hpcfund alltoall_errors=0
+rank=3/48 host=k002-005.hpcfund alltoall_errors=0
+rank=8/48 host=k003-004.hpcfund alltoall_errors=0
+rank=9/48 host=k003-004.hpcfund alltoall_errors=0
+rank=24/48 host=k005-002.hpcfund alltoall_errors=0
+rank=20/48 host=k003-007.hpcfund alltoall_errors=0
+rank=12/48 host=k003-005.hpcfund alltoall_errors=0
+rank=44/48 host=k005-009.hpcfund alltoall_errors=0
+rank=36/48 host=k005-005.hpcfund alltoall_errors=0
+rank=10/48 host=k003-004.hpcfund alltoall_errors=0
+rank=25/48 host=k005-002.hpcfund alltoall_errors=0
+rank=28/48 host=k005-003.hpcfund alltoall_errors=0
+rank=32/48 host=k005-004.hpcfund alltoall_errors=0
+rank=40/48 host=k005-006.hpcfund alltoall_errors=0
+rank=4/48 host=k003-003.hpcfund alltoall_errors=0
+rank=21/48 host=k003-007.hpcfund alltoall_errors=0
+rank=13/48 host=k003-005.hpcfund alltoall_errors=0
+rank=16/48 host=k003-006.hpcfund alltoall_errors=0
+rank=45/48 host=k005-009.hpcfund alltoall_errors=0
+rank=37/48 host=k005-005.hpcfund alltoall_errors=0
+rank=11/48 host=k003-004.hpcfund alltoall_errors=0
+rank=26/48 host=k005-002.hpcfund alltoall_errors=0
+rank=29/48 host=k005-003.hpcfund alltoall_errors=0
+rank=33/48 host=k005-004.hpcfund alltoall_errors=0
+rank=41/48 host=k005-006.hpcfund alltoall_errors=0
+rank=5/48 host=k003-003.hpcfund alltoall_errors=0
+rank=22/48 host=k003-007.hpcfund alltoall_errors=0
+rank=14/48 host=k003-005.hpcfund alltoall_errors=0
+rank=17/48 host=k003-006.hpcfund alltoall_errors=0
+rank=46/48 host=k005-009.hpcfund alltoall_errors=0
+rank=38/48 host=k005-005.hpcfund alltoall_errors=0
+rank=27/48 host=k005-002.hpcfund alltoall_errors=0
+rank=30/48 host=k005-003.hpcfund alltoall_errors=0
+rank=34/48 host=k005-004.hpcfund alltoall_errors=0
+rank=42/48 host=k005-006.hpcfund alltoall_errors=0
+rank=6/48 host=k003-003.hpcfund alltoall_errors=0
+rank=23/48 host=k003-007.hpcfund alltoall_errors=0
+rank=15/48 host=k003-005.hpcfund alltoall_errors=0
+rank=18/48 host=k003-006.hpcfund alltoall_errors=0
+rank=47/48 host=k005-009.hpcfund alltoall_errors=0
+rank=39/48 host=k005-005.hpcfund alltoall_errors=0
+rank=31/48 host=k005-003.hpcfund alltoall_errors=0
+rank=35/48 host=k005-004.hpcfund alltoall_errors=0
+rank=43/48 host=k005-006.hpcfund alltoall_errors=0
+rank=7/48 host=k003-003.hpcfund alltoall_errors=0
+rank=19/48 host=k003-006.hpcfund alltoall_errors=0
+
+/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/mpi_failure_453631_20261007/evidence/gate_provenance.txt Wed Oct  7 04:02:14 AM UTC 2026
+k002-006.hpcfund
+
+Currently Loaded Modules:
+  1) autotools   3) gnu12/12.2.0   5) openmpi4/4.1.8   7) prun/2.3
+  2) hpcfund     4) ucx/1.18.1     6) cmake/3.25.2     8) rocm/6.4.1
+
+ 
+
+JobId=453631 JobName=jn9_20261006_r40b_gate
+   UserId=jiaxiwu(3175) GroupId=eliasmost(2098) MCS_label=N/A
+   Priority=552 Nice=0 Account=eliasmost QOS=alloc_eliasmost_04012026_03312027
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:01 TimeLimit=04:00:00 TimeMin=N/A
+   SubmitTime=2026-10-06T17:42:50 EligibleTime=2026-10-06T17:43:16
+   AccrueTime=2026-10-06T17:43:16
+   StartTime=2026-10-06T23:02:13 EndTime=2026-10-07T03:02:13 Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-06T23:02:13 Scheduler=Main
+   Partition=mi2104x AllocNode:Sid=aus-amd-hpcfund-admin02:276779
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=k002-006,k003-[001,004-005,007-008,010],k005-[002-005,009]
+   BatchHost=k002-006
+   NumNodes=12 NumCPUs=1536 NumTasks=48 CPUs/Task=1 ReqB:S:C:T=0:0:*:*
+   TRES=cpu=1536,mem=12M,node=12
+   Socks/Node=* NtasksPerN:B:S:C=4:0:*:* CoreSpec=*
+   MinCPUsNode=4 MinMemoryNode=0 MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=NO Contiguous=0 Licenses=(null) Network=(null)
+   Command=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/amd_gate.sbatch
+   WorkDir=/home1/jiaxiwu
+   StdErr=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/logs/453631_gate.log
+   StdIn=/dev/null
+   StdOut=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/logs/453631_gate.log
+   Power=
+   KillOInInvalidDependent=Yes
+   
+
+9717c98bed18a8d4307286115a402920aa2ca2fbf254049841aa3719b806c515  /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/build/src/athena
+deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd  /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/inputs/gi_cluster_s9.athinput
+6892be3e3f04ec573f91cb2034bc9d3009a3bdff
+ 6739bc623081648af9e752b616d9671527922cbf kokkos (6739bc6)
+
+/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/mpi_failure_453631_20261007/evidence/mpi_48rank_gate.txt [prun] Master compute host = k002-006
+[prun] Resource manager = slurm
+[prun] Launch cmd = mpirun /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/build/mpi_probe (family=openmpi4)
+[k003-010.hpcfund:2209321] [[1178,1],27] selected pml ob1, but peer [[1178,1],0] on k002-006 selected pml ucx
+[k003-010.hpcfund:2209318] [[1178,1],24] selected pml ob1, but peer [[1178,1],0] on k002-006 selected pml ucx
+[k003-010.hpcfund:2209320] [[1178,1],26] selected pml ob1, but peer [[1178,1],0] on k002-006 selected pml ucx
+--------------------------------------------------------------------------
+MPI_INIT has failed because at least one MPI process is unreachable
+from another.  This *usually* means that an underlying communication
+plugin -- such as a BTL or an MTL -- has either not loaded or not
+allowed itself to be used.  Your MPI job will now abort.
+
+You may wish to try to narrow down the problem;
+
+ * Check the output of ompi_info to see which BTL/MTL plugins are
+   available.
+ * Run your application with MPI_THREAD_SINGLE.
+ * Set the MCA parameter btl_base_verbose to 100 (or mtl_base_verbose,
+   if using MTL-based communications) to see exactly which
+   communication plugins were considered and/or discarded.
+--------------------------------------------------------------------------
+[k003-010.hpcfund:2209319] [[1178,1],25] selected pml ob1, but peer [[1178,1],0] on k002-006 selected pml ucx
+[k003-010:2209321] *** An error occurred in MPI_Init
+[k003-010:2209321] *** reported by process [77201409,27]
+[k003-010:2209321] *** on a NULL communicator
+[k003-010:2209321] *** Unknown error
+[k003-010:2209321] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+[k003-010:2209321] ***    and potentially your MPI job)
+[k002-006.hpcfund:1355880] 3 more processes have sent help message help-mpi-runtime.txt / mpi_init:startup:pml-add-procs-fail
+[k002-006.hpcfund:1355880] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+[k002-006.hpcfund:1355880] 3 more processes have sent help message help-mpi-errors.txt / mpi_errors_are_fatal unknown handle
+
+452580|FAILED|1:0|2026-10-06T00:12:09|2026-10-06T00:12:21|k002-005,k003-[003-007],k005-[002-006,009]
+454538|FAILED|1:0|2026-10-07T13:44:24|2026-10-07T13:44:30|k002-006,k003-[003-004,009],k005-[002-003,005-010]
+
+NODELIST STATE MEMORY AVAIL_FEATURES
+k002-005 allocated 1 (null)
+k002-006 allocated 1 (null)
+k003-001 allocated 1 (null)
+k003-002 down 1 (null)
+k003-003 allocated 1 (null)
+k003-004 idle 1 (null)
+k003-005 allocated 1 (null)
+k003-006 allocated 1 (null)
+k003-007 allocated 1 (null)
+k003-008 allocated 1 (null)
+k003-009 allocated 1 (null)
+k003-010 idle 1 (null)
+k005-002 idle 1 (null)
+k005-003 allocated 1 (null)
+k005-004 allocated 1 (null)
+k005-005 allocated 1 (null)
+k005-006 allocated 1 (null)
+k005-007 allocated 1 (null)
+k005-008 idle 1 (null)
+k005-009 idle 1 (null)
+k005-010 idle 1 (null)
+

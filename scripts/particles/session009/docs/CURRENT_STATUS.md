@@ -1,28 +1,34 @@
-# Session009 — reviewed MPI failure, recovery queued
+# Session009 — scheduled check and reviewed startup repair
 
-Checked 2026-10-07T17:40:53.015102+00:00. **Physical time remains0: no particles initialized, checkpoint, orbit or binary waveform yet.** Live AMD control/state.json and Slurm remain authoritative.
+Checked **October 07, 2026 01:12 PM PDT**. The simulation is **not running**: startup **454732** is queued for resources and inspector **454733** waits for it. Physical time remains **t = 0**; no particle initialization, verified checkpoint, orbit or binary waveform exists. Live AMD control/state.json and Slurm are authoritative.
 
-## Failure found and action taken
+## Failure and reviewed repair
 
-Full startup453631 began October6 at21:02Pacific and failed after6seconds. k003-010 selected MPIbackendob1 while k002-006 selecteducx; MPI_Init aborted before geometry/particles. This repeats the observed Session008 node fault. Failure logs/provenance/config/scripts are preserved in AMD andAnta history/mpi_failure_453631_20261007/. No numerical evolution was retried; no physics/source/executable change.
+Startup454538 failed after6seconds, before geometry or particles, because k003-009 selected MPI PMLob1 while peer k002-006 selecteducx. Inspector454539 halted further jobs. Failure logs, configuration, scripts and accounting are preserved on AMD and Anta under history/mpi_failure_454538_20261007/. Earlier failures remain preserved separately. Anta2365 completed the failed-startup status archive/report; that is not completed science.
 
-Both full-startup and everyfutureproduction Slurm script now exclude **k003-010**, retaining12exclusiveMI210nodes/48GPUs/ranks, pinnedROCm6.4.1 and siteautomaticPML selection. Operationscommit4c348a505304878bf4a976228964f8151fa6fb07 pushed. CanonicalR40/R46input, approvedboost.133215,5Mparticles,centralceiling1/256,domain/cadences/caps allunchanged.
+Both full startup and all future production segments now request exactly **k002-005,k003-[003-007],k005-[002-006,009]**. These twelve nodes previously passed all48 ranks of the Session009 all-to-all communication test452580. A checksum-bound receipt requires this exact node group at runtime. That historical communication success does not establish memory feasibility or successful binary evolution. Nodesk003-009 andk003-010 are excluded. No transport, physics, source or executable change was made.
 
-Perseus allocated11233 passed16targeted tests plus syntax/inputcontract. AMD newpreflight **454537 completed0:0 in4s**,13regression checks and allthreeactualcompiledinput commands passed. Full startup **454538 PENDING(Resources)**, inspector **454539 PENDING(Dependency)**. Onsuccessfulfullmesh/ledger/48GPUmemory/restart/outputchecks, inspectorcontinuesacceptedstartupcheckpointtot12then50Msegments. Fullgatesremainpending; no scientificresult or productionsegmentclaim.
+Operations commit **ff4b5cb42bc67375f0b9f852de78dfe0dc073a49** was pushed and the remote branch verified. Allocated Perseus11238 passed19 targeted tests, syntax and input contract checks. AMD **454731 completed0:0 in4seconds**, passing16 checks, the original48-rank witness validation and all three actual compiled input commands. The new full-particle startup remains pending; actual48-rank communication, complete mesh, initial particle ledger, allGPUmemory, finite fields, outputs and restart checks must still pass. If this previously successful group also fails communication, preserve the failure and review bounded allocated MPI diagnostics before another full allocation.
 
-## Monitors
+## Configuration and limits
 
-Two-hour metadata checks actually ran, but oldcodexexecresume failed because thischat already had anactivewriter evenwhenidle. Corrected to **codexqueue --thread existingUUID --message** ontheexistingdaemon. Actualdeliveryprobe accepted queuedmessage01a1176a-f493-70b1-92e3-227042130ebe for thisthread; receipt evidence/wake_queue_delivery_probe.json and wake_20261007T173047Z.log. Acceptance is not a completedsciencecheck. Current-turn overlapguard and45-daydeadline remain; alloldfailurelogs retained. Cron still0 */2 atUTC evenhours; nextregularidlecheck uses thecorrectedcommand. No newthread/agent ordaemonrestart.
+Approved R40 extraction and dx≤0.25 through R46, local boost0.133215, five million particles, domain[-1024,1024]³, central dx ceiling1/256, sampling, tags, RK4/CFL0.4, removal and output cadences are unchanged. Initial seeded mesh estimate5384blocks awaits the actual AMD inventory. Compiled source remains6892be3e3f04ec573f91cb2034bc9d3009a3bdff; Kokkos6739bc623081648af9e752b616d9671527922cbf. Canonical input SHA256deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd. All37 flat runtime files are bound in evidence/frozen_config.json.
 
-Anta2356 completed0:0 in79s andwrote the failedstartup statuscloseout, not completedscience. Oldterminalmarker/latestpointer preserved; five-minute archive/report cron reinstalledandtickpassed forrecovery. Originalledger4/96jobs anddeadline retained. Initial/t12/every50M/finalplots/reports/movies remain datadependent; representativeframe/valueQAawaitsdata.
+Original hard limits remain t400 or10000 raw AMD node-hours,90 finite segments,12-hour production jobs with40minutes for finalization, and deadline2026-11-19T22:01:43.732344Z. The clock and cumulative budgets were not reset. AMD1.25TiB session cap and whole-user storage guards apply; Anta16TiB and96 four-hour archive/analysis jobs. Keep the latest three verified AMD checkpoints after checksum-verified Anta archival. Sticky user stop remains intact. Numerical failures stop for review.
 
-## Accounting and limits
+An earlier scientific stop requires a strictly accepted common horizon enclosing both objects, usable outgoing ringdown within the validated frequency band with gaps checked, and at least100 saved M_ref after its observed waveform peak. No merger or ringdown is guaranteed. M_ref=1 is the inherited reference unit, not a measured horizon mass.
 
-AMD actual **0.943611111 rawnodehours**, pendingstartup+inspector reserve48.5, maximum49.443611111. Allpriorjobs retainedinaccounting. Anta4jobs/428seconds = **0.118888889 node/GPUhours**. Monetarytariff unavailable; currentAMDstorage/48GPUmemory measurementawaits allocatedstartup. No currentstorage estimate substitutedfromoldruns.
+## Resources and archive/analysis
 
-Original hardt400 or10000rawAMDnodehours,90segments,12hjob/application11h20,deadline2026-11-19T22:01:43.732344Z unchanged. AMD1.25TiBsession pluswholeuserguards; Anta16TiB/96four-hourjobs,latest3verifiedAMDcheckpoints retained afterarchiveverification. Userstop remainssticky. Numericalfailuresstopforreview; no endlessretries. Earlystop requiresstrictacceptedcommonenclosure, usableinband/gapcheckedringdown and100savedMafterobservedoutgoingwavepeak.
+- AMD cumulative actual **0.965 raw node-hours**, including preparation and failed allocations. Current maximum reserved exposure **49.465 raw node-hours**. Queue wait is not charged.
+- Anta **0.141944444 node/GPU-hours**,511seconds across5/96 completed jobs. The original ledger and deadline remain intact; no active Anta analysis job is needed until new sealed output exists.
+- Anta/data3 has **26.98TiB free**. Last allocated archive measurement90308608bytes (~86.13MiB) was from failed-startup2365 before this small metadata repair. Current AMD storage/GPU memory has not yet been sampled by allocated startup; no old value is substituted.
+- Monetary costs remain unavailable without an account tariff. There is no measured production rate or reliable updated completion estimate yet.
+- No binary science plots or movies exist. Initial/t12/every50M/final science reports, plots and central/context movies are implemented and await data. The old failure-only products in Anta analysis/update_final_2365/ are retained but are not the active science pointer.
 
-## Controls and next action
+## Durable monitors and controls
+
+This actual regular two-hour cron prompt reached the same Codex thread and this check completed. Receipt: evidence/scheduled_check_20261007T201254Z.json. The Perseus nativequeue wake and Anta five-minute archive trigger are installed. Archive tick succeeded and the AMD heartbeat is fresh. Successful inspector454733 will continue the accepted startup checkpoint to t12 and finite50M segments; continuation and allocated archival/analysis do not depend on an interactive shell. Monitoring cannot guarantee queue access or successful evolution; failures halt for review.
 
 ```sh
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/workflow.py status'
@@ -31,12 +37,4 @@ ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scrip
 python3 /data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/code/scripts/particles/session009/wake_check.py remove
 ```
 
-Waitfor454538allocation, inspect actual48rankprobe andfullgate receipts;454539 schedulesonefiniteproduction successoronlyonacceptance. Donot manuallyduplicatejobs orchangephysics to bypass checks. Nevercancel unrelatedSTs9_prod. README/manifest maproots. NoSession009rawparticle/volume/checkpointdata onPerseus. Sourcecompiled6892be3e unchanged; canonicalinputSHAdeb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd; frozen_script_bindingsevidence/frozen_config.json. Previousstatus retained in localhistory/mpi_failure_453631_20261007/.
-
-## Scheduled-message delivery confirmed
-
-At 2026-10-07T17:46:14.925615+00:00, the queued delivery-test message reached this same thread and triggered this check. Receipt: evidence/wake_queue_delivery_received.json. Live AMD job454538 still waits for resources; inspector454539 waits for it. Time remains0 and there are no stop flags. Both cron entries were verified. The test submitted no duplicate job and started no separate agent. The next regular two-hour check uses the repaired queue command.
-
-## Regular two-hour check — October 07, 2026 11:04 AM PDT
-
-The cron message reached this existing thread and the check completed. Startup454538 remains PENDING(Resources); inspector454539 is PENDING(Dependency). Physical time0; no verified checkpoint or evolved state. No new numerical failure or stop flags in this check; numerical health remains unmeasured until startup runs. AMD usage0.943611111rawnodeh, Anta0.118888889node/GPUh across4/96jobs. Archive heartbeat age124.0s; Anta/data3 free26.98TiB. Both cron entries remain installed; reports/plots await sealed science outputs. CurrentAMDstorage/GPU memory sample still unavailable because no startup allocation has begun. No duplicate job, separate agent, physics change or failure retry. Receipt:evidence/scheduled_check_20261007T180414Z.json. Existing approved limits and sticky-stop behavior apply.
+Never cancel unrelated ST jobs named s9_prod or s9_controls_build. No Session009 raw particle, volume or checkpoint data are on Perseus: only source, inputs, scripts, documentation and small retained diagnostic evidence. Next action: wait for454732, inspect the actual communication/full startup receipts; do not submit a duplicate job or automatically retry a numerical failure.

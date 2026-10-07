@@ -46,3 +46,10 @@
 
 - Repairedcron queued its normal check prompt to the existing Codexthread and this turn completed liveinspection.454538 still PENDING(Resources),454539 PENDING(Dependency),physicalt0/no checkpoint. No numerical state exists yet; no newstop flag/failure orduplicate submission.
 - AMD0.943611111rawnodeh; Anta0.118888889node/GPUh,4/96jobs. Archiveheartbeat fresh; /data3free26.98TiB. Bothmonitors active; science reports/plots awaitverifieddata. Receipt retained inevidence/scheduled_check_20261007T180414Z.json. Originalphysics/caps/deadline unchanged.
+
+### October 07, 2026 01:12 PM PDT — Session009 two-hour check, second MPI failure reviewed
+
+- The scheduled message reached this existing thread. Startup454538 failed in6seconds before geometry/particles: k003-009 selectedob1 while k002-006 selecteducx. Inspector454539 stopped successors; physicalt0/no checkpoint or binary result. Failure configuration/scripts/logs/accounting preserved on AMD/Anta history/mpi_failure_454538_20261007/. Anta2365 completed failed-startup status archival, not science.
+- Operationsff4b5cb42bc67375f0b9f852de78dfe0dc073a49 pushed/verified: pin startup and every production segment to exact twelve-node group from successful48-rank test452580; checksum-bound witness/allocation guard. No physics/input/source/executable/transport changes. If this group also fails communication, stop for allocated root-cause diagnostics before another full allocation.
+- Allocated Perseus11238 passed19 targeted checks. AMD454731 passed16 checks plus three compiled input commands,4s. New startup454732 PENDING(Resources), inspector454733 PENDING(Dependency); actual full-particle/memory/restart/output checks pending. No duplicate job or agent spawned.
+- Cumulative AMD0.965rawnodeh; maximum reserved49.465. Anta511seconds=.141944444node/GPUh,5/96jobs; /data3free26.98TiB. Actual AMD storage/memory and production rate not measured yet. Both monitors active again; original deadlines/budgets/stop intent retained. Reports, plots and movies await science data. Receipt:evidence/scheduled_check_20261007T201254Z.json.
