@@ -53,3 +53,8 @@
 - Operationsff4b5cb42bc67375f0b9f852de78dfe0dc073a49 pushed/verified: pin startup and every production segment to exact twelve-node group from successful48-rank test452580; checksum-bound witness/allocation guard. No physics/input/source/executable/transport changes. If this group also fails communication, stop for allocated root-cause diagnostics before another full allocation.
 - Allocated Perseus11238 passed19 targeted checks. AMD454731 passed16 checks plus three compiled input commands,4s. New startup454732 PENDING(Resources), inspector454733 PENDING(Dependency); actual full-particle/memory/restart/output checks pending. No duplicate job or agent spawned.
 - Cumulative AMD0.965rawnodeh; maximum reserved49.465. Anta511seconds=.141944444node/GPUh,5/96jobs; /data3free26.98TiB. Actual AMD storage/memory and production rate not measured yet. Both monitors active again; original deadlines/budgets/stop intent retained. Reports, plots and movies await science data. Receipt:evidence/scheduled_check_20261007T201254Z.json.
+
+### October 07, 2026 03:02 PM PDT — routine two-hour Session009 check completed
+
+- Actual scheduled prompt reached the existing thread.454732 remains PENDING(Resources);454733 PENDING(Dependency),t0/no binary checkpoint or data. No new failure/stop flag, duplicate submission, agent or physics change. Frozen bindings pass. Scheduler provisional startOctober 08 11:44 AM PDT, not guaranteed.
+- AMD0.965rawnodeh; reserved maximum49.465. Anta0.141944444node/GPUh across5/96completed jobs; no new science products. Both monitors active; archive heartbeat fresh and/data3free26.98TiB. Original configuration/caps/deadline retained. Wait for accepted startup; no automatic failure retry. Receipt:evidence/scheduled_check_20261007T220232Z.json.

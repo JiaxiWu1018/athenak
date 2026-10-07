@@ -1,6 +1,6 @@
 # Session009 — scheduled check and reviewed startup repair
 
-Checked **October 07, 2026 01:12 PM PDT**. The simulation is **not running**: startup **454732** is queued for resources and inspector **454733** waits for it. Physical time remains **t = 0**; no particle initialization, verified checkpoint, orbit or binary waveform exists. Live AMD control/state.json and Slurm are authoritative.
+Checked **October 07, 2026 03:02 PM PDT**. The simulation is **not running**: startup **454732** is queued for resources and inspector **454733** waits for it. Physical time remains **t = 0**; no particle initialization, verified checkpoint, orbit or binary waveform exists. Live AMD control/state.json and Slurm are authoritative.
 
 ## Failure and reviewed repair
 
@@ -38,3 +38,11 @@ python3 /data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_202610
 ```
 
 Never cancel unrelated ST jobs named s9_prod or s9_controls_build. No Session009 raw particle, volume or checkpoint data are on Perseus: only source, inputs, scripts, documentation and small retained diagnostic evidence. Next action: wait for454732, inspect the actual communication/full startup receipts; do not submit a duplicate job or automatically retry a numerical failure.
+
+## Regular two-hour check — October 07, 2026 03:02 PM PDT
+
+The scheduled message reached this same thread and the check completed. Registered AMD startup454732 remains PENDING(Resources); inspector454733 is PENDING(Dependency). The actual scheduler currently estimates **October 08 at 11:44 AM PDT** for startup; this can change and is not a guarantee. No new failure, stop flag, duplicate launch or configuration change occurred. Frozen bindings pass.
+
+Physical time remains0 and no verified binary checkpoint, initialization ledger or evolved state exists. Only historical linear-wave preparation runs are present; their t80 output is not binary evolution. Numerical health, actual full-particle GPU memory and current AMD storage remain unmeasured until startup is allocated.
+
+AMD cumulative usage0.965rawnodeh and reserved maximum49.465 are unchanged. Anta cumulative0.141944444node/GPUh,5/96 completed jobs; no active archive/analysis job and no new science milestone. Anta/data3free26.98TiB. Both cron entries are installed; the AMD archive heartbeat was49.9seconds old at inspection. Reports, plots and movies await sealed binary science output. Original R40/R46/boost and all physical/resource/calendar caps remain intact. Receipt:evidence/scheduled_check_20261007T220232Z.json.
