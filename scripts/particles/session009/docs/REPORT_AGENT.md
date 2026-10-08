@@ -1,12 +1,12 @@
-# Current update — October 08, 2026 11:05 AM PDT
+# Current update — October 08, 2026 01:01 PM PDT
 
-**Production is running** as AMD job455477 on12 nodes/48GPUs, with saved diagnostics reaching **t=2.15625M_ref**. The latest verified checkpoint is **t=0.03125**; the first finite production segment targets t12. All startup, required-output, clean-stop and actual large-header restart checks passed. Restart comparison retained tracker reacquisition gaps as unavailable data.
+**Production is running** as AMD job455477 on12nodes/48GPUs. Saved diagnostics and raw complex R40 multipoles reach **t=6.90938M_ref**. The latest verified checkpoint is **t=0.03125**; the first finite segment targets t12. All startup/output/clean-stop/large-header restart checks passed; diagnostic reacquisition gaps remain flagged.
 
-Live logs retain all five million particles and report no numerical failure. Recent history and raw complex waveform samples are finite; all48GPU histories are present, with peak memory use70.98% below85%. No accepted horizons or established orbital/merger/ringdown result yet. R40/R46, local boost0.133215, source/binaries, outputs and original caps/deadline unchanged.
+All five million particles remain. No numerical evolution failure was found in the inspected logs; waveform samples and recent history are finite. GPU peak memory is75.92%, below85%; both trackers currently report dx1/256. The clumps are contracting and move in the expected opposite directions. Horizon searches have not yet produced accepted individual/common horizons; failed searches are retained as unavailable measurements. Constraint diagnostics are rising during contraction, so finite values alone do not prove accuracy. No established post-BH orbit, merger or ringdown result yet.
 
-Use at the snapshot: **12.165556 AMD raw node-hours**, **2.023889 Anta node/GPU-hours**, including running allocations. Allocated AMD storage: **0.350TiB session**, **1.045TiB whole user**. Anta2400 is copying and verifying completed startup outputs;8/96 archive jobs registered. Both monitors are active; no duplicate submission or retry by this check.
+Use at the snapshot: **36.312222 AMD raw node-hours**, **3.203333 Anta node/GPU-hours**. Allocated AMD storage: **0.208TiB session**, **0.903TiB whole user**. All six sealed startup runs have checksum-verified Anta copies;9/96 Anta jobs are completed and none is running. The current production segment is unsealed; new t12/every50M plots/reports await verified coverage. Existing startup plots/movies remain at Anta analysis/update_final_2394/ and do not establish completed production.
 
-Startup plots/movies remain at Anta analysis/update_final_2394/; new t12/every50M reports and plots use verified sealed data as it arrives. The old startup final directory name is a failed-attempt closeout, not completed science. Receipt:evidence/scheduled_check_20261008T180553Z.json; exact live state and controls in evidence/CURRENT_STATUS.md.
+Both monitors remain active, archive heartbeat84.0s old. No new submission or retry by this check. R40/R46, local boost0.133215, source/binaries/outputs and original caps/deadline remain unchanged. Receipt:evidence/scheduled_check_20261008T200739Z.json; exact state and controls in evidence/CURRENT_STATUS.md.
 
 ## Earlier dated setup and status records
 

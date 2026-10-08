@@ -25,7 +25,7 @@
   "push_status": "evidence/PUSH_STATUS.txt",
   "wave_gate": "evidence/wave_gate.json",
   "convention": "evidence/weyl_convention.json (passed)",
-  "current_phase": "Production455477 running to initial t12 assessment; all startup gates passed; diagnostics t2.156249999999997",
+  "current_phase": "Production455477 running to initial t12 assessment; all startup gates passed; diagnostics t6.90938; no accepted horizons",
   "extraction_radius": 40,
   "wave_floor_radius": 46,
   "initial_blocks": 5384,
@@ -34,8 +34,8 @@
   "historical_failed_attempts": "history/r50_before_reset_20261006/ and AMD history/r40_receipt_import_failure_453626/",
   "two_hour_monitor": "code/scripts/particles/session009/wake_check.py; evidence/two_hour_checks.jsonl",
   "monitors": "Perseus two-hour Codex wake and Anta five-minute archival trigger; original deadline/caps",
-  "AMD_actual_node_hours": 12.165555555555557,
-  "Anta_actual_node_hours": 2.0238888888888886,
+  "AMD_actual_node_hours": 36.312222222222225,
+  "Anta_actual_node_hours": 3.203333333333333,
   "excluded_nodes": [
     "k003-009",
     "k003-010"
@@ -57,9 +57,9 @@
     "k005-009"
   ],
   "mpi_witness_sha256": "3df8ece08a69ecfc81ec0ce519ece02935445bdfb2d50a135231b38d6ab82b1a",
-  "last_check": "evidence/scheduled_check_20261008T180553Z.json",
-  "report_plot_status": "Anta2400 archival running; startup products retained, t12/every50M analysis awaits sealed coverage.",
-  "checked_Pacific": "October 08, 2026 11:05 AM PDT",
+  "last_check": "evidence/scheduled_check_20261008T200739Z.json",
+  "report_plot_status": "All sealed startup runs checksum-verified on Anta; no active Anta job. Startup products retained; current production unsealed, t12/every50M analysis awaits verified coverage.",
+  "checked_Pacific": "October 08, 2026 01:01 PM PDT",
   "latest_verified_checkpoint": {
     "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/gate_output/rst/s9_orbit_gw.00004.rst",
     "bytes": 69315343208,
@@ -77,16 +77,82 @@
     "sha256": "7b8ac7e6875377f429426ab95756c630bd029fc9caefb63255c34ec52da78ca2"
   },
   "AMD_allocated_storage_sample": {
-    "user_bytes": 1148968513536,
-    "campaign_bytes": 384660475904,
+    "user_bytes": 993361965056,
+    "campaign_bytes": 229053927424,
     "warning": false,
-    "utc": 1791482340.0574021
+    "utc": 1791489569.061801
   },
   "validation_failure_history": "AMD/Anta history/validation_failure_454732_20261008/",
   "remaining_startup_gate": 455390,
   "remaining_gate_inspector": 455391,
-  "latest_saved_diagnostic_time": 2.156249999999997,
+  "latest_saved_diagnostic_time": 6.9093750000000735,
   "current_production_job": 455477,
   "current_inspector_job": 455478,
-  "startup_gates_passed": true
+  "startup_gates_passed": true,
+  "current_tracker_dx": 0.00390625,
+  "live_mesh_scope": "Tracker locations only; initial complete mesh audit5384blocks/176422912cells, initialdx1/64, centralceiling1/256",
+  "Anta_verified_runs": [
+    {
+      "run": "gate_clean_stop",
+      "job": "2402",
+      "verified_utc": 1791486664.8218913,
+      "bytes": 69798453496
+    },
+    {
+      "run": "gate_mesh",
+      "job": "2394",
+      "verified_utc": 1791472979.6288245,
+      "bytes": 1424902
+    },
+    {
+      "run": "gate_output",
+      "job": "2402",
+      "verified_utc": 1791485400.7728817,
+      "bytes": 101557000539
+    },
+    {
+      "run": "gate_reference",
+      "job": "2394",
+      "verified_utc": 1791472961.3921585,
+      "bytes": 203108071577
+    },
+    {
+      "run": "gate_restart",
+      "job": "2400",
+      "verified_utc": 1791483490.771004,
+      "bytes": 69798239566
+    },
+    {
+      "run": "gate_split",
+      "job": "2400",
+      "verified_utc": 1791482277.0282254,
+      "bytes": 139590635657
+    },
+    {
+      "run": "wave_lambda_2.5",
+      "job": "2333",
+      "verified_utc": 1791241683.6435592,
+      "bytes": 1172211
+    },
+    {
+      "run": "wave_lambda_5.0",
+      "job": "2333",
+      "verified_utc": 1791241667.1387467,
+      "bytes": 1172211
+    },
+    {
+      "run": "wave_weyl_lambda_2.5",
+      "job": "2334",
+      "verified_utc": 1791243037.9429774,
+      "bytes": 1197675
+    },
+    {
+      "run": "wave_weyl_lambda_5.0",
+      "job": "2334",
+      "verified_utc": 1791243055.7572646,
+      "bytes": 1197695
+    }
+  ],
+  "GPU_peak_fraction": 0.7591785547351954,
+  "accepted_horizons": false
 }

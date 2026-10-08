@@ -1,10 +1,10 @@
 {
   "check_type": "scheduled_two_hour",
   "received_in_existing_thread": true,
-  "completed_utc": 1791482753.955109,
-  "checked_Pacific": "October 08, 2026 11:05 AM PDT",
-  "AMD_snapshot_utc": 1791482446.4646463,
-  "Anta_snapshot_utc": 1791482444.0220795,
+  "completed_utc": 1791490059.7063296,
+  "checked_Pacific": "October 08, 2026 01:01 PM PDT",
+  "AMD_snapshot_utc": 1791489691.0304763,
+  "Anta_snapshot_utc": 1791489683.6833541,
   "AMD_status": "running_segment_1",
   "AMD_registered_queue": "455478|jn9_20261008_resume_inspect1|PENDING|(Dependency)\n455477|jn9_20261008_resume_segment1|RUNNING|k002-005,k003-[003-007],k005-[002-006,009]",
   "controller_checkpoint_time": 0.03125,
@@ -24,92 +24,102 @@
     ],
     "sha256": "7b8ac7e6875377f429426ab95756c630bd029fc9caefb63255c34ec52da78ca2"
   },
-  "latest_saved_diagnostic_time": 2.156249999999997,
-  "latest_log_cycle": 118,
+  "latest_saved_diagnostic_time": 6.9093750000000735,
+  "latest_log_cycle": 706,
   "initial_particle_count": 5000000,
   "startup_gates_passed": true,
   "restart_comparison_passed": true,
   "restart_reacquisition_gaps_flagged": true,
   "numerical_failure_detected": false,
+  "frozen_bindings_passed": true,
   "live_health": {
-    "utc": 1791482518.9059236,
+    "storage_status.json": "{\n  \"user_bytes\": 993361965056,\n  \"campaign_bytes\": 229053927424,\n  \"warning\": false,\n  \"utc\": 1791489569.061801\n}\n",
     "elapsed_lines": [
-      "elapsed=5.418069e+02 cycle=50 time=4.312500e-01 dt=2.500000e-02",
-      "elapsed=1.581952e+03 cycle=100 time=1.681250e+00 dt=2.500000e-02"
+      "elapsed=8.303887e+03 cycle=600 time=6.743750e+00 dt=1.562500e-03",
+      "elapsed=8.711362e+03 cycle=650 time=6.821875e+00 dt=1.562500e-03",
+      "elapsed=9.109184e+03 cycle=700 time=6.900000e+00 dt=1.562500e-03"
     ],
-    "latest_log_cycle": 118,
+    "latest_log_cycle": 706,
     "bad_log_lines": [],
+    "latest_particle_diagnostics": [
+      "[tmunu-debug] cycle=704 npart=5000000 cross_level=395966 identity max_resid=3.330669e-15 (tol 3.822264e-08) (global)",
+      "[tmunu-debug] cycle=705 npart=5000000 cross_level=395972 identity max_resid=1.776357e-15 (tol 3.822404e-08) (global)",
+      "[tmunu-debug] cycle=706 npart=5000000 cross_level=395988 identity max_resid=8.881784e-16 (tol 3.822544e-08) (global)"
+    ],
+    "log_tail": "] rank=27 cycle=706 migrations: face=971 edge=0 corner=0 search_fail=0 npart=476369\n[prtcl-debug] rank=10 cycle=706 migrations: face=90 edge=0 corner=0 search_fail=0 npart=348899\n[prtcl-debug] rank=16 cycle=706 migrations: face=6 edge=0 corner=0 search_fail=0 npart=71555\n[prtcl-debug] rank=31 cycle=706 migrations: face=4 edge=0 corner=0 search_fail=0 npart=49349\n[prtcl-debug] rank=37 cycle=706 migrations: face=82 edge=0 corner=0 search_fail=0 npart=352651\n[prtcl-debug] rank=20 cycle=706 migrations: face=850 edge=0 corner=0 search_fail=0 npart=481837\n[prtcl-debug] rank=6 cycle=706 migrations: face=769 edge=0 corner=0 search_fail=0 npart=331635\n[prtcl-debug] rank=41 cycle=706 migrations: face=624 edge=0 corner=0 search_fail=0 npart=286579\n[prtcl-debug] rank=26 cycle=706 migrations: face=34 edge=0 corner=0 search_fail=0 npart=199478\n[prtcl-debug] rank=28 cycle=706 migrations: face=15 edge=0 corner=0 search_fail=0 npart=170353\n[prtcl-debug] rank=36 cycle=706 migrations: face=1 edge=0 corner=0 search_fail=0 npart=51984\n[prtcl-debug] rank=4 cycle=706 migrations: face=5 edge=0 corner=0 search_fail=0 npart=178513\n[prtcl-debug] rank=42 cycle=706 migrations: face=326 edge=0 corner=0 search_fail=0 npart=330996\n[prtcl-debug] rank=5 cycle=706 migrations: face=183 edge=0 corner=0 search_fail=0 npart=335502\n[tmunu-debug] cycle=706 ghost images sent==received==232262 (global)\n[tmunu-debug] cycle=706 npart=5000000 cross_level=395988 identity max_resid=8.881784e-16 (tol 3.822544e-08) (global)\n",
     "diagnostics": {
       "s9_orbit_gw.horizon_summary_2.txt": {
-        "bytes": 166,
         "header": [
           "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
         ],
         "tail": [
           "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
-        ]
+        ],
+        "data_rows": 0
       },
       "s9_orbit_gw.co_0.txt": {
-        "bytes": 1193,
         "header": [
           "# Black Hole",
           "# 1:iter 2:time 3:x 4:y 5:z 6:vx 7:vy 8:vz 9:amr_level 10:dx1 11:dx2 12:dx3 13:track_source 14:core_count 15:core_rest_mass 16:lapse_min 17:horizon_tracking"
         ],
         "tail": [
-          "60 0.6812500000000004663 -2.96875 0.03125 0.03125 0.1169522053316619653 0.01259093394749571937 0.007830987890063367818 10 0.0625 0.0625 0.0625 1 238149 0.03125467067845932867 0.7883725173734120739 0",
-          "80 1.181250000000000133 -2.96875 -0.09375 0.03125 0.01877080339731935707 -0.05493079722367086304 -0.02787855364788091594 10 0.0625 0.0625 0.0625 1 245927 0.03227545526515528812 0.7868403792722811207 0",
-          "100 1.681249999999998357 -2.96875 -0.15625 -0.03125 -0.00993156525332587227 -0.1300584291289149652 0.0191395192162093844 10 0.0625 0.0625 0.0625 1 256375 0.03364665060609118435 0.7856027750796609199 0"
-        ]
+          "660 6.837500000000057199 -2.939453125 -0.705078125 -0.001953125 0.01645311464922600761 -0.1009682108021403013 0.001410701916239172089 14 0.00390625 0.00390625 0.00390625 1 662614 0.08696145000372308698 0.4896790227781130933 0",
+          "680 6.868750000000064304 -2.939453125 -0.708984375 -0.001953125 0.01690509466461437293 -0.09132739795849621756 -0.0004841104278246232198 14 0.00390625 0.00390625 0.00390625 1 665046 0.08728062564204200346 0.4709330070387595657 0",
+          "700 6.90000000000007141 -2.939453125 -0.712890625 -0.001953125 0.01566147328407269113 -0.1008665582223441937 -0.000316859451209764169 14 0.00390625 0.00390625 0.00390625 1 667541 0.08760806939928118819 0.4497645387888021817 0"
+        ],
+        "data_rows": 35
       },
       "s9_orbit_gw.co_1.txt": {
-        "bytes": 1184,
         "header": [
           "# Black Hole",
           "# 1:iter 2:time 3:x 4:y 5:z 6:vx 7:vy 8:vz 9:amr_level 10:dx1 11:dx2 12:dx3 13:track_source 14:core_count 15:core_rest_mass 16:lapse_min 17:horizon_tracking"
         ],
         "tail": [
-          "60 0.6812500000000004663 2.96875 0.03125 -0.03125 -0.1256767587221779281 0.05083824170745883386 -0.01116766692512992376 10 0.0625 0.0625 0.0625 1 238106 0.03124902735919628943 0.7886103743011830813 0",
-          "80 1.181250000000000133 2.96875 0.09375 -0.03125 -0.01264822150008502316 0.04781211762266224241 0.0358721076242413256 10 0.0625 0.0625 0.0625 1 247127 0.03243294324458896594 0.7870557923428207481 0",
-          "100 1.681249999999998357 2.96875 0.15625 0.03125 0.01499287427320064939 0.09062893996230668436 -0.01511529497166382713 10 0.0625 0.0625 0.0625 1 256138 0.03361554673015303141 0.7857891933617419111 0"
-        ]
+          "660 6.837500000000057199 2.939453125 0.705078125 0.001953125 -0.02648663782622195928 0.100344936975866883 0.0001809671789226112416 14 0.00390625 0.00390625 0.00390625 1 661429 0.08680593062403232918 0.5161428757616077778 0",
+          "680 6.868750000000064304 2.939453125 0.708984375 0.001953125 -0.01983938483948144427 0.09014745409774961582 -0.0002302306446068720809 14 0.00390625 0.00390625 0.00390625 1 664042 0.08714886069924915324 0.5013009983413349024 0",
+          "700 6.90000000000007141 2.939453125 0.712890625 0.001953125 -0.01689274545742571951 0.0991989889690773341 -0.0004984051301898290197 14 0.00390625 0.00390625 0.00390625 1 666497 0.08747105485717389384 0.4849632781480971988 0"
+        ],
+        "data_rows": 35
       },
       "s9_orbit_gw.horizon_summary_0.txt": {
-        "bytes": 166,
         "header": [
           "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
         ],
         "tail": [
-          "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
-        ]
+          "4 6.90781 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan -2.939453125000000e+00 -7.128906250000000e-01 -1.953125000000000e-03",
+          "4 6.90938 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan -2.939453125000000e+00 -7.128906250000000e-01 -1.953125000000000e-03",
+          "4 6.91094 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan -2.939453125000000e+00 -7.128906250000000e-01 -1.953125000000000e-03"
+        ],
+        "data_rows": 575
       },
       "s9_orbit_gw.horizon_summary_1.txt": {
-        "bytes": 166,
         "header": [
           "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
         ],
         "tail": [
-          "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
-        ]
+          "4 6.90781 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan 2.935546875000000e+00 7.128906250000000e-01 1.953125000000000e-03",
+          "4 6.90938 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan 2.935546875000000e+00 7.128906250000000e-01 1.953125000000000e-03",
+          "4 6.91094 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan 2.935546875000000e+00 7.128906250000000e-01 1.953125000000000e-03"
+        ],
+        "data_rows": 575
       },
       "s9_orbit_gw.z4c.user.hst": {
         "header": [
           "# Athena++ history data",
-          "#  [1]=time      [2]=dt       [3]=C-norm2    [4]=H-norm2    [5]=M-norm2    [6]=Z-norm2    [7]=Mx-norm2    [8]=My-norm2    [9]=Mz-norm2    [10]=Theta-norm    [11]=Volume    ",
-          "  1.25000e-01  6.25000e-03  2.10495e+00  1.70363e+00  4.00231e-01  2.21162e-04  1.88231e-01  2.21645e-01  1.87862e-01  2.04063e-04  8.61994e+09",
-          "  1.50000e-01  6.25000e-03  1.88815e+00  1.49493e+00  3.91760e-01  3.14785e-04  1.84259e-01  2.17574e-01  1.83748e-01  2.02976e-04  8.61994e+09"
+          "#  [1]=time      [2]=dt       [3]=C-norm2    [4]=H-norm2    [5]=M-norm2    [6]=Z-norm2    [7]=Mx-norm2    [8]=My-norm2    [9]=Mz-norm2    [10]=Theta-norm    [11]=Volume    "
         ],
         "tail": [
-          "  2.10625e+00  2.50000e-02  1.57193e-01  7.21730e-02  2.40862e-02  1.52074e-02  8.33761e-03  1.67288e-02  8.30499e-03  1.04502e-04  8.61994e+09",
-          "  2.13125e+00  2.50000e-02  1.56817e-01  7.18044e-02  2.39952e-02  1.52282e-02  8.24440e-03  1.67468e-02  8.24292e-03  1.04286e-04  8.61994e+09",
-          "  2.15625e+00  2.50000e-02  1.56373e-01  7.13571e-02  2.39256e-02  1.52466e-02  8.16346e-03  1.67766e-02  8.18689e-03  1.04142e-04  8.61994e+09"
+          "  6.85000e+00  1.56250e-03  1.10975e+01  8.53981e+00  2.51558e+00  1.04808e-02  1.81784e+00  1.79797e+00  1.86445e+00  1.95099e-04  8.61994e+09",
+          "  6.87500e+00  1.56250e-03  1.36559e+01  1.05540e+01  3.05980e+00  1.04789e-02  2.22147e+00  2.20631e+00  2.30105e+00  2.00551e-04  8.61994e+09",
+          "  6.90000e+00  1.56250e-03  1.29902e+01  9.95791e+00  2.99024e+00  1.04765e-02  2.21922e+00  2.17995e+00  2.26711e+00  2.00652e-04  8.61994e+09"
         ]
       }
     },
     "waveforms": {
       "rpsi4_real_0040.txt": {
-        "samples": 79,
+        "samples": 222,
         "first_time": 0.049999999999999996,
-        "last_time": 2.156249999999997,
+        "last_time": 6.9093750000000735,
         "finite": true,
         "monotonic": true,
         "columns": [
@@ -117,9 +127,9 @@
         ]
       },
       "rpsi4_imag_0040.txt": {
-        "samples": 79,
+        "samples": 222,
         "first_time": 0.049999999999999996,
-        "last_time": 2.156249999999997,
+        "last_time": 6.9093750000000735,
         "finite": true,
         "monotonic": true,
         "columns": [
@@ -128,25 +138,115 @@
       }
     },
     "gpu_count": 48,
-    "vram_peak": 0.7097832126640721,
-    "latest_vram_peak": 0.6586735204899268,
-    "max_vram_sample_age": 1.856013536453247,
-    "storage": {
-      "user_bytes": 1148968513536,
-      "campaign_bytes": 384660475904,
-      "warning": false,
-      "utc": 1791482340.0574021
-    },
-    "live_jobs": "JobId=455477 JobName=jn9_20261008_resume_segment1\n   UserId=jiaxiwu(3175) GroupId=eliasmost(2098) MCS_label=N/A\n   Priority=482 Nice=0 Account=eliasmost QOS=alloc_eliasmost_04012026_03312027\n   JobState=RUNNING Reason=None Dependency=(null)\n   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0\n   RunTime=00:34:09 TimeLimit=12:00:00 TimeMin=N/A\n   SubmitTime=2026-10-08T12:27:15 EligibleTime=2026-10-08T12:27:49\n   AccrueTime=Unknown\n   StartTime=2026-10-08T12:27:49 EndTime=2026-10-09T00:27:49 Deadline=N/A\n   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-08T12:27:49 Scheduler=Main\n   Partition=mi2104x AllocNode:Sid=localhost:2635607\n   ReqNodeList=k002-005,k003-[003-007],k005-[002-006,009] ExcNodeList=k003-[009-010]\n   NodeList=k002-005,k003-[003-007],k005-[002-006,009]\n   BatchHost=k002-005\n   NumNodes=12 NumCPUs=1536 NumTasks=48 CPUs/Task=1 ReqB:S:C:T=0:0:*:*\n   TRES=cpu=1536,mem=12M,node=12\n   Socks/Node=* NtasksPerN:B:S:C=4:0:*:* CoreSpec=*\n   MinCPUsNode=4 MinMemoryNode=0 MinTmpDiskNode=0\n   Features=(null) DelayBoot=00:00:00\n   OverSubscribe=NO Contiguous=0 Licenses=(null) Network=(null)\n   Command=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/amd_segment.sbatch 1\n   WorkDir=/home1/jiaxiwu\n   StdErr=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/logs/455477_segment1.log\n   StdIn=/dev/null\n   StdOut=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/logs/455477_segment1.log\n   Power=\n   KillOInInvalidDependent=Yes\n   \n\n"
+    "vram_peak": 0.7591785547351954,
+    "latest_vram_peak": 0.7099824600312882,
+    "max_vram_sample_age": 2.7722225189208984
   },
-  "AMD_node_hours": 12.165555555555557,
+  "accepted_horizon_health": {
+    "utc": 1791489794.813356,
+    "files": {
+      "s9_orbit_gw.horizon_consumer_0.csv": {
+        "bytes": 283,
+        "rows": 0,
+        "columns": [],
+        "tail": []
+      },
+      "s9_orbit_gw.horizon_consumer_1.csv": {
+        "bytes": 283,
+        "rows": 0,
+        "columns": [],
+        "tail": []
+      },
+      "s9_orbit_gw.horizon_consumer_2.csv": {
+        "bytes": 283,
+        "rows": 0,
+        "columns": [],
+        "tail": []
+      }
+    }
+  },
+  "AMD_node_hours": 36.312222222222225,
   "AMD_maximum_reserved_node_hours": 150.07555555555555,
-  "Anta_node_hours": 2.0238888888888886,
-  "Anta_registered_queue": "2400|jn9_20261005_activearchive7|RUNNING|anta",
+  "AMD_allocated_storage_sample": {
+    "user_bytes": 993361965056,
+    "campaign_bytes": 229053927424,
+    "warning": false,
+    "utc": 1791489569.061801
+  },
+  "Anta_node_hours": 3.203333333333333,
+  "Anta_registered_queue": "",
   "Anta_archive_progress": {
-    "utc": 1791482628.9740832,
-    "archive_log_tail": "",
+    "accounting": "2333|COMPLETED|0:0|115|1\n2334|COMPLETED|0:0|116|1\n2353|COMPLETED|0:0|118|1\n2356|COMPLETED|0:0|79|1\n2365|COMPLETED|0:0|83|1\n2394|COMPLETED|0:0|3854|1\n2397|COMPLETED|0:0|197|1\n2400|COMPLETED|0:0|3852|1\n2402|COMPLETED|0:0|3118|1\n",
+    "ledger": {
+      "jobs": [
+        {
+          "id": 2333,
+          "name": "jn9_20261005_activearchive0",
+          "max_gpu_hours": 4
+        },
+        {
+          "id": 2334,
+          "name": "jn9_20261005_activearchive1",
+          "max_gpu_hours": 4
+        },
+        {
+          "id": 2353,
+          "name": "jn9_20261005_activearchive2",
+          "max_gpu_hours": 4
+        },
+        {
+          "id": 2356,
+          "name": "jn9_20261005_activearchive3",
+          "max_gpu_hours": 4
+        },
+        {
+          "id": 2365,
+          "name": "jn9_20261005_activearchive4",
+          "max_gpu_hours": 4
+        },
+        {
+          "id": 2394,
+          "name": "jn9_20261005_activearchive5",
+          "max_gpu_hours": 4
+        },
+        {
+          "id": 2397,
+          "name": "jn9_20261008_savedref_validation",
+          "max_gpu_hours": 4,
+          "role": "Reviewed saved startup validation, minimal reference-file restoration and guarded AMD submission"
+        },
+        {
+          "id": 2400,
+          "name": "jn9_20261005_activearchive7",
+          "max_gpu_hours": 4
+        },
+        {
+          "id": 2402,
+          "name": "jn9_20261005_activearchive8",
+          "max_gpu_hours": 4
+        }
+      ],
+      "pending": null
+    },
+    "records": {
+      "updates.json": [
+        0
+      ],
+      "trigger_config.json": {
+        "deadline": 1795125727.0788982,
+        "max_jobs": 96,
+        "max_gpu_hours": 384
+      }
+    },
+    "latest": null,
+    "filesystem_free_bytes": 29081962893312,
     "verified_runs": [
+      {
+        "run": "gate_clean_stop",
+        "job": "2402",
+        "verified_utc": 1791486664.8218913,
+        "bytes": 69798453496
+      },
       {
         "run": "gate_mesh",
         "job": "2394",
@@ -154,10 +254,22 @@
         "bytes": 1424902
       },
       {
+        "run": "gate_output",
+        "job": "2402",
+        "verified_utc": 1791485400.7728817,
+        "bytes": 101557000539
+      },
+      {
         "run": "gate_reference",
         "job": "2394",
         "verified_utc": 1791472961.3921585,
         "bytes": 203108071577
+      },
+      {
+        "run": "gate_restart",
+        "job": "2400",
+        "verified_utc": 1791483490.771004,
+        "bytes": 69798239566
       },
       {
         "run": "gate_split",
@@ -191,15 +303,16 @@
       }
     ]
   },
+  "all_sealed_startup_runs_checksum_verified": true,
   "Anta_monitor_active": true,
   "Perseus_wake_delivered": true,
-  "archive_heartbeat_age_seconds": 35.464646339416504,
+  "archive_heartbeat_age_seconds": 84.03047633171082,
   "operations_revision": "a60f312e7a5145325f543bc48b108ca8f5f47cb6",
   "compiled_source_commit": "6892be3e3f04ec573f91cb2034bc9d3009a3bdff",
   "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd",
   "new_submissions_by_this_check": 0,
   "automatic_numerical_retry": false,
-  "scientific_limits": "Early evolution; no accepted horizons or established orbit/merger/ringdown.",
+  "scientific_limits": "Early contraction and expected transverse motion; no accepted horizons, established post-BH orbit, merger or ringdown. Constraint diagnostics are finite but rising during collapse; no convergence claim.",
   "original_deadline_utc": 1795125703.7323442,
   "R": 40,
   "wave_floor_R": 46,
