@@ -11,6 +11,8 @@
 #include <limits>
 #include <algorithm>
 #include <cstdlib>
+#include <cstdint>
+#include <fstream>
 #include <string> // string
 
 #include "athena.hpp"
@@ -71,6 +73,7 @@ namespace {
 // "timestep" = "cycle" in explicit, multistage methods.
 
 Driver::Driver(ParameterInput *pin, Mesh *pmesh, Real wtlim, Kokkos::Timer* ptimer) :
+  diagnostic_snapshot_only(pin->GetOrAddBoolean("time", "diagnostic_snapshot_only", false)),
   impl_src("ru",1,1,1,1,1,1),
   tlim(-1.0),
   nlim(-1),
@@ -460,7 +463,82 @@ void Driver::ExecuteTaskList(Mesh *pm, std::string tl, int stage) {
 // Tasks to be performed before execution of Driver, such as setting ghost zones (BCs),
 //  outputting ICs, and computing initial time step
 
+// Evaluate derived fields directly from a complete native restart, including its stored
+// ghost cells. No boundary, gauge, RK, energy-update or particle-push tasks are executed.
+// The ordinary initialization/evolution path is unchanged when the flag is false.
+void Driver::DiagnosticSnapshot(Mesh *pm, ParameterInput *pin, Outputs *pout) {
+  auto *pack = pm->pmb_pack;
+  auto *z = pack->pz4c;
+  auto *p = pack->ppart;
+  if (z == nullptr || p == nullptr || pack->padm == nullptr || !p->feedback ||
+      pack->phydro != nullptr || pack->pmhd != nullptr || pack->prad != nullptr) {
+    DriverFatalError(__FILE__, __LINE__, "snapshot diagnostics require particles+Z4c+ADM only");
+  }
+  if (pout->pout_list.empty()) {
+    DriverFatalError(__FILE__, __LINE__, "snapshot diagnostics require field outputs");
+  }
+  for (auto *out : pout->pout_list) {
+    const auto &op = out->out_params;
+    if (op.file_type != "bin" || (op.variable != "con" && op.variable != "tmunu")) {
+      DriverFatalError(__FILE__, __LINE__, "snapshot diagnostics permit only con/tmunu bin outputs");
+    }
+  }
+  auto digest = [&]() {
+    Kokkos::fence();
+    std::uint64_t h = 14695981039346656037ULL;
+    auto bytes = [&](const void *ptr, std::size_t n) {
+      auto *b = static_cast<const unsigned char *>(ptr);
+      for (std::size_t i = 0; i < n; ++i) {h ^= b[i]; h *= 1099511628211ULL;}
+    };
+    {
+      auto a = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), z->u0);
+      bytes(a.data(), a.size()*sizeof(Real));
+    }
+    auto r = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), p->prtcl_rdata);
+    auto q = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), p->prtcl_idata);
+    for (int f = 0; f < p->nrdata; ++f) {
+      for (int n = 0; n < p->nprtcl_thispack; ++n) {bytes(&r(f,n), sizeof(Real));}
+    }
+    for (int f = 0; f < p->nidata; ++f) {
+      for (int n = 0; n < p->nprtcl_thispack; ++n) {bytes(&q(f,n), sizeof(int));}
+    }
+    bytes(&pm->time, sizeof(Real)); bytes(&pm->dt, sizeof(Real));
+    bytes(&pm->ncycle, sizeof(int)); bytes(&p->nprtcl_thispack, sizeof(int));
+    return h;
+  };
+  const auto before = digest();
+  z->Z4cToADM(pack);
+  (void) p->SetPrtclTmunu(this, 1);
+  (void) z->ADMConstraints_(this, nexp_stages);
+  for (auto *out : pout->pout_list) {
+    out->LoadOutputData(pm);
+    out->WriteOutputFile(pm, pin);
+  }
+  const auto after = digest();
+  if (before != after) {
+    DriverFatalError(__FILE__, __LINE__, "snapshot diagnostics altered stored state");
+  }
+  std::ofstream receipt("diagnostic_snapshot.rank" +
+                         std::to_string(global_variable::my_rank) + ".json");
+  receipt << std::setprecision(17) << "{\"time\":" << pm->time
+          << ",\"dt\":" << pm->dt << ",\"cycle\":" << pm->ncycle
+          << ",\"rank\":" << global_variable::my_rank
+          << ",\"particles\":" << p->nprtcl_thispack
+          << ",\"before_fnv64\":\"" << std::hex << before
+          << "\",\"after_fnv64\":\"" << after
+          << "\",\"unchanged\":true,\"integration_steps\":0}\n";
+  std::cout << "[diagnostic snapshot OK] time=" << std::setprecision(17) << pm->time
+            << " cycle=" << pm->ncycle << " no evolution" << std::endl;
+}
+
 void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool res_flag) {
+  if (diagnostic_snapshot_only) {
+    if (!res_flag) {
+      DriverFatalError(__FILE__, __LINE__, "diagnostic_snapshot_only requires a restart");
+    }
+    DiagnosticSnapshot(pmesh, pin, pout);
+    return;
+  }
   //---- Step 1.  Set conserved variables in ghost zones for all physics
   InitBoundaryValuesAndPrimitives(pmesh);
 
@@ -495,7 +573,8 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
       (void) ppart->EnergyCalculation(this, 1);
     }
 
-    // Restart-file state holds physical cells only, so ghost-dependent particle data
+    // Native Z4c restarts include ghosts; normal evolution still exchanges boundaries.
+    // Ghost-dependent particle data
     // must be re-derived after the Step-1 exchange. For live Z4c, refresh ADM and the
     // GR-pusher snapshots from the exchanged Z4c state. On fresh starts these copies
     // reproduce the values already prepared by the problem generator.

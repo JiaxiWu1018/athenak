@@ -47,6 +47,7 @@ class Driver {
 
   // data
   TimeEvolution time_evolution;
+  bool diagnostic_snapshot_only;  // restart-only field evaluation; never advance state
   DvceArray6D<Real> impl_src;  // stiff source terms used in ImEx integrators
   STSController sts;
 
@@ -69,6 +70,7 @@ class Driver {
   // functions
   void ExecuteTaskList(Mesh *pm, std::string tl, int stage);
   void Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool rflag);
+  void DiagnosticSnapshot(Mesh *pmesh, ParameterInput *pin, Outputs *pout);
   void Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdflag);
   void Finalize(Mesh *pmesh, ParameterInput *pin, Outputs *pout);
   void InitBoundaryValuesAndPrimitives(Mesh *pm);

@@ -348,6 +348,10 @@ int main(int argc, char *argv[]) {
   // is fully constructed.
 
   pmesh->AddCoordinatesAndPhysics(pinput);
+  if (pinput->GetOrAddBoolean("time", "diagnostic_snapshot_only", false) && !res_flag) {
+    std::cerr << "diagnostic_snapshot_only requires -r (no fresh initialization)" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
   if (!res_flag) {
     // set ICs using ProblemGenerator constructor for new runs
     pmesh->pgen = std::make_unique<ProblemGenerator>(pinput, pmesh);
@@ -401,8 +405,10 @@ int main(int argc, char *argv[]) {
 
   if (wdog_flag) WatchDog(wdog_timeout);
   pdriver->Initialize(pmesh, pinput, pout, res_flag);
-  pdriver->Execute(pmesh, pinput, pout, wdog_flag);
-  pdriver->Finalize(pmesh, pinput, pout);
+  if (!pdriver->diagnostic_snapshot_only) {
+    pdriver->Execute(pmesh, pinput, pout, wdog_flag);
+    pdriver->Finalize(pmesh, pinput, pout);
+  }
 
   //--- Step 8. -------------------------------------------------------------------------
   // clean up, and terminate
