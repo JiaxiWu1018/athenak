@@ -25,17 +25,17 @@
   "push_status": "evidence/PUSH_STATUS.txt",
   "wave_gate": "evidence/wave_gate.json",
   "convention": "evidence/weyl_convention.json (passed)",
-  "current_phase": "Startup454732pendingresources; inspector454733pendingdependency; t0/no checkpoint or binary data; no new failure",
+  "current_phase": "Reference evolved t0.0125; Anta2397/AMD455389 validation passed; remaining455390/455391 queued; production not started.",
   "extraction_radius": 40,
   "wave_floor_radius": 46,
   "initial_blocks": 5384,
-  "operations_revision": "ff4b5cb42bc67375f0b9f852de78dfe0dc073a49",
+  "operations_revision": "a60f312e7a5145325f543bc48b108ca8f5f47cb6",
   "scientific_revision": "ae89f066",
   "historical_failed_attempts": "history/r50_before_reset_20261006/ and AMD history/r40_receipt_import_failure_453626/",
   "two_hour_monitor": "code/scripts/particles/session009/wake_check.py; evidence/two_hour_checks.jsonl",
   "monitors": "Perseus two-hour Codex wake and Anta five-minute archival trigger; original deadline/caps",
-  "AMD_actual_node_hours": 0.965,
-  "Anta_actual_node_hours": 0.14194444444444446,
+  "AMD_actual_node_hours": 1.9872222222222222,
+  "Anta_actual_node_hours": 1.267222222222222,
   "excluded_nodes": [
     "k003-009",
     "k003-010"
@@ -57,8 +57,31 @@
     "k005-009"
   ],
   "mpi_witness_sha256": "3df8ece08a69ecfc81ec0ce519ece02935445bdfb2d50a135231b38d6ab82b1a",
-  "last_check": "evidence/scheduled_check_20261008T140205Z.json",
-  "report_plot_status": "Pending binary science data; old failed-startup products retained",
-  "checked_Pacific": "October 08, 2026 07:02 AM PDT",
-  "provisional_start_Pacific": "2026-10-08T07:49:44-07:00"
+  "last_check": "evidence/scheduled_check_20261008T162940Z.json",
+  "report_plot_status": "Verified startup-only plots/movies: Anta analysis/update_final_2394; no established orbital/collapse/merger/ringdown result.",
+  "checked_Pacific": "October 08, 2026 09:29 AM PDT",
+  "latest_verified_checkpoint": {
+    "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/gate_reference/rst/s9_orbit_gw.00001.rst",
+    "bytes": 69315343035,
+    "header_bytes": 35007,
+    "time": 0.0125,
+    "cycle": 2,
+    "dt": 0.00625,
+    "blocks": 5384,
+    "particles": 5000000,
+    "removed": [
+      0,
+      0,
+      0
+    ],
+    "sha256": "899c920a37f6bcd1a20ebe081256ce0ac36baf5e6bbb87d4e445348c32bf67b7"
+  },
+  "AMD_allocated_storage_sample": {
+    "utc": 1791476619.7253911,
+    "user_bytes": 903612801024,
+    "campaign_bytes": 139304763392
+  },
+  "validation_failure_history": "AMD/Anta history/validation_failure_454732_20261008/",
+  "remaining_startup_gate": 455390,
+  "remaining_gate_inspector": 455391
 }

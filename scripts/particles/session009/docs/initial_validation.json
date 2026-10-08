@@ -1,0 +1,501 @@
+{
+  "checks": {
+    "exact_counts": true,
+    "tags": true,
+    "finite": true,
+    "positive_weights": true,
+    "inside_domain": true,
+    "ledger": true,
+    "signs": true,
+    "Jz": true,
+    "centers": true,
+    "widths": true,
+    "thermal": true
+  },
+  "written": {
+    "path": "/data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/runs/gate_reference/pvtk/s9_orbit_gw.prtcl_all.00000.part.vtk",
+    "profile": "/data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/runs/gate_reference/gi_profile_M076_two_clump_s9.txt",
+    "time": 0.0,
+    "count": 5000000,
+    "finite": true,
+    "integer_tags": true,
+    "exact_unique_tag_range": true,
+    "positive_rest_weights": true,
+    "inside_domain": true,
+    "components": [
+      {
+        "component": 0,
+        "count": 3000000,
+        "tag_min": 0,
+        "tag_max": 2999999,
+        "rest_weight_min": 2.6072393666254357e-07,
+        "rest_weight_max": 2.6072393666254357e-07,
+        "position_mean": [
+          -0.00505088335734858,
+          -0.005575209341476167,
+          -0.008163499655541605
+        ],
+        "position_std": [
+          6.575313186676168,
+          6.575847289356402,
+          6.577744276936588
+        ],
+        "orthonormal_momentum_mean": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rest_frame_thermal_mean": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rest_frame_thermal_std": [
+          0.10976537486684164,
+          0.10979578451940847,
+          0.10965930082093782
+        ]
+      },
+      {
+        "component": 1,
+        "count": 1000000,
+        "tag_min": 3000000,
+        "tag_max": 3999999,
+        "rest_weight_min": 1.3123998598985054e-07,
+        "rest_weight_max": 1.3123998598985054e-07,
+        "position_mean": [
+          -2.999673800061589,
+          0.00027681120278492743,
+          -0.0008060835736831359
+        ],
+        "position_std": [
+          0.6970575205030157,
+          0.6974366777630427,
+          0.6971352929835588
+        ],
+        "orthonormal_momentum_mean": [
+          0.0,
+          -0.1344935864801007,
+          0.0
+        ],
+        "rest_frame_thermal_mean": [
+          0.0,
+          2.131680755178278e-11,
+          0.0
+        ],
+        "rest_frame_thermal_std": [
+          0.019997757582075424,
+          0.020021445320625955,
+          0.019972482870974837
+        ]
+      },
+      {
+        "component": 2,
+        "count": 1000000,
+        "tag_min": 4000000,
+        "tag_max": 4999999,
+        "rest_weight_min": 1.3123998598985054e-07,
+        "rest_weight_max": 1.3123998598985054e-07,
+        "position_mean": [
+          2.9995472410842665,
+          -0.00014858009854082775,
+          0.0013414758895222876
+        ],
+        "position_std": [
+          0.6980018384224418,
+          0.6969844777823581,
+          0.6971847594048125
+        ],
+        "orthonormal_momentum_mean": [
+          0.0,
+          0.13449361179124145,
+          0.0
+        ],
+        "rest_frame_thermal_mean": [
+          0.0,
+          -1.4679175480765418e-11,
+          0.0
+        ],
+        "rest_frame_thermal_std": [
+          0.020017687898278243,
+          0.01999930892891534,
+          0.019984128762020513
+        ]
+      }
+    ]
+  },
+  "logged": [
+    {
+      "name": "envelope",
+      "component": 0,
+      "count": 3000000,
+      "rest_mass": 0.7821717958,
+      "sum_mW": 0.7961148546,
+      "P_cov": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "P_hat": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "J_origin_cov": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "J_internal_cov": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "clump",
+      "component": 1,
+      "count": 1000000,
+      "rest_mass": 0.1312399829,
+      "sum_mW": 0.1324996133,
+      "P_cov": [
+        0.0,
+        -0.02152634,
+        0.0
+      ],
+      "P_hat": [
+        0.0,
+        -0.01765094,
+        0.0
+      ],
+      "J_origin_cov": [
+        -1.649484099e-05,
+        0.0,
+        0.06451816869
+      ],
+      "J_internal_cov": [
+        -1.649484099e-05,
+        0.0,
+        -6.08510626e-05
+      ]
+    },
+    {
+      "name": "clump",
+      "component": 2,
+      "count": 1000000,
+      "rest_mass": 0.1312399829,
+      "sum_mW": 0.1324996382,
+      "P_cov": [
+        0.0,
+        0.02152597,
+        0.0
+      ],
+      "P_hat": [
+        0.0,
+        0.01765094,
+        0.0
+      ],
+      "J_origin_cov": [
+        -2.904069342e-05,
+        0.0,
+        0.06451347307
+      ],
+      "J_internal_cov": [
+        -2.904069342e-05,
+        0.0,
+        -6.444365957e-05
+      ]
+    }
+  ],
+  "ledger_comparison": [
+    {
+      "component": 0,
+      "fields": {
+        "rest_mass": {
+          "pass": true,
+          "max_abs": 1.4187630736905987e-08,
+          "max_scaled": 1.8138765109842494e-08
+        },
+        "sum_mW": {
+          "pass": true,
+          "max_abs": 1.4500649458959458e-08,
+          "max_scaled": 1.821426784220281e-08
+        },
+        "P_cov": {
+          "pass": true,
+          "max_abs": 0.0,
+          "max_scaled": 0.0
+        },
+        "P_hat": {
+          "pass": true,
+          "max_abs": 0.0,
+          "max_scaled": 0.0
+        },
+        "J_origin_cov": {
+          "pass": true,
+          "max_abs": 0.0,
+          "max_scaled": 0.0
+        },
+        "J_internal_cov": {
+          "pass": true,
+          "max_abs": 0.0,
+          "max_scaled": 0.0
+        }
+      },
+      "count_pass": true
+    },
+    {
+      "component": 1,
+      "fields": {
+        "rest_mass": {
+          "pass": true,
+          "max_abs": 3.0898505420928757e-09,
+          "max_scaled": 2.3543514720672324e-08
+        },
+        "sum_mW": {
+          "pass": true,
+          "max_abs": 3.170716245115557e-09,
+          "max_scaled": 2.3930003192245593e-08
+        },
+        "P_cov": {
+          "pass": true,
+          "max_abs": 4.2832793908931244e-10,
+          "max_scaled": 1.9897852146092017e-08
+        },
+        "P_hat": {
+          "pass": true,
+          "max_abs": 3.594626162700676e-09,
+          "max_scaled": 2.0365069297729616e-07
+        },
+        "J_origin_cov": {
+          "pass": true,
+          "max_abs": 1.5327518837482401e-09,
+          "max_scaled": 2.3756902566460663e-08
+        },
+        "J_internal_cov": {
+          "pass": true,
+          "max_abs": 3.667070987145582e-13,
+          "max_scaled": 1.7096007784604325e-08
+        }
+      },
+      "count_pass": true
+    },
+    {
+      "component": 2,
+      "fields": {
+        "rest_mass": {
+          "pass": true,
+          "max_abs": 3.0898505420928757e-09,
+          "max_scaled": 2.3543514720672324e-08
+        },
+        "sum_mW": {
+          "pass": true,
+          "max_abs": 3.2001130911840647e-09,
+          "max_scaled": 2.415186227954073e-08
+        },
+        "P_cov": {
+          "pass": true,
+          "max_abs": 2.756513111518144e-09,
+          "max_scaled": 1.280552169557172e-07
+        },
+        "P_hat": {
+          "pass": true,
+          "max_abs": 2.7279279529723865e-10,
+          "max_scaled": 1.5454859361441297e-08
+        },
+        "J_origin_cov": {
+          "pass": true,
+          "max_abs": 1.5376752787732428e-09,
+          "max_scaled": 4.5718143333476457e-08
+        },
+        "J_internal_cov": {
+          "pass": true,
+          "max_abs": 2.299083165058051e-12,
+          "max_scaled": 4.5718143333476457e-08
+        }
+      },
+      "count_pass": true
+    }
+  ],
+  "total_P_cov": [
+    0.0,
+    -3.700000000030068e-07,
+    0.0
+  ],
+  "total_P_hat": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "cancelling_linear_momentum_residual_fraction": 8.59419622322256e-06,
+  "constraint_time": 0.0125,
+  "constraint_norms": {
+    "global_region": {
+      "con_H": {
+        "volume": 8589934592.0,
+        "rms": 1.0322978113170184e-05,
+        "mean_abs": 3.764855973552161e-09,
+        "max_abs": 1.828131079673767
+      },
+      "con_M": {
+        "volume": 8589934592.0,
+        "rms": 1.4192781603690896e-06,
+        "mean_abs": 3.955968870508246e-11,
+        "max_abs": 0.8240160346031189
+      },
+      "con_Mx": {
+        "volume": 8589934592.0,
+        "rms": 4.384523373169773e-06,
+        "mean_abs": 3.2307835318446015e-10,
+        "max_abs": 0.9415866732597351
+      },
+      "con_My": {
+        "volume": 8589934592.0,
+        "rms": 4.6222002683174265e-06,
+        "mean_abs": 3.3926748185120953e-10,
+        "max_abs": 1.081455945968628
+      },
+      "con_Mz": {
+        "volume": 8589934592.0,
+        "rms": 4.381459013286647e-06,
+        "mean_abs": 3.235551769971151e-10,
+        "max_abs": 1.0828169584274292
+      }
+    },
+    "left": {
+      "con_H": {
+        "volume": 27.0,
+        "rms": 0.11240226445933779,
+        "mean_abs": 0.07218386428614515,
+        "max_abs": 1.6608657836914062
+      },
+      "con_M": {
+        "volume": 27.0,
+        "rms": 0.017906992053711462,
+        "mean_abs": 0.00606247451897492,
+        "max_abs": 0.5891973376274109
+      },
+      "con_Mx": {
+        "volume": 27.0,
+        "rms": 0.054363133816254475,
+        "mean_abs": 0.02502969169726911,
+        "max_abs": 0.9415866732597351
+      },
+      "con_My": {
+        "volume": 27.0,
+        "rms": 0.05735532730997473,
+        "mean_abs": 0.027212188413236117,
+        "max_abs": 0.9561434388160706
+      },
+      "con_Mz": {
+        "volume": 27.0,
+        "rms": 0.054342002215363956,
+        "mean_abs": 0.025025023993342197,
+        "max_abs": 0.9159634113311768
+      }
+    },
+    "right": {
+      "con_H": {
+        "volume": 27.0,
+        "rms": 0.11254350565289392,
+        "mean_abs": 0.0722776626033859,
+        "max_abs": 1.828131079673767
+      },
+      "con_M": {
+        "volume": 27.0,
+        "rms": 0.017886559593870352,
+        "mean_abs": 0.006062251419792453,
+        "max_abs": 0.8240160346031189
+      },
+      "con_Mx": {
+        "volume": 27.0,
+        "rms": 0.054369285488199276,
+        "mean_abs": 0.025060741878559063,
+        "max_abs": 0.9140467047691345
+      },
+      "con_My": {
+        "volume": 27.0,
+        "rms": 0.05736542812677994,
+        "mean_abs": 0.02723633650204386,
+        "max_abs": 1.081455945968628
+      },
+      "con_Mz": {
+        "volume": 27.0,
+        "rms": 0.054317775779450475,
+        "mean_abs": 0.025044654062250093,
+        "max_abs": 1.0828169584274292
+      }
+    },
+    "common_central": {
+      "con_H": {
+        "volume": 1728.0,
+        "rms": 0.022398599488050577,
+        "mean_abs": 0.0071387601629657,
+        "max_abs": 1.828131079673767
+      },
+      "con_M": {
+        "volume": 1728.0,
+        "rms": 0.003164393902999795,
+        "mean_abs": 0.00019634366731558812,
+        "max_abs": 0.8240160346031189
+      },
+      "con_Mx": {
+        "volume": 1728.0,
+        "rms": 0.009769072930753514,
+        "mean_abs": 0.0012093786116245402,
+        "max_abs": 0.9415866732597351
+      },
+      "con_My": {
+        "volume": 1728.0,
+        "rms": 0.010299495943498304,
+        "mean_abs": 0.0012901005569454756,
+        "max_abs": 1.081455945968628
+      },
+      "con_Mz": {
+        "volume": 1728.0,
+        "rms": 0.009762407406655403,
+        "mean_abs": 0.001211947827128936,
+        "max_abs": 1.0828169584274292
+      }
+    }
+  },
+  "constraint_definition": "coordinate-volume weighted leaf cells; identical rectangular regions; no field mask. Raw con_M is already squared; its field RMS is not the momentum-vector RMS.",
+  "physical_momentum_vector_rms": {
+    "global_region": 7.732138359821074e-06,
+    "left": 0.09590639756519345,
+    "right": 0.09590220182192236,
+    "common_central": 0.017228435825403284
+  },
+  "physical_momentum_vector_rms_ratio": null,
+  "session7_comparison_matched": false,
+  "session9_over_session7_rms": {
+    "global_region": null,
+    "left": {
+      "con_H": 1.002884665155214,
+      "con_M": 1.0227153488361223,
+      "con_Mx": 1.0007112229195971,
+      "con_My": 1.0308764719463,
+      "con_Mz": 1.0007073831456628
+    },
+    "right": {
+      "con_H": 1.002886981752948,
+      "con_M": 1.022802072531387,
+      "con_Mx": 1.0007074383595873,
+      "con_My": 1.0309025395976863,
+      "con_Mz": 1.0007296700364736
+    },
+    "common_central": {
+      "con_H": 1.0023050358850076,
+      "con_M": 1.0227530225950705,
+      "con_Mx": 1.000688707526121,
+      "con_My": 1.030475372742881,
+      "con_Mz": 1.000697686709115
+    }
+  },
+  "region_matches": {
+    "global_region": false,
+    "left": true,
+    "right": true,
+    "common_central": true
+  }
+}

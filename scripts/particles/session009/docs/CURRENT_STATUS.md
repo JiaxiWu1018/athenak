@@ -1,43 +1,58 @@
-# Session009 — scheduled check and reviewed startup repair
+# Session009 — scheduled check and saved-startup continuation
 
-Checked **October 08, 2026 07:02 AM PDT**. The simulation is **not running**: startup **454732** is queued for resources and inspector **454733** waits for it. Physical time remains **t = 0**; no particle initialization, verified checkpoint, orbit or binary waveform exists. Live AMD control/state.json and Slurm are authoritative.
+Checked **October 08, 2026 09:29 AM PDT**. The production run is **not running yet**. The full five-million-particle reference run completed two evolution cycles at **t=0.0125M_ref**, then its inherited checking script failed on a Session007 profile filename. That configuration failure was reviewed and repaired. Anta2397 passed the actual saved-data validation, and AMD455389 reverified the69.3GB checkpoint, restored comparison data,48GPU memory record and storage. Remaining gate455390 is queued for resources and inspector455391 waits for it. The controller keeps production time0 until all startup gates are accepted.
 
-## Failure and reviewed repair
+## Live jobs and verified checkpoint
 
-Startup454538 failed after6seconds, before geometry or particles, because k003-009 selected MPI PMLob1 while peer k002-006 selecteducx. Inspector454539 halted further jobs. Failure logs, configuration, scripts and accounting are preserved on AMD and Anta under history/mpi_failure_454538_20261007/. Earlier failures remain preserved separately. Anta2365 completed the failed-startup status archive/report; that is not completed science.
+Registered queue at the metadata snapshot:
 
-Both full startup and all future production segments now request exactly **k002-005,k003-[003-007],k005-[002-006,009]**. These twelve nodes previously passed all48 ranks of the Session009 all-to-all communication test452580. A checksum-bound receipt requires this exact node group at runtime. That historical communication success does not establish memory feasibility or successful binary evolution. Nodesk003-009 andk003-010 are excluded. No transport, physics, source or executable change was made.
+~~~
+455391|jn9_20261008_resume_inspect0|PENDING|(Dependency)
+455390|jn9_20261008_resume_gate|PENDING|(Resources)
+~~~
 
-Operations commit **ff4b5cb42bc67375f0b9f852de78dfe0dc073a49** was pushed and the remote branch verified. Allocated Perseus11238 passed19 targeted tests, syntax and input contract checks. AMD **454731 completed0:0 in4seconds**, passing16 checks, the original48-rank witness validation and all three actual compiled input commands. The new full-particle startup remains pending; actual48-rank communication, complete mesh, initial particle ledger, allGPUmemory, finite fields, outputs and restart checks must still pass. If this previously successful group also fails communication, preserve the failure and review bounded allocated MPI diagnostics before another full allocation.
+Checkpoint: /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/gate_reference/rst/s9_orbit_gw.00001.rst; 69,315,343,035bytes, 35,007byte header, cycle2, t0.0125, five million particles, zero removals. SHA256 899c920a37f6bcd1a20ebe081256ce0ac36baf5e6bbb87d4e445348c32bf67b7. Native header/layout and hashes passed; the actual uninterrupted-versus-restart evolution comparison remains a required unfinished gate.
 
-## Configuration and limits
+## Reviewed repair and durable continuation
 
-Approved R40 extraction and dx≤0.25 through R46, local boost0.133215, five million particles, domain[-1024,1024]³, central dx ceiling1/256, sampling, tags, RK4/CFL0.4, removal and output cadences are unchanged. Initial seeded mesh estimate5384blocks awaits the actual AMD inventory. Compiled source remains6892be3e3f04ec573f91cb2034bc9d3009a3bdff; Kokkos6739bc623081648af9e752b616d9671527922cbf. Canonical input SHA256deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd. All37 flat runtime files are bound in evidence/frozen_config.json.
+Full startup454732 passed48-rank communication and initialized5384blocks. Simulation exit0 and exact particle conservation; the later validator requested gi_profile_M076_two_clump_s7.txt instead of the canonical Session009 filename. Original scripts, inputs, controls, logs, reports and accounting are preserved with hashes on AMD and Anta in history/validation_failure_454732_20261008/, with small metadata preservation on Perseus. Sealed reference data and checksum-verified Anta copies are retained.
 
-Original hard limits remain t400 or10000 raw AMD node-hours,90 finite segments,12-hour production jobs with40minutes for finalization, and deadline2026-11-19T22:01:43.732344Z. The clock and cumulative budgets were not reset. AMD1.25TiB session cap and whole-user storage guards apply; Anta16TiB and96 four-hour archive/analysis jobs. Keep the latest three verified AMD checkpoints after checksum-verified Anta archival. Sticky user stop remains intact. Numerical failures stop for review.
+Operations repairs ef5363c6 and **a60f312e7a5145325f543bc48b108ca8f5f47cb6** were pushed and the remote branch verified. Allocated Perseus11356/11357 each passed19 targeted tests plus syntax/input-contract checks. Anta2397 checked all initial particles, local constraints, complete physical mesh and finite saved fields, returning receipts and only291,767,869bytes of reference comparison data. AMD455389 passed three acceptance regression tests and rehashed the restored files and checkpoint. The remaining gate skips duplicate reference evolution, runs the split/restart and clean-stop/output checks once, and repeats the actual48-rank communication probe. Success allows the standard durable inspector to start the bounded t12 continuation; a failure stops for review.
 
-An earlier scientific stop requires a strictly accepted common horizon enclosing both objects, usable outgoing ringdown within the validated frequency band with gaps checked, and at least100 saved M_ref after its observed waveform peak. No merger or ringdown is guaranteed. M_ref=1 is the inherited reference unit, not a measured horizon mass.
+## Initial evidence and scientific limits
 
-## Resources and archive/analysis
+- Exact counts3,000,000/1,000,000/1,000,000; unique immutable tags0..4,999,999; finite positive weights; centers, widths, thermal spread, boost signs and positive orbitalJz passed.
+- Sampled rest-mass sum approximately1.04465, distinct from source/model parameters summing to1. Approved local speed0.133215 remains approximate companion support. K_ij approximately0 leaves the local momentum constraint unsolved.
+- Rounded total covariant momentum(0,-3.7e-7,0), about8.6e-6 of the summed clump momentum magnitudes. Sampling residual retained without recoil or new symmetrization.
+- Actual mesh5384blocks/176,422,912 interior cells; current minimum dx1/64, maximum8, available finest collapse spacing1/256. Physical levels0..11, root logical level3. Domain±1024. All radial floors pass, including dx≤.25 throughout r≤46 with extractionR40.
+- All48GPU histories present; peak70.3403%, below85%. This establishes startup memory, not the later collapse peak.
+- The t0.0125 Session007 comparison matches left/right/common-central regions, masks and volume normalization. Global volumes differ and its ratio is suppressed. No constraint improvement or convergence claim from changed empty volume; raw con_M is already squared.
+- Startup plots and short central/context/density movies at Anta analysis/update_final_2394/. Two tracker samples cover only0..0.00625 with cached centers and unavailable derivatives. Separation plot/CSV inspected. These do not establish circularity, a revolution, collapse, merger or ringdown. The final directory name describes the closed failed attempt, not completed production; its active pointer/terminal marker are preserved in history.
 
-- AMD cumulative actual **0.965 raw node-hours**, including preparation and failed allocations. Current maximum reserved exposure **49.465 raw node-hours**. Queue wait is not charged.
-- Anta **0.141944444 node/GPU-hours**,511seconds across5/96 completed jobs. The original ledger and deadline remain intact; no active Anta analysis job is needed until new sealed output exists.
-- Anta/data3 has **26.98TiB free**. Last allocated archive measurement90308608bytes (~86.13MiB) was from failed-startup2365 before this small metadata repair. Current AMD storage/GPU memory has not yet been sampled by allocated startup; no old value is substituted.
-- Monetary costs remain unavailable without an account tariff. There is no measured production rate or reliable updated completion estimate yet.
-- No binary science plots or movies exist. Initial/t12/every50M/final science reports, plots and central/context movies are implemented and await data. The old failure-only products in Anta analysis/update_final_2365/ are retained but are not the active science pointer.
+## Resources and approved limits
 
-## Durable monitors and controls
+AMD actual **1.987222222 raw node-hours**, including preparation/failures/inspectors; reserved maximum **50.487222222**. Anta actual **1.267222222 node/GPU-hours**,7/96 registered jobs. No supplied monetary tariff; no dollar cost invented. No reliable production-rate estimate from this short startup.
 
-This actual regular two-hour cron prompt reached the same Codex thread and this check completed. Receipt: evidence/scheduled_check_20261007T201254Z.json. The Perseus nativequeue wake and Anta five-minute archive trigger are installed. Archive tick succeeded and the AMD heartbeat is fresh. Successful inspector454733 will continue the accepted startup checkpoint to t12 and finite50M segments; continuation and allocated archival/analysis do not depend on an interactive shell. Monitoring cannot guarantee queue access or successful evolution; failures halt for review.
+Fresh allocated AMD sample: whole user **0.822TiB**, Session009 **0.127TiB**, epoch1791476619.7253911. Last allocated Anta archive sample203,205,316,608bytes (~.185TiB), plus subsequent small metadata; /data3 free **26.80TiB**.
 
-```sh
+Unchanged R40/R46, local boost0.133215,5Mparticles, RK4/CFL.4, Löhner.2/tracker_floorfalse, alpha<.05 removal/AH removalOFF. Complex raw rPsi4 ell2..8 every.025; particles.25, planes.1, full3D/checkpoints10 plus clean stops. Hard t400 or10,000 AMD raw node-hours,90 finite12-hour segments with40minutes finalization, original deadline2026-11-19T22:01:43.732344Z. AMD session1.25TiB; whole-user warn1.5/stop1.7/projected1.9TiB and256GiB reserve. Anta16TiB,96 four-hour allocated jobs and original deadline unchanged. Latest three verified AMD checkpoints retained after checksum-verified archival. No numerical retries.
+
+Earlier scientific stopping still requires a strictly accepted common horizon enclosing both objects, usable outgoing ringdown in the supported band with gaps checked, and at least100 saved M_ref after its observed waveform peak. Merger/ringdown not guaranteed. M_ref=1 is the inherited reference unit.
+
+## Durable monitors and scoped controls
+
+Scheduled prompt reached this same thread; completion receipt:evidence/scheduled_check_20261008T162940Z.json. The native existing-thread two-hour wake remains installed. The five-minute Anta archival trigger was restored after preserving terminal failure records and generated reports; heartbeat is active. Continuation and allocated archive/analysis use bounded jobs, duplicate protection and sticky user stop. Monitoring cannot guarantee queue access or successful evolution. Initial/t12/every50M/final products run as verified data arrive.
+
+~~~sh
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/workflow.py status'
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/workflow.py stop'
 ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/workflow.py cancel'
 python3 /data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/code/scripts/particles/session009/wake_check.py remove
-```
+~~~
 
-Never cancel unrelated ST jobs named s9_prod or s9_controls_build. No Session009 raw particle, volume or checkpoint data are on Perseus: only source, inputs, scripts, documentation and small retained diagnostic evidence. Next action: wait for454732, inspect the actual communication/full startup receipts; do not submit a duplicate job or automatically retry a numerical failure.
+Never cancel unrelated ST jobs. No Session009 raw particles,3Dfields or checkpoints on Perseus; retained source/inputs/scripts/docs, small QA/acceptance receipts and startup review figure. Next: inspect455390/455391 and accepted gate receipt; do not submit duplicate jobs. Compiled source6892be3e3f04ec573f91cb2034bc9d3009a3bdff, Kokkos6739bc623081648af9e752b616d9671527922cbf, input/executable hashes unchanged. Canonical input SHA256deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd. All44 flat runtime files frozen in evidence/frozen_config.json.
+
+## Preserved earlier dated checks
 
 ## Regular two-hour check — October 07, 2026 03:02 PM PDT
 

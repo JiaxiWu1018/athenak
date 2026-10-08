@@ -1,14 +1,15 @@
-# Current update — October 08, 2026 07:02 AM PDT
+# Current update — October 08, 2026 09:29 AM PDT
 
-Session009 remains at **t = 0**, with no checkpoint or binary science results. Startup454538 failed in MPI initialization after6seconds; no particles or geometry were initialized. Its evidence is preserved on AMD and Anta under history/mpi_failure_454538_20261007/. After review, startup and production now use the exact twelve-node group that previously passed the48-rank communication test. The simulation input, physics and binaries are unchanged. Operationsff4b5cb4 was pushed and verified.
+The five-million-particle startup evolved successfully to **t = 0.0125 M_ref**, with 5,384 mesh blocks, exact particle conservation and all 48 GPUs below 85% memory use (maximum70.34%). It then stopped on an inherited Session007 filename in the checking script. The checkpoint is verified and archived; the full production gate is not yet accepted.
 
-Allocated Perseus11238 passed19 targeted checks. AMD454731 passed16 checks plus three compiled input commands in4seconds. Full startup **454732 is queued for resources**, and inspector454733 will continue production only if all mesh, particle, memory, output and restart gates pass. A repeated communication failure on this group requires further review before another full allocation.
+The tested repair and saved-reference continuation were pushed as operations **a60f312e**. Anta job 2397 passed full initialization, mesh, constraint and finite-field checks on archived outputs; AMD job 455389 reverified the checkpoint and four restored comparison files. Remaining gate job 455390 waits for resources and inspection job 455391 waits for that gate. They run the unfinished restart/clean-stop/output checks without repeating reference evolution; acceptance allows the bounded continuation to t = 12.
 
-Total use is **0.965 AMD raw node-hours** and **0.141944444 Anta node/GPU-hours** across5 archive jobs. Anta2365 archived the failed-startup closeout; it did not produce a binary waveform. The two-hour wake reached this existing thread; both it and the five-minute archive trigger are active. Science reports, plots and movies remain pending data. All original physical, storage, cost and deadline caps apply. See evidence/CURRENT_STATUS.md for evidence, exact controls and next actions.
+Use: **1.987222 AMD raw node-hours**, **1.267222 Anta node/GPU-hours**. Allocated AMD storage: **0.127TiB session**, **0.822TiB whole user**. Physics, source/binaries, caps and deadline unchanged. The two-hour wake is active, and the five-minute archive monitor is restored. Receipt:evidence/scheduled_check_20261008T162940Z.json.
 
-Latest scheduled check: startup454732 remains queued for resources and inspector454733 waits for it. Time0; no checkpoint, evolved state or new science output. No new failure or stop flag. Both monitors are active, usage unchanged; no additional jobs submitted. Scheduler provisional start isOctober 08 at 07:49 AM PDT, subject to change. Receipt:evidence/scheduled_check_20261008T140205Z.json.
+Startup figures and short movies retained at /data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/analysis/update_final_2394/. Tiny time span cannot establish orbital shape, horizons, merger or ringdown. [Startup separation plot](/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/figures/startup_2394/orbit.png). Reports/plots/movies update at approved milestones with verified science data. See evidence/CURRENT_STATUS.md for exact state, preservation and scoped controls.
 
 ## Earlier dated setup and status records
+
 
 # Session009 — fresh orbit and gravitational-wave production at R40
 

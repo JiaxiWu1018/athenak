@@ -1,0 +1,61 @@
+{
+  "blocks": 5384,
+  "cells": 176422912,
+  "minimum_dx": 0.015625,
+  "maximum_dx": 8.0,
+  "domain": [
+    -1024,
+    1024
+  ],
+  "root_dx": 8,
+  "configured_finest_dx": 0.00390625,
+  "physical_levels_available": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "wave_region": [
+    {
+      "radius": 46,
+      "required_max_dx": 0.25,
+      "observed_max_dx": 0.25,
+      "intersecting_blocks": 1640
+    },
+    {
+      "radius": 72,
+      "required_max_dx": 0.5,
+      "observed_max_dx": 0.5,
+      "intersecting_blocks": 2640
+    },
+    {
+      "radius": 104,
+      "required_max_dx": 1,
+      "observed_max_dx": 1.0,
+      "intersecting_blocks": 3536
+    },
+    {
+      "radius": 168,
+      "required_max_dx": 2,
+      "observed_max_dx": 2.0,
+      "intersecting_blocks": 4136
+    },
+    {
+      "radius": 296,
+      "required_max_dx": 4,
+      "observed_max_dx": 4.0,
+      "intersecting_blocks": 4528
+    }
+  ],
+  "extraction_radius": 40,
+  "boundary_gauge_estimate": 695.7930726875627,
+  "initial_grid_not_collapse_grid": true
+}
