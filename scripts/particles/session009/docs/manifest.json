@@ -57,8 +57,8 @@
     "k005-009"
   ],
   "mpi_witness_sha256": "3df8ece08a69ecfc81ec0ce519ece02935445bdfb2d50a135231b38d6ab82b1a",
-  "last_check": "evidence/scheduled_check_20261008T060115Z.json",
+  "last_check": "evidence/scheduled_check_20261008T080121Z.json",
   "report_plot_status": "Pending binary science data; old failed-startup products retained",
-  "checked_Pacific": "October 07, 2026 11:01 PM PDT",
-  "provisional_start_Pacific": "2026-10-08T08:25:47-07:00"
+  "checked_Pacific": "October 08, 2026 01:01 AM PDT",
+  "provisional_start_Pacific": "2026-10-08T07:42:08-07:00"
 }
