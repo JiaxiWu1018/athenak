@@ -19,16 +19,25 @@ python3 "$ROOT/scripts/workflow.py" bindings
 python3 "$ROOT/scripts/mpi_nodes.py"
 test ! -e "$ROOT/control/REQUEST_STOP"
 test -x "$EXE"
+resume=false
+if [[ "${1:-}" == --resume-reference && $# -eq 1 ]]; then
+ python3 "$ROOT/scripts/validate_reference.py" --receipt-only
+ resume=true
+elif [[ $# -ne 0 ]]; then
+ exit 2
+fi
 {
  date -u; hostname; module list; scontrol show job "$SLURM_JOB_ID"
  sha256sum "$EXE" "$DECK"; git -C "$ROOT/athenak" rev-parse HEAD
  git -C "$ROOT/athenak" submodule status
 } > "$ROOT/evidence/gate_provenance.txt" 2>&1
 prun "$ROOT/build/mpi_probe" > "$ROOT/evidence/mpi_48rank_gate.txt" 2>&1
-export RUN=$ROOT/runs/gate_mesh
-mkdir -p "$RUN"
-(cd "$RUN"; prun "$ROOT/scripts/amd_rank_wrapper.sh" "$EXE" --kokkos-map-device-id-by=mpi_rank -i "$DECK" -m) > "$RUN/run.log" 2>&1
-printf '0\n' > "$RUN/EXIT_CODE"
+if ! "$resume"; then
+ export RUN=$ROOT/runs/gate_mesh
+ mkdir -p "$RUN"
+ (cd "$RUN"; prun "$ROOT/scripts/amd_rank_wrapper.sh" "$EXE" --kokkos-map-device-id-by=mpi_rank -i "$DECK" -m) > "$RUN/run.log" 2>&1
+ printf '0\n' > "$RUN/EXIT_CODE"
+fi
 common=(output7/last_time=0 time/ndiag=1 z4c/co_0_out_every=1 z4c/co_1_out_every=1 fastflow/start_time_0=0 fastflow/start_time_1=0 fastflow/start_time_2=0)
 run_case() {
  export RUN=$ROOT/runs/$1; shift
@@ -52,8 +61,10 @@ run_case() {
  used=$(du -sx --block-size=1 "$ROOT" | awk '{print $1}')
  test "$used" -lt 1099511627776
 }
-run_case gate_reference time/nlim=2
-python3 "$ROOT/scripts/validate_s9.py" --root "$ROOT"
+if ! "$resume"; then
+ run_case gate_reference time/nlim=2
+ python3 "$ROOT/scripts/validate_s9.py" --root "$ROOT"
+fi
 run_case gate_split time/nlim=1
 RST=$(python3 -c 'import json,os; from pathlib import Path; r=Path(os.environ["ROOT"]); d=json.loads((r/"control/checkpoints.json").read_text()); print(max((v for v in d.values() if "/gate_split/" in v["path"] and Path(v["path"]).exists()),key=lambda v:v["cycle"])["path"])')
 run_case gate_restart -r "$RST" time/nlim=2

@@ -158,9 +158,9 @@ def full_psi(position: np.ndarray, profile: np.ndarray) -> np.ndarray:
 def vector3(values: np.ndarray) -> list[float]:
     return [float(x) for x in values]
 
-def written_particle_stats(run: Path) -> tuple[dict, list[dict]]:
+def written_particle_stats(run: Path, *, profile_name: str = "gi_profile_M076_two_clump_s7.txt") -> tuple[dict, list[dict]]:
     particles = read_particles(first(run, "*.part.vtk"))
-    profile_path = first(run, "gi_profile_M076_two_clump_s7.txt")
+    profile_path = first(run, profile_name)
     profile = np.loadtxt(profile_path)
     xyz, mom = particles["position"], particles["momentum"]
     tag_float, mass = particles["tag_float"], particles["mass"]

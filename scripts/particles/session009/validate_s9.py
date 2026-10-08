@@ -9,7 +9,7 @@ def main():
  p=argparse.ArgumentParser();p.add_argument('--root',type=Path,required=True);a=p.parse_args()
  sys.path.insert(0,str(a.root/'athenak/vis/python'));import bin_convert
  run=a.root/'runs/gate_reference';logged=v.parse_ledger(run/'run.log')
- written,ledger=v.written_particle_stats(run)
+ written,ledger=v.written_particle_stats(run,profile_name='gi_profile_M076_two_clump_s9.txt')
  agreement,detail=v.ledger_agreement(logged,ledger)
  cl=written['components'][1:]
  checks=dict(exact_counts=[x['count'] for x in logged]==[3000000,1000000,1000000],
@@ -45,12 +45,14 @@ def main():
  session7_comparison_matched=bool(matches),session9_over_session7_rms={k:ratios[k] if region_matches[k] else None for k in ratios},region_matches=region_matches)
  (a.root/'evidence/initial_validation.json').write_text(json.dumps(result,indent=2)+'\n')
  if not all(checks.values()): raise RuntimeError('initialization gate failed: '+str(checks))
+ # Keep the complete mesh audit, then release each large field before the next read.
+ from mesh_audit import audit
+ audit(a.root,con)
+ del con
  for kind in ('z4c_xy','tmunu_xy','con_xy','z4c_xz','tmunu_xz','con_xz','z4c_yz','tmunu_yz','con_yz','weyl_xy','weyl_xz','weyl_yz','z4c3d','tmunu3d','weyl3d'):
   data=bin_convert.read_binary(str(v.latest(run,'*.'+kind+'.*.bin')))
   if any(not np.isfinite(z).all() for z in data['mb_data'].values()): raise RuntimeError('nonfinite evolved/output '+kind)
- # Full complete startup mesh physical spacing, not copied logical level labels.
- from mesh_audit import audit
- audit(a.root,con)
+  del data
  print(json.dumps(checks))
 
 if __name__=='__main__':main()

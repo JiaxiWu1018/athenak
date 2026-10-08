@@ -87,10 +87,12 @@ def submit():
  if s.get('gates_submitted'):return
  if config().get('reuse_wave_gate'):
   if not json.loads((ROOT/'evidence/wave_gate.json').read_text())['passed']:raise RuntimeError('reused wave receipt failed')
-  wave=submit_one(s,'input_preflight','amd_input_preflight.sbatch',[],1,.5,None)
+  script='amd_validate_reference.sbatch' if config().get('resume_reference') else 'amd_input_preflight.sbatch'
+  wave=submit_one(s,'input_preflight',script,[],1,.5,None)
  else:
   wave=submit_one(s,'wave_gate','amd_wave_gate.sbatch',[],3,2,'afterok:'+str(s['jobs'][0]['id']))
- gate=submit_one(s,'gate','amd_gate.sbatch',[],12,4,'afterok:'+str(wave))
+ args=['--resume-reference'] if config().get('resume_reference') else []
+ gate=submit_one(s,'gate','amd_gate.sbatch',args,12,4,'afterok:'+str(wave))
  submit_one(s,'inspect0','amd_inspect.sbatch',[0,gate],1,.5,'afterany:'+str(gate))
  s['gates_submitted']=True;s['status']='gates_queued';save(s)
 
