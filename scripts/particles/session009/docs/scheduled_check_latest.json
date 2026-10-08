@@ -1,19 +1,19 @@
 {
   "check_type": "scheduled_two_hour",
   "received_in_existing_thread": true,
-  "completed_utc": 1791476980.2708492,
-  "checked_Pacific": "October 08, 2026 09:29 AM PDT",
-  "AMD_snapshot_utc": 1791476879.3425205,
-  "Anta_snapshot_utc": 1791476621.6262345,
-  "AMD_status": "gates_queued",
-  "AMD_registered_queue": "455391|jn9_20261008_resume_inspect0|PENDING|(Dependency)\n455390|jn9_20261008_resume_gate|PENDING|(Resources)",
-  "controller_production_time": 0,
+  "completed_utc": 1791482753.955109,
+  "checked_Pacific": "October 08, 2026 11:05 AM PDT",
+  "AMD_snapshot_utc": 1791482446.4646463,
+  "Anta_snapshot_utc": 1791482444.0220795,
+  "AMD_status": "running_segment_1",
+  "AMD_registered_queue": "455478|jn9_20261008_resume_inspect1|PENDING|(Dependency)\n455477|jn9_20261008_resume_segment1|RUNNING|k002-005,k003-[003-007],k005-[002-006,009]",
+  "controller_checkpoint_time": 0.03125,
   "latest_verified_checkpoint": {
-    "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/gate_reference/rst/s9_orbit_gw.00001.rst",
-    "bytes": 69315343035,
-    "header_bytes": 35007,
-    "time": 0.0125,
-    "cycle": 2,
+    "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/gate_output/rst/s9_orbit_gw.00004.rst",
+    "bytes": 69315343208,
+    "header_bytes": 35180,
+    "time": 0.03125,
+    "cycle": 5,
     "dt": 0.00625,
     "blocks": 5384,
     "particles": 5000000,
@@ -22,30 +22,184 @@
       0,
       0
     ],
-    "sha256": "899c920a37f6bcd1a20ebe081256ce0ac36baf5e6bbb87d4e445348c32bf67b7"
+    "sha256": "7b8ac7e6875377f429426ab95756c630bd029fc9caefb63255c34ec52da78ca2"
   },
-  "verified_checkpoint_time": 0.0125,
-  "AMD_node_hours": 1.9872222222222222,
-  "AMD_maximum_reserved_node_hours": 50.48722222222222,
-  "Anta_node_hours": 1.267222222222222,
-  "AMD_allocated_storage_sample": {
-    "utc": 1791476619.7253911,
-    "user_bytes": 903612801024,
-    "campaign_bytes": 139304763392
+  "latest_saved_diagnostic_time": 2.156249999999997,
+  "latest_log_cycle": 118,
+  "initial_particle_count": 5000000,
+  "startup_gates_passed": true,
+  "restart_comparison_passed": true,
+  "restart_reacquisition_gaps_flagged": true,
+  "numerical_failure_detected": false,
+  "live_health": {
+    "utc": 1791482518.9059236,
+    "elapsed_lines": [
+      "elapsed=5.418069e+02 cycle=50 time=4.312500e-01 dt=2.500000e-02",
+      "elapsed=1.581952e+03 cycle=100 time=1.681250e+00 dt=2.500000e-02"
+    ],
+    "latest_log_cycle": 118,
+    "bad_log_lines": [],
+    "diagnostics": {
+      "s9_orbit_gw.horizon_summary_2.txt": {
+        "bytes": 166,
+        "header": [
+          "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
+        ],
+        "tail": [
+          "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
+        ]
+      },
+      "s9_orbit_gw.co_0.txt": {
+        "bytes": 1193,
+        "header": [
+          "# Black Hole",
+          "# 1:iter 2:time 3:x 4:y 5:z 6:vx 7:vy 8:vz 9:amr_level 10:dx1 11:dx2 12:dx3 13:track_source 14:core_count 15:core_rest_mass 16:lapse_min 17:horizon_tracking"
+        ],
+        "tail": [
+          "60 0.6812500000000004663 -2.96875 0.03125 0.03125 0.1169522053316619653 0.01259093394749571937 0.007830987890063367818 10 0.0625 0.0625 0.0625 1 238149 0.03125467067845932867 0.7883725173734120739 0",
+          "80 1.181250000000000133 -2.96875 -0.09375 0.03125 0.01877080339731935707 -0.05493079722367086304 -0.02787855364788091594 10 0.0625 0.0625 0.0625 1 245927 0.03227545526515528812 0.7868403792722811207 0",
+          "100 1.681249999999998357 -2.96875 -0.15625 -0.03125 -0.00993156525332587227 -0.1300584291289149652 0.0191395192162093844 10 0.0625 0.0625 0.0625 1 256375 0.03364665060609118435 0.7856027750796609199 0"
+        ]
+      },
+      "s9_orbit_gw.co_1.txt": {
+        "bytes": 1184,
+        "header": [
+          "# Black Hole",
+          "# 1:iter 2:time 3:x 4:y 5:z 6:vx 7:vy 8:vz 9:amr_level 10:dx1 11:dx2 12:dx3 13:track_source 14:core_count 15:core_rest_mass 16:lapse_min 17:horizon_tracking"
+        ],
+        "tail": [
+          "60 0.6812500000000004663 2.96875 0.03125 -0.03125 -0.1256767587221779281 0.05083824170745883386 -0.01116766692512992376 10 0.0625 0.0625 0.0625 1 238106 0.03124902735919628943 0.7886103743011830813 0",
+          "80 1.181250000000000133 2.96875 0.09375 -0.03125 -0.01264822150008502316 0.04781211762266224241 0.0358721076242413256 10 0.0625 0.0625 0.0625 1 247127 0.03243294324458896594 0.7870557923428207481 0",
+          "100 1.681249999999998357 2.96875 0.15625 0.03125 0.01499287427320064939 0.09062893996230668436 -0.01511529497166382713 10 0.0625 0.0625 0.0625 1 256138 0.03361554673015303141 0.7857891933617419111 0"
+        ]
+      },
+      "s9_orbit_gw.horizon_summary_0.txt": {
+        "bytes": 166,
+        "header": [
+          "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
+        ],
+        "tail": [
+          "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
+        ]
+      },
+      "s9_orbit_gw.horizon_summary_1.txt": {
+        "bytes": 166,
+        "header": [
+          "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
+        ],
+        "tail": [
+          "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
+        ]
+      },
+      "s9_orbit_gw.z4c.user.hst": {
+        "header": [
+          "# Athena++ history data",
+          "#  [1]=time      [2]=dt       [3]=C-norm2    [4]=H-norm2    [5]=M-norm2    [6]=Z-norm2    [7]=Mx-norm2    [8]=My-norm2    [9]=Mz-norm2    [10]=Theta-norm    [11]=Volume    ",
+          "  1.25000e-01  6.25000e-03  2.10495e+00  1.70363e+00  4.00231e-01  2.21162e-04  1.88231e-01  2.21645e-01  1.87862e-01  2.04063e-04  8.61994e+09",
+          "  1.50000e-01  6.25000e-03  1.88815e+00  1.49493e+00  3.91760e-01  3.14785e-04  1.84259e-01  2.17574e-01  1.83748e-01  2.02976e-04  8.61994e+09"
+        ],
+        "tail": [
+          "  2.10625e+00  2.50000e-02  1.57193e-01  7.21730e-02  2.40862e-02  1.52074e-02  8.33761e-03  1.67288e-02  8.30499e-03  1.04502e-04  8.61994e+09",
+          "  2.13125e+00  2.50000e-02  1.56817e-01  7.18044e-02  2.39952e-02  1.52282e-02  8.24440e-03  1.67468e-02  8.24292e-03  1.04286e-04  8.61994e+09",
+          "  2.15625e+00  2.50000e-02  1.56373e-01  7.13571e-02  2.39256e-02  1.52466e-02  8.16346e-03  1.67766e-02  8.18689e-03  1.04142e-04  8.61994e+09"
+        ]
+      }
+    },
+    "waveforms": {
+      "rpsi4_real_0040.txt": {
+        "samples": 79,
+        "first_time": 0.049999999999999996,
+        "last_time": 2.156249999999997,
+        "finite": true,
+        "monotonic": true,
+        "columns": [
+          78
+        ]
+      },
+      "rpsi4_imag_0040.txt": {
+        "samples": 79,
+        "first_time": 0.049999999999999996,
+        "last_time": 2.156249999999997,
+        "finite": true,
+        "monotonic": true,
+        "columns": [
+          78
+        ]
+      }
+    },
+    "gpu_count": 48,
+    "vram_peak": 0.7097832126640721,
+    "latest_vram_peak": 0.6586735204899268,
+    "max_vram_sample_age": 1.856013536453247,
+    "storage": {
+      "user_bytes": 1148968513536,
+      "campaign_bytes": 384660475904,
+      "warning": false,
+      "utc": 1791482340.0574021
+    },
+    "live_jobs": "JobId=455477 JobName=jn9_20261008_resume_segment1\n   UserId=jiaxiwu(3175) GroupId=eliasmost(2098) MCS_label=N/A\n   Priority=482 Nice=0 Account=eliasmost QOS=alloc_eliasmost_04012026_03312027\n   JobState=RUNNING Reason=None Dependency=(null)\n   Requeue=0 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0\n   RunTime=00:34:09 TimeLimit=12:00:00 TimeMin=N/A\n   SubmitTime=2026-10-08T12:27:15 EligibleTime=2026-10-08T12:27:49\n   AccrueTime=Unknown\n   StartTime=2026-10-08T12:27:49 EndTime=2026-10-09T00:27:49 Deadline=N/A\n   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-08T12:27:49 Scheduler=Main\n   Partition=mi2104x AllocNode:Sid=localhost:2635607\n   ReqNodeList=k002-005,k003-[003-007],k005-[002-006,009] ExcNodeList=k003-[009-010]\n   NodeList=k002-005,k003-[003-007],k005-[002-006,009]\n   BatchHost=k002-005\n   NumNodes=12 NumCPUs=1536 NumTasks=48 CPUs/Task=1 ReqB:S:C:T=0:0:*:*\n   TRES=cpu=1536,mem=12M,node=12\n   Socks/Node=* NtasksPerN:B:S:C=4:0:*:* CoreSpec=*\n   MinCPUsNode=4 MinMemoryNode=0 MinTmpDiskNode=0\n   Features=(null) DelayBoot=00:00:00\n   OverSubscribe=NO Contiguous=0 Licenses=(null) Network=(null)\n   Command=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/amd_segment.sbatch 1\n   WorkDir=/home1/jiaxiwu\n   StdErr=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/logs/455477_segment1.log\n   StdIn=/dev/null\n   StdOut=/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/logs/455477_segment1.log\n   Power=\n   KillOInInvalidDependent=Yes\n   \n\n"
   },
-  "Anta_filesystem_free_bytes": 29462707998720,
+  "AMD_node_hours": 12.165555555555557,
+  "AMD_maximum_reserved_node_hours": 150.07555555555555,
+  "Anta_node_hours": 2.0238888888888886,
+  "Anta_registered_queue": "2400|jn9_20261005_activearchive7|RUNNING|anta",
+  "Anta_archive_progress": {
+    "utc": 1791482628.9740832,
+    "archive_log_tail": "",
+    "verified_runs": [
+      {
+        "run": "gate_mesh",
+        "job": "2394",
+        "verified_utc": 1791472979.6288245,
+        "bytes": 1424902
+      },
+      {
+        "run": "gate_reference",
+        "job": "2394",
+        "verified_utc": 1791472961.3921585,
+        "bytes": 203108071577
+      },
+      {
+        "run": "gate_split",
+        "job": "2400",
+        "verified_utc": 1791482277.0282254,
+        "bytes": 139590635657
+      },
+      {
+        "run": "wave_lambda_2.5",
+        "job": "2333",
+        "verified_utc": 1791241683.6435592,
+        "bytes": 1172211
+      },
+      {
+        "run": "wave_lambda_5.0",
+        "job": "2333",
+        "verified_utc": 1791241667.1387467,
+        "bytes": 1172211
+      },
+      {
+        "run": "wave_weyl_lambda_2.5",
+        "job": "2334",
+        "verified_utc": 1791243037.9429774,
+        "bytes": 1197675
+      },
+      {
+        "run": "wave_weyl_lambda_5.0",
+        "job": "2334",
+        "verified_utc": 1791243055.7572646,
+        "bytes": 1197695
+      }
+    ]
+  },
   "Anta_monitor_active": true,
   "Perseus_wake_delivered": true,
+  "archive_heartbeat_age_seconds": 35.464646339416504,
   "operations_revision": "a60f312e7a5145325f543bc48b108ca8f5f47cb6",
   "compiled_source_commit": "6892be3e3f04ec573f91cb2034bc9d3009a3bdff",
   "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd",
-  "failed_job": 454732,
-  "failure_cause": "Successful reference evolution; inherited checker expected Session007 profile filename.",
-  "numerical_failure": false,
-  "repair": "Validated archived reference on Anta2397, reverified checkpoint and restored four comparison files on AMD455389; remaining gates455390 and inspector455391 without rerunning reference.",
-  "archive_report_products": "/data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/analysis/update_final_2394",
-  "scientific_limits": "Only t0.0125 startup; no established orbit/merger/waveform result.",
-  "monitors": "Existing-thread two-hour wake and restored five-minute Anta trigger; no guaranteed queue access or successful evolution.",
+  "new_submissions_by_this_check": 0,
+  "automatic_numerical_retry": false,
+  "scientific_limits": "Early evolution; no accepted horizons or established orbit/merger/ringdown.",
   "original_deadline_utc": 1795125703.7323442,
   "R": 40,
   "wave_floor_R": 46,
