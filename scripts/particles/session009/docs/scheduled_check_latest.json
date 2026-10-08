@@ -1,6 +1,6 @@
 {
-  "utc": 1791424901.5459843,
-  "checked_Pacific": "October 07, 2026 07:01 PM PDT",
+  "utc": 1791432116.0969007,
+  "checked_Pacific": "October 07, 2026 09:01 PM PDT",
   "trigger": "Actual regular two-hour cron message received in this same thread",
   "status": "completed_check",
   "AMD_status": "gates_queued",
@@ -14,7 +14,7 @@
   "Anta_jobs": 5,
   "Anta_free_TiB": 26.980908330529928,
   "stop_flags": [],
-  "archive_heartbeat_age_seconds": 30.869184732437134,
+  "archive_heartbeat_age_seconds": 29.64371418952942,
   "report_plot_progress": "No new science data or milestone; archive/report monitor awaiting sealed binary outputs",
   "two_hour_wake": "Prompt delivered to existing thread; check completed; cron installed",
   "archive_monitor": "Five-minute cron installed; heartbeat fresh; no terminal/halt markers or active analysis job",

@@ -1,6 +1,6 @@
 # Session009 — scheduled check and reviewed startup repair
 
-Checked **October 07, 2026 07:01 PM PDT**. The simulation is **not running**: startup **454732** is queued for resources and inspector **454733** waits for it. Physical time remains **t = 0**; no particle initialization, verified checkpoint, orbit or binary waveform exists. Live AMD control/state.json and Slurm are authoritative.
+Checked **October 07, 2026 09:01 PM PDT**. The simulation is **not running**: startup **454732** is queued for resources and inspector **454733** waits for it. Physical time remains **t = 0**; no particle initialization, verified checkpoint, orbit or binary waveform exists. Live AMD control/state.json and Slurm are authoritative.
 
 ## Failure and reviewed repair
 
@@ -58,3 +58,9 @@ AMD use0.965rawnodeh; reserved maximum49.465. Anta0.141944444node/GPUh across5/9
 Scheduled message delivered to the existing thread; check completed. Startup454732 remains PENDING(Resources), inspector454733 PENDING(Dependency). Physical time0; no verified checkpoint, initialized particles, evolved state or binary science data. No new failure or stop flag; frozen bindings pass. Scheduler estimate **October 08 at 11:44 AM PDT** remains provisional.
 
 Usage unchanged: AMD0.965rawnodeh (maximum reserved49.465); Anta0.141944444node/GPUh,5/96completed archive jobs. Both monitors installed; archive heartbeat30.9s old, no active Anta job or new science milestone. Anta/data3free26.98TiB. Actual AMD storage/memory and numerical health await allocated startup; reports/plots/movies await data. R40/R46, boost0.133215 and all original limits/deadline/sticky stop remain intact. No duplicate job, extra allocation, agent or numerical retry. Receipt:evidence/scheduled_check_20261008T020141Z.json.
+
+## Regular two-hour check — October 07, 2026 09:01 PM PDT
+
+Actual scheduled message reached this existing thread and the check completed. Startup454732 remains PENDING(Resources); inspector454733 is PENDING(Dependency). Physical time0, no verified checkpoint or initialized/evolved binary state. No new failure or stop flag; frozen bindings pass. Scheduler estimate **October 08 at 11:44 AM PDT** is provisional.
+
+AMD use0.965000000rawnodeh, reserved maximum49.465000000; Anta0.141944444node/GPUh, 5/96completed archive jobs. Both monitors installed and active; archive heartbeat29.6s old at inspection, /data3free26.98TiB. No active Anta job, new science report, plot or movie; outputs await sealed binary data. Actual AMD storage/memory and numerical health remain unmeasured until startup. Original R40/R46, boost0.133215 and all caps/deadline/sticky stop retained. No duplicate job, extra allocation, agent or numerical retry. Receipt:evidence/scheduled_check_20261008T040156Z.json.

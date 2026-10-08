@@ -1,4 +1,4 @@
-# Current update — October 07, 2026 07:01 PM PDT
+# Current update — October 07, 2026 09:01 PM PDT
 
 Session009 remains at **t = 0**, with no checkpoint or binary science results. Startup454538 failed in MPI initialization after6seconds; no particles or geometry were initialized. Its evidence is preserved on AMD and Anta under history/mpi_failure_454538_20261007/. After review, startup and production now use the exact twelve-node group that previously passed the48-rank communication test. The simulation input, physics and binaries are unchanged. Operationsff4b5cb4 was pushed and verified.
 
@@ -6,7 +6,7 @@ Allocated Perseus11238 passed19 targeted checks. AMD454731 passed16 checks plus 
 
 Total use is **0.965 AMD raw node-hours** and **0.141944444 Anta node/GPU-hours** across5 archive jobs. Anta2365 archived the failed-startup closeout; it did not produce a binary waveform. The two-hour wake reached this existing thread; both it and the five-minute archive trigger are active. Science reports, plots and movies remain pending data. All original physical, storage, cost and deadline caps apply. See evidence/CURRENT_STATUS.md for evidence, exact controls and next actions.
 
-Latest scheduled check: startup454732 remains queued for resources and inspector454733 waits for it. Time0; no checkpoint, evolved state or new science output. No new failure or stop flag. Both monitors are active, usage unchanged; no additional jobs submitted. Scheduler provisional start isOctober 08 at 11:44 AM PDT, subject to change. Receipt:evidence/scheduled_check_20261008T020141Z.json.
+Latest scheduled check: startup454732 remains queued for resources and inspector454733 waits for it. Time0; no checkpoint, evolved state or new science output. No new failure or stop flag. Both monitors are active, usage unchanged; no additional jobs submitted. Scheduler provisional start isOctober 08 at 11:44 AM PDT, subject to change. Receipt:evidence/scheduled_check_20261008T040156Z.json.
 
 ## Earlier dated setup and status records
 
