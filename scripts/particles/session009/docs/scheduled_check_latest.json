@@ -1,10 +1,10 @@
 {
   "check_type": "scheduled_two_hour",
   "received_in_existing_thread": true,
-  "completed_utc": 1791490059.7063296,
-  "checked_Pacific": "October 08, 2026 01:01 PM PDT",
-  "AMD_snapshot_utc": 1791489691.0304763,
-  "Anta_snapshot_utc": 1791489683.6833541,
+  "completed_utc": 1791497015.637491,
+  "checked_Pacific": "October 08, 2026 03:00 PM PDT",
+  "AMD_snapshot_utc": 1791496856.0152707,
+  "Anta_snapshot_utc": 1791496847.6649055,
   "AMD_status": "running_segment_1",
   "AMD_registered_queue": "455478|jn9_20261008_resume_inspect1|PENDING|(Dependency)\n455477|jn9_20261008_resume_segment1|RUNNING|k002-005,k003-[003-007],k005-[002-006,009]",
   "controller_checkpoint_time": 0.03125,
@@ -24,29 +24,29 @@
     ],
     "sha256": "7b8ac7e6875377f429426ab95756c630bd029fc9caefb63255c34ec52da78ca2"
   },
-  "latest_saved_diagnostic_time": 6.9093750000000735,
-  "latest_log_cycle": 706,
+  "latest_saved_diagnostic_time": 8.351562500000401,
+  "latest_log_cycle": 1643,
   "initial_particle_count": 5000000,
+  "latest_logged_particle_count": 4381564,
+  "initial_minus_latest_logged_count": 618436,
   "startup_gates_passed": true,
   "restart_comparison_passed": true,
   "restart_reacquisition_gaps_flagged": true,
-  "numerical_failure_detected": false,
-  "frozen_bindings_passed": true,
+  "numerical_failure_detected_in_inspected_log_tail": false,
   "live_health": {
-    "storage_status.json": "{\n  \"user_bytes\": 993361965056,\n  \"campaign_bytes\": 229053927424,\n  \"warning\": false,\n  \"utc\": 1791489569.061801\n}\n",
+    "storage_status.json": "{\n  \"user_bytes\": 999154454528,\n  \"campaign_bytes\": 234846416896,\n  \"warning\": false,\n  \"utc\": 1791496799.5895905\n}\n",
     "elapsed_lines": [
-      "elapsed=8.303887e+03 cycle=600 time=6.743750e+00 dt=1.562500e-03",
-      "elapsed=8.711362e+03 cycle=650 time=6.821875e+00 dt=1.562500e-03",
-      "elapsed=9.109184e+03 cycle=700 time=6.900000e+00 dt=1.562500e-03"
+      "elapsed=1.568741e+04 cycle=1550 time=8.228125e+00 dt=1.562500e-03",
+      "elapsed=1.603453e+04 cycle=1600 time=8.306250e+00 dt=1.562500e-03"
     ],
-    "latest_log_cycle": 706,
+    "latest_log_cycle": 1643,
     "bad_log_lines": [],
     "latest_particle_diagnostics": [
-      "[tmunu-debug] cycle=704 npart=5000000 cross_level=395966 identity max_resid=3.330669e-15 (tol 3.822264e-08) (global)",
-      "[tmunu-debug] cycle=705 npart=5000000 cross_level=395972 identity max_resid=1.776357e-15 (tol 3.822404e-08) (global)",
-      "[tmunu-debug] cycle=706 npart=5000000 cross_level=395988 identity max_resid=8.881784e-16 (tol 3.822544e-08) (global)"
+      "[tmunu-debug] cycle=1641 npart=4382956 cross_level=339552 identity max_resid=1.554312e-15 (tol 3.150172e-08) (global)",
+      "[tmunu-debug] cycle=1642 npart=4382282 cross_level=339435 identity max_resid=2.775558e-15 (tol 3.149407e-08) (global)",
+      "[tmunu-debug] cycle=1643 npart=4381564 cross_level=339460 identity max_resid=6.661338e-16 (tol 3.148579e-08) (global)"
     ],
-    "log_tail": "] rank=27 cycle=706 migrations: face=971 edge=0 corner=0 search_fail=0 npart=476369\n[prtcl-debug] rank=10 cycle=706 migrations: face=90 edge=0 corner=0 search_fail=0 npart=348899\n[prtcl-debug] rank=16 cycle=706 migrations: face=6 edge=0 corner=0 search_fail=0 npart=71555\n[prtcl-debug] rank=31 cycle=706 migrations: face=4 edge=0 corner=0 search_fail=0 npart=49349\n[prtcl-debug] rank=37 cycle=706 migrations: face=82 edge=0 corner=0 search_fail=0 npart=352651\n[prtcl-debug] rank=20 cycle=706 migrations: face=850 edge=0 corner=0 search_fail=0 npart=481837\n[prtcl-debug] rank=6 cycle=706 migrations: face=769 edge=0 corner=0 search_fail=0 npart=331635\n[prtcl-debug] rank=41 cycle=706 migrations: face=624 edge=0 corner=0 search_fail=0 npart=286579\n[prtcl-debug] rank=26 cycle=706 migrations: face=34 edge=0 corner=0 search_fail=0 npart=199478\n[prtcl-debug] rank=28 cycle=706 migrations: face=15 edge=0 corner=0 search_fail=0 npart=170353\n[prtcl-debug] rank=36 cycle=706 migrations: face=1 edge=0 corner=0 search_fail=0 npart=51984\n[prtcl-debug] rank=4 cycle=706 migrations: face=5 edge=0 corner=0 search_fail=0 npart=178513\n[prtcl-debug] rank=42 cycle=706 migrations: face=326 edge=0 corner=0 search_fail=0 npart=330996\n[prtcl-debug] rank=5 cycle=706 migrations: face=183 edge=0 corner=0 search_fail=0 npart=335502\n[tmunu-debug] cycle=706 ghost images sent==received==232262 (global)\n[tmunu-debug] cycle=706 npart=5000000 cross_level=395988 identity max_resid=8.881784e-16 (tol 3.822544e-08) (global)\n",
+    "log_tail": "cle=1643 migrations: face=58 edge=0 corner=0 search_fail=0 npart=333524\n[prtcl-debug] rank=15 cycle=1643 migrations: face=57 edge=0 corner=0 search_fail=0 npart=313811\n[prtcl-debug] rank=20 cycle=1643 migrations: face=826 edge=0 corner=0 search_fail=0 destroyed={0,0,73,0} npart=348874\n[prtcl-debug] rank=4 cycle=1643 migrations: face=11 edge=0 corner=0 search_fail=0 npart=177836\n[prtcl-debug] rank=42 cycle=1643 migrations: face=286 edge=0 corner=0 search_fail=0 npart=270315\n[prtcl-debug] rank=27 cycle=1643 migrations: face=698 edge=0 corner=0 search_fail=0 destroyed={0,0,135,0} npart=342153\n[prtcl-debug] rank=28 cycle=1643 migrations: face=14 edge=0 corner=0 search_fail=0 npart=169549\n[prtcl-debug] rank=21 cycle=1643 migrations: face=21 edge=0 corner=0 search_fail=0 npart=197601\n[prtcl-debug] rank=6 cycle=1643 migrations: face=506 edge=0 corner=0 search_fail=0 destroyed={0,0,238,0} npart=235085\n[prtcl-debug] rank=41 cycle=1643 migrations: face=429 edge=0 corner=0 search_fail=0 destroyed={0,0,272,0} npart=216535\n[prtcl-debug] rank=5 cycle=1643 migrations: face=219 edge=0 corner=0 search_fail=0 npart=301546\n[prtcl-debug] rank=16 cycle=1643 migrations: face=8 edge=0 corner=0 search_fail=0 npart=71281\n[prtcl-debug] rank=32 cycle=1643 migrations: face=54 edge=0 corner=0 search_fail=0 npart=335520\n[tmunu-debug] cycle=1643 ghost images sent==received==217408 (global)\n[tmunu-debug] cycle=1643 npart=4381564 cross_level=339460 identity max_resid=6.661338e-16 (tol 3.148579e-08) (global)\n",
     "diagnostics": {
       "s9_orbit_gw.horizon_summary_2.txt": {
         "header": [
@@ -63,11 +63,11 @@
           "# 1:iter 2:time 3:x 4:y 5:z 6:vx 7:vy 8:vz 9:amr_level 10:dx1 11:dx2 12:dx3 13:track_source 14:core_count 15:core_rest_mass 16:lapse_min 17:horizon_tracking"
         ],
         "tail": [
-          "660 6.837500000000057199 -2.939453125 -0.705078125 -0.001953125 0.01645311464922600761 -0.1009682108021403013 0.001410701916239172089 14 0.00390625 0.00390625 0.00390625 1 662614 0.08696145000372308698 0.4896790227781130933 0",
-          "680 6.868750000000064304 -2.939453125 -0.708984375 -0.001953125 0.01690509466461437293 -0.09132739795849621756 -0.0004841104278246232198 14 0.00390625 0.00390625 0.00390625 1 665046 0.08728062564204200346 0.4709330070387595657 0",
-          "700 6.90000000000007141 -2.939453125 -0.712890625 -0.001953125 0.01566147328407269113 -0.1008665582223441937 -0.000316859451209764169 14 0.00390625 0.00390625 0.00390625 1 667541 0.08760806939928118819 0.4497645387888021817 0"
+          "1600 8.306250000000391154 -2.908203125 -0.845703125 -0.001953125 0.02503696448109837824 -0.09252953133462588076 -0.0004838041076723336191 14 0.00390625 0.00390625 0.00390625 1 498262 0.06539189634048642175 0.1018985508618332619 0",
+          "1620 8.337500000000398259 -2.908203125 -0.845703125 -0.001953125 0.02258204739979312314 -0.09828335613352182087 -0.0008689317622494186193 14 0.00390625 0.00390625 0.00390625 1 494342 0.06487743560766973117 0.1208193055322475812 0",
+          "1640 8.368750000000405365 -2.908203125 -0.849609375 -0.001953125 0.02299323990545190308 -0.0867333695912490682 -0.0006409550515648169966 14 0.00390625 0.00390625 0.00390625 1 490737 0.06440431546945439567 0.10498814670209905 0"
         ],
-        "data_rows": 35
+        "data_rows": 82
       },
       "s9_orbit_gw.co_1.txt": {
         "header": [
@@ -75,33 +75,33 @@
           "# 1:iter 2:time 3:x 4:y 5:z 6:vx 7:vy 8:vz 9:amr_level 10:dx1 11:dx2 12:dx3 13:track_source 14:core_count 15:core_rest_mass 16:lapse_min 17:horizon_tracking"
         ],
         "tail": [
-          "660 6.837500000000057199 2.939453125 0.705078125 0.001953125 -0.02648663782622195928 0.100344936975866883 0.0001809671789226112416 14 0.00390625 0.00390625 0.00390625 1 661429 0.08680593062403232918 0.5161428757616077778 0",
-          "680 6.868750000000064304 2.939453125 0.708984375 0.001953125 -0.01983938483948144427 0.09014745409774961582 -0.0002302306446068720809 14 0.00390625 0.00390625 0.00390625 1 664042 0.08714886069924915324 0.5013009983413349024 0",
-          "700 6.90000000000007141 2.939453125 0.712890625 0.001953125 -0.01689274545742571951 0.0991989889690773341 -0.0004984051301898290197 14 0.00390625 0.00390625 0.00390625 1 666497 0.08747105485717389384 0.4849632781480971988 0"
+          "1600 8.306250000000391154 2.904296875 0.841796875 0.001953125 -0.02451672310695572968 0.09403892961218787705 0.000320932910586671288 14 0.00390625 0.00390625 0.00390625 1 499373 0.06553770396144542598 0.1336467978210980623 0",
+          "1620 8.337500000000398259 2.904296875 0.845703125 0.001953125 -0.02397855127300812378 0.08537422337948086248 -4.266465887309528037e-05 14 0.00390625 0.00390625 0.00390625 1 495444 0.06502206206878299866 0.1176544825824856755 0",
+          "1640 8.368750000000405365 2.904296875 0.849609375 0.001953125 -0.02118320661136872951 0.09318609043061387709 1.844677930580997349e-06 14 0.00390625 0.00390625 0.00390625 1 491568 0.0645133758952122216 0.1016765530070316281 0"
         ],
-        "data_rows": 35
+        "data_rows": 82
       },
       "s9_orbit_gw.horizon_summary_0.txt": {
         "header": [
           "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
         ],
         "tail": [
-          "4 6.90781 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan -2.939453125000000e+00 -7.128906250000000e-01 -1.953125000000000e-03",
-          "4 6.90938 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan -2.939453125000000e+00 -7.128906250000000e-01 -1.953125000000000e-03",
-          "4 6.91094 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan -2.939453125000000e+00 -7.128906250000000e-01 -1.953125000000000e-03"
+          "4 8.37031 4.892349389654519e-02 2.555207932644600e-06 1.886080983861326e-06 -2.491265182668795e-06 4.036432988061487e-06 1.203107616654155e-01 1.377264113976589e+00 1.851558103616838e-02 2.339875175590606e-02 1.305265940576999e-02 4.892347650438615e-02 1.686408634502537e-03 1.238212690452288e-03 -3.807938573601670e-03 -1.166523352749166e-04 4.005892486630877e-03 -2.908203125000000e+00 -8.496093750000000e-01 -1.953125000000000e-03",
+          "4 8.37188 4.888415429055075e-02 2.482367263878635e-06 1.867878052565940e-06 -2.518926428282886e-06 3.999513220772724e-06 1.201173558700411e-01 1.402447485747083e+00 1.523344502765805e-02 2.323874823987284e-02 1.281006060925973e-02 4.888413717383856e-02 1.673674211315881e-03 1.241344457141100e-03 -3.804915200693246e-03 -1.169954445543038e-04 4.003998461511682e-03 -2.908203125000000e+00 -8.496093750000000e-01 -1.953125000000000e-03",
+          "4 8.37344 4.892565488039081e-02 2.467247211631761e-06 1.876818607241102e-06 -2.369009448783140e-06 3.901533372433834e-06 1.203213959524059e-01 1.417232059952576e+00 1.508698407846066e-02 2.321562731949044e-02 1.270236621230335e-02 4.892563863346926e-02 1.629904020721362e-03 1.243251336582200e-03 -3.808706532824294e-03 -1.170525526715233e-04 4.008194186810165e-03 -2.908203125000000e+00 -8.496093750000000e-01 -1.953125000000000e-03"
         ],
-        "data_rows": 575
+        "data_rows": 1511
       },
       "s9_orbit_gw.horizon_summary_1.txt": {
         "header": [
           "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
         ],
         "tail": [
-          "4 6.90781 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan 2.935546875000000e+00 7.128906250000000e-01 1.953125000000000e-03",
-          "4 6.90938 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan 2.935546875000000e+00 7.128906250000000e-01 1.953125000000000e-03",
-          "4 6.91094 nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan 2.935546875000000e+00 7.128906250000000e-01 1.953125000000000e-03"
+          "4 8.37031 4.900046889294241e-02 9.784932321689293e-07 -2.016775103059938e-06 -1.876933548208901e-06 2.923646758094226e-06 1.206896884298673e-01 1.498216945081875e+00 1.730299224386268e-02 2.350129761427809e-02 1.327975808264698e-02 4.900045981140651e-02 1.217655478850729e-03 -1.122815310012857e-03 3.675901516824564e-03 1.234312295247996e-04 3.845543063107525e-03 2.904296875000000e+00 8.496093750000000e-01 1.953125000000000e-03",
+          "4 8.37188 4.903877521526781e-02 1.054524502978519e-06 -2.028584463016014e-06 -1.611332508241528e-06 2.797064408105040e-06 1.208784654534689e-01 1.491743153661693e+00 1.669178328696399e-02 2.347348279782433e-02 1.316185952060655e-02 4.903876692256148e-02 1.163116555621087e-03 -1.125103442607722e-03 3.681946685043651e-03 1.239586706165924e-04 3.852006606963793e-03 2.904296875000000e+00 8.496093750000000e-01 1.953125000000000e-03",
+          "4 8.37344 4.907553074436882e-02 1.150815001890522e-06 -2.037166025003934e-06 -1.333202923452869e-06 2.692926032610233e-06 1.210597380534585e-01 1.485269470201578e+00 1.594366425396714e-02 2.344394203224539e-02 1.304479055480515e-02 4.907552307492243e-02 1.118135443870666e-03 -1.127373114713883e-03 3.687597359727786e-03 1.243491461660414e-04 3.858083350240537e-03 2.904296875000000e+00 8.496093750000000e-01 1.953125000000000e-03"
         ],
-        "data_rows": 575
+        "data_rows": 1511
       },
       "s9_orbit_gw.z4c.user.hst": {
         "header": [
@@ -109,17 +109,17 @@
           "#  [1]=time      [2]=dt       [3]=C-norm2    [4]=H-norm2    [5]=M-norm2    [6]=Z-norm2    [7]=Mx-norm2    [8]=My-norm2    [9]=Mz-norm2    [10]=Theta-norm    [11]=Volume    "
         ],
         "tail": [
-          "  6.85000e+00  1.56250e-03  1.10975e+01  8.53981e+00  2.51558e+00  1.04808e-02  1.81784e+00  1.79797e+00  1.86445e+00  1.95099e-04  8.61994e+09",
-          "  6.87500e+00  1.56250e-03  1.36559e+01  1.05540e+01  3.05980e+00  1.04789e-02  2.22147e+00  2.20631e+00  2.30105e+00  2.00551e-04  8.61994e+09",
-          "  6.90000e+00  1.56250e-03  1.29902e+01  9.95791e+00  2.99024e+00  1.04765e-02  2.21922e+00  2.17995e+00  2.26711e+00  2.00652e-04  8.61994e+09"
+          "  8.30000e+00  1.56250e-03  1.24871e+01  9.37715e+00  3.06303e+00  1.13117e-02  3.03268e+00  2.94355e+00  2.82108e+00  1.67225e-03  8.61994e+09",
+          "  8.32500e+00  1.56250e-03  1.24174e+01  9.34198e+00  3.02856e+00  1.13048e-02  2.97693e+00  2.91427e+00  2.78199e+00  1.65112e-03  8.61994e+09",
+          "  8.35000e+00  1.56250e-03  1.22559e+01  9.20912e+00  2.99989e+00  1.13022e-02  2.95217e+00  2.85699e+00  2.75647e+00  1.62930e-03  8.61994e+09"
         ]
       }
     },
     "waveforms": {
       "rpsi4_real_0040.txt": {
-        "samples": 222,
+        "samples": 279,
         "first_time": 0.049999999999999996,
-        "last_time": 6.9093750000000735,
+        "last_time": 8.351562500000401,
         "finite": true,
         "monotonic": true,
         "columns": [
@@ -127,9 +127,9 @@
         ]
       },
       "rpsi4_imag_0040.txt": {
-        "samples": 222,
+        "samples": 279,
         "first_time": 0.049999999999999996,
-        "last_time": 6.9093750000000735,
+        "last_time": 8.351562500000401,
         "finite": true,
         "monotonic": true,
         "columns": [
@@ -138,40 +138,107 @@
       }
     },
     "gpu_count": 48,
-    "vram_peak": 0.7591785547351954,
-    "latest_vram_peak": 0.7099824600312882,
-    "max_vram_sample_age": 2.7722225189208984
+    "vram_peak": 0.8104813534989316,
+    "latest_vram_peak": 0.8060403192727411,
+    "max_vram_sample_age": 3.4294629096984863
   },
-  "accepted_horizon_health": {
-    "utc": 1791489794.813356,
+  "horizon_acceptance_audit": {
+    "utc": 1791496901.9737668,
     "files": {
       "s9_orbit_gw.horizon_consumer_0.csv": {
-        "bytes": 283,
-        "rows": 0,
-        "columns": [],
-        "tail": []
+        "rows": 182,
+        "accepted_rows": 0,
+        "published_rows": 0,
+        "first_candidate_time": 7.5468750000002185,
+        "accepted_tail": [],
+        "latest": {
+          "cycle": "1649",
+          "time": "8.3828125000004086",
+          "capability_mode": "0",
+          "center_x": "-2.908203125",
+          "center_y": "-0.849609375",
+          "center_z": "-0.001953125",
+          "rmin": "0.012076861188861773",
+          "rmax": "0.039010615242776631",
+          "area": "0.12166808230950675",
+          "hrel": "0.12859289443903138",
+          "local_dx": "0.00390625",
+          "rmin_cells": "3.0916764643486139",
+          "quality_geometry_ok": "0",
+          "quality_streak": "0",
+          "quality_persist_ok": "0",
+          "capability_finite_positive": "1",
+          "capability_on_grid": "1",
+          "capability_center_jump_ok": "1",
+          "capability_geometry_ok": "1",
+          "association_ok": "1",
+          "published_this_candidate": "0"
+        }
       },
       "s9_orbit_gw.horizon_consumer_1.csv": {
-        "bytes": 283,
-        "rows": 0,
-        "columns": [],
-        "tail": []
+        "rows": 184,
+        "accepted_rows": 0,
+        "published_rows": 0,
+        "first_candidate_time": 7.453125000000197,
+        "accepted_tail": [],
+        "latest": {
+          "cycle": "1649",
+          "time": "8.3828125000004086",
+          "capability_mode": "0",
+          "center_x": "2.904296875",
+          "center_y": "0.849609375",
+          "center_z": "0.001953125",
+          "rmin": "0.012382161161629792",
+          "rmax": "0.038250120213574046",
+          "area": "0.12214972659391603",
+          "hrel": "0.13765808332392762",
+          "local_dx": "0.00390625",
+          "rmin_cells": "3.1698332573772268",
+          "quality_geometry_ok": "0",
+          "quality_streak": "0",
+          "quality_persist_ok": "0",
+          "capability_finite_positive": "1",
+          "capability_on_grid": "1",
+          "capability_center_jump_ok": "1",
+          "capability_geometry_ok": "1",
+          "association_ok": "1",
+          "published_this_candidate": "0"
+        }
       },
       "s9_orbit_gw.horizon_consumer_2.csv": {
-        "bytes": 283,
         "rows": 0,
-        "columns": [],
-        "tail": []
+        "accepted_rows": 0,
+        "published_rows": 0,
+        "first_candidate_time": null,
+        "accepted_tail": [],
+        "latest": null
       }
-    }
+    },
+    "removal_and_health_log_tail": [
+      "elapsed=1.285826e+04 cycle=1200 time=7.681250e+00 dt=1.562500e-03",
+      "elapsed=1.326895e+04 cycle=1250 time=7.759375e+00 dt=1.562500e-03",
+      "elapsed=1.371099e+04 cycle=1300 time=7.837500e+00 dt=1.562500e-03",
+      "elapsed=1.411563e+04 cycle=1350 time=7.915625e+00 dt=1.562500e-03",
+      "elapsed=1.451802e+04 cycle=1400 time=7.993750e+00 dt=1.562500e-03",
+      "elapsed=1.493025e+04 cycle=1450 time=8.071875e+00 dt=1.562500e-03",
+      "elapsed=1.533199e+04 cycle=1500 time=8.150000e+00 dt=1.562500e-03",
+      "elapsed=1.568741e+04 cycle=1550 time=8.228125e+00 dt=1.562500e-03",
+      "elapsed=1.603453e+04 cycle=1600 time=8.306250e+00 dt=1.562500e-03"
+    ],
+    "root_metadata": []
   },
-  "AMD_node_hours": 36.312222222222225,
+  "frozen_bindings": {
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "AMD_node_hours": 60.19222222222222,
   "AMD_maximum_reserved_node_hours": 150.07555555555555,
   "AMD_allocated_storage_sample": {
-    "user_bytes": 993361965056,
-    "campaign_bytes": 229053927424,
+    "user_bytes": 999154454528,
+    "campaign_bytes": 234846416896,
     "warning": false,
-    "utc": 1791489569.061801
+    "utc": 1791496799.5895905
   },
   "Anta_node_hours": 3.203333333333333,
   "Anta_registered_queue": "",
@@ -239,7 +306,7 @@
       }
     },
     "latest": null,
-    "filesystem_free_bytes": 29081962893312,
+    "filesystem_free_bytes": 29081962881024,
     "verified_runs": [
       {
         "run": "gate_clean_stop",
@@ -303,16 +370,15 @@
       }
     ]
   },
-  "all_sealed_startup_runs_checksum_verified": true,
   "Anta_monitor_active": true,
   "Perseus_wake_delivered": true,
-  "archive_heartbeat_age_seconds": 84.03047633171082,
+  "archive_heartbeat_age_seconds": 45.015270709991455,
   "operations_revision": "a60f312e7a5145325f543bc48b108ca8f5f47cb6",
   "compiled_source_commit": "6892be3e3f04ec573f91cb2034bc9d3009a3bdff",
   "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd",
   "new_submissions_by_this_check": 0,
   "automatic_numerical_retry": false,
-  "scientific_limits": "Early contraction and expected transverse motion; no accepted horizons, established post-BH orbit, merger or ringdown. Constraint diagnostics are finite but rising during collapse; no convergence claim.",
+  "scientific_limits": "Contracting clumps with particle removal. Finite candidate summary values fail strict geometry/persistence/publication flags, so no accepted horizons or measured BH masses/spins. No post-BH revolution, merger or ringdown finding. Finite constraints are not convergence evidence.",
   "original_deadline_utc": 1795125703.7323442,
   "R": 40,
   "wave_floor_R": 46,

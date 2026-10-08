@@ -25,7 +25,7 @@
   "push_status": "evidence/PUSH_STATUS.txt",
   "wave_gate": "evidence/wave_gate.json",
   "convention": "evidence/weyl_convention.json (passed)",
-  "current_phase": "Production455477 running to initial t12 assessment; all startup gates passed; diagnostics t6.90938; no accepted horizons",
+  "current_phase": "Production455477 running to initial t12 assessment; waveform t8.35156, no strictly accepted horizons",
   "extraction_radius": 40,
   "wave_floor_radius": 46,
   "initial_blocks": 5384,
@@ -34,7 +34,7 @@
   "historical_failed_attempts": "history/r50_before_reset_20261006/ and AMD history/r40_receipt_import_failure_453626/",
   "two_hour_monitor": "code/scripts/particles/session009/wake_check.py; evidence/two_hour_checks.jsonl",
   "monitors": "Perseus two-hour Codex wake and Anta five-minute archival trigger; original deadline/caps",
-  "AMD_actual_node_hours": 36.312222222222225,
+  "AMD_actual_node_hours": 60.19222222222222,
   "Anta_actual_node_hours": 3.203333333333333,
   "excluded_nodes": [
     "k003-009",
@@ -57,9 +57,9 @@
     "k005-009"
   ],
   "mpi_witness_sha256": "3df8ece08a69ecfc81ec0ce519ece02935445bdfb2d50a135231b38d6ab82b1a",
-  "last_check": "evidence/scheduled_check_20261008T200739Z.json",
-  "report_plot_status": "All sealed startup runs checksum-verified on Anta; no active Anta job. Startup products retained; current production unsealed, t12/every50M analysis awaits verified coverage.",
-  "checked_Pacific": "October 08, 2026 01:01 PM PDT",
+  "last_check": "evidence/scheduled_check_20261008T220335Z.json",
+  "report_plot_status": "All sealed startup runs checksum-verified on Anta; no live Anta job. Current production unsealed; new t12/every50M analyses await verified coverage.",
+  "checked_Pacific": "October 08, 2026 03:00 PM PDT",
   "latest_verified_checkpoint": {
     "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/gate_output/rst/s9_orbit_gw.00004.rst",
     "bytes": 69315343208,
@@ -77,15 +77,15 @@
     "sha256": "7b8ac7e6875377f429426ab95756c630bd029fc9caefb63255c34ec52da78ca2"
   },
   "AMD_allocated_storage_sample": {
-    "user_bytes": 993361965056,
-    "campaign_bytes": 229053927424,
+    "user_bytes": 999154454528,
+    "campaign_bytes": 234846416896,
     "warning": false,
-    "utc": 1791489569.061801
+    "utc": 1791496799.5895905
   },
   "validation_failure_history": "AMD/Anta history/validation_failure_454732_20261008/",
   "remaining_startup_gate": 455390,
   "remaining_gate_inspector": 455391,
-  "latest_saved_diagnostic_time": 6.9093750000000735,
+  "latest_saved_diagnostic_time": 8.351562500000401,
   "current_production_job": 455477,
   "current_inspector_job": 455478,
   "startup_gates_passed": true,
@@ -153,6 +153,8 @@
       "bytes": 1197695
     }
   ],
-  "GPU_peak_fraction": 0.7591785547351954,
-  "accepted_horizons": false
+  "GPU_peak_fraction": 0.8104813534989316,
+  "accepted_horizons": false,
+  "latest_logged_particle_count": 4381564,
+  "horizon_acceptance_audit": "evidence/scheduled_check_horizon_health.json"
 }
