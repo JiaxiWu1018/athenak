@@ -1,0 +1,25 @@
+test_resume_submission_validates_saved_outputs_before_full_allocation (test_reference_resume.ReferenceResume.test_resume_submission_validates_saved_outputs_before_full_allocation) ... ok
+test_saved_acceptance_rejects_changed_bindings_and_sealed_metadata (test_reference_resume.ReferenceResume.test_saved_acceptance_rejects_changed_bindings_and_sealed_metadata) ... ok
+test_session9_profile_is_read_and_missing_profile_is_not_substituted (test_reference_resume.ReferenceResume.test_session9_profile_is_read_and_missing_profile_is_not_substituted) ... ok
+test_active_allocation_reserved_at_full_walltime (test_session9.Session9.test_active_allocation_reserved_at_full_walltime) ... ok
+test_ffi_recovers_supported_frequency_interior (test_session9.Session9.test_ffi_recovers_supported_frequency_interior) ... ok
+test_gap_does_not_create_orbital_phase (test_session9.Session9.test_gap_does_not_create_orbital_phase) ... ok
+test_no_common_horizon_cannot_trigger_ringdown_stop (test_session9.Session9.test_no_common_horizon_cannot_trigger_ringdown_stop) ... ok
+test_unarchived_checkpoints_never_deleted (test_session9.Session9.test_unarchived_checkpoints_never_deleted) ... ok
+test_wave_floor_hole_rejected (test_session9.Session9.test_wave_floor_hole_rejected) ... ok
+test_active_thread_is_not_interrupted_by_monitor (test_r40_operations.R40Operations.test_active_thread_is_not_interrupted_by_monitor) ... ok
+test_actual_group_with_unwitnessed_node_is_rejected (test_r40_operations.R40Operations.test_actual_group_with_unwitnessed_node_is_rejected) ... ok
+test_all_full_allocations_exclude_observed_bad_node (test_r40_operations.R40Operations.test_all_full_allocations_exclude_observed_bad_node) ... ok
+test_exact_witnessed_group_accepted_in_any_order (test_r40_operations.R40Operations.test_exact_witnessed_group_accepted_in_any_order) ... ok
+test_final_all_override_keys_and_radius (test_r40_operations.R40Operations.test_final_all_override_keys_and_radius) ... ok
+test_idle_thread_wake_uses_existing_session (test_r40_operations.R40Operations.test_idle_thread_wake_uses_existing_session) ... ok
+test_previous_missing_checkpoint_override_rejected (test_r40_operations.R40Operations.test_previous_missing_checkpoint_override_rejected) ... ok
+test_radius_outputs_match_input (test_r40_operations.R40Operations.test_radius_outputs_match_input) ... ok
+test_wake_queues_to_existing_writer_without_starting_another (test_r40_operations.R40Operations.test_wake_queues_to_existing_writer_without_starting_another) ... ok
+test_witness_requires_every_rank_and_zero_errors (test_r40_operations.R40Operations.test_witness_requires_every_rank_and_zero_errors) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.026s
+
+OK
+All 16 startup/continuation overrides have explicit input keys.

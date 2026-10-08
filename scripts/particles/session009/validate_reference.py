@@ -21,6 +21,16 @@ def main():
  if a.receipt_only:
   check_receipt(json.loads(path.read_text()),c,run);return
  if not c.get('resume_reference'):raise RuntimeError('saved-reference reuse was not reviewed')
+ archived=json.loads((ROOT/'evidence/archived_reference_validation.json').read_text())
+ if archived.get('passed') is not True or archived['script_hashes']!=c['script_hashes'] or archived['input_sha256']!=c['input_sha256']:
+  raise RuntimeError('allocated Anta reference validation is absent or incorrectly bound')
+ manifest={r['path']:r for r in json.loads((run/'SCIENCE_MANIFEST.json').read_text())}
+ restored=archived['restored_for_restart_comparison']
+ if len(restored)!=4:raise RuntimeError('saved restart-comparison inputs incomplete')
+ for r in restored:
+  p=run/r['path']
+  if manifest.get(r['path'])!=r or p.stat().st_size!=r['bytes'] or digest(p)!=r['sha256']:
+   raise RuntimeError('restored reference comparison data changed')
  initial=json.loads((ROOT/'evidence/initial_validation.json').read_text())
  if not all(initial['checks'].values()):raise RuntimeError('full-particle initialization checks did not pass')
  row=checkpoint(c['resume_reference_checkpoint']['path'])
