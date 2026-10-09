@@ -1,0 +1,1276 @@
+{
+  "utc": 1791513227.7629046,
+  "ledger": {
+    "jobs": [
+      {
+        "id": 2333,
+        "name": "jn9_20261005_activearchive0",
+        "max_gpu_hours": 4
+      },
+      {
+        "id": 2334,
+        "name": "jn9_20261005_activearchive1",
+        "max_gpu_hours": 4
+      },
+      {
+        "id": 2353,
+        "name": "jn9_20261005_activearchive2",
+        "max_gpu_hours": 4
+      },
+      {
+        "id": 2356,
+        "name": "jn9_20261005_activearchive3",
+        "max_gpu_hours": 4
+      },
+      {
+        "id": 2365,
+        "name": "jn9_20261005_activearchive4",
+        "max_gpu_hours": 4
+      },
+      {
+        "id": 2394,
+        "name": "jn9_20261005_activearchive5",
+        "max_gpu_hours": 4
+      },
+      {
+        "id": 2397,
+        "name": "jn9_20261008_savedref_validation",
+        "max_gpu_hours": 4,
+        "role": "Reviewed saved startup validation, minimal reference-file restoration and guarded AMD submission"
+      },
+      {
+        "id": 2400,
+        "name": "jn9_20261005_activearchive7",
+        "max_gpu_hours": 4
+      },
+      {
+        "id": 2402,
+        "name": "jn9_20261005_activearchive8",
+        "max_gpu_hours": 4
+      },
+      {
+        "id": 2408,
+        "name": "jn9_20261005_activearchive9",
+        "max_gpu_hours": 4
+      },
+      {
+        "id": 2423,
+        "name": "jn9_20261009_stopped_review1",
+        "max_gpu_hours": 4,
+        "role": "Stopped-run metric-plane health and stale-time reporting review; no simulation continuation",
+        "script_sha256": {
+          "review.py": "01fcafba526d7acd453080edadcfebbe111fdad402932648ff0f80d4433ed4bc",
+          "review.sbatch": "e7e9b9de656c14ab37708bbb168c2988f10b3800231d140e5ba925e2f7eb57bf"
+        }
+      }
+    ],
+    "pending": null
+  },
+  "accounting": "2333|COMPLETED|0:0|115|1\n2334|COMPLETED|0:0|116|1\n2353|COMPLETED|0:0|118|1\n2356|COMPLETED|0:0|79|1\n2365|COMPLETED|0:0|83|1\n2394|COMPLETED|0:0|3854|1\n2397|COMPLETED|0:0|197|1\n2400|COMPLETED|0:0|3852|1\n2402|COMPLETED|0:0|3118|1\n2408|COMPLETED|0:0|2334|1\n2423|COMPLETED|0:0|1|1\n",
+  "node_hours": 3.8519444444444444,
+  "queue": "",
+  "cron": "\n",
+  "filesystem_free_bytes": 28916468187136,
+  "records": {
+    "ARCHIVE_ANALYSIS_COMPLETE.json": {
+      "state": {
+        "campaign_id": "jeans9_20261005",
+        "status": "resource_limit",
+        "stop_requested": false,
+        "segments_completed": 0,
+        "time": 0.03125,
+        "jobs": [
+          {
+            "name": "build",
+            "id": 452576,
+            "nodes": 1,
+            "max_wall_hours": 0.5
+          },
+          {
+            "name": "wave_gate",
+            "id": 452578,
+            "nodes": 3,
+            "max_wall_hours": 2,
+            "dependency": "afterok:452576"
+          },
+          {
+            "name": "r50_gate_failed",
+            "id": 452580,
+            "nodes": 12,
+            "max_wall_hours": 4,
+            "dependency": "afterok:452578"
+          },
+          {
+            "name": "r50_inspect0",
+            "id": 452582,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": "afterany:452580"
+          },
+          {
+            "name": "weyl_convention",
+            "id": 452666,
+            "nodes": 3,
+            "max_wall_hours": 0.5,
+            "dependency": null
+          },
+          {
+            "name": "receipt_failure_input_preflight",
+            "id": 453626,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": null
+          },
+          {
+            "name": "receipt_failure_gate",
+            "id": 453627,
+            "nodes": 12,
+            "max_wall_hours": 4,
+            "dependency": "afterok:453626"
+          },
+          {
+            "name": "receipt_failure_inspect0",
+            "id": 453628,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": "afterany:453627"
+          },
+          {
+            "name": "mpi_failure_input_preflight",
+            "id": 453630,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": null
+          },
+          {
+            "name": "mpi_failure_gate",
+            "id": 453631,
+            "nodes": 12,
+            "max_wall_hours": 4,
+            "dependency": "afterok:453630"
+          },
+          {
+            "name": "mpi_failure_inspect0",
+            "id": 453632,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": "afterany:453631"
+          },
+          {
+            "name": "mpi454538_failure_input_preflight",
+            "id": 454537,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": null
+          },
+          {
+            "name": "mpi454538_failure_gate",
+            "id": 454538,
+            "nodes": 12,
+            "max_wall_hours": 4,
+            "dependency": "afterok:454537"
+          },
+          {
+            "name": "mpi454538_failure_inspect0",
+            "id": 454539,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": "afterany:454538"
+          },
+          {
+            "name": "profile454732_failure_input_preflight",
+            "id": 454731,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": null
+          },
+          {
+            "name": "profile454732_failure_gate",
+            "id": 454732,
+            "nodes": 12,
+            "max_wall_hours": 4,
+            "dependency": "afterok:454731"
+          },
+          {
+            "name": "profile454732_failure_inspect0",
+            "id": 454733,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": "afterany:454732"
+          },
+          {
+            "name": "input_preflight",
+            "id": 455389,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": null
+          },
+          {
+            "name": "gate",
+            "id": 455390,
+            "nodes": 12,
+            "max_wall_hours": 4,
+            "dependency": "afterok:455389"
+          },
+          {
+            "name": "inspect0",
+            "id": 455391,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": "afterany:455390"
+          },
+          {
+            "name": "segment1",
+            "id": 455477,
+            "nodes": 12,
+            "max_wall_hours": 12,
+            "dependency": "afterok:455391"
+          },
+          {
+            "name": "inspect1",
+            "id": 455478,
+            "nodes": 1,
+            "max_wall_hours": 0.5,
+            "dependency": "afterany:455477"
+          }
+        ],
+        "pending_submission": null,
+        "updated_utc": 1791500845.7565873,
+        "gates_submitted": true,
+        "accounting": {
+          "452580": [
+            "452580",
+            "FAILED",
+            "1:0",
+            "12",
+            "12"
+          ],
+          "453627": [
+            "453627",
+            "CANCELLED",
+            "0:0",
+            "0",
+            "0"
+          ],
+          "453631": [
+            "453631",
+            "FAILED",
+            "1:0",
+            "6",
+            "12"
+          ],
+          "454538": [
+            "454538",
+            "FAILED",
+            "1:0",
+            "6",
+            "12"
+          ],
+          "454732": [
+            "454732",
+            "FAILED",
+            "1:0",
+            "272",
+            "12"
+          ],
+          "455390": [
+            "455390",
+            "COMPLETED",
+            "0:0",
+            "1066",
+            "12"
+          ],
+          "455477": [
+            "455477",
+            "COMPLETED",
+            "0:0",
+            "20119",
+            "12"
+          ]
+        },
+        "detail": "campaign stop prevents new work",
+        "attempt_history": [
+          {
+            "status": "configuration_failure",
+            "detail": "predecessor ['452580', 'FAILED', '1:0', '12', '12']; no automatic retry",
+            "radius": 50,
+            "time": 0,
+            "history": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/r50_before_reset_20261006",
+            "utc": 1791326360.7888634
+          },
+          {
+            "status": "configuration_failure",
+            "detail": "predecessor ['453627', 'CANCELLED', '0:0', '0', '0']; no automatic retry",
+            "radius": 40,
+            "time": 0,
+            "history": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/r40_receipt_import_failure_453626",
+            "utc": 1791326557.2299628
+          },
+          {
+            "status": "configuration_failure",
+            "detail": "predecessor ['453631', 'FAILED', '1:0', '6', '12']; no automatic retry",
+            "radius": 40,
+            "time": 0,
+            "history": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/mpi_failure_453631_20261007",
+            "utc": 1791394523.9441197
+          },
+          {
+            "status": "configuration_failure",
+            "detail": "predecessor ['454538', 'FAILED', '1:0', '6', '12']; no automatic retry",
+            "radius": 40,
+            "time": 0,
+            "history": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/mpi_failure_454538_20261007",
+            "utc": 1791403742.124972,
+            "reviewed_action": "Use exact previously successful twelve-node group; no physics/transport change"
+          },
+          {
+            "status": "configuration_failure",
+            "detail": "predecessor ['454732', 'FAILED', '1:0', '272', '12']; no automatic retry",
+            "time": 0,
+            "history": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/validation_failure_454732_20261008",
+            "utc": 1791476270.0118244,
+            "reviewed_action": "Repair profile filename and revalidate saved reference; skip duplicate reference evolution. Continue remaining gates only on successful allocated validation."
+          }
+        ],
+        "gates_passed": true,
+        "cycle": 5,
+        "checkpoint": {
+          "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/gate_output/rst/s9_orbit_gw.00004.rst",
+          "bytes": 69315343208,
+          "header_bytes": 35180,
+          "time": 0.03125,
+          "cycle": 5,
+          "dt": 0.00625,
+          "blocks": 5384,
+          "particles": 5000000,
+          "removed": [
+            0,
+            0,
+            0
+          ],
+          "sha256": "7b8ac7e6875377f429426ab95756c630bd029fc9caefb63255c34ec52da78ca2"
+        },
+        "resources": {
+          "actual_node_hours": 5.575277777777778,
+          "maximum_possible_node_hours": 6.040555555555556,
+          "accounting": {
+            "452576": [
+              "452576",
+              "COMPLETED",
+              "0:0",
+              "644",
+              "1"
+            ],
+            "452578": [
+              "452578",
+              "COMPLETED",
+              "0:0",
+              "834",
+              "3"
+            ],
+            "452580": [
+              "452580",
+              "FAILED",
+              "1:0",
+              "12",
+              "12"
+            ],
+            "452582": [
+              "452582",
+              "COMPLETED",
+              "0:0",
+              "1",
+              "1"
+            ],
+            "452666": [
+              "452666",
+              "COMPLETED",
+              "0:0",
+              "7",
+              "3"
+            ],
+            "453626": [
+              "453626",
+              "FAILED",
+              "1:0",
+              "5",
+              "1"
+            ],
+            "453627": [
+              "453627",
+              "CANCELLED",
+              "0:0",
+              "0",
+              "0"
+            ],
+            "453628": [
+              "453628",
+              "COMPLETED",
+              "0:0",
+              "0",
+              "1"
+            ],
+            "453630": [
+              "453630",
+              "COMPLETED",
+              "0:0",
+              "4",
+              "1"
+            ],
+            "453631": [
+              "453631",
+              "FAILED",
+              "1:0",
+              "6",
+              "12"
+            ],
+            "453632": [
+              "453632",
+              "COMPLETED",
+              "0:0",
+              "0",
+              "1"
+            ],
+            "454537": [
+              "454537",
+              "COMPLETED",
+              "0:0",
+              "4",
+              "1"
+            ],
+            "454538": [
+              "454538",
+              "FAILED",
+              "1:0",
+              "6",
+              "12"
+            ],
+            "454539": [
+              "454539",
+              "COMPLETED",
+              "0:0",
+              "1",
+              "1"
+            ],
+            "454731": [
+              "454731",
+              "COMPLETED",
+              "0:0",
+              "4",
+              "1"
+            ],
+            "454732": [
+              "454732",
+              "FAILED",
+              "1:0",
+              "272",
+              "12"
+            ],
+            "454733": [
+              "454733",
+              "COMPLETED",
+              "0:0",
+              "355",
+              "1"
+            ],
+            "455389": [
+              "455389",
+              "COMPLETED",
+              "0:0",
+              "61",
+              "1"
+            ],
+            "455390": [
+              "455390",
+              "COMPLETED",
+              "0:0",
+              "1066",
+              "12"
+            ],
+            "455391": [
+              "455391",
+              "RUNNING",
+              "0:0",
+              "125",
+              "1"
+            ]
+          },
+          "unmeasured_active": []
+        },
+        "segment_target": 12.0
+      },
+      "covered_time": 9.331250000000624,
+      "utc": 1791503356.4618583
+    },
+    "updates.json": [
+      0,
+      "final"
+    ],
+    "trigger_config.json": {
+      "deadline": 1795125727.0788982,
+      "max_jobs": 96,
+      "max_gpu_hours": 384
+    }
+  },
+  "latest": {
+    "path": "/data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/analysis/update_final_2408",
+    "milestone": "final",
+    "generated_utc": 1791503356.296162
+  },
+  "latest_resources": {
+    "milestone": "final",
+    "generated_utc": 1791503356.2447631,
+    "state": {
+      "campaign_id": "jeans9_20261005",
+      "status": "resource_limit",
+      "stop_requested": false,
+      "segments_completed": 0,
+      "time": 0.03125,
+      "jobs": [
+        {
+          "name": "build",
+          "id": 452576,
+          "nodes": 1,
+          "max_wall_hours": 0.5
+        },
+        {
+          "name": "wave_gate",
+          "id": 452578,
+          "nodes": 3,
+          "max_wall_hours": 2,
+          "dependency": "afterok:452576"
+        },
+        {
+          "name": "r50_gate_failed",
+          "id": 452580,
+          "nodes": 12,
+          "max_wall_hours": 4,
+          "dependency": "afterok:452578"
+        },
+        {
+          "name": "r50_inspect0",
+          "id": 452582,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": "afterany:452580"
+        },
+        {
+          "name": "weyl_convention",
+          "id": 452666,
+          "nodes": 3,
+          "max_wall_hours": 0.5,
+          "dependency": null
+        },
+        {
+          "name": "receipt_failure_input_preflight",
+          "id": 453626,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": null
+        },
+        {
+          "name": "receipt_failure_gate",
+          "id": 453627,
+          "nodes": 12,
+          "max_wall_hours": 4,
+          "dependency": "afterok:453626"
+        },
+        {
+          "name": "receipt_failure_inspect0",
+          "id": 453628,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": "afterany:453627"
+        },
+        {
+          "name": "mpi_failure_input_preflight",
+          "id": 453630,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": null
+        },
+        {
+          "name": "mpi_failure_gate",
+          "id": 453631,
+          "nodes": 12,
+          "max_wall_hours": 4,
+          "dependency": "afterok:453630"
+        },
+        {
+          "name": "mpi_failure_inspect0",
+          "id": 453632,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": "afterany:453631"
+        },
+        {
+          "name": "mpi454538_failure_input_preflight",
+          "id": 454537,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": null
+        },
+        {
+          "name": "mpi454538_failure_gate",
+          "id": 454538,
+          "nodes": 12,
+          "max_wall_hours": 4,
+          "dependency": "afterok:454537"
+        },
+        {
+          "name": "mpi454538_failure_inspect0",
+          "id": 454539,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": "afterany:454538"
+        },
+        {
+          "name": "profile454732_failure_input_preflight",
+          "id": 454731,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": null
+        },
+        {
+          "name": "profile454732_failure_gate",
+          "id": 454732,
+          "nodes": 12,
+          "max_wall_hours": 4,
+          "dependency": "afterok:454731"
+        },
+        {
+          "name": "profile454732_failure_inspect0",
+          "id": 454733,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": "afterany:454732"
+        },
+        {
+          "name": "input_preflight",
+          "id": 455389,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": null
+        },
+        {
+          "name": "gate",
+          "id": 455390,
+          "nodes": 12,
+          "max_wall_hours": 4,
+          "dependency": "afterok:455389"
+        },
+        {
+          "name": "inspect0",
+          "id": 455391,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": "afterany:455390"
+        },
+        {
+          "name": "segment1",
+          "id": 455477,
+          "nodes": 12,
+          "max_wall_hours": 12,
+          "dependency": "afterok:455391"
+        },
+        {
+          "name": "inspect1",
+          "id": 455478,
+          "nodes": 1,
+          "max_wall_hours": 0.5,
+          "dependency": "afterany:455477"
+        }
+      ],
+      "pending_submission": null,
+      "updated_utc": 1791500845.7565873,
+      "gates_submitted": true,
+      "accounting": {
+        "452580": [
+          "452580",
+          "FAILED",
+          "1:0",
+          "12",
+          "12"
+        ],
+        "453627": [
+          "453627",
+          "CANCELLED",
+          "0:0",
+          "0",
+          "0"
+        ],
+        "453631": [
+          "453631",
+          "FAILED",
+          "1:0",
+          "6",
+          "12"
+        ],
+        "454538": [
+          "454538",
+          "FAILED",
+          "1:0",
+          "6",
+          "12"
+        ],
+        "454732": [
+          "454732",
+          "FAILED",
+          "1:0",
+          "272",
+          "12"
+        ],
+        "455390": [
+          "455390",
+          "COMPLETED",
+          "0:0",
+          "1066",
+          "12"
+        ],
+        "455477": [
+          "455477",
+          "COMPLETED",
+          "0:0",
+          "20119",
+          "12"
+        ]
+      },
+      "detail": "campaign stop prevents new work",
+      "attempt_history": [
+        {
+          "status": "configuration_failure",
+          "detail": "predecessor ['452580', 'FAILED', '1:0', '12', '12']; no automatic retry",
+          "radius": 50,
+          "time": 0,
+          "history": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/r50_before_reset_20261006",
+          "utc": 1791326360.7888634
+        },
+        {
+          "status": "configuration_failure",
+          "detail": "predecessor ['453627', 'CANCELLED', '0:0', '0', '0']; no automatic retry",
+          "radius": 40,
+          "time": 0,
+          "history": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/r40_receipt_import_failure_453626",
+          "utc": 1791326557.2299628
+        },
+        {
+          "status": "configuration_failure",
+          "detail": "predecessor ['453631', 'FAILED', '1:0', '6', '12']; no automatic retry",
+          "radius": 40,
+          "time": 0,
+          "history": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/mpi_failure_453631_20261007",
+          "utc": 1791394523.9441197
+        },
+        {
+          "status": "configuration_failure",
+          "detail": "predecessor ['454538', 'FAILED', '1:0', '6', '12']; no automatic retry",
+          "radius": 40,
+          "time": 0,
+          "history": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/mpi_failure_454538_20261007",
+          "utc": 1791403742.124972,
+          "reviewed_action": "Use exact previously successful twelve-node group; no physics/transport change"
+        },
+        {
+          "status": "configuration_failure",
+          "detail": "predecessor ['454732', 'FAILED', '1:0', '272', '12']; no automatic retry",
+          "time": 0,
+          "history": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/history/validation_failure_454732_20261008",
+          "utc": 1791476270.0118244,
+          "reviewed_action": "Repair profile filename and revalidate saved reference; skip duplicate reference evolution. Continue remaining gates only on successful allocated validation."
+        }
+      ],
+      "gates_passed": true,
+      "cycle": 5,
+      "checkpoint": {
+        "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/gate_output/rst/s9_orbit_gw.00004.rst",
+        "bytes": 69315343208,
+        "header_bytes": 35180,
+        "time": 0.03125,
+        "cycle": 5,
+        "dt": 0.00625,
+        "blocks": 5384,
+        "particles": 5000000,
+        "removed": [
+          0,
+          0,
+          0
+        ],
+        "sha256": "7b8ac7e6875377f429426ab95756c630bd029fc9caefb63255c34ec52da78ca2"
+      },
+      "resources": {
+        "actual_node_hours": 5.575277777777778,
+        "maximum_possible_node_hours": 6.040555555555556,
+        "accounting": {
+          "452576": [
+            "452576",
+            "COMPLETED",
+            "0:0",
+            "644",
+            "1"
+          ],
+          "452578": [
+            "452578",
+            "COMPLETED",
+            "0:0",
+            "834",
+            "3"
+          ],
+          "452580": [
+            "452580",
+            "FAILED",
+            "1:0",
+            "12",
+            "12"
+          ],
+          "452582": [
+            "452582",
+            "COMPLETED",
+            "0:0",
+            "1",
+            "1"
+          ],
+          "452666": [
+            "452666",
+            "COMPLETED",
+            "0:0",
+            "7",
+            "3"
+          ],
+          "453626": [
+            "453626",
+            "FAILED",
+            "1:0",
+            "5",
+            "1"
+          ],
+          "453627": [
+            "453627",
+            "CANCELLED",
+            "0:0",
+            "0",
+            "0"
+          ],
+          "453628": [
+            "453628",
+            "COMPLETED",
+            "0:0",
+            "0",
+            "1"
+          ],
+          "453630": [
+            "453630",
+            "COMPLETED",
+            "0:0",
+            "4",
+            "1"
+          ],
+          "453631": [
+            "453631",
+            "FAILED",
+            "1:0",
+            "6",
+            "12"
+          ],
+          "453632": [
+            "453632",
+            "COMPLETED",
+            "0:0",
+            "0",
+            "1"
+          ],
+          "454537": [
+            "454537",
+            "COMPLETED",
+            "0:0",
+            "4",
+            "1"
+          ],
+          "454538": [
+            "454538",
+            "FAILED",
+            "1:0",
+            "6",
+            "12"
+          ],
+          "454539": [
+            "454539",
+            "COMPLETED",
+            "0:0",
+            "1",
+            "1"
+          ],
+          "454731": [
+            "454731",
+            "COMPLETED",
+            "0:0",
+            "4",
+            "1"
+          ],
+          "454732": [
+            "454732",
+            "FAILED",
+            "1:0",
+            "272",
+            "12"
+          ],
+          "454733": [
+            "454733",
+            "COMPLETED",
+            "0:0",
+            "355",
+            "1"
+          ],
+          "455389": [
+            "455389",
+            "COMPLETED",
+            "0:0",
+            "61",
+            "1"
+          ],
+          "455390": [
+            "455390",
+            "COMPLETED",
+            "0:0",
+            "1066",
+            "12"
+          ],
+          "455391": [
+            "455391",
+            "RUNNING",
+            "0:0",
+            "125",
+            "1"
+          ]
+        },
+        "unmeasured_active": []
+      },
+      "segment_target": 12.0
+    },
+    "AMD_raw_node_hours": 72.69777777777777,
+    "AMD_jobs": [
+      {
+        "job": 452576,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 644,
+        "nodes": 1,
+        "raw_node_hours": 0.17888888888888888
+      },
+      {
+        "job": 452578,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 834,
+        "nodes": 3,
+        "raw_node_hours": 0.695
+      },
+      {
+        "job": 452580,
+        "state": "FAILED",
+        "exit": "1:0",
+        "elapsed_seconds": 12,
+        "nodes": 12,
+        "raw_node_hours": 0.04
+      },
+      {
+        "job": 452582,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 1,
+        "nodes": 1,
+        "raw_node_hours": 0.0002777777777777778
+      },
+      {
+        "job": 452666,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 7,
+        "nodes": 3,
+        "raw_node_hours": 0.005833333333333334
+      },
+      {
+        "job": 453626,
+        "state": "FAILED",
+        "exit": "1:0",
+        "elapsed_seconds": 5,
+        "nodes": 1,
+        "raw_node_hours": 0.001388888888888889
+      },
+      {
+        "job": 453627,
+        "state": "CANCELLED",
+        "exit": "0:0",
+        "elapsed_seconds": 0,
+        "nodes": 0,
+        "raw_node_hours": 0.0
+      },
+      {
+        "job": 453628,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 0,
+        "nodes": 1,
+        "raw_node_hours": 0.0
+      },
+      {
+        "job": 453630,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 4,
+        "nodes": 1,
+        "raw_node_hours": 0.0011111111111111111
+      },
+      {
+        "job": 453631,
+        "state": "FAILED",
+        "exit": "1:0",
+        "elapsed_seconds": 6,
+        "nodes": 12,
+        "raw_node_hours": 0.02
+      },
+      {
+        "job": 453632,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 0,
+        "nodes": 1,
+        "raw_node_hours": 0.0
+      },
+      {
+        "job": 454537,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 4,
+        "nodes": 1,
+        "raw_node_hours": 0.0011111111111111111
+      },
+      {
+        "job": 454538,
+        "state": "FAILED",
+        "exit": "1:0",
+        "elapsed_seconds": 6,
+        "nodes": 12,
+        "raw_node_hours": 0.02
+      },
+      {
+        "job": 454539,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 1,
+        "nodes": 1,
+        "raw_node_hours": 0.0002777777777777778
+      },
+      {
+        "job": 454731,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 4,
+        "nodes": 1,
+        "raw_node_hours": 0.0011111111111111111
+      },
+      {
+        "job": 454732,
+        "state": "FAILED",
+        "exit": "1:0",
+        "elapsed_seconds": 272,
+        "nodes": 12,
+        "raw_node_hours": 0.9066666666666666
+      },
+      {
+        "job": 454733,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 355,
+        "nodes": 1,
+        "raw_node_hours": 0.09861111111111111
+      },
+      {
+        "job": 455389,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 61,
+        "nodes": 1,
+        "raw_node_hours": 0.016944444444444446
+      },
+      {
+        "job": 455390,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 1066,
+        "nodes": 12,
+        "raw_node_hours": 3.5533333333333332
+      },
+      {
+        "job": 455391,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 126,
+        "nodes": 1,
+        "raw_node_hours": 0.035
+      },
+      {
+        "job": 455477,
+        "state": "COMPLETED",
+        "exit": "0:0",
+        "elapsed_seconds": 20119,
+        "nodes": 12,
+        "raw_node_hours": 67.06333333333333
+      },
+      {
+        "job": 455478,
+        "state": "FAILED",
+        "exit": "1:0",
+        "elapsed_seconds": 212,
+        "nodes": 1,
+        "raw_node_hours": 0.058888888888888886
+      }
+    ],
+    "Anta_node_hours": 3.8516666666666666,
+    "Anta_GPU_hours_equal_node_hours": true,
+    "Anta_reserved_jobs": 10,
+    "Anta_maximum_reserved_node_hours": 40,
+    "archive_bytes": 708587548672,
+    "monetary_cost": null,
+    "tariff": "No account monetary tariff provided; no invented dollar cost.",
+    "compiled_commit": "6892be3e3f04ec573f91cb2034bc9d3009a3bdff",
+    "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd",
+    "AMD_last_allocated_storage_sample": {
+      "user_bytes": 1002886864896,
+      "campaign_bytes": 238578827264,
+      "warning": false,
+      "utc": 1791500414.5438387
+    },
+    "mean_production_node_hours_per_M": 7.211111111110627,
+    "estimated_remaining_node_hours_to_t400": null,
+    "accounting_correction_utc": 1791504277.1147652,
+    "latest_verified_checkpoint": {
+      "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/segment_001/rst/s9_orbit_gw.00005.rst",
+      "bytes": 64575856941,
+      "header_bytes": 52193,
+      "time": 9.331250000000624,
+      "cycle": 2256,
+      "dt": 0.0015625,
+      "blocks": 5020,
+      "particles": 3996300,
+      "removed": [
+        0,
+        0,
+        1003700
+      ],
+      "sha256": "7b4a82e8ec74a027a97ab51b6b27d9a36eb0ad81f6cad97f2cfc0c82b708d77b"
+    },
+    "controller_time_is_stale": true,
+    "measured_production_interval": [
+      0.03125,
+      9.331250000000624
+    ],
+    "production_allocated_node_hours": 67.06333333333333,
+    "estimate_limitations": "Historical allocation divided by actual production time interval; not a forecast. GPU memory resource stop requires review before any resumed allocation. Old controller t0.03125 is not production coverage.",
+    "original_reporting_sha256": {
+      "resources.json": "b77d26c0097cf658858fc106288975a402f33d3ab3e580d2891937e6324efc08",
+      "numerical_health.json": "653be1f9faca23dade404839313b98c22ae309721391b926be935447589c56a8",
+      "REPORT_Jeans9.md": "108a18a1312fa887d69ae1f14eba05e8997af1040665e441575b1badf78a58c5",
+      "REPORT_AGENT.md": "f2e66d6ce0cbfd19c6c324375d9f04ca1d833f90bdc053a2792093293f0170a5"
+    }
+  },
+  "latest_summary": {
+    "analysis_cutoff": null,
+    "final_time": 9.306250000000619,
+    "tracker_invalid_rows": 3,
+    "both_individual_horizons_formed": true,
+    "both_formation_time": 8.485937500000432,
+    "post_formation_revolutions": 0.004220703932557397,
+    "observed_post_formation_arc_revolutions": 0.004220703932557397,
+    "post_formation_live_intervals": 1,
+    "common_candidates_published": 0,
+    "merger_claim": false,
+    "limitations": "Coordinate diagnostics. Common candidate publication alone does not establish enclosure/merger. No radiation-driven inspiral claim.",
+    "accepted_horizon_rows": {
+      "0": 423,
+      "1": 463,
+      "2": 0
+    },
+    "first_accepted_enclosing_common_time": null,
+    "accepted_enclosing_common_rows": 0,
+    "ringdown_review": {
+      "strict_common_accepted": false,
+      "common_encloses_both": false,
+      "ringdown_usable": false,
+      "gaps_checked": false,
+      "frequency_band_valid": false,
+      "reason": "No accepted common surface proven to enclose both live trackers.",
+      "matter_shell_clean": false
+    }
+  },
+  "verified_runs": [
+    {
+      "run": "gate_clean_stop",
+      "job": "2402",
+      "verified_utc": 1791486664.8218913,
+      "bytes": 69798453496
+    },
+    {
+      "run": "gate_mesh",
+      "job": "2394",
+      "verified_utc": 1791472979.6288245,
+      "bytes": 1424902
+    },
+    {
+      "run": "gate_output",
+      "job": "2402",
+      "verified_utc": 1791485400.7728817,
+      "bytes": 101557000539
+    },
+    {
+      "run": "gate_reference",
+      "job": "2394",
+      "verified_utc": 1791472961.3921585,
+      "bytes": 203108071577
+    },
+    {
+      "run": "gate_restart",
+      "job": "2400",
+      "verified_utc": 1791483490.771004,
+      "bytes": 69798239566
+    },
+    {
+      "run": "gate_split",
+      "job": "2400",
+      "verified_utc": 1791482277.0282254,
+      "bytes": 139590635657
+    },
+    {
+      "run": "segment_001",
+      "job": "2408",
+      "verified_utc": 1791503136.989335,
+      "bytes": 124566201442
+    },
+    {
+      "run": "wave_lambda_2.5",
+      "job": "2333",
+      "verified_utc": 1791241683.6435592,
+      "bytes": 1172211
+    },
+    {
+      "run": "wave_lambda_5.0",
+      "job": "2333",
+      "verified_utc": 1791241667.1387467,
+      "bytes": 1172211
+    },
+    {
+      "run": "wave_weyl_lambda_2.5",
+      "job": "2334",
+      "verified_utc": 1791243037.9429774,
+      "bytes": 1197675
+    },
+    {
+      "run": "wave_weyl_lambda_5.0",
+      "job": "2334",
+      "verified_utc": 1791243055.7572646,
+      "bytes": 1197695
+    }
+  ],
+  "logs": {
+    "archive.2408.log": "{\n  \"0\": {\n    \"published\": 423,\n    \"matched\": 423,\n    \"unmatched\": 0,\n    \"ambiguous\": 0,\n    \"last\": {\n      \"time\": 9.329687500000624,\n      \"M_BH\": 0.07495257738489262,\n      \"M_irr\": 0.07495249459259876,\n      \"chi_BH\": 0.002972665657420011\n    }\n  },\n  \"1\": {\n    \"published\": 463,\n    \"matched\": 463,\n    \"unmatched\": 0,\n    \"ambiguous\": 0,\n    \"last\": {\n      \"time\": 9.329687500000624,\n      \"M_BH\": 0.07485367469374755,\n      \"M_irr\": 0.0748534532882514,\n      \"chi_BH\": 0.004864419534478029\n    }\n  },\n  \"2\": {\n    \"published\": 0,\n    \"matched\": 0,\n    \"unmatched\": 0,\n    \"ambiguous\": 0\n  }\n}\n{\n  \"particle_centroids\": {\n    \"samples\": 37,\n    \"first_time\": 0.0,\n    \"last_time\": 9.33125,\n    \"first_separation\": 5.9992214406118896,\n    \"last_separation\": 6.0282540341410975,\n    \"minimum\": 5.999221066015014,\n    \"maximum\": 6.0282540341410975,\n    \"endpoint_change_percent\": 0.4839393547414472,\n    \"range_over_mean_percent\": 0.48286872366494976\n  },\n  \"accepted_horizons\": {\n    \"samples\": 410,\n    \"first_time\": 8.645312500000468,\n    \"last_time\": 9.329687500000624,\n    \"first_separation\": 6.060941830205981,\n    \"last_separation\": 6.067693943339517,\n    \"minimum\": 6.060362763578751,\n    \"maximum\": 6.068977592121417,\n    \"endpoint_change_percent\": 0.11140369471762668,\n    \"range_over_mean_percent\": 0.14204893740107136\n  },\n  \"unpaired_horizon_rows\": 66,\n  \"tracker\": {\n    \"samples\": 114,\n    \"first_time\": 0.0,\n    \"last_time\": 9.306250000000619,\n    \"first_separation\": 5.968770451535643,\n    \"last_separation\": 6.067693943339517,\n    \"minimum\": 5.906332671379085,\n    \"maximum\": 6.068977592121417,\n    \"endpoint_change_percent\": 1.6573512519387101,\n    \"range_over_mean_percent\": 2.692549104735053\n  }\n}\n"
+  }
+}

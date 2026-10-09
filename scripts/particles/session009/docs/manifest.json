@@ -32,8 +32,8 @@
   "operations_revision": "a60f312e7a5145325f543bc48b108ca8f5f47cb6",
   "scientific_revision": "ae89f066",
   "historical_failed_attempts": "history/r50_before_reset_20261006/ and AMD history/r40_receipt_import_failure_453626/",
-  "two_hour_monitor": "code/scripts/particles/session009/wake_check.py; evidence/two_hour_checks.jsonl",
-  "monitors": "Perseus two-hour existing-thread wake remains; Anta terminal archival/analysis trigger removed after completion; no production continuation while REQUEST_STOP remains",
+  "two_hour_monitor": "Disabled by user; campaign cron entry removed; control/WAKE_STOP retained; receipt evidence/two_hour_wake_cancelled.json",
+  "monitors": "Perseus two-hour wake cancelled by user; Anta terminal archival/analysis trigger removed after completion; no production continuation while REQUEST_STOP remains",
   "AMD_actual_node_hours": 72.69777777777777,
   "Anta_actual_node_hours": 3.8519444444444444,
   "excluded_nodes": [
@@ -57,9 +57,9 @@
     "k005-009"
   ],
   "mpi_witness_sha256": "3df8ece08a69ecfc81ec0ce519ece02935445bdfb2d50a135231b38d6ab82b1a",
-  "last_check": "evidence/scheduled_check_20261009T020312Z.json",
+  "last_check": "evidence/two_hour_wake_cancelled.json",
   "report_plot_status": "Unchanged stopped-run figures/movies/reports and completed plane/accounting review retained; no new science data or milestones.",
-  "checked_Pacific": "October 08, 2026 07:01 PM PDT",
+  "checked_Pacific": "October 08, 2026 07:35 PM PDT",
   "latest_verified_checkpoint": {
     "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/segment_001/rst/s9_orbit_gw.00005.rst",
     "bytes": 64575856941,
@@ -186,5 +186,19 @@
     "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd",
     "executable_hashes_recomputed": false
   },
-  "Anta_filesystem_free_bytes": 28916468199424
+  "Anta_filesystem_free_bytes": 28916468187136,
+  "two_hour_wake_enabled": false,
+  "two_hour_wake_cancelled": {
+    "action": "cancel_session009_two_hour_checks",
+    "status": "user_cancelled_two_hour_checks",
+    "utc": "2026-10-09T02:33:27.948958+00:00",
+    "local": "2026-10-08T19:33:27.948958-07:00",
+    "user_instruction": "OK. No need to continue the two-hour check. Cancel that. Report the progress to me and why it stops.",
+    "marker": "JEANS9_R40_TWO_HOUR_WAKE",
+    "sticky_wake_stop": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/control/WAKE_STOP",
+    "schedule_absent_verified": true,
+    "unrelated_crontab_entries_preserved": true,
+    "removed_entries": 1,
+    "production_actions_taken": false
+  }
 }

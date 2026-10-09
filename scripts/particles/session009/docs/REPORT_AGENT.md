@@ -1,8 +1,8 @@
-# Current update — October 08, 2026 07:01 PM PDT
+# Current update — October 08, 2026 07:35 PM PDT
 
-## Latest automatic check
+## Periodic checks cancelled by the user
 
-No registered jobs are running or queued; the memory stop and verified t9.33125 checkpoint are unchanged. Frozen scripts/input/source metadata match. No new numerical or science results, allocations or rendering. Usage remains72.697778 AMD raw node-hours and3.851944 Anta node/GPU-hours; plots/movies and verified archive receipts are retained. Two-hour checks remain installed. Receipt:evidence/scheduled_check_20261009T020312Z.json.
+No registered AMD or Anta job is running or queued; the verified checkpoint is still t9.33125. The two-hour checks have been cancelled at your request and persistent wake-disable intent is recorded. Usage remains 72.697778 AMD raw node-hours and 3.851944 Anta allocated node/GPU-hours. Saved plots, movies and verified archive receipts are retained. Cancellation receipt: evidence/two_hour_wake_cancelled.json.
 
 **Simulation stopped cleanly at t9.33125M_ref after a GPU reached85.075%, crossing the approved85% memory limit.** No simulation job is running or queued. The final checkpoint and segment science outputs are verified on AMD and checksum-archived on Anta. REQUEST_STOP/RESOURCE_STOP remain set; no automatic restart, tuning or physics change. Controller time0.03125 is stale because its continuation inspector refused the stop; it is not current science time.
 
@@ -19,7 +19,7 @@ Usage: **72.697778 AMD raw node-hours**, **3.851944 Anta node/GPU-hours**,11/96A
 - [Central movie final frame](/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/figures/stopped_review_2408/central_frames_00036.png): separated blue/orange clumps and their envelope at t9.331. Full movie on Anta:`/data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/analysis/update_final_2408/central.mp4`.
 - Envelope/context and fixed-grid-density movies on Anta in the same directory:context.mp4 and density.mp4. Representative final frames and plot values were inspected. Rendering subsampling never changes simulated particle counts.
 
-This is a partial production closeout after a resource stop; no t12 or50M milestone was reached. The two-hour check schedule remains installed; Anta removed its terminal archival trigger after completion. Stop flags remain intact. Exact status, original limits, source/configuration hashes, outstanding memory/operations review and scoped controls are in evidence/CURRENT_STATUS.md. Receipt:evidence/scheduled_check_20261009T000844Z.json.
+This is a partial production closeout after a resource stop; no t12 or50M milestone was reached. The two-hour checks were cancelled by the user; Anta removed its terminal archival trigger after completion. Stop flags remain intact. Exact status, original limits, source/configuration hashes, outstanding memory/operations review and scoped controls are in evidence/CURRENT_STATUS.md. Receipt:evidence/scheduled_check_20261009T000844Z.json.
 
 ## New operational review
 

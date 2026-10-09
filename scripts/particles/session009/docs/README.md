@@ -1,3 +1,9 @@
+# Current status — periodic checks cancelled
+
+The two-hour Session009 checks were cancelled at your request. The campaign cron entry is absent, unrelated entries were preserved, and control/WAKE_STOP records persistent wake-disable intent. No registered AMD or Anta job is running or queued. The existing GPU-memory stop remains in effect; no simulation was restarted. Cancellation receipt: evidence/two_hour_wake_cancelled.json. The run ended cleanly at t9.33125 when GPU memory crossed the approved 85% threshold. Both individual horizons formed, but no merger or ringdown was captured. See evidence/CURRENT_STATUS.md and REPORT_Jeans9.md.
+
+## Preserved setup and dated operating records
+
 # Latest status: GPU memory stop at t9.33125
 
 No live simulation job. Final checkpoint/output archives and stopped-run analysis are verified; memory stop remains intact. See evidence/CURRENT_STATUS.md and REPORT_Jeans9.md. Latest Anta products:analysis/update_final_2408/; inspected review figures on Perseus:figures/stopped_review_2408/. Original approved physics/caps/deadline are unchanged; no complete orbit/merger/ringdown result.
