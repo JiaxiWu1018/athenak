@@ -57,9 +57,9 @@
     "k005-009"
   ],
   "mpi_witness_sha256": "3df8ece08a69ecfc81ec0ce519ece02935445bdfb2d50a135231b38d6ab82b1a",
-  "last_check": "evidence/scheduled_check_20261009T000844Z.json",
-  "report_plot_status": "Stopped-run figures/movies/reports at Anta analysis/update_final_2408; visual review and allocated health/accounting correction2423 complete; no12/50M milestone.",
-  "checked_Pacific": "October 08, 2026 05:00 PM PDT",
+  "last_check": "evidence/scheduled_check_20261009T020312Z.json",
+  "report_plot_status": "Unchanged stopped-run figures/movies/reports and completed plane/accounting review retained; no new science data or milestones.",
+  "checked_Pacific": "October 08, 2026 07:01 PM PDT",
   "latest_verified_checkpoint": {
     "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/segment_001/rst/s9_orbit_gw.00005.rst",
     "bytes": 64575856941,
@@ -176,5 +176,15 @@
   },
   "accepted_common_horizon": false,
   "stopped_run_review": "evidence/stopped_review_2423.json",
-  "visual_review": "evidence/visual_review_2408.json"
+  "visual_review": "evidence/visual_review_2408.json",
+  "frozen_metadata_last_check": {
+    "script_count": 44,
+    "script_mismatches": [],
+    "source_matches": true,
+    "input_matches": true,
+    "compiled_commit": "6892be3e3f04ec573f91cb2034bc9d3009a3bdff",
+    "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd",
+    "executable_hashes_recomputed": false
+  },
+  "Anta_filesystem_free_bytes": 28916468199424
 }

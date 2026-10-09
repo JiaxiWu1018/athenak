@@ -1,4 +1,8 @@
-# Current update — October 08, 2026 05:00 PM PDT
+# Current update — October 08, 2026 07:01 PM PDT
+
+## Latest automatic check
+
+No registered jobs are running or queued; the memory stop and verified t9.33125 checkpoint are unchanged. Frozen scripts/input/source metadata match. No new numerical or science results, allocations or rendering. Usage remains72.697778 AMD raw node-hours and3.851944 Anta node/GPU-hours; plots/movies and verified archive receipts are retained. Two-hour checks remain installed. Receipt:evidence/scheduled_check_20261009T020312Z.json.
 
 **Simulation stopped cleanly at t9.33125M_ref after a GPU reached85.075%, crossing the approved85% memory limit.** No simulation job is running or queued. The final checkpoint and segment science outputs are verified on AMD and checksum-archived on Anta. REQUEST_STOP/RESOURCE_STOP remain set; no automatic restart, tuning or physics change. Controller time0.03125 is stale because its continuation inspector refused the stop; it is not current science time.
 

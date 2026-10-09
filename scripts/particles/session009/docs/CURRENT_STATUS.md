@@ -1,6 +1,6 @@
 # Session009 — stopped by GPU memory guard; data archived and analyzed
 
-Checked **October 08, 2026 05:00 PM PDT**. **The simulation is stopped and no registered AMD or Anta job is live.** The memory watchdog requested a clean stop at **October 08, 2026 04:01:27 PM PDT** after a GPU reached **85.075%**, crossing the approved85% threshold. Production455477 exited0:0 and wrote a verified final checkpoint at **t=9.33125M_ref**. REQUEST_STOP and RESOURCE_STOP.json remain intact; no USER_STOP is present. No automatic retry, physics change, stop override, production restart or agent was performed.
+Checked **October 08, 2026 07:01 PM PDT**. **The simulation is stopped and no registered AMD or Anta job is live.** The memory watchdog requested a clean stop at **October 08, 2026 04:01:27 PM PDT** after a GPU reached **85.075%**, crossing the approved85% threshold. Production455477 exited0:0 and wrote a verified final checkpoint at **t=9.33125M_ref**. REQUEST_STOP and RESOURCE_STOP.json remain intact; no USER_STOP is present. No automatic retry, physics change, stop override, production restart or agent was performed.
 
 ## Checkpoint, controller and health
 
@@ -28,7 +28,7 @@ The generated report initially divided production allocation by stale controller
 
 ## Resources, monitoring and limits
 
-AMD cumulative **72.697778 raw node-hours**, including preparation, unsuccessful allocations, production and inspectors; no active allocation. Anta cumulative **3.851944 node/GPU-hours**,11/96 registered jobs, all completed0:0, including the single newly authorized routine review2423. No monetary tariff is available.
+AMD cumulative **72.697778 raw node-hours**, including preparation, unsuccessful allocations, production and inspectors; no active allocation. Anta cumulative **3.851944 node/GPU-hours**,11/96 registered jobs, all completed0:0, including the prior stopped-run review2423. No monetary tariff is available.
 
 Last allocated AMD storage sample (epoch1791500414.5438387, before completed archival cleanup): Session009 **0.217TiB**, whole user **0.912TiB**, warningfalse. This is not a fresh post-cleanup du measurement. Anta last allocated archive measurement is **0.644TiB**, below16TiB; filesystem free metadata is26.31TiB. Raw science/checkpoints are retained under Anta runs/. Latest three verified AMD checkpoints remain subject to checksum-verified retention rules.
 
@@ -43,7 +43,7 @@ ssh hpcfund.amd.com 'python3 /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scrip
 python3 /data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/code/scripts/particles/session009/wake_check.py remove
 ~~~
 
-Do not clear stop flags, launch a duplicate/retry or cancel unrelated ST jobs. Source6892be3e3f04ec573f91cb2034bc9d3009a3bdff; Kokkos6739bc623081648af9e752b616d9671527922cbf; frozen operationsa60f312e7a5145325f543bc48b108ca8f5f47cb6; input SHA256deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd. Standalone reviewed analysis scripts are outside the frozen flat runtime directory. Receipt:evidence/scheduled_check_20261009T000844Z.json.
+Do not clear stop flags, launch a duplicate/retry or cancel unrelated ST jobs. Source6892be3e3f04ec573f91cb2034bc9d3009a3bdff; Kokkos6739bc623081648af9e752b616d9671527922cbf; frozen operationsa60f312e7a5145325f543bc48b108ca8f5f47cb6; input SHA256deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd. Standalone reviewed analysis scripts are outside the frozen flat runtime directory. Receipt:evidence/scheduled_check_20261009T020312Z.json.
 
 ## Reviewed repair and durable continuation
 
@@ -133,3 +133,9 @@ AMD60.192222rawnodeh (reserved maximum150.075556); Anta3.203333node/GPUh,9/96com
 Existing-thread delivery confirmed. No live AMD/Anta jobs. GPU watchdog crossed85.075% and cleanly stopped455477 at verified t9.33125;0:0 evolution, complete64,575,856,941-byte checkpoint independently archived on Anta. REQUEST_STOP/RESOURCE_STOP retained. Inspector455478 rejected that stop; controller t0.03125 is stale. No evolution retry, stop override or physics change.
 
 Anta2408 archived segment and generated stopped-run figures/movies/reports;423/463accepted individual horizons, no common horizon, only1.52degrees of post-formation phase. Exact component removal ledger conserves5M initial particles. New bounded Anta2423 completed0:0: actual three metric planes finite; stale-time cost estimate corrected with originals preserved and future forecast withdrawn. Representative final figures/frames inspected. AMD72.697778rawnodeh; Anta3.851944node/GPUh,11/96completedjobs. Last allocatedAMDsession0.217TiB/wholeuser0.912TiB; allocatedAntaarchive0.644TiB. Two-hourwake remains; Anta terminal trigger stopped as designed. Original R40/R46/boost/caps/deadline/stop intent remain intact. Memory feasibility needs review before any resume. Receipt:evidence/scheduled_check_20261009T000844Z.json.
+
+## Regular two-hour check — October 08, 2026 07:01 PM PDT
+
+Scheduled delivery to the existing thread confirmed. No live registered AMD or Anta jobs. Verified checkpoint remains t9.33125, cycle2256,3,996,300 surviving particles; retained AMD file size and Anta SHA256 receipt agree. GPU memory REQUEST_STOP/RESOURCE_STOP remains set; no user-stop or new failure. All44frozen scripts, source HEAD and canonical input match configuration; no large executable/checkpoint hashes were repeated on login nodes. Final conservation log, completed allocated three-plane health review and generated plots/movies remain retained. No new science data or claim; both individual accepted horizons exist, but no common horizon/merger/ringdown and only1.52degrees of measured post-formation motion.
+
+AMD usage unchanged at72.697778rawnodeh; Anta3.851944node/GPUh across11/96completedjobs. Last allocatedAMDstorage sample remains historical pre-cleanup; last measured Anta archive0.644TiB, filesystem free26.30TiB. Two-hour wake installed; Anta terminal archive trigger has stopped as designed. No submission, rerender, numerical retry, physics change, stop override or agent. Original R40/R46/boost/caps/deadline preserved. Memory feasibility/operations review is required before a future resume. Receipt:evidence/scheduled_check_20261009T020312Z.json.
