@@ -1,52 +1,53 @@
 {
   "check_type": "scheduled_two_hour",
   "received_in_existing_thread": true,
-  "completed_utc": 1791497015.637491,
-  "checked_Pacific": "October 08, 2026 03:00 PM PDT",
-  "AMD_snapshot_utc": 1791496856.0152707,
-  "Anta_snapshot_utc": 1791496847.6649055,
-  "AMD_status": "running_segment_1",
-  "AMD_registered_queue": "455478|jn9_20261008_resume_inspect1|PENDING|(Dependency)\n455477|jn9_20261008_resume_segment1|RUNNING|k002-005,k003-[003-007],k005-[002-006,009]",
-  "controller_checkpoint_time": 0.03125,
+  "completed_utc": 1791504524.5762467,
+  "checked_Pacific": "October 08, 2026 05:00 PM PDT",
+  "AMD_snapshot_utc": 1791504046.7644846,
+  "Anta_snapshot_utc": 1791504347.715115,
+  "AMD_status": "resource_limit",
+  "AMD_registered_queue": "",
+  "Anta_registered_queue": "",
+  "resource_stop": {
+    "reason": "gpu_memory_85_percent",
+    "utc": 1791500487.892277
+  },
+  "stop_preserved": true,
+  "user_stop_present": false,
+  "controller_time": 0.03125,
+  "controller_time_is_stale": true,
   "latest_verified_checkpoint": {
-    "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/gate_output/rst/s9_orbit_gw.00004.rst",
-    "bytes": 69315343208,
-    "header_bytes": 35180,
-    "time": 0.03125,
-    "cycle": 5,
-    "dt": 0.00625,
-    "blocks": 5384,
-    "particles": 5000000,
+    "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/segment_001/rst/s9_orbit_gw.00005.rst",
+    "bytes": 64575856941,
+    "header_bytes": 52193,
+    "time": 9.331250000000624,
+    "cycle": 2256,
+    "dt": 0.0015625,
+    "blocks": 5020,
+    "particles": 3996300,
     "removed": [
       0,
       0,
-      0
+      1003700
     ],
-    "sha256": "7b8ac7e6875377f429426ab95756c630bd029fc9caefb63255c34ec52da78ca2"
+    "sha256": "7b4a82e8ec74a027a97ab51b6b27d9a36eb0ad81f6cad97f2cfc0c82b708d77b"
   },
-  "latest_saved_diagnostic_time": 8.351562500000401,
-  "latest_log_cycle": 1643,
-  "initial_particle_count": 5000000,
-  "latest_logged_particle_count": 4381564,
-  "initial_minus_latest_logged_count": 618436,
-  "startup_gates_passed": true,
-  "restart_comparison_passed": true,
-  "restart_reacquisition_gaps_flagged": true,
-  "numerical_failure_detected_in_inspected_log_tail": false,
+  "latest_saved_waveform_time": 9.326562500000623,
   "live_health": {
-    "storage_status.json": "{\n  \"user_bytes\": 999154454528,\n  \"campaign_bytes\": 234846416896,\n  \"warning\": false,\n  \"utc\": 1791496799.5895905\n}\n",
+    "EXIT_CODE": "0\n",
+    "storage_status.json": "{\n  \"user_bytes\": 1002886864896,\n  \"campaign_bytes\": 238578827264,\n  \"warning\": false,\n  \"utc\": 1791500414.5438387\n}\n",
     "elapsed_lines": [
-      "elapsed=1.568741e+04 cycle=1550 time=8.228125e+00 dt=1.562500e-03",
-      "elapsed=1.603453e+04 cycle=1600 time=8.306250e+00 dt=1.562500e-03"
+      "elapsed=1.960840e+04 cycle=2200 time=9.243750e+00 dt=1.562500e-03",
+      "elapsed=1.991564e+04 cycle=2250 time=9.321875e+00 dt=1.562500e-03"
     ],
-    "latest_log_cycle": 1643,
+    "latest_log_cycle": 2256,
     "bad_log_lines": [],
     "latest_particle_diagnostics": [
-      "[tmunu-debug] cycle=1641 npart=4382956 cross_level=339552 identity max_resid=1.554312e-15 (tol 3.150172e-08) (global)",
-      "[tmunu-debug] cycle=1642 npart=4382282 cross_level=339435 identity max_resid=2.775558e-15 (tol 3.149407e-08) (global)",
-      "[tmunu-debug] cycle=1643 npart=4381564 cross_level=339460 identity max_resid=6.661338e-16 (tol 3.148579e-08) (global)"
+      "[tmunu-debug] cycle=2253 npart=3997418 cross_level=314784 identity max_resid=2.220446e-15 (tol 2.717792e-08) (global)",
+      "[tmunu-debug] cycle=2254 npart=3996857 cross_level=314758 identity max_resid=9.992007e-16 (tol 2.717176e-08) (global)",
+      "[tmunu-debug] cycle=2255 npart=3996300 cross_level=314791 identity max_resid=3.663736e-15 (tol 2.716565e-08) (global)"
     ],
-    "log_tail": "cle=1643 migrations: face=58 edge=0 corner=0 search_fail=0 npart=333524\n[prtcl-debug] rank=15 cycle=1643 migrations: face=57 edge=0 corner=0 search_fail=0 npart=313811\n[prtcl-debug] rank=20 cycle=1643 migrations: face=826 edge=0 corner=0 search_fail=0 destroyed={0,0,73,0} npart=348874\n[prtcl-debug] rank=4 cycle=1643 migrations: face=11 edge=0 corner=0 search_fail=0 npart=177836\n[prtcl-debug] rank=42 cycle=1643 migrations: face=286 edge=0 corner=0 search_fail=0 npart=270315\n[prtcl-debug] rank=27 cycle=1643 migrations: face=698 edge=0 corner=0 search_fail=0 destroyed={0,0,135,0} npart=342153\n[prtcl-debug] rank=28 cycle=1643 migrations: face=14 edge=0 corner=0 search_fail=0 npart=169549\n[prtcl-debug] rank=21 cycle=1643 migrations: face=21 edge=0 corner=0 search_fail=0 npart=197601\n[prtcl-debug] rank=6 cycle=1643 migrations: face=506 edge=0 corner=0 search_fail=0 destroyed={0,0,238,0} npart=235085\n[prtcl-debug] rank=41 cycle=1643 migrations: face=429 edge=0 corner=0 search_fail=0 destroyed={0,0,272,0} npart=216535\n[prtcl-debug] rank=5 cycle=1643 migrations: face=219 edge=0 corner=0 search_fail=0 npart=301546\n[prtcl-debug] rank=16 cycle=1643 migrations: face=8 edge=0 corner=0 search_fail=0 npart=71281\n[prtcl-debug] rank=32 cycle=1643 migrations: face=54 edge=0 corner=0 search_fail=0 npart=335520\n[tmunu-debug] cycle=1643 ghost images sent==received==217408 (global)\n[tmunu-debug] cycle=1643 npart=4381564 cross_level=339460 identity max_resid=6.661338e-16 (tol 3.148579e-08) (global)\n",
+    "log_tail": "55 migrations: face=116 edge=0 corner=0 search_fail=0 npart=300999\n[prtcl-debug] rank=42 cycle=2255 migrations: face=153 edge=0 corner=0 search_fail=0 npart=277694\n[prtcl-debug] rank=27 cycle=2255 migrations: face=517 edge=1 corner=0 search_fail=0 destroyed={0,0,91,0} npart=274048\n[prtcl-debug] rank=37 cycle=2255 migrations: face=55 edge=0 corner=0 search_fail=0 npart=354599\n[prtcl-debug] rank=6 cycle=2255 migrations: face=398 edge=0 corner=0 search_fail=0 destroyed={0,0,196,0} npart=204901\n[prtcl-debug] rank=41 cycle=2255 migrations: face=376 edge=0 corner=0 search_fail=0 destroyed={0,0,160,0} npart=199685\n[tmunu-debug] cycle=2255 ghost images sent==received==191290 (global)\n[tmunu-debug] cycle=2255 npart=3996300 cross_level=314791 identity max_resid=3.663736e-15 (tol 2.716565e-08) (global)\nClean stop requested by /work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/control/REQUEST_STOP at cycle=2256 time=9.331250e+00; leaving the evolution loop so Finalize writes all outputs.\n\nTerminating on clean stop-file request\ntime=9.331250e+00 cycle=2256\ntlim=1.200000e+01 nlim=100000000\n\nCurrent number of MeshBlocks = 5020\n952 MeshBlocks created, 1316 deleted by AMR\n5359 communicated for load balancing, load balancing efficiency = 9.908075e-01\n\nparticles: initial=5000000 final=3996300 destroyed: exit=0 sphere=0 lapse=1003700 horizon=0  [conservation OK]\n\nMeshBlock-cycles = 11220136\ncpu time used  = 1.993575e+04\nzone-cycles/cpu_second = 1.844231e+07\nparticle-updates/cpu_second = 5.267833e+05\n",
     "diagnostics": {
       "s9_orbit_gw.horizon_summary_2.txt": {
         "header": [
@@ -63,11 +64,11 @@
           "# 1:iter 2:time 3:x 4:y 5:z 6:vx 7:vy 8:vz 9:amr_level 10:dx1 11:dx2 12:dx3 13:track_source 14:core_count 15:core_rest_mass 16:lapse_min 17:horizon_tracking"
         ],
         "tail": [
-          "1600 8.306250000000391154 -2.908203125 -0.845703125 -0.001953125 0.02503696448109837824 -0.09252953133462588076 -0.0004838041076723336191 14 0.00390625 0.00390625 0.00390625 1 498262 0.06539189634048642175 0.1018985508618332619 0",
-          "1620 8.337500000000398259 -2.908203125 -0.845703125 -0.001953125 0.02258204739979312314 -0.09828335613352182087 -0.0008689317622494186193 14 0.00390625 0.00390625 0.00390625 1 494342 0.06487743560766973117 0.1208193055322475812 0",
-          "1640 8.368750000000405365 -2.908203125 -0.849609375 -0.001953125 0.02299323990545190308 -0.0867333695912490682 -0.0006409550515648169966 14 0.00390625 0.00390625 0.00390625 1 490737 0.06440431546945439567 0.10498814670209905 0"
+          "2200 9.243750000000604317 -2.888671875 -0.939453125 -0.001953125 0.002460629895017102733 -0.105807085786194438 -1.585809833043842565e-11 14 0.00390625 0.00390625 0.00390625 2 0 0 0.0155283437669946553 1",
+          "2220 9.275000000000611422 -2.888671875 -0.943359375 -0.001953125 0.001230314947508551367 -0.1310285428930794693 -7.929049165219212826e-12 14 0.00390625 0.00390625 0.00390625 2 0 0 0.01927951165263310299 1",
+          "2240 9.306250000000618527 -2.884765625 -0.947265625 -0.001953125 0.03937007873686825671 -0.1108821357232521038 -1.982262291304803207e-12 14 0.00390625 0.00390625 0.00390625 2 0 0 0.01611472622159710114 1"
         ],
-        "data_rows": 82
+        "data_rows": 112
       },
       "s9_orbit_gw.co_1.txt": {
         "header": [
@@ -75,33 +76,33 @@
           "# 1:iter 2:time 3:x 4:y 5:z 6:vx 7:vy 8:vz 9:amr_level 10:dx1 11:dx2 12:dx3 13:track_source 14:core_count 15:core_rest_mass 16:lapse_min 17:horizon_tracking"
         ],
         "tail": [
-          "1600 8.306250000000391154 2.904296875 0.841796875 0.001953125 -0.02451672310695572968 0.09403892961218787705 0.000320932910586671288 14 0.00390625 0.00390625 0.00390625 1 499373 0.06553770396144542598 0.1336467978210980623 0",
-          "1620 8.337500000000398259 2.904296875 0.845703125 0.001953125 -0.02397855127300812378 0.08537422337948086248 -4.266465887309528037e-05 14 0.00390625 0.00390625 0.00390625 1 495444 0.06502206206878299866 0.1176544825824856755 0",
-          "1640 8.368750000000405365 2.904296875 0.849609375 0.001953125 -0.02118320661136872951 0.09318609043061387709 1.844677930580997349e-06 14 0.00390625 0.00390625 0.00390625 1 491568 0.0645133758952122216 0.1016765530070316281 0"
+          "2200 9.243750000000604317 2.880859375 0.939453125 0.001953125 -0.01984123191989827298 0.1107283431448938538 2.55411454922279906e-11 14 0.00390625 0.00390625 0.00390625 2 0 0 0.01639014330383608414 1",
+          "2220 9.275000000000611422 2.880859375 0.939453125 0.001953125 -0.009920615959949136489 0.05536417157244692688 1.27705727461139953e-11 14 0.00390625 0.00390625 0.00390625 2 0 0 0.01532446575165494207 1",
+          "2240 9.306250000000618527 2.880859375 0.943359375 0.001953125 -0.002480153989987284122 0.05290354289310285341 3.192643186528498825e-12 14 0.00390625 0.00390625 0.00390625 2 0 0 0.01739846972054163651 1"
         ],
-        "data_rows": 82
+        "data_rows": 112
       },
       "s9_orbit_gw.horizon_summary_0.txt": {
         "header": [
           "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
         ],
         "tail": [
-          "4 8.37031 4.892349389654519e-02 2.555207932644600e-06 1.886080983861326e-06 -2.491265182668795e-06 4.036432988061487e-06 1.203107616654155e-01 1.377264113976589e+00 1.851558103616838e-02 2.339875175590606e-02 1.305265940576999e-02 4.892347650438615e-02 1.686408634502537e-03 1.238212690452288e-03 -3.807938573601670e-03 -1.166523352749166e-04 4.005892486630877e-03 -2.908203125000000e+00 -8.496093750000000e-01 -1.953125000000000e-03",
-          "4 8.37188 4.888415429055075e-02 2.482367263878635e-06 1.867878052565940e-06 -2.518926428282886e-06 3.999513220772724e-06 1.201173558700411e-01 1.402447485747083e+00 1.523344502765805e-02 2.323874823987284e-02 1.281006060925973e-02 4.888413717383856e-02 1.673674211315881e-03 1.241344457141100e-03 -3.804915200693246e-03 -1.169954445543038e-04 4.003998461511682e-03 -2.908203125000000e+00 -8.496093750000000e-01 -1.953125000000000e-03",
-          "4 8.37344 4.892565488039081e-02 2.467247211631761e-06 1.876818607241102e-06 -2.369009448783140e-06 3.901533372433834e-06 1.203213959524059e-01 1.417232059952576e+00 1.508698407846066e-02 2.321562731949044e-02 1.270236621230335e-02 4.892563863346926e-02 1.629904020721362e-03 1.243251336582200e-03 -3.808706532824294e-03 -1.170525526715233e-04 4.008194186810165e-03 -2.908203125000000e+00 -8.496093750000000e-01 -1.953125000000000e-03"
+          "4 9.32656 7.487089903046500e-02 -4.290362533539317e-06 -2.200295878461357e-06 -1.612611722611674e-05 1.683152308653115e-05 2.817701431384013e-01 3.712397295488933e-01 -1.317903570568652e-02 4.560080024308015e-02 4.473924430756931e-02 7.487081465446623e-02 3.002598898912050e-03 2.528466977607656e-03 -7.777544455757384e-03 2.397619717464393e-04 8.181737518475556e-03 -2.884765625000000e+00 -9.472656250000000e-01 -1.953125000000000e-03",
+          "4 9.32813 7.491211561155030e-02 -4.374993873221191e-06 -2.213395722296964e-06 -1.603235054399705e-05 1.676532003809674e-05 2.820804649736671e-01 3.694142352484532e-01 -1.292080699904960e-02 4.564036964799052e-02 4.477901330842108e-02 7.491203203609831e-02 2.987498691195729e-03 2.529901429487124e-03 -7.775219621534319e-03 2.389288015765334e-04 8.179946722212564e-03 -2.884765625000000e+00 -9.472656250000000e-01 -1.953125000000000e-03",
+          "4 9.32969 7.495257738489262e-02 -4.457118978502181e-06 -2.227793621986213e-06 -1.593940218649560e-05 1.670010527133130e-05 2.823852699270450e-01 3.674285736405224e-01 -1.267037679090859e-02 4.567870929951887e-02 4.481365534798058e-02 7.495249459259876e-02 2.972665657420011e-03 2.531579160467900e-03 -7.774168366758622e-03 2.377936422333752e-04 8.179433516858757e-03 -2.884765625000000e+00 -9.472656250000000e-01 -1.953125000000000e-03"
         ],
-        "data_rows": 1511
+        "data_rows": 2123
       },
       "s9_orbit_gw.horizon_summary_1.txt": {
         "header": [
           "# 1:iter 2:time 3:mass 4:Sx 5:Sy 6:Sz 7:S 8:area 9:hrms 10:hmean 11:meanradius 12:minradius 13:Mirr 14:chi 15:Px 16:Py 17:Pz 18:P 19:center_x 20:center_y 21:center_z"
         ],
         "tail": [
-          "4 8.37031 4.900046889294241e-02 9.784932321689293e-07 -2.016775103059938e-06 -1.876933548208901e-06 2.923646758094226e-06 1.206896884298673e-01 1.498216945081875e+00 1.730299224386268e-02 2.350129761427809e-02 1.327975808264698e-02 4.900045981140651e-02 1.217655478850729e-03 -1.122815310012857e-03 3.675901516824564e-03 1.234312295247996e-04 3.845543063107525e-03 2.904296875000000e+00 8.496093750000000e-01 1.953125000000000e-03",
-          "4 8.37188 4.903877521526781e-02 1.054524502978519e-06 -2.028584463016014e-06 -1.611332508241528e-06 2.797064408105040e-06 1.208784654534689e-01 1.491743153661693e+00 1.669178328696399e-02 2.347348279782433e-02 1.316185952060655e-02 4.903876692256148e-02 1.163116555621087e-03 -1.125103442607722e-03 3.681946685043651e-03 1.239586706165924e-04 3.852006606963793e-03 2.904296875000000e+00 8.496093750000000e-01 1.953125000000000e-03",
-          "4 8.37344 4.907553074436882e-02 1.150815001890522e-06 -2.037166025003934e-06 -1.333202923452869e-06 2.692926032610233e-06 1.210597380534585e-01 1.485269470201578e+00 1.594366425396714e-02 2.344394203224539e-02 1.304479055480515e-02 4.907552307492243e-02 1.118135443870666e-03 -1.127373114713883e-03 3.687597359727786e-03 1.243491461660414e-04 3.858083350240537e-03 2.904296875000000e+00 8.496093750000000e-01 1.953125000000000e-03"
+          "4 9.32656 7.478808942355469e-02 -2.974069497602754e-06 -5.933910926702174e-06 -2.640039238630953e-05 2.722199673818430e-05 2.811461630475048e-01 1.894947191865415e-01 -1.108375483233189e-02 4.559469478041589e-02 4.318421159758420e-02 7.478786798365959e-02 4.866930004406880e-03 -2.179895127458251e-03 7.488255317790058e-03 -8.722315860701890e-05 7.799584498582261e-03 2.880859375000000e+00 9.433593750000000e-01 1.953125000000000e-03",
+          "4 9.32813 7.482095374268481e-02 -2.941637629299716e-06 -5.911437481468053e-06 -2.642218825862745e-05 2.723472704863715e-05 2.813933082445411e-01 1.885419423939046e-01 -1.112937182723068e-02 4.561558347290179e-02 4.307718913649129e-02 7.482073238757098e-02 4.864929458239678e-03 -2.181726992563121e-03 7.492128515361233e-03 -8.468283912639223e-05 7.803787128312121e-03 2.880859375000000e+00 9.433593750000000e-01 1.953125000000000e-03",
+          "4 9.32969 7.485367469374755e-02 -2.912407167524154e-06 -5.891084676062470e-06 -2.645157771961497e-05 2.725569588227047e-05 2.816394821462134e-01 1.876016524609055e-01 -1.118190414439770e-02 4.563598252744418e-02 4.296746246047781e-02 7.485345328825140e-02 4.864419534478029e-03 -2.183643986887837e-03 7.496253509148813e-03 -8.209544301844207e-05 7.808255720496204e-03 2.880859375000000e+00 9.433593750000000e-01 1.953125000000000e-03"
         ],
-        "data_rows": 1511
+        "data_rows": 2123
       },
       "s9_orbit_gw.z4c.user.hst": {
         "header": [
@@ -109,17 +110,17 @@
           "#  [1]=time      [2]=dt       [3]=C-norm2    [4]=H-norm2    [5]=M-norm2    [6]=Z-norm2    [7]=Mx-norm2    [8]=My-norm2    [9]=Mz-norm2    [10]=Theta-norm    [11]=Volume    "
         ],
         "tail": [
-          "  8.30000e+00  1.56250e-03  1.24871e+01  9.37715e+00  3.06303e+00  1.13117e-02  3.03268e+00  2.94355e+00  2.82108e+00  1.67225e-03  8.61994e+09",
-          "  8.32500e+00  1.56250e-03  1.24174e+01  9.34198e+00  3.02856e+00  1.13048e-02  2.97693e+00  2.91427e+00  2.78199e+00  1.65112e-03  8.61994e+09",
-          "  8.35000e+00  1.56250e-03  1.22559e+01  9.20912e+00  2.99989e+00  1.13022e-02  2.95217e+00  2.85699e+00  2.75647e+00  1.62930e-03  8.61994e+09"
+          "  9.30000e+00  1.56250e-03  8.24892e+00  6.21068e+00  1.99093e+00  1.15301e-02  2.04485e+00  2.10048e+00  1.92554e+00  1.18692e-03  8.61994e+09",
+          "  9.32500e+00  1.56250e-03  8.15827e+00  6.12845e+00  1.98252e+00  1.15273e-02  2.03848e+00  2.08807e+00  1.92222e+00  1.18557e-03  8.61994e+09",
+          "  9.33125e+00  1.56250e-03  8.15756e+00  6.13281e+00  1.97746e+00  1.15265e-02  2.03113e+00  2.08554e+00  1.91556e+00  1.18524e-03  8.61994e+09"
         ]
       }
     },
     "waveforms": {
       "rpsi4_real_0040.txt": {
-        "samples": 279,
+        "samples": 318,
         "first_time": 0.049999999999999996,
-        "last_time": 8.351562500000401,
+        "last_time": 9.326562500000623,
         "finite": true,
         "monotonic": true,
         "columns": [
@@ -127,9 +128,9 @@
         ]
       },
       "rpsi4_imag_0040.txt": {
-        "samples": 279,
+        "samples": 318,
         "first_time": 0.049999999999999996,
-        "last_time": 8.351562500000401,
+        "last_time": 9.326562500000623,
         "finite": true,
         "monotonic": true,
         "columns": [
@@ -138,249 +139,190 @@
       }
     },
     "gpu_count": 48,
-    "vram_peak": 0.8104813534989316,
-    "latest_vram_peak": 0.8060403192727411,
-    "max_vram_sample_age": 3.4294629096984863
+    "vram_peak": 0.8507455380990537,
+    "latest_vram_peak": 0.804245364010989,
+    "max_vram_sample_age": 3516.7451169490814
   },
-  "horizon_acceptance_audit": {
-    "utc": 1791496901.9737668,
-    "files": {
-      "s9_orbit_gw.horizon_consumer_0.csv": {
-        "rows": 182,
-        "accepted_rows": 0,
-        "published_rows": 0,
-        "first_candidate_time": 7.5468750000002185,
-        "accepted_tail": [],
-        "latest": {
-          "cycle": "1649",
-          "time": "8.3828125000004086",
-          "capability_mode": "0",
-          "center_x": "-2.908203125",
-          "center_y": "-0.849609375",
-          "center_z": "-0.001953125",
-          "rmin": "0.012076861188861773",
-          "rmax": "0.039010615242776631",
-          "area": "0.12166808230950675",
-          "hrel": "0.12859289443903138",
-          "local_dx": "0.00390625",
-          "rmin_cells": "3.0916764643486139",
-          "quality_geometry_ok": "0",
-          "quality_streak": "0",
-          "quality_persist_ok": "0",
-          "capability_finite_positive": "1",
-          "capability_on_grid": "1",
-          "capability_center_jump_ok": "1",
-          "capability_geometry_ok": "1",
-          "association_ok": "1",
-          "published_this_candidate": "0"
-        }
-      },
-      "s9_orbit_gw.horizon_consumer_1.csv": {
-        "rows": 184,
-        "accepted_rows": 0,
-        "published_rows": 0,
-        "first_candidate_time": 7.453125000000197,
-        "accepted_tail": [],
-        "latest": {
-          "cycle": "1649",
-          "time": "8.3828125000004086",
-          "capability_mode": "0",
-          "center_x": "2.904296875",
-          "center_y": "0.849609375",
-          "center_z": "0.001953125",
-          "rmin": "0.012382161161629792",
-          "rmax": "0.038250120213574046",
-          "area": "0.12214972659391603",
-          "hrel": "0.13765808332392762",
-          "local_dx": "0.00390625",
-          "rmin_cells": "3.1698332573772268",
-          "quality_geometry_ok": "0",
-          "quality_streak": "0",
-          "quality_persist_ok": "0",
-          "capability_finite_positive": "1",
-          "capability_on_grid": "1",
-          "capability_center_jump_ok": "1",
-          "capability_geometry_ok": "1",
-          "association_ok": "1",
-          "published_this_candidate": "0"
-        }
-      },
-      "s9_orbit_gw.horizon_consumer_2.csv": {
-        "rows": 0,
-        "accepted_rows": 0,
-        "published_rows": 0,
-        "first_candidate_time": null,
-        "accepted_tail": [],
-        "latest": null
-      }
-    },
-    "removal_and_health_log_tail": [
-      "elapsed=1.285826e+04 cycle=1200 time=7.681250e+00 dt=1.562500e-03",
-      "elapsed=1.326895e+04 cycle=1250 time=7.759375e+00 dt=1.562500e-03",
-      "elapsed=1.371099e+04 cycle=1300 time=7.837500e+00 dt=1.562500e-03",
-      "elapsed=1.411563e+04 cycle=1350 time=7.915625e+00 dt=1.562500e-03",
-      "elapsed=1.451802e+04 cycle=1400 time=7.993750e+00 dt=1.562500e-03",
-      "elapsed=1.493025e+04 cycle=1450 time=8.071875e+00 dt=1.562500e-03",
-      "elapsed=1.533199e+04 cycle=1500 time=8.150000e+00 dt=1.562500e-03",
-      "elapsed=1.568741e+04 cycle=1550 time=8.228125e+00 dt=1.562500e-03",
-      "elapsed=1.603453e+04 cycle=1600 time=8.306250e+00 dt=1.562500e-03"
-    ],
-    "root_metadata": []
-  },
-  "frozen_bindings": {
-    "returncode": 0,
+  "inspector_status": [
+    "455478",
+    "FAILED",
+    "1:0",
+    "212",
+    "1"
+  ],
+  "launch_bindings_blocked_as_expected": {
+    "returncode": 1,
     "stdout": "",
-    "stderr": ""
+    "stderr": "Traceback (most recent call last):\n  File \"/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/workflow.py\", line 220, in <module>\n    try:main()\n  File \"/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/workflow.py\", line 209, in main\n    if a.action=='bindings':bindings();return\n  File \"/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/scripts/workflow.py\", line 36, in bindings\n    if (CONTROL/'REQUEST_STOP').exists():raise RuntimeError('campaign stop prevents new work')\nRuntimeError: campaign stop prevents new work\n"
   },
-  "AMD_node_hours": 60.19222222222222,
-  "AMD_maximum_reserved_node_hours": 150.07555555555555,
-  "AMD_allocated_storage_sample": {
-    "user_bytes": 999154454528,
-    "campaign_bytes": 234846416896,
+  "AMD_node_hours": 72.69777777777777,
+  "Anta_node_hours": 3.8519444444444444,
+  "AMD_last_allocated_storage_sample": {
+    "user_bytes": 1002886864896,
+    "campaign_bytes": 238578827264,
     "warning": false,
-    "utc": 1791496799.5895905
+    "utc": 1791500414.5438387
   },
-  "Anta_node_hours": 3.203333333333333,
-  "Anta_registered_queue": "",
-  "Anta_archive_progress": {
-    "accounting": "2333|COMPLETED|0:0|115|1\n2334|COMPLETED|0:0|116|1\n2353|COMPLETED|0:0|118|1\n2356|COMPLETED|0:0|79|1\n2365|COMPLETED|0:0|83|1\n2394|COMPLETED|0:0|3854|1\n2397|COMPLETED|0:0|197|1\n2400|COMPLETED|0:0|3852|1\n2402|COMPLETED|0:0|3118|1\n",
-    "ledger": {
-      "jobs": [
-        {
-          "id": 2333,
-          "name": "jn9_20261005_activearchive0",
-          "max_gpu_hours": 4
-        },
-        {
-          "id": 2334,
-          "name": "jn9_20261005_activearchive1",
-          "max_gpu_hours": 4
-        },
-        {
-          "id": 2353,
-          "name": "jn9_20261005_activearchive2",
-          "max_gpu_hours": 4
-        },
-        {
-          "id": 2356,
-          "name": "jn9_20261005_activearchive3",
-          "max_gpu_hours": 4
-        },
-        {
-          "id": 2365,
-          "name": "jn9_20261005_activearchive4",
-          "max_gpu_hours": 4
-        },
-        {
-          "id": 2394,
-          "name": "jn9_20261005_activearchive5",
-          "max_gpu_hours": 4
-        },
-        {
-          "id": 2397,
-          "name": "jn9_20261008_savedref_validation",
-          "max_gpu_hours": 4,
-          "role": "Reviewed saved startup validation, minimal reference-file restoration and guarded AMD submission"
-        },
-        {
-          "id": 2400,
-          "name": "jn9_20261005_activearchive7",
-          "max_gpu_hours": 4
-        },
-        {
-          "id": 2402,
-          "name": "jn9_20261005_activearchive8",
-          "max_gpu_hours": 4
-        }
-      ],
-      "pending": null
+  "Anta_last_allocated_archive_bytes": 708587548672,
+  "Anta_verified_runs": [
+    {
+      "run": "gate_clean_stop",
+      "job": "2402",
+      "verified_utc": 1791486664.8218913,
+      "bytes": 69798453496
     },
-    "records": {
-      "updates.json": [
-        0
-      ],
-      "trigger_config.json": {
-        "deadline": 1795125727.0788982,
-        "max_jobs": 96,
-        "max_gpu_hours": 384
-      }
+    {
+      "run": "gate_mesh",
+      "job": "2394",
+      "verified_utc": 1791472979.6288245,
+      "bytes": 1424902
     },
-    "latest": null,
-    "filesystem_free_bytes": 29081962881024,
-    "verified_runs": [
-      {
-        "run": "gate_clean_stop",
-        "job": "2402",
-        "verified_utc": 1791486664.8218913,
-        "bytes": 69798453496
-      },
-      {
-        "run": "gate_mesh",
-        "job": "2394",
-        "verified_utc": 1791472979.6288245,
-        "bytes": 1424902
-      },
-      {
-        "run": "gate_output",
-        "job": "2402",
-        "verified_utc": 1791485400.7728817,
-        "bytes": 101557000539
-      },
-      {
-        "run": "gate_reference",
-        "job": "2394",
-        "verified_utc": 1791472961.3921585,
-        "bytes": 203108071577
-      },
-      {
-        "run": "gate_restart",
-        "job": "2400",
-        "verified_utc": 1791483490.771004,
-        "bytes": 69798239566
-      },
-      {
-        "run": "gate_split",
-        "job": "2400",
-        "verified_utc": 1791482277.0282254,
-        "bytes": 139590635657
-      },
-      {
-        "run": "wave_lambda_2.5",
-        "job": "2333",
-        "verified_utc": 1791241683.6435592,
-        "bytes": 1172211
-      },
-      {
-        "run": "wave_lambda_5.0",
-        "job": "2333",
-        "verified_utc": 1791241667.1387467,
-        "bytes": 1172211
-      },
-      {
-        "run": "wave_weyl_lambda_2.5",
-        "job": "2334",
-        "verified_utc": 1791243037.9429774,
-        "bytes": 1197675
-      },
-      {
-        "run": "wave_weyl_lambda_5.0",
-        "job": "2334",
-        "verified_utc": 1791243055.7572646,
-        "bytes": 1197695
-      }
-    ]
+    {
+      "run": "gate_output",
+      "job": "2402",
+      "verified_utc": 1791485400.7728817,
+      "bytes": 101557000539
+    },
+    {
+      "run": "gate_reference",
+      "job": "2394",
+      "verified_utc": 1791472961.3921585,
+      "bytes": 203108071577
+    },
+    {
+      "run": "gate_restart",
+      "job": "2400",
+      "verified_utc": 1791483490.771004,
+      "bytes": 69798239566
+    },
+    {
+      "run": "gate_split",
+      "job": "2400",
+      "verified_utc": 1791482277.0282254,
+      "bytes": 139590635657
+    },
+    {
+      "run": "segment_001",
+      "job": "2408",
+      "verified_utc": 1791503136.989335,
+      "bytes": 124566201442
+    },
+    {
+      "run": "wave_lambda_2.5",
+      "job": "2333",
+      "verified_utc": 1791241683.6435592,
+      "bytes": 1172211
+    },
+    {
+      "run": "wave_lambda_5.0",
+      "job": "2333",
+      "verified_utc": 1791241667.1387467,
+      "bytes": 1172211
+    },
+    {
+      "run": "wave_weyl_lambda_2.5",
+      "job": "2334",
+      "verified_utc": 1791243037.9429774,
+      "bytes": 1197675
+    },
+    {
+      "run": "wave_weyl_lambda_5.0",
+      "job": "2334",
+      "verified_utc": 1791243055.7572646,
+      "bytes": 1197695
+    }
+  ],
+  "analysis_summary": {
+    "analysis_cutoff": null,
+    "final_time": 9.306250000000619,
+    "tracker_invalid_rows": 3,
+    "both_individual_horizons_formed": true,
+    "both_formation_time": 8.485937500000432,
+    "post_formation_revolutions": 0.004220703932557397,
+    "observed_post_formation_arc_revolutions": 0.004220703932557397,
+    "post_formation_live_intervals": 1,
+    "common_candidates_published": 0,
+    "merger_claim": false,
+    "limitations": "Coordinate diagnostics. Common candidate publication alone does not establish enclosure/merger. No radiation-driven inspiral claim.",
+    "accepted_horizon_rows": {
+      "0": 423,
+      "1": 463,
+      "2": 0
+    },
+    "first_accepted_enclosing_common_time": null,
+    "accepted_enclosing_common_rows": 0,
+    "ringdown_review": {
+      "strict_common_accepted": false,
+      "common_encloses_both": false,
+      "ringdown_usable": false,
+      "gaps_checked": false,
+      "frequency_band_valid": false,
+      "reason": "No accepted common surface proven to enclose both live trackers.",
+      "matter_shell_clean": false
+    }
   },
-  "Anta_monitor_active": true,
-  "Perseus_wake_delivered": true,
-  "archive_heartbeat_age_seconds": 45.015270709991455,
-  "operations_revision": "a60f312e7a5145325f543bc48b108ca8f5f47cb6",
-  "compiled_source_commit": "6892be3e3f04ec573f91cb2034bc9d3009a3bdff",
-  "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd",
-  "new_submissions_by_this_check": 0,
+  "review_2423": {
+    "job": "2423",
+    "utc": 1791504277.1190898,
+    "production_stop_preserved": true,
+    "health_samples": 3,
+    "all_saved_plane_fields_finite": true,
+    "original_sha256": {
+      "resources.json": "b77d26c0097cf658858fc106288975a402f33d3ab3e580d2891937e6324efc08",
+      "numerical_health.json": "653be1f9faca23dade404839313b98c22ae309721391b926be935447589c56a8",
+      "REPORT_Jeans9.md": "108a18a1312fa887d69ae1f14eba05e8997af1040665e441575b1badf78a58c5",
+      "REPORT_AGENT.md": "f2e66d6ce0cbfd19c6c324375d9f04ca1d833f90bdc053a2792093293f0170a5"
+    },
+    "latest_verified_checkpoint": {
+      "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/segment_001/rst/s9_orbit_gw.00005.rst",
+      "bytes": 64575856941,
+      "header_bytes": 52193,
+      "time": 9.331250000000624,
+      "cycle": 2256,
+      "dt": 0.0015625,
+      "blocks": 5020,
+      "particles": 3996300,
+      "removed": [
+        0,
+        0,
+        1003700
+      ],
+      "sha256": "7b4a82e8ec74a027a97ab51b6b27d9a36eb0ad81f6cad97f2cfc0c82b708d77b"
+    },
+    "production_node_hours": 67.06333333333333,
+    "production_interval": [
+      0.03125,
+      9.331250000000624
+    ],
+    "historical_node_hours_per_M": 7.211111111110627,
+    "remaining_cost_forecast": null,
+    "frozen_runtime_files_modified": false
+  },
+  "visual_review": {
+    "utc": 1791504524.5762467,
+    "final_plot_checks": [
+      "Separation plot axes and three distinct center definitions agree with preserved summary values; accepted horizon gaps remain visible.",
+      "Accepted horizon masses rise toward0.075; small spin estimates and gaps are visible. No common horizon curve."
+    ],
+    "frames_checked": [
+      "central_frames_00036.png",
+      "context_frames_00036.png",
+      "density_frames_00036.png"
+    ],
+    "findings": "Final t9.331 frames show separated blue left/orange right clumps with expected opposite y motion and envelope context. Fixed-bin density has visible compact peaks, fixed units/color range, no native-AMR seams. Tiny accepted-rmin illustrations are not full horizon surfaces.",
+    "source_manifest": "evidence/stopped_review_2408_figures.json"
+  },
+  "new_AMD_submissions": 0,
+  "new_Anta_submissions": 1,
   "automatic_numerical_retry": false,
-  "scientific_limits": "Contracting clumps with particle removal. Finite candidate summary values fail strict geometry/persistence/publication flags, so no accepted horizons or measured BH masses/spins. No post-BH revolution, merger or ringdown finding. Finite constraints are not convergence evidence.",
+  "simulation_resume": false,
+  "two_hour_wake_installed": true,
+  "Anta_trigger_removed_after_terminal_archive": true,
   "original_deadline_utc": 1795125703.7323442,
   "R": 40,
   "wave_floor_R": 46,
-  "boost": 0.133215
+  "boost": 0.133215,
+  "operations_revision": "a60f312e7a5145325f543bc48b108ca8f5f47cb6",
+  "compiled_source_commit": "6892be3e3f04ec573f91cb2034bc9d3009a3bdff",
+  "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd"
 }

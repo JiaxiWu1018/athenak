@@ -9,7 +9,7 @@
   "raw_outputs": "Anta:runs/*",
   "checkpoints": "AMD:control/checkpoints.json and Anta:runs/*/rst/*.rst",
   "verified_archives": "Anta:runs/*/ARCHIVE_VERIFIED.json",
-  "figures_movies": "Anta:analysis/update_*/",
+  "figures_movies": "Anta:analysis/update_final_2408/; selected reviewed figures/frames on Perseus:figures/stopped_review_2408/",
   "reports": [
     "REPORT_Jeans9.md",
     "REPORT_AGENT.md"
@@ -25,7 +25,7 @@
   "push_status": "evidence/PUSH_STATUS.txt",
   "wave_gate": "evidence/wave_gate.json",
   "convention": "evidence/weyl_convention.json (passed)",
-  "current_phase": "Production455477 running to initial t12 assessment; waveform t8.35156, no strictly accepted horizons",
+  "current_phase": "resource_limit: clean stop at verified t9.33125; no live jobs; archived/analysed partial production, memory review before resume",
   "extraction_radius": 40,
   "wave_floor_radius": 46,
   "initial_blocks": 5384,
@@ -33,9 +33,9 @@
   "scientific_revision": "ae89f066",
   "historical_failed_attempts": "history/r50_before_reset_20261006/ and AMD history/r40_receipt_import_failure_453626/",
   "two_hour_monitor": "code/scripts/particles/session009/wake_check.py; evidence/two_hour_checks.jsonl",
-  "monitors": "Perseus two-hour Codex wake and Anta five-minute archival trigger; original deadline/caps",
-  "AMD_actual_node_hours": 60.19222222222222,
-  "Anta_actual_node_hours": 3.203333333333333,
+  "monitors": "Perseus two-hour existing-thread wake remains; Anta terminal archival/analysis trigger removed after completion; no production continuation while REQUEST_STOP remains",
+  "AMD_actual_node_hours": 72.69777777777777,
+  "Anta_actual_node_hours": 3.8519444444444444,
   "excluded_nodes": [
     "k003-009",
     "k003-010"
@@ -57,37 +57,37 @@
     "k005-009"
   ],
   "mpi_witness_sha256": "3df8ece08a69ecfc81ec0ce519ece02935445bdfb2d50a135231b38d6ab82b1a",
-  "last_check": "evidence/scheduled_check_20261008T220335Z.json",
-  "report_plot_status": "All sealed startup runs checksum-verified on Anta; no live Anta job. Current production unsealed; new t12/every50M analyses await verified coverage.",
-  "checked_Pacific": "October 08, 2026 03:00 PM PDT",
+  "last_check": "evidence/scheduled_check_20261009T000844Z.json",
+  "report_plot_status": "Stopped-run figures/movies/reports at Anta analysis/update_final_2408; visual review and allocated health/accounting correction2423 complete; no12/50M milestone.",
+  "checked_Pacific": "October 08, 2026 05:00 PM PDT",
   "latest_verified_checkpoint": {
-    "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/gate_output/rst/s9_orbit_gw.00004.rst",
-    "bytes": 69315343208,
-    "header_bytes": 35180,
-    "time": 0.03125,
-    "cycle": 5,
-    "dt": 0.00625,
-    "blocks": 5384,
-    "particles": 5000000,
+    "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/segment_001/rst/s9_orbit_gw.00005.rst",
+    "bytes": 64575856941,
+    "header_bytes": 52193,
+    "time": 9.331250000000624,
+    "cycle": 2256,
+    "dt": 0.0015625,
+    "blocks": 5020,
+    "particles": 3996300,
     "removed": [
       0,
       0,
-      0
+      1003700
     ],
-    "sha256": "7b8ac7e6875377f429426ab95756c630bd029fc9caefb63255c34ec52da78ca2"
+    "sha256": "7b4a82e8ec74a027a97ab51b6b27d9a36eb0ad81f6cad97f2cfc0c82b708d77b"
   },
   "AMD_allocated_storage_sample": {
-    "user_bytes": 999154454528,
-    "campaign_bytes": 234846416896,
+    "user_bytes": 1002886864896,
+    "campaign_bytes": 238578827264,
     "warning": false,
-    "utc": 1791496799.5895905
+    "utc": 1791500414.5438387
   },
   "validation_failure_history": "AMD/Anta history/validation_failure_454732_20261008/",
   "remaining_startup_gate": 455390,
   "remaining_gate_inspector": 455391,
-  "latest_saved_diagnostic_time": 8.351562500000401,
-  "current_production_job": 455477,
-  "current_inspector_job": 455478,
+  "latest_saved_diagnostic_time": 9.33125,
+  "current_production_job": null,
+  "current_inspector_job": null,
   "startup_gates_passed": true,
   "current_tracker_dx": 0.00390625,
   "live_mesh_scope": "Tracker locations only; initial complete mesh audit5384blocks/176422912cells, initialdx1/64, centralceiling1/256",
@@ -129,6 +129,12 @@
       "bytes": 139590635657
     },
     {
+      "run": "segment_001",
+      "job": "2408",
+      "verified_utc": 1791503136.989335,
+      "bytes": 124566201442
+    },
+    {
       "run": "wave_lambda_2.5",
       "job": "2333",
       "verified_utc": 1791241683.6435592,
@@ -153,8 +159,22 @@
       "bytes": 1197695
     }
   ],
-  "GPU_peak_fraction": 0.8104813534989316,
-  "accepted_horizons": false,
-  "latest_logged_particle_count": 4381564,
-  "horizon_acceptance_audit": "evidence/scheduled_check_horizon_health.json"
+  "GPU_peak_fraction": 0.8507455380990537,
+  "accepted_horizons": true,
+  "latest_logged_particle_count": 3996300,
+  "horizon_acceptance_audit": "evidence/scheduled_check_horizon_health.json",
+  "controller_time_is_stale": true,
+  "resource_stop": {
+    "reason": "gpu_memory_85_percent",
+    "utc": 1791500487.892277
+  },
+  "Anta_last_allocated_archive_bytes": 708587548672,
+  "accepted_horizon_rows": {
+    "0": 423,
+    "1": 463,
+    "2": 0
+  },
+  "accepted_common_horizon": false,
+  "stopped_run_review": "evidence/stopped_review_2423.json",
+  "visual_review": "evidence/visual_review_2408.json"
 }
