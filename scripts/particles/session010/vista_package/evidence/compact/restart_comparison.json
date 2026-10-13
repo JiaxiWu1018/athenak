@@ -1,0 +1,198 @@
+{
+  "passed": true,
+  "comparison": {
+    "z4c_xy": {
+      "z4c_chi": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "z4c_gxx": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "z4c_gxy": {
+        "max_abs": 8.881784197001252e-16,
+        "max_rel": 7.03297197923304e-08
+      },
+      "z4c_gxz": {
+        "max_abs": 2.7755575615628914e-17,
+        "max_rel": 2.7755575615628914e-09
+      },
+      "z4c_gyy": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "z4c_gyz": {
+        "max_abs": 5.551115123125783e-17,
+        "max_rel": 5.551115123125783e-09
+      },
+      "z4c_gzz": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "z4c_Khat": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "z4c_Axx": {
+        "max_abs": 4.547473508864641e-13,
+        "max_rel": 1.0651594234760712e-07
+      },
+      "z4c_Axy": {
+        "max_abs": 4.547473508864641e-13,
+        "max_rel": 8.599149526913489e-08
+      },
+      "z4c_Axz": {
+        "max_abs": 2.2737367544323206e-13,
+        "max_rel": 1.3322676295501878e-07
+      },
+      "z4c_Ayy": {
+        "max_abs": 9.094947017729282e-13,
+        "max_rel": 1.4084433644500725e-07
+      },
+      "z4c_Ayz": {
+        "max_abs": 2.842170943040401e-14,
+        "max_rel": 9.460578620341115e-08
+      },
+      "z4c_Azz": {
+        "max_abs": 3.637978807091713e-12,
+        "max_rel": 2.220446049250313e-07
+      },
+      "z4c_Gamx": {
+        "max_abs": 4.547473508864641e-13,
+        "max_rel": 1.183826047653497e-07
+      },
+      "z4c_Gamy": {
+        "max_abs": 2.9103830456733704e-11,
+        "max_rel": 1.158270882263039e-07
+      },
+      "z4c_Gamz": {
+        "max_abs": 4.547473508864641e-13,
+        "max_rel": 1.1879721149681398e-07
+      },
+      "z4c_Theta": {
+        "max_abs": 1.4551915228366852e-11,
+        "max_rel": 7.269897035721294e-08
+      },
+      "z4c_alpha": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "z4c_betax": {
+        "max_abs": 1.4210854715202004e-14,
+        "max_rel": 1.076578654567358e-07
+      },
+      "z4c_betay": {
+        "max_abs": 1.7763568394002505e-15,
+        "max_rel": 8.368975404752943e-08
+      },
+      "z4c_betaz": {
+        "max_abs": 8.881784197001252e-16,
+        "max_rel": 7.856956871749479e-08
+      },
+      "z4c_Bx": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "z4c_By": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "z4c_Bz": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      }
+    },
+    "con_xy": {
+      "con_C": {
+        "max_abs": 7.450580596923828e-09,
+        "max_rel": 1.1858659952451518e-07
+      },
+      "con_H": {
+        "max_abs": 5.820766091346741e-11,
+        "max_rel": 1.709743457922741e-06
+      },
+      "con_M": {
+        "max_abs": 9.094947017729282e-13,
+        "max_rel": 8.881784197001252e-08
+      },
+      "con_Z": {
+        "max_abs": 7.105427357601002e-15,
+        "max_rel": 8.881784197001252e-08
+      },
+      "con_Mx": {
+        "max_abs": 5.820766091346741e-11,
+        "max_rel": 1.1770319632445875e-07
+      },
+      "con_My": {
+        "max_abs": 2.3283064365386963e-10,
+        "max_rel": 7.276139914640692e-07
+      },
+      "con_Mz": {
+        "max_abs": 3.637978807091713e-12,
+        "max_rel": 5.849155298415548e-07
+      }
+    },
+    "tmunu_xy": {
+      "tmunu_Sxx": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "tmunu_Sxy": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "tmunu_Sxz": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "tmunu_Syy": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "tmunu_Syz": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "tmunu_Szz": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "tmunu_E": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "tmunu_Sx": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "tmunu_Sy": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "tmunu_Sz": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      }
+    },
+    "particles": {
+      "position": 0.0,
+      "momentum": 0.0,
+      "mass": 0.0
+    },
+    "trackers": {
+      "0": {
+        "persistent_max_abs": 1.6653345369377348e-15,
+        "live_reacquired": true,
+        "cycle": 1,
+        "time": 0.00625
+      },
+      "1": {
+        "persistent_max_abs": 7.105427357601002e-14,
+        "live_reacquired": true,
+        "cycle": 1,
+        "time": 0.00625
+      }
+    }
+  }
+}

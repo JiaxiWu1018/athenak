@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.3.5, pluggy-1.6.0 -- /home/jiaxiwu/miniconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013
+collecting ... collected 6 items
+
+../../../../code/tst/test_suite/particles/test_part_crossing_mpicpu.py::test_smr_lattice_is_rank_independent PASSED [ 16%]
+../../../../code/tst/test_suite/particles/test_part_amr_mpicpu.py::test_amr_lattice_across_ranks PASSED [ 33%]
+../../../../code/tst/test_suite/particles/test_part_destroy_burst_mpicpu.py::test_death_ledger_survives_shrinking_events PASSED [ 50%]
+../../../../code/tst/test_suite/particles/test_part_farhop_fatal_mpicpu.py::test_multiblock_hops_are_fatal PASSED [ 66%]
+../../../../code/tst/test_suite/particles/test_part_farhop_fatal_mpicpu.py::test_supported_crossings_do_not_abort_without_debug PASSED [ 83%]
+../../../../code/tst/test_suite/particles/test_part_farhop_fatal_mpicpu.py::test_single_block_hops_still_migrate PASSED [100%]
+
+============================== 6 passed in 14.52s ==============================

@@ -1,0 +1,21 @@
+{
+  "exit_code": 0,
+  "elapsed_seconds": 275.2334842681885,
+  "checkpoint": {
+    "path": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/gpu_amr_12814/cuda_amr/rst/s10_validation_only.00002.rst",
+    "bytes": 7670579723,
+    "header_bytes": 168015,
+    "time": 0.2062500000000001,
+    "cycle": 33,
+    "dt": 0.0125,
+    "blocks": 568,
+    "particles": 5000000,
+    "removed": [
+      0,
+      0,
+      0
+    ],
+    "sha256": "3d112c9ee754067d19321fd223107acfee08803f3e6578c08dc364a7a0cb1f71"
+  },
+  "log_sha256": "6791e823b7510f990b1b41725bd7ec86b00f1eab018aeef4fae91989acbefc43"
+}

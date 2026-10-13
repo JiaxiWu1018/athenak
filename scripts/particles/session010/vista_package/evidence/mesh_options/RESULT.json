@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "job": 12809,
+  "executable_sha256": "44c643e11f1794274b5640c5a3050630587366567e7bd8df0da9f3678a1799e0",
+  "mesh_only": true,
+  "rows": [
+    {
+      "option": "s9_1024",
+      "blocks": 5384,
+      "interior_cells": 176422912,
+      "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd",
+      "log_sha256": "c8ac498d49e59cad8099ea6eca25df3368155bc2d37f47e6292932d45f1f3a3e"
+    },
+    {
+      "option": "s10_512",
+      "blocks": 4936,
+      "interior_cells": 161742848,
+      "input_sha256": "31d79bbe7ee32e6bd0b60786285749cb5746448b81502504ff4774f97c5e4b16",
+      "log_sha256": "c435719006b6b41f2bd8aa9fb9e92815981b74aac67e4087d7b9e0edee39c35a"
+    },
+    {
+      "option": "finewave_256",
+      "blocks": 4488,
+      "interior_cells": 147062784,
+      "input_sha256": "dbcfe1fc948c91eed697fcf12176be65f5785b6fa86f4d82f452b112287273da",
+      "log_sha256": "d130a457eaec8d60610c6c06662edb9bd6f47112f7999df6d05d106156dee967"
+    },
+    {
+      "option": "finewave_128",
+      "blocks": 4040,
+      "interior_cells": 132382720,
+      "input_sha256": "a4e5836f8aee7fe7f31eaab837bb3c9d4e03525ba6554f442701018c6ee82b4f",
+      "log_sha256": "fca200c948a46a5d02221a448e7930e1099164472e0fcd7830bae494613f233a"
+    },
+    {
+      "option": "actual_s7_256",
+      "blocks": 1352,
+      "interior_cells": 44302336,
+      "input_sha256": "3cab60a52d9b9ac9aa08b3bc006200381f67e6b4ba1a06d5b4ebaa64e679b95c",
+      "log_sha256": "c34482794afc71c9e48b3e6b33407ad9bda08a72aba5a84ef3f26c0cdebc5b91"
+    }
+  ]
+}

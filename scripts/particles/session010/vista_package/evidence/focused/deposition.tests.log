@@ -1,0 +1,15 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.3.5, pluggy-1.6.0 -- /home/jiaxiwu/miniconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013
+collecting ... collected 12 items / 5 deselected / 7 selected
+
+../../../../code/tst/test_suite/particles/test_part_tmunu_xlevel_mpicpu.py::test_cross_level_tmunu_is_rank_invariant[conservative-fine_to_coarse] PASSED [ 14%]
+../../../../code/tst/test_suite/particles/test_part_tmunu_xlevel_mpicpu.py::test_cross_level_tmunu_is_rank_invariant[conservative-coarse_to_fine] PASSED [ 28%]
+../../../../code/tst/test_suite/particles/test_part_tmunu_xlevel_mpicpu.py::test_cross_level_tmunu_is_rank_invariant[conservative-edge] PASSED [ 42%]
+../../../../code/tst/test_suite/particles/test_part_tmunu_xlevel_mpicpu.py::test_cross_level_tmunu_is_rank_invariant[conservative-corner] PASSED [ 57%]
+../../../../code/tst/test_suite/particles/test_part_tmunu_xlevel_mpicpu.py::test_cross_level_tmunu_is_rank_invariant[conservative-demotion_dedup] PASSED [ 71%]
+../../../../code/tst/test_suite/particles/test_part_tmunu_xlevel_mpicpu.py::test_conservative_seam_and_closed_boundary[lower] PASSED [ 85%]
+../../../../code/tst/test_suite/particles/test_part_tmunu_xlevel_mpicpu.py::test_conservative_seam_and_closed_boundary[upper] PASSED [100%]
+
+======================= 7 passed, 5 deselected in 18.39s =======================

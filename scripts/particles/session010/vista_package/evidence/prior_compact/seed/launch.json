@@ -1,0 +1,32 @@
+{
+  "command": [
+    "mpirun",
+    "--bind-to",
+    "none",
+    "--map-by",
+    "slot",
+    "-np",
+    "2",
+    "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/build_12753/baseline/src/athena",
+    "--kokkos-map-device-id-by=mpi_rank",
+    "-i",
+    "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/inputs/VALIDATION_ONLY_compact.athinput",
+    "-d",
+    "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12773/seed",
+    "-t",
+    "00:50:00",
+    "mesh_refinement/max_nmb_per_rank=400",
+    "time/stop_check_every=1",
+    "z4c/co_0_out_every=1",
+    "z4c/co_1_out_every=1",
+    "z4c/tracker_walk_every=1",
+    "time/nlim=1",
+    "time/stop_file=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12773/seed/REQUEST_STOP"
+  ],
+  "host": "perseus",
+  "job": "12773",
+  "exe_sha256": "3945ce5350962b14644874bd9db6e48690f8c6efc36131f2422e0f2d6ab3c6be",
+  "input_sha256": "f7e53302f04a2926362607b6298813ea56bf9ca42222b020df64f355d4939efd",
+  "sample_global_gpu_ids": "2,5,6",
+  "cuda_visible_devices": "0,1,2"
+}

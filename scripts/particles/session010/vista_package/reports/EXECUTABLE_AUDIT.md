@@ -1,0 +1,11 @@
+# Vista executable decision
+
+A native Vista rebuild is required. No existing executable has verified provenance matching the final Session010 implementation.
+
+The newest retained Session007 Vista source is `263dcf21`, including the restart-header read limit repair (40 KiB to 1 MiB). Comparing its compiled source with Session009 `6892be3e` found the waveform timestamp-precision change in `src/z4c/z4c_wave_extr.cpp`. Session010 additionally changes four particle communication/deposition files for buffer reuse, fixes capacity-safe particle VTK copying, and repairs `ParameterInput::SetReal` restart precision. An executable built before those changes cannot implement the final source. Runtime arguments cannot supply these repairs.
+
+The current Vista executable and scratch installation could not be inspected through noninteractive SSH because Vista requires authentication. That uncertainty does not justify reuse. If the Vista agent proposes another executable, require the full source commit, clean compiled-source equivalence including all six Session010 C++ files and the waveform timestamp change, pinned Kokkos, native architecture/compiler/MPI flags, executable SHA256, and successful full-mesh memory/restart/output gates. A filename or an old successful run is insufficient.
+
+`scripts/native_build.sh` reconstructs the standalone AthenaK and Kokkos bundles at the final pins in `PROVENANCE.json`. The retained successful Session007 stack was NVIDIA 24.7, OpenMPI 5.0.5, CMake 4.1.1; CUDA HOPPER90 + ARMV9_GRACE; MPI; Release; `particles/gi_cluster`. The supplied CMake project-include shim loads `CheckIncludeFileCXX` for the Kokkos ARM-SVE configure check. Verify current module availability on Vista before adapting versions. Preserve `UCX_IB_GPU_DIRECT_RDMA=no` for the recorded DMA-BUF transport workaround until a new gate supports a change. The Perseus OpenMPI SMT binding workaround is not a Vista launch prescription.
+
+Record allocated host/job, module/compiler/MPI versions, exact flags/input, source/submodule state, executable hash, launch and output manifest for each segment. Passing compact Perseus checks is preparation evidence; Grace/H200 full-mesh feasibility and timing remain unmeasured.

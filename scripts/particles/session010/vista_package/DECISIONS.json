@@ -1,0 +1,12 @@
+{
+  "domain_half_extent": 512,
+  "fresh_t0": true,
+  "include_session009_checkpoint": false,
+  "particles": 5000000,
+  "boost": 0.133215,
+  "expected_initial_blocks": 4936,
+  "email": "jiaxiwu@caltech.edu",
+  "production_authorized": false,
+  "session010_review_complete": false,
+  "production_limits": null
+}

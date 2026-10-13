@@ -1,0 +1,950 @@
+
+Root grid = 2 x 2 x 2 MeshBlocks
+Total number of MeshBlocks = 792
+Number of logical  levels of refinement = 8 (9 levels total)
+Number of physical levels of refinement = 7 (8 levels total)
+  Physical level = 1 (logical level = 2): 48 MeshBlocks, cost = 48
+  Physical level = 2 (logical level = 3): 112 MeshBlocks, cost = 112
+  Physical level = 3 (logical level = 4): 112 MeshBlocks, cost = 112
+  Physical level = 4 (logical level = 5): 112 MeshBlocks, cost = 112
+  Physical level = 5 (logical level = 6): 104 MeshBlocks, cost = 104
+  Physical level = 6 (logical level = 7): 176 MeshBlocks, cost = 176
+  Physical level = 7 (logical level = 8): 128 MeshBlocks, cost = 128
+Number of parallel ranks = 2
+  Rank = 0: 396 MeshBlocks, cost = 396
+  Rank = 1: 396 MeshBlocks, cost = 396
+Load Balancing:
+  Maximum normalized cost = 1, Average = 1
+AssembleZ4cTasks
+AssembleZ4cTasks
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <time>/start_time = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <mesh_refinement>/num_levels = 10 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <amr_criterion1>/method = user was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <amr_criterion1>/value_min = -3.40282e+38 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <amr_criterion1>/value_max = 3.40282e+38 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <amr_criterion1>/location_x1 = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <amr_criterion1>/location_x2 = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <amr_criterion1>/location_x3 = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <amr_criterion1>/location_rad = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region1>/level = 1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region1>/x1min = -34 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region1>/x1max = 34 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region1>/x2min = -34 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region1>/x2max = 34 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region1>/x3min = -34 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region1>/x3max = 34 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region2>/level = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region2>/x1min = -18 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region2>/x1max = 18 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region2>/x2min = -18 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region2>/x2max = 18 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region2>/x3min = -18 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region2>/x3max = 18 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region3>/level = 3 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region3>/x1min = -15 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region3>/x1max = 15 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region3>/x2min = -15 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region3>/x2max = 15 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region3>/x3min = -15 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region3>/x3max = 15 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region4>/level = 4 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region4>/x1min = -6 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region4>/x1max = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region4>/x2min = -3 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region4>/x2max = 3 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region4>/x3min = -3 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region4>/x3max = 3 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region5>/level = 5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region5>/x1min = -4.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region5>/x1max = -1.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region5>/x2min = -1.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region5>/x2max = 1.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region5>/x3min = -1.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region5>/x3max = 1.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region6>/level = 6 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region6>/x1min = -3.75 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region6>/x1max = -2.25 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region6>/x2min = -0.75 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region6>/x2max = 0.75 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region6>/x3min = -0.75 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region6>/x3max = 0.75 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region7>/level = 7 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region7>/x1min = -3.375 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region7>/x1max = -2.625 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region7>/x2min = -0.375 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region7>/x2max = 0.375 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region7>/x3min = -0.375 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region7>/x3max = 0.375 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region8>/level = 4 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region8>/x1min = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region8>/x1max = 6 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region8>/x2min = -3 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region8>/x2max = 3 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region8>/x3min = -3 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region8>/x3max = 3 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region9>/level = 5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region9>/x1min = 1.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region9>/x1max = 4.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region9>/x2min = -1.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region9>/x2max = 1.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region9>/x3min = -1.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region9>/x3max = 1.5 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region10>/level = 6 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region10>/x1min = 2.25 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region10>/x1max = 3.75 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region10>/x2min = -0.75 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region10>/x2max = 0.75 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region10>/x3min = -0.75 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region10>/x3max = 0.75 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region11>/level = 7 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region11>/x1min = 2.625 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region11>/x1max = 3.375 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region11>/x2min = -0.375 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region11>/x2max = 0.375 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region11>/x3min = -0.375 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <refined_region11>/x3max = 0.375 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <z4c>/extraction_radius_0 = 40.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_m0 = 0.76 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_r0 = 30.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_n_env = 3000000 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_n_clump = 2000000 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_seed = 4001 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_profile_dr = 0.001 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_nclumps = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump_mass_scale = 1.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump1_mass = 0.12 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump1_x1 = -3.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump1_x2 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump1_x3 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump1_sigma = 0.70 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump1_s = 0.02 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump1_bulk_vy = -0.133215 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump2_mass = 0.12 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump2_x1 = 3.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump2_x2 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump2_x3 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump2_sigma = 0.70 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump2_s = 0.02 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_clump2_bulk_vy = 0.133215 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <problem>/gi_dump_profile = gi_profile_M076_two_clump_s10.txt was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output2>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output2>/variable = tmunu was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output2>/id = tmunu_xy was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output2>/slice_x3 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output2>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output2>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output2>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output2>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output2>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output3>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output3>/variable = con was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output3>/id = con_xy was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output3>/slice_x3 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output3>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output3>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output3>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output3>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output3>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output4>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output4>/variable = z4c was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output4>/id = z4c_xy was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output4>/slice_x3 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output4>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output4>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output4>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output4>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output4>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output6>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output6>/variable = tmunu_E was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output6>/id = E3d was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output6>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output6>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output6>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output6>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output6>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output8>/file_type = cbin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output8>/variable = z4c_chi was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output8>/id = mesh was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output8>/coarsen_factor = 32 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output8>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output8>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output8>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output8>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output8>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output8>/compute_moments = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output9>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output9>/variable = tmunu was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output9>/id = tmunu_xz was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output9>/slice_x2 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output9>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output9>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output9>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output9>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output9>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output10>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output10>/variable = con was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output10>/id = con_xz was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output10>/slice_x2 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output10>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output10>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output10>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output10>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output10>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output11>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output11>/variable = z4c was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output11>/id = z4c_xz was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output11>/slice_x2 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output11>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output11>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output11>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output11>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output11>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output12>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output12>/variable = tmunu was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output12>/id = tmunu_yz was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output12>/slice_x1 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output12>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output12>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output12>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output12>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output12>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output13>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output13>/variable = con was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output13>/id = con_yz was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output13>/slice_x1 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output13>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output13>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output13>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output13>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output13>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output14>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output14>/variable = z4c was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output14>/id = z4c_yz was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output14>/slice_x1 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output14>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output14>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output14>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output14>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output14>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output15>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output15>/variable = weyl was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output15>/id = weyl_xy was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output15>/slice_x3 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output15>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output15>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output15>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output15>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output15>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output16>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output16>/variable = weyl was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output16>/id = weyl_xz was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output16>/slice_x2 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output16>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output16>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output16>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output16>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output16>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output17>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output17>/variable = weyl was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output17>/id = weyl_yz was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output17>/slice_x1 = 0.0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output17>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output17>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output17>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output17>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output17>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output18>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output18>/variable = con was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output18>/id = con3d was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output18>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output18>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output18>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output18>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output18>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output19>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output19>/variable = z4c was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output19>/id = z4c3d was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output19>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output19>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output19>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output19>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output19>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output20>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output20>/variable = tmunu was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output20>/id = tmunu3d was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output20>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output20>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output20>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output20>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output20>/single_file_per_rank = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output21>/file_type = bin was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output21>/variable = weyl was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output21>/id = weyl3d was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output21>/file_number = 2 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output21>/ghost_zones = 0 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output21>/gid = -1 was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output21>/data_format = %12.5e was not used by the code (check for a typo)
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/parameter_input.cpp: input parameter <output21>/single_file_per_rank = 0 was not used by the code (check for a typo)
+[tmunu-debug] cycle=1 ghost images sent==received==51041 (global)
+[tmunu-debug] cycle=1 npart=5000000 cross_level=439984 identity max_resid=4.9738e-14 (tol 3.76983e-08) (global)
+
+Setup complete, executing task list(s)...
+
+elapsed=1.468860e+01 cycle=1 time=6.250000e-03 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=1 migrations: face=1676 edge=0 corner=0 search_fail=0 npart=2500843
+[prtcl-debug] rank=1 cycle=1 migrations: face=1609 edge=0 corner=0 search_fail=0 npart=2499157
+[tmunu-debug] cycle=1 ghost images sent==received==51039 (global)
+[tmunu-debug] cycle=1 npart=5000000 cross_level=440008 identity max_resid=9.392487e-14 (tol 3.769834e-08) (global)
+elapsed=2.419808e+01 cycle=2 time=1.250000e-02 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=2 migrations: face=1682 edge=0 corner=0 search_fail=0 npart=2499143
+[prtcl-debug] rank=0 cycle=2 migrations: face=1702 edge=0 corner=0 search_fail=0 npart=2500857
+[tmunu-debug] cycle=2 ghost images sent==received==51004 (global)
+[tmunu-debug] cycle=2 npart=5000000 cross_level=439857 identity max_resid=1.065814e-13 (tol 3.769834e-08) (global)
+elapsed=3.373390e+01 cycle=3 time=1.875000e-02 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=3 migrations: face=1684 edge=0 corner=0 search_fail=0 npart=2499145
+[prtcl-debug] rank=0 cycle=3 migrations: face=1743 edge=0 corner=0 search_fail=0 npart=2500855
+[tmunu-debug] cycle=3 ghost images sent==received==51013 (global)
+[tmunu-debug] cycle=3 npart=5000000 cross_level=439762 identity max_resid=1.687539e-14 (tol 3.769834e-08) (global)
+elapsed=4.316317e+01 cycle=4 time=2.500000e-02 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=4 migrations: face=1690 edge=1 corner=0 search_fail=0 npart=2500861
+[prtcl-debug] rank=1 cycle=4 migrations: face=1740 edge=0 corner=0 search_fail=0 npart=2499139
+[tmunu-debug] cycle=4 ghost images sent==received==50980 (global)
+[tmunu-debug] cycle=4 npart=5000000 cross_level=439458 identity max_resid=3.508305e-14 (tol 3.769834e-08) (global)
+elapsed=5.264398e+01 cycle=5 time=3.125000e-02 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=5 migrations: face=1720 edge=1 corner=0 search_fail=0 npart=2500863
+[prtcl-debug] rank=1 cycle=5 migrations: face=1675 edge=3 corner=0 search_fail=0 npart=2499137
+[tmunu-debug] cycle=5 ghost images sent==received==50996 (global)
+[tmunu-debug] cycle=5 npart=5000000 cross_level=439556 identity max_resid=7.993606e-14 (tol 3.769834e-08) (global)
+elapsed=6.212643e+01 cycle=6 time=3.750000e-02 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=6 migrations: face=1729 edge=2 corner=0 search_fail=0 npart=2499141
+[prtcl-debug] rank=0 cycle=6 migrations: face=1713 edge=0 corner=0 search_fail=0 npart=2500859
+[tmunu-debug] cycle=6 ghost images sent==received==50981 (global)
+[tmunu-debug] cycle=6 npart=5000000 cross_level=439501 identity max_resid=4.707346e-14 (tol 3.769834e-08) (global)
+elapsed=7.169153e+01 cycle=7 time=4.375000e-02 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=7 migrations: face=1747 edge=0 corner=0 search_fail=0 npart=2500845
+[prtcl-debug] rank=1 cycle=7 migrations: face=1713 edge=0 corner=0 search_fail=0 npart=2499155
+[tmunu-debug] cycle=7 ghost images sent==received==50964 (global)
+[tmunu-debug] cycle=7 npart=5000000 cross_level=439384 identity max_resid=2.842171e-14 (tol 3.769834e-08) (global)
+elapsed=8.124363e+01 cycle=8 time=5.000000e-02 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=8 migrations: face=1669 edge=0 corner=0 search_fail=0 npart=2500844
+[prtcl-debug] rank=1 cycle=8 migrations: face=1768 edge=0 corner=0 search_fail=0 npart=2499156
+[tmunu-debug] cycle=8 ghost images sent==received==50970 (global)
+[tmunu-debug] cycle=8 npart=5000000 cross_level=439771 identity max_resid=5.662137e-14 (tol 3.769834e-08) (global)
+elapsed=9.086848e+01 cycle=9 time=5.625000e-02 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=9 migrations: face=1760 edge=0 corner=0 search_fail=0 npart=2500840
+[prtcl-debug] rank=1 cycle=9 migrations: face=1780 edge=2 corner=0 search_fail=0 npart=2499160
+[tmunu-debug] cycle=9 ghost images sent==received==51010 (global)
+[tmunu-debug] cycle=9 npart=5000000 cross_level=439829 identity max_resid=3.153033e-14 (tol 3.769834e-08) (global)
+elapsed=1.006311e+02 cycle=10 time=6.250000e-02 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=10 migrations: face=1742 edge=0 corner=0 search_fail=0 npart=2499138
+[prtcl-debug] rank=0 cycle=10 migrations: face=1709 edge=0 corner=0 search_fail=0 npart=2500862
+[tmunu-debug] cycle=10 ghost images sent==received==51017 (global)
+[tmunu-debug] cycle=10 npart=5000000 cross_level=439944 identity max_resid=2.087219e-14 (tol 3.769834e-08) (global)
+elapsed=1.104123e+02 cycle=11 time=6.875000e-02 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=11 migrations: face=1724 edge=1 corner=0 search_fail=0 npart=2500853
+[prtcl-debug] rank=1 cycle=11 migrations: face=1744 edge=0 corner=0 search_fail=0 npart=2499147
+[tmunu-debug] cycle=11 ghost images sent==received==51027 (global)
+[tmunu-debug] cycle=11 npart=5000000 cross_level=440110 identity max_resid=6.483702e-14 (tol 3.769834e-08) (global)
+elapsed=1.201806e+02 cycle=12 time=7.500000e-02 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=12 migrations: face=1767 edge=1 corner=0 search_fail=0 npart=2499132
+[prtcl-debug] rank=0 cycle=12 migrations: face=1729 edge=0 corner=0 search_fail=0 npart=2500868
+[tmunu-debug] cycle=12 ghost images sent==received==51098 (global)
+[tmunu-debug] cycle=12 npart=5000000 cross_level=440163 identity max_resid=9.636736e-14 (tol 3.769835e-08) (global)
+elapsed=1.299903e+02 cycle=13 time=8.125000e-02 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=13 migrations: face=1742 edge=0 corner=0 search_fail=0 npart=2500867
+[prtcl-debug] rank=1 cycle=13 migrations: face=1720 edge=0 corner=0 search_fail=0 npart=2499133
+[tmunu-debug] cycle=13 ghost images sent==received==51098 (global)
+[tmunu-debug] cycle=13 npart=5000000 cross_level=439774 identity max_resid=4.352074e-14 (tol 3.769835e-08) (global)
+elapsed=1.399192e+02 cycle=14 time=8.750000e-02 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=14 migrations: face=1788 edge=1 corner=0 search_fail=0 npart=2499133
+[prtcl-debug] rank=0 cycle=14 migrations: face=1708 edge=0 corner=0 search_fail=0 npart=2500867
+[tmunu-debug] cycle=14 ghost images sent==received==51087 (global)
+[tmunu-debug] cycle=14 npart=5000000 cross_level=439707 identity max_resid=3.153033e-14 (tol 3.769835e-08) (global)
+elapsed=1.498439e+02 cycle=15 time=9.375000e-02 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=15 migrations: face=1759 edge=0 corner=0 search_fail=0 npart=2499140
+[prtcl-debug] rank=0 cycle=15 migrations: face=1635 edge=0 corner=0 search_fail=0 npart=2500860
+[tmunu-debug] cycle=15 ghost images sent==received==51101 (global)
+[tmunu-debug] cycle=15 npart=5000000 cross_level=439802 identity max_resid=5.151435e-14 (tol 3.769835e-08) (global)
+elapsed=1.599454e+02 cycle=16 time=1.000000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=16 migrations: face=1795 edge=0 corner=0 search_fail=0 npart=2499136
+[prtcl-debug] rank=0 cycle=16 migrations: face=1714 edge=1 corner=0 search_fail=0 npart=2500864
+[tmunu-debug] cycle=16 ghost images sent==received==51111 (global)
+[tmunu-debug] cycle=16 npart=5000000 cross_level=439778 identity max_resid=5.573320e-14 (tol 3.769835e-08) (global)
+elapsed=1.699502e+02 cycle=17 time=1.062500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=17 migrations: face=1635 edge=1 corner=0 search_fail=0 npart=2500866
+[prtcl-debug] rank=1 cycle=17 migrations: face=1618 edge=1 corner=0 search_fail=0 npart=2499134
+[tmunu-debug] cycle=17 ghost images sent==received==51097 (global)
+[tmunu-debug] cycle=17 npart=5000000 cross_level=439693 identity max_resid=1.076916e-13 (tol 3.769836e-08) (global)
+elapsed=1.800308e+02 cycle=18 time=1.125000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=18 migrations: face=1717 edge=1 corner=0 search_fail=0 npart=2500870
+[prtcl-debug] rank=1 cycle=18 migrations: face=1737 edge=0 corner=0 search_fail=0 npart=2499130
+[tmunu-debug] cycle=18 ghost images sent==received==51102 (global)
+[tmunu-debug] cycle=18 npart=5000000 cross_level=439945 identity max_resid=8.926193e-14 (tol 3.769836e-08) (global)
+elapsed=1.901512e+02 cycle=19 time=1.187500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=19 migrations: face=1656 edge=1 corner=0 search_fail=0 npart=2500877
+[prtcl-debug] rank=1 cycle=19 migrations: face=1688 edge=0 corner=0 search_fail=0 npart=2499123
+[tmunu-debug] cycle=19 ghost images sent==received==51099 (global)
+[tmunu-debug] cycle=19 npart=5000000 cross_level=439808 identity max_resid=3.885781e-14 (tol 3.769836e-08) (global)
+elapsed=2.003286e+02 cycle=20 time=1.250000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=20 migrations: face=1743 edge=1 corner=0 search_fail=0 npart=2500878
+[prtcl-debug] rank=1 cycle=20 migrations: face=1609 edge=0 corner=0 search_fail=0 npart=2499122
+[tmunu-debug] cycle=20 ghost images sent==received==51086 (global)
+[tmunu-debug] cycle=20 npart=5000000 cross_level=439904 identity max_resid=7.194245e-14 (tol 3.769837e-08) (global)
+elapsed=2.105324e+02 cycle=21 time=1.312500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=21 migrations: face=1705 edge=1 corner=0 search_fail=0 npart=2500885
+[prtcl-debug] rank=1 cycle=21 migrations: face=1659 edge=1 corner=0 search_fail=0 npart=2499115
+[tmunu-debug] cycle=21 ghost images sent==received==51076 (global)
+[tmunu-debug] cycle=21 npart=5000000 cross_level=439896 identity max_resid=2.442491e-14 (tol 3.769837e-08) (global)
+elapsed=2.207828e+02 cycle=22 time=1.375000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=22 migrations: face=1762 edge=0 corner=0 search_fail=0 npart=2500896
+[prtcl-debug] rank=1 cycle=22 migrations: face=1799 edge=0 corner=0 search_fail=0 npart=2499104
+[tmunu-debug] cycle=22 ghost images sent==received==51049 (global)
+[tmunu-debug] cycle=22 npart=5000000 cross_level=439886 identity max_resid=6.661338e-15 (tol 3.769838e-08) (global)
+elapsed=2.310794e+02 cycle=23 time=1.437500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=23 migrations: face=1759 edge=0 corner=0 search_fail=0 npart=2499105
+[prtcl-debug] rank=0 cycle=23 migrations: face=1718 edge=0 corner=0 search_fail=0 npart=2500895
+[tmunu-debug] cycle=23 ghost images sent==received==51010 (global)
+[tmunu-debug] cycle=23 npart=5000000 cross_level=440111 identity max_resid=3.197442e-14 (tol 3.769838e-08) (global)
+elapsed=2.414605e+02 cycle=24 time=1.500000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=24 migrations: face=1767 edge=0 corner=0 search_fail=0 npart=2500894
+[prtcl-debug] rank=1 cycle=24 migrations: face=1681 edge=0 corner=0 search_fail=0 npart=2499106
+[tmunu-debug] cycle=24 ghost images sent==received==51017 (global)
+[tmunu-debug] cycle=24 npart=5000000 cross_level=440058 identity max_resid=1.245670e-13 (tol 3.769839e-08) (global)
+elapsed=2.518774e+02 cycle=25 time=1.562500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=25 migrations: face=1740 edge=0 corner=0 search_fail=0 npart=2499105
+[prtcl-debug] rank=0 cycle=25 migrations: face=1712 edge=0 corner=0 search_fail=0 npart=2500895
+[tmunu-debug] cycle=25 ghost images sent==received==51010 (global)
+[tmunu-debug] cycle=25 npart=5000000 cross_level=439958 identity max_resid=8.615331e-14 (tol 3.769839e-08) (global)
+elapsed=2.623385e+02 cycle=26 time=1.625000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=26 migrations: face=1775 edge=0 corner=0 search_fail=0 npart=2500899
+[prtcl-debug] rank=1 cycle=26 migrations: face=1700 edge=0 corner=0 search_fail=0 npart=2499101
+[tmunu-debug] cycle=26 ghost images sent==received==51017 (global)
+[tmunu-debug] cycle=26 npart=5000000 cross_level=439561 identity max_resid=9.570122e-14 (tol 3.769840e-08) (global)
+elapsed=2.728638e+02 cycle=27 time=1.687500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=27 migrations: face=1668 edge=0 corner=0 search_fail=0 npart=2499106
+[prtcl-debug] rank=0 cycle=27 migrations: face=1736 edge=0 corner=0 search_fail=0 npart=2500894
+[tmunu-debug] cycle=27 ghost images sent==received==51035 (global)
+[tmunu-debug] cycle=27 npart=5000000 cross_level=439705 identity max_resid=7.238654e-14 (tol 3.769840e-08) (global)
+elapsed=2.833878e+02 cycle=28 time=1.750000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=28 migrations: face=1666 edge=1 corner=0 search_fail=0 npart=2500897
+[prtcl-debug] rank=1 cycle=28 migrations: face=1744 edge=0 corner=0 search_fail=0 npart=2499103
+[tmunu-debug] cycle=28 ghost images sent==received==51080 (global)
+[tmunu-debug] cycle=28 npart=5000000 cross_level=439839 identity max_resid=5.195844e-14 (tol 3.769841e-08) (global)
+elapsed=2.939974e+02 cycle=29 time=1.812500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=29 migrations: face=1729 edge=0 corner=0 search_fail=0 npart=2500895
+[prtcl-debug] rank=1 cycle=29 migrations: face=1730 edge=0 corner=0 search_fail=0 npart=2499105
+[tmunu-debug] cycle=29 ghost images sent==received==51115 (global)
+[tmunu-debug] cycle=29 npart=5000000 cross_level=440023 identity max_resid=7.771561e-15 (tol 3.769841e-08) (global)
+elapsed=3.046355e+02 cycle=30 time=1.875000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=30 migrations: face=1667 edge=0 corner=0 search_fail=0 npart=2500898
+[prtcl-debug] rank=1 cycle=30 migrations: face=1614 edge=0 corner=0 search_fail=0 npart=2499102
+[tmunu-debug] cycle=30 ghost images sent==received==51134 (global)
+[tmunu-debug] cycle=30 npart=5000000 cross_level=439934 identity max_resid=2.886580e-14 (tol 3.769842e-08) (global)
+elapsed=3.152923e+02 cycle=31 time=1.937500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=31 migrations: face=1653 edge=1 corner=0 search_fail=0 npart=2499108
+[prtcl-debug] rank=0 cycle=31 migrations: face=1692 edge=1 corner=0 search_fail=0 npart=2500892
+[tmunu-debug] cycle=31 ghost images sent==received==51170 (global)
+[tmunu-debug] cycle=31 npart=5000000 cross_level=439830 identity max_resid=2.708944e-14 (tol 3.769843e-08) (global)
+elapsed=3.260021e+02 cycle=32 time=2.000000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=32 migrations: face=1655 edge=0 corner=0 search_fail=0 npart=2500885
+[prtcl-debug] rank=1 cycle=32 migrations: face=1786 edge=0 corner=0 search_fail=0 npart=2499115
+[tmunu-debug] cycle=32 ghost images sent==received==51155 (global)
+[tmunu-debug] cycle=32 npart=5000000 cross_level=439607 identity max_resid=7.105427e-15 (tol 3.769843e-08) (global)
+elapsed=3.367670e+02 cycle=33 time=2.062500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=33 migrations: face=1751 edge=0 corner=0 search_fail=0 npart=2500891
+[prtcl-debug] rank=1 cycle=33 migrations: face=1770 edge=0 corner=0 search_fail=0 npart=2499109
+[tmunu-debug] cycle=33 ghost images sent==received==51118 (global)
+[tmunu-debug] cycle=33 npart=5000000 cross_level=439632 identity max_resid=1.088019e-14 (tol 3.769844e-08) (global)
+elapsed=3.476041e+02 cycle=34 time=2.125000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=34 migrations: face=1675 edge=0 corner=0 search_fail=0 npart=2499129
+[prtcl-debug] rank=0 cycle=34 migrations: face=1733 edge=0 corner=0 search_fail=0 npart=2500871
+[tmunu-debug] cycle=34 ghost images sent==received==51085 (global)
+[tmunu-debug] cycle=34 npart=5000000 cross_level=439504 identity max_resid=4.174439e-14 (tol 3.769845e-08) (global)
+elapsed=3.584550e+02 cycle=35 time=2.187500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=35 migrations: face=1811 edge=1 corner=0 search_fail=0 npart=2500863
+[prtcl-debug] rank=1 cycle=35 migrations: face=1685 edge=0 corner=0 search_fail=0 npart=2499137
+[tmunu-debug] cycle=35 ghost images sent==received==51082 (global)
+[tmunu-debug] cycle=35 npart=5000000 cross_level=439375 identity max_resid=9.814372e-14 (tol 3.769845e-08) (global)
+elapsed=3.693589e+02 cycle=36 time=2.250000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=36 migrations: face=1747 edge=0 corner=0 search_fail=0 npart=2499138
+[prtcl-debug] rank=0 cycle=36 migrations: face=1724 edge=0 corner=0 search_fail=0 npart=2500862
+[tmunu-debug] cycle=36 ghost images sent==received==51084 (global)
+[tmunu-debug] cycle=36 npart=5000000 cross_level=439015 identity max_resid=1.465494e-14 (tol 3.769846e-08) (global)
+elapsed=3.803142e+02 cycle=37 time=2.312500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=37 migrations: face=1742 edge=0 corner=0 search_fail=0 npart=2499144
+[prtcl-debug] rank=0 cycle=37 migrations: face=1681 edge=0 corner=0 search_fail=0 npart=2500856
+[tmunu-debug] cycle=37 ghost images sent==received==51101 (global)
+[tmunu-debug] cycle=37 npart=5000000 cross_level=438877 identity max_resid=6.750156e-14 (tol 3.769847e-08) (global)
+elapsed=3.913198e+02 cycle=38 time=2.375000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=38 migrations: face=1690 edge=0 corner=0 search_fail=0 npart=2500857
+[prtcl-debug] rank=1 cycle=38 migrations: face=1707 edge=1 corner=0 search_fail=0 npart=2499143
+[tmunu-debug] cycle=38 ghost images sent==received==51115 (global)
+[tmunu-debug] cycle=38 npart=5000000 cross_level=438700 identity max_resid=2.375877e-14 (tol 3.769848e-08) (global)
+elapsed=4.023496e+02 cycle=39 time=2.437500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=39 migrations: face=1744 edge=1 corner=0 search_fail=0 npart=2499135
+[prtcl-debug] rank=0 cycle=39 migrations: face=1714 edge=0 corner=0 search_fail=0 npart=2500865
+[tmunu-debug] cycle=39 ghost images sent==received==51107 (global)
+[tmunu-debug] cycle=39 npart=5000000 cross_level=438543 identity max_resid=2.420286e-14 (tol 3.769849e-08) (global)
+elapsed=4.134460e+02 cycle=40 time=2.500000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=40 migrations: face=1773 edge=0 corner=0 search_fail=0 npart=2500847
+[prtcl-debug] rank=1 cycle=40 migrations: face=1647 edge=0 corner=0 search_fail=0 npart=2499153
+[tmunu-debug] cycle=40 ghost images sent==received==51108 (global)
+[tmunu-debug] cycle=40 npart=5000000 cross_level=438568 identity max_resid=2.753353e-14 (tol 3.769850e-08) (global)
+elapsed=4.245504e+02 cycle=41 time=2.562500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=41 migrations: face=1802 edge=2 corner=0 search_fail=0 npart=2500848
+[prtcl-debug] rank=1 cycle=41 migrations: face=1745 edge=0 corner=0 search_fail=0 npart=2499152
+[tmunu-debug] cycle=41 ghost images sent==received==51117 (global)
+[tmunu-debug] cycle=41 npart=5000000 cross_level=438234 identity max_resid=4.374279e-14 (tol 3.769851e-08) (global)
+elapsed=4.357077e+02 cycle=42 time=2.625000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=42 migrations: face=1776 edge=0 corner=0 search_fail=0 npart=2500829
+[prtcl-debug] rank=1 cycle=42 migrations: face=1735 edge=0 corner=0 search_fail=0 npart=2499171
+[tmunu-debug] cycle=42 ghost images sent==received==51132 (global)
+[tmunu-debug] cycle=42 npart=5000000 cross_level=438344 identity max_resid=4.374279e-14 (tol 3.769851e-08) (global)
+elapsed=4.469056e+02 cycle=43 time=2.687500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=43 migrations: face=1699 edge=0 corner=0 search_fail=0 npart=2499180
+[prtcl-debug] rank=0 cycle=43 migrations: face=1744 edge=0 corner=0 search_fail=0 npart=2500820
+[tmunu-debug] cycle=43 ghost images sent==received==51129 (global)
+[tmunu-debug] cycle=43 npart=5000000 cross_level=438242 identity max_resid=2.486900e-14 (tol 3.769852e-08) (global)
+elapsed=4.581375e+02 cycle=44 time=2.750000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=44 migrations: face=1755 edge=1 corner=0 search_fail=0 npart=2500805
+[prtcl-debug] rank=1 cycle=44 migrations: face=1661 edge=0 corner=0 search_fail=0 npart=2499195
+[tmunu-debug] cycle=44 ghost images sent==received==51115 (global)
+[tmunu-debug] cycle=44 npart=5000000 cross_level=438061 identity max_resid=5.417888e-14 (tol 3.769853e-08) (global)
+elapsed=4.694400e+02 cycle=45 time=2.812500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=45 migrations: face=1789 edge=1 corner=0 search_fail=0 npart=2500804
+[prtcl-debug] rank=1 cycle=45 migrations: face=1732 edge=1 corner=0 search_fail=0 npart=2499196
+[tmunu-debug] cycle=45 ghost images sent==received==51121 (global)
+[tmunu-debug] cycle=45 npart=5000000 cross_level=437915 identity max_resid=2.464695e-14 (tol 3.769854e-08) (global)
+elapsed=4.807483e+02 cycle=46 time=2.875000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=46 migrations: face=1754 edge=1 corner=0 search_fail=0 npart=2500801
+[prtcl-debug] rank=1 cycle=46 migrations: face=1770 edge=0 corner=0 search_fail=0 npart=2499199
+[tmunu-debug] cycle=46 ghost images sent==received==51122 (global)
+[tmunu-debug] cycle=46 npart=5000000 cross_level=437773 identity max_resid=2.620126e-14 (tol 3.769855e-08) (global)
+elapsed=4.921116e+02 cycle=47 time=2.937500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=47 migrations: face=1713 edge=0 corner=0 search_fail=0 npart=2500817
+[prtcl-debug] rank=1 cycle=47 migrations: face=1682 edge=0 corner=0 search_fail=0 npart=2499183
+[tmunu-debug] cycle=47 ghost images sent==received==51155 (global)
+[tmunu-debug] cycle=47 npart=5000000 cross_level=437569 identity max_resid=4.862777e-14 (tol 3.769857e-08) (global)
+elapsed=5.034913e+02 cycle=48 time=3.000000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=48 migrations: face=1720 edge=0 corner=0 search_fail=0 npart=2499165
+[prtcl-debug] rank=0 cycle=48 migrations: face=1694 edge=1 corner=0 search_fail=0 npart=2500835
+[tmunu-debug] cycle=48 ghost images sent==received==51148 (global)
+[tmunu-debug] cycle=48 npart=5000000 cross_level=437568 identity max_resid=4.307665e-14 (tol 3.769858e-08) (global)
+elapsed=5.149393e+02 cycle=49 time=3.062500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=49 migrations: face=1784 edge=1 corner=0 search_fail=0 npart=2499167
+[prtcl-debug] rank=0 cycle=49 migrations: face=1695 edge=2 corner=0 search_fail=0 npart=2500833
+[tmunu-debug] cycle=49 ghost images sent==received==51162 (global)
+[tmunu-debug] cycle=49 npart=5000000 cross_level=437505 identity max_resid=5.440093e-14 (tol 3.769859e-08) (global)
+elapsed=5.264262e+02 cycle=50 time=3.125000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=50 migrations: face=1718 edge=2 corner=0 search_fail=0 npart=2500833
+[prtcl-debug] rank=1 cycle=50 migrations: face=1715 edge=1 corner=0 search_fail=0 npart=2499167
+[tmunu-debug] cycle=50 ghost images sent==received==51213 (global)
+[tmunu-debug] cycle=50 npart=5000000 cross_level=437724 identity max_resid=7.749357e-14 (tol 3.769860e-08) (global)
+elapsed=5.379637e+02 cycle=51 time=3.187500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=51 migrations: face=1735 edge=1 corner=0 search_fail=0 npart=2499187
+[prtcl-debug] rank=0 cycle=51 migrations: face=1729 edge=0 corner=0 search_fail=0 npart=2500813
+[tmunu-debug] cycle=51 ghost images sent==received==51213 (global)
+[tmunu-debug] cycle=51 npart=5000000 cross_level=437580 identity max_resid=1.523226e-13 (tol 3.769861e-08) (global)
+elapsed=5.495691e+02 cycle=52 time=3.250000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=52 migrations: face=1728 edge=0 corner=0 search_fail=0 npart=2500841
+[prtcl-debug] rank=1 cycle=52 migrations: face=1808 edge=1 corner=0 search_fail=0 npart=2499159
+[tmunu-debug] cycle=52 ghost images sent==received==51193 (global)
+[tmunu-debug] cycle=52 npart=5000000 cross_level=437494 identity max_resid=1.116884e-13 (tol 3.769862e-08) (global)
+elapsed=5.611802e+02 cycle=53 time=3.312500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=53 migrations: face=1708 edge=0 corner=0 search_fail=0 npart=2500858
+[prtcl-debug] rank=1 cycle=53 migrations: face=1729 edge=0 corner=0 search_fail=0 npart=2499142
+[tmunu-debug] cycle=53 ghost images sent==received==51185 (global)
+[tmunu-debug] cycle=53 npart=5000000 cross_level=437295 identity max_resid=6.972201e-14 (tol 3.769863e-08) (global)
+elapsed=5.728127e+02 cycle=54 time=3.375000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=54 migrations: face=1778 edge=0 corner=0 search_fail=0 npart=2499152
+[prtcl-debug] rank=0 cycle=54 migrations: face=1738 edge=1 corner=0 search_fail=0 npart=2500848
+[tmunu-debug] cycle=54 ghost images sent==received==51139 (global)
+[tmunu-debug] cycle=54 npart=5000000 cross_level=437212 identity max_resid=4.329870e-14 (tol 3.769865e-08) (global)
+elapsed=5.844821e+02 cycle=55 time=3.437500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=55 migrations: face=1752 edge=0 corner=0 search_fail=0 npart=2500836
+[prtcl-debug] rank=1 cycle=55 migrations: face=1641 edge=1 corner=0 search_fail=0 npart=2499164
+[tmunu-debug] cycle=55 ghost images sent==received==51140 (global)
+[tmunu-debug] cycle=55 npart=5000000 cross_level=437227 identity max_resid=2.242651e-14 (tol 3.769866e-08) (global)
+elapsed=5.961517e+02 cycle=56 time=3.500000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=56 migrations: face=1683 edge=0 corner=0 search_fail=0 npart=2499175
+[prtcl-debug] rank=0 cycle=56 migrations: face=1715 edge=2 corner=0 search_fail=0 npart=2500825
+[tmunu-debug] cycle=56 ghost images sent==received==51137 (global)
+[tmunu-debug] cycle=56 npart=5000000 cross_level=437259 identity max_resid=3.130829e-14 (tol 3.769867e-08) (global)
+elapsed=6.078944e+02 cycle=57 time=3.562500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=57 migrations: face=1751 edge=0 corner=0 search_fail=0 npart=2499183
+[prtcl-debug] rank=0 cycle=57 migrations: face=1648 edge=0 corner=0 search_fail=0 npart=2500817
+[tmunu-debug] cycle=57 ghost images sent==received==51130 (global)
+[tmunu-debug] cycle=57 npart=5000000 cross_level=437261 identity max_resid=7.105427e-15 (tol 3.769869e-08) (global)
+elapsed=6.197165e+02 cycle=58 time=3.625000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=58 migrations: face=1680 edge=0 corner=0 search_fail=0 npart=2499174
+[prtcl-debug] rank=0 cycle=58 migrations: face=1716 edge=1 corner=0 search_fail=0 npart=2500826
+[tmunu-debug] cycle=58 ghost images sent==received==51120 (global)
+[tmunu-debug] cycle=58 npart=5000000 cross_level=437267 identity max_resid=9.402201e-16 (tol 3.769870e-08) (global)
+elapsed=6.315355e+02 cycle=59 time=3.687500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=59 migrations: face=1687 edge=0 corner=0 search_fail=0 npart=2499185
+[prtcl-debug] rank=0 cycle=59 migrations: face=1701 edge=1 corner=0 search_fail=0 npart=2500815
+[tmunu-debug] cycle=59 ghost images sent==received==51104 (global)
+[tmunu-debug] cycle=59 npart=5000000 cross_level=437114 identity max_resid=1.731948e-14 (tol 3.769871e-08) (global)
+elapsed=6.434034e+02 cycle=60 time=3.750000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=60 migrations: face=1748 edge=0 corner=0 search_fail=0 npart=2499192
+[prtcl-debug] rank=0 cycle=60 migrations: face=1733 edge=0 corner=0 search_fail=0 npart=2500808
+[tmunu-debug] cycle=60 ghost images sent==received==51140 (global)
+[tmunu-debug] cycle=60 npart=5000000 cross_level=437085 identity max_resid=5.395684e-14 (tol 3.769873e-08) (global)
+elapsed=6.552987e+02 cycle=61 time=3.812500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=61 migrations: face=1705 edge=0 corner=0 search_fail=0 npart=2500835
+[prtcl-debug] rank=1 cycle=61 migrations: face=1724 edge=0 corner=0 search_fail=0 npart=2499165
+[tmunu-debug] cycle=61 ghost images sent==received==51117 (global)
+[tmunu-debug] cycle=61 npart=5000000 cross_level=436793 identity max_resid=6.150636e-14 (tol 3.769874e-08) (global)
+elapsed=6.672466e+02 cycle=62 time=3.875000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=62 migrations: face=1765 edge=0 corner=0 search_fail=0 npart=2500856
+[prtcl-debug] rank=1 cycle=62 migrations: face=1725 edge=1 corner=0 search_fail=0 npart=2499144
+[tmunu-debug] cycle=62 ghost images sent==received==51119 (global)
+[tmunu-debug] cycle=62 npart=5000000 cross_level=437054 identity max_resid=8.970602e-14 (tol 3.769876e-08) (global)
+elapsed=6.792188e+02 cycle=63 time=3.937500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=63 migrations: face=1699 edge=0 corner=0 search_fail=0 npart=2499129
+[prtcl-debug] rank=0 cycle=63 migrations: face=1718 edge=0 corner=0 search_fail=0 npart=2500871
+[tmunu-debug] cycle=63 ghost images sent==received==51095 (global)
+[tmunu-debug] cycle=63 npart=5000000 cross_level=437152 identity max_resid=3.108624e-14 (tol 3.769877e-08) (global)
+elapsed=6.912003e+02 cycle=64 time=4.000000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=64 migrations: face=1637 edge=1 corner=0 search_fail=0 npart=2500865
+[prtcl-debug] rank=1 cycle=64 migrations: face=1767 edge=0 corner=0 search_fail=0 npart=2499135
+[tmunu-debug] cycle=64 ghost images sent==received==51088 (global)
+[tmunu-debug] cycle=64 npart=5000000 cross_level=436922 identity max_resid=3.597123e-14 (tol 3.769879e-08) (global)
+elapsed=7.032316e+02 cycle=65 time=4.062500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=65 migrations: face=1707 edge=1 corner=0 search_fail=0 npart=2500894
+[prtcl-debug] rank=1 cycle=65 migrations: face=1765 edge=0 corner=0 search_fail=0 npart=2499106
+[tmunu-debug] cycle=65 ghost images sent==received==51069 (global)
+[tmunu-debug] cycle=65 npart=5000000 cross_level=436722 identity max_resid=9.370282e-14 (tol 3.769880e-08) (global)
+elapsed=7.153109e+02 cycle=66 time=4.125000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=66 migrations: face=1755 edge=0 corner=0 search_fail=0 npart=2500889
+[prtcl-debug] rank=1 cycle=66 migrations: face=1750 edge=1 corner=0 search_fail=0 npart=2499111
+[tmunu-debug] cycle=66 ghost images sent==received==51058 (global)
+[tmunu-debug] cycle=66 npart=5000000 cross_level=436666 identity max_resid=5.395684e-14 (tol 3.769882e-08) (global)
+elapsed=7.274014e+02 cycle=67 time=4.187500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=67 migrations: face=1724 edge=0 corner=0 search_fail=0 npart=2499122
+[prtcl-debug] rank=0 cycle=67 migrations: face=1746 edge=1 corner=0 search_fail=0 npart=2500878
+[tmunu-debug] cycle=67 ghost images sent==received==51075 (global)
+[tmunu-debug] cycle=67 npart=5000000 cross_level=436663 identity max_resid=3.352874e-14 (tol 3.769883e-08) (global)
+elapsed=7.395319e+02 cycle=68 time=4.250000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=68 migrations: face=1793 edge=0 corner=0 search_fail=0 npart=2500864
+[prtcl-debug] rank=1 cycle=68 migrations: face=1750 edge=0 corner=0 search_fail=0 npart=2499136
+[tmunu-debug] cycle=68 ghost images sent==received==51103 (global)
+[tmunu-debug] cycle=68 npart=5000000 cross_level=436826 identity max_resid=8.615331e-14 (tol 3.769885e-08) (global)
+elapsed=7.517187e+02 cycle=69 time=4.312500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=69 migrations: face=1772 edge=0 corner=0 search_fail=0 npart=2500870
+[prtcl-debug] rank=1 cycle=69 migrations: face=1716 edge=0 corner=0 search_fail=0 npart=2499130
+[tmunu-debug] cycle=69 ghost images sent==received==51143 (global)
+[tmunu-debug] cycle=69 npart=5000000 cross_level=436860 identity max_resid=1.232348e-13 (tol 3.769886e-08) (global)
+elapsed=7.639223e+02 cycle=70 time=4.375000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=70 migrations: face=1813 edge=1 corner=0 search_fail=0 npart=2500880
+[prtcl-debug] rank=1 cycle=70 migrations: face=1726 edge=0 corner=0 search_fail=0 npart=2499120
+[tmunu-debug] cycle=70 ghost images sent==received==51121 (global)
+[tmunu-debug] cycle=70 npart=5000000 cross_level=436824 identity max_resid=5.394990e-16 (tol 3.769888e-08) (global)
+elapsed=7.761686e+02 cycle=71 time=4.437500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=71 migrations: face=1774 edge=1 corner=0 search_fail=0 npart=2499110
+[prtcl-debug] rank=0 cycle=71 migrations: face=1706 edge=0 corner=0 search_fail=0 npart=2500890
+[tmunu-debug] cycle=71 ghost images sent==received==51115 (global)
+[tmunu-debug] cycle=71 npart=5000000 cross_level=436664 identity max_resid=5.351275e-14 (tol 3.769890e-08) (global)
+elapsed=7.884267e+02 cycle=72 time=4.500000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=72 migrations: face=1777 edge=0 corner=0 search_fail=0 npart=2500903
+[prtcl-debug] rank=1 cycle=72 migrations: face=1817 edge=0 corner=0 search_fail=0 npart=2499097
+[tmunu-debug] cycle=72 ghost images sent==received==51109 (global)
+[tmunu-debug] cycle=72 npart=5000000 cross_level=436514 identity max_resid=2.087219e-14 (tol 3.769891e-08) (global)
+elapsed=8.007274e+02 cycle=73 time=4.562500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=73 migrations: face=1771 edge=1 corner=0 search_fail=0 npart=2500882
+[prtcl-debug] rank=1 cycle=73 migrations: face=1738 edge=0 corner=0 search_fail=0 npart=2499118
+[tmunu-debug] cycle=73 ghost images sent==received==51112 (global)
+[tmunu-debug] cycle=73 npart=5000000 cross_level=436471 identity max_resid=4.396483e-14 (tol 3.769893e-08) (global)
+elapsed=8.130621e+02 cycle=74 time=4.625000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=74 migrations: face=1722 edge=0 corner=0 search_fail=0 npart=2500885
+[prtcl-debug] rank=1 cycle=74 migrations: face=1751 edge=0 corner=0 search_fail=0 npart=2499115
+[tmunu-debug] cycle=74 ghost images sent==received==51106 (global)
+[tmunu-debug] cycle=74 npart=5000000 cross_level=436307 identity max_resid=5.906386e-14 (tol 3.769895e-08) (global)
+elapsed=8.254215e+02 cycle=75 time=4.687500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=75 migrations: face=1773 edge=1 corner=0 search_fail=0 npart=2500874
+[prtcl-debug] rank=1 cycle=75 migrations: face=1677 edge=0 corner=0 search_fail=0 npart=2499126
+[tmunu-debug] cycle=75 ghost images sent==received==51100 (global)
+[tmunu-debug] cycle=75 npart=5000000 cross_level=436438 identity max_resid=3.530509e-14 (tol 3.769897e-08) (global)
+elapsed=8.378620e+02 cycle=76 time=4.750000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=76 migrations: face=1760 edge=0 corner=0 search_fail=0 npart=2500889
+[prtcl-debug] rank=1 cycle=76 migrations: face=1761 edge=0 corner=0 search_fail=0 npart=2499111
+[tmunu-debug] cycle=76 ghost images sent==received==51084 (global)
+[tmunu-debug] cycle=76 npart=5000000 cross_level=436381 identity max_resid=2.065015e-14 (tol 3.769899e-08) (global)
+elapsed=8.503613e+02 cycle=77 time=4.812500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=77 migrations: face=1723 edge=0 corner=0 search_fail=0 npart=2500913
+[prtcl-debug] rank=1 cycle=77 migrations: face=1750 edge=0 corner=0 search_fail=0 npart=2499087
+[tmunu-debug] cycle=77 ghost images sent==received==51099 (global)
+[tmunu-debug] cycle=77 npart=5000000 cross_level=436311 identity max_resid=1.465494e-14 (tol 3.769900e-08) (global)
+elapsed=8.627872e+02 cycle=78 time=4.875000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=78 migrations: face=1735 edge=0 corner=0 search_fail=0 npart=2500906
+[prtcl-debug] rank=1 cycle=78 migrations: face=1714 edge=0 corner=0 search_fail=0 npart=2499094
+[tmunu-debug] cycle=78 ghost images sent==received==51122 (global)
+[tmunu-debug] cycle=78 npart=5000000 cross_level=436355 identity max_resid=1.597680e-15 (tol 3.769902e-08) (global)
+elapsed=8.752787e+02 cycle=79 time=4.937500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=79 migrations: face=1810 edge=1 corner=0 search_fail=0 npart=2500884
+[prtcl-debug] rank=1 cycle=79 migrations: face=1794 edge=0 corner=0 search_fail=0 npart=2499116
+[tmunu-debug] cycle=79 ghost images sent==received==51115 (global)
+[tmunu-debug] cycle=79 npart=5000000 cross_level=436367 identity max_resid=5.551115e-14 (tol 3.769904e-08) (global)
+elapsed=8.877847e+02 cycle=80 time=5.000000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=80 migrations: face=1798 edge=0 corner=0 search_fail=0 npart=2500900
+[prtcl-debug] rank=1 cycle=80 migrations: face=1842 edge=1 corner=0 search_fail=0 npart=2499100
+[tmunu-debug] cycle=80 ghost images sent==received==51098 (global)
+[tmunu-debug] cycle=80 npart=5000000 cross_level=436224 identity max_resid=1.301181e-13 (tol 3.769906e-08) (global)
+elapsed=9.003625e+02 cycle=81 time=5.062500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=81 migrations: face=1760 edge=1 corner=0 search_fail=0 npart=2500902
+[prtcl-debug] rank=1 cycle=81 migrations: face=1806 edge=1 corner=0 search_fail=0 npart=2499098
+[tmunu-debug] cycle=81 ghost images sent==received==51091 (global)
+[tmunu-debug] cycle=81 npart=5000000 cross_level=436315 identity max_resid=1.345590e-13 (tol 3.769908e-08) (global)
+elapsed=9.129943e+02 cycle=82 time=5.125000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=82 migrations: face=1710 edge=0 corner=0 search_fail=0 npart=2500914
+[prtcl-debug] rank=1 cycle=82 migrations: face=1823 edge=0 corner=0 search_fail=0 npart=2499086
+[tmunu-debug] cycle=82 ghost images sent==received==51078 (global)
+[tmunu-debug] cycle=82 npart=5000000 cross_level=436263 identity max_resid=5.417888e-14 (tol 3.769910e-08) (global)
+elapsed=9.256218e+02 cycle=83 time=5.187500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=83 migrations: face=1758 edge=2 corner=0 search_fail=0 npart=2500920
+[prtcl-debug] rank=1 cycle=83 migrations: face=1745 edge=1 corner=0 search_fail=0 npart=2499080
+[tmunu-debug] cycle=83 ghost images sent==received==51085 (global)
+[tmunu-debug] cycle=83 npart=5000000 cross_level=436363 identity max_resid=1.356693e-13 (tol 3.769912e-08) (global)
+elapsed=9.382586e+02 cycle=84 time=5.250000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=84 migrations: face=1792 edge=0 corner=0 search_fail=0 npart=2500911
+[prtcl-debug] rank=1 cycle=84 migrations: face=1764 edge=0 corner=0 search_fail=0 npart=2499089
+[tmunu-debug] cycle=84 ghost images sent==received==51063 (global)
+[tmunu-debug] cycle=84 npart=5000000 cross_level=436510 identity max_resid=8.459899e-14 (tol 3.769914e-08) (global)
+elapsed=9.508963e+02 cycle=85 time=5.312500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=85 migrations: face=1782 edge=0 corner=0 search_fail=0 npart=2500886
+[prtcl-debug] rank=1 cycle=85 migrations: face=1760 edge=0 corner=0 search_fail=0 npart=2499114
+[tmunu-debug] cycle=85 ghost images sent==received==51016 (global)
+[tmunu-debug] cycle=85 npart=5000000 cross_level=436500 identity max_resid=6.172840e-14 (tol 3.769916e-08) (global)
+elapsed=9.635949e+02 cycle=86 time=5.375000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=86 migrations: face=1795 edge=0 corner=0 search_fail=0 npart=2499115
+[prtcl-debug] rank=0 cycle=86 migrations: face=1694 edge=0 corner=0 search_fail=0 npart=2500885
+[tmunu-debug] cycle=86 ghost images sent==received==51039 (global)
+[tmunu-debug] cycle=86 npart=5000000 cross_level=436556 identity max_resid=2.375877e-14 (tol 3.769918e-08) (global)
+elapsed=9.763024e+02 cycle=87 time=5.437500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=87 migrations: face=1694 edge=1 corner=0 search_fail=0 npart=2499127
+[prtcl-debug] rank=0 cycle=87 migrations: face=1721 edge=0 corner=0 search_fail=0 npart=2500873
+[tmunu-debug] cycle=87 ghost images sent==received==51017 (global)
+[tmunu-debug] cycle=87 npart=5000000 cross_level=436856 identity max_resid=2.708944e-14 (tol 3.769920e-08) (global)
+elapsed=9.890938e+02 cycle=88 time=5.500000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=88 migrations: face=1714 edge=0 corner=0 search_fail=0 npart=2499139
+[prtcl-debug] rank=0 cycle=88 migrations: face=1783 edge=2 corner=0 search_fail=0 npart=2500861
+[tmunu-debug] cycle=88 ghost images sent==received==51026 (global)
+[tmunu-debug] cycle=88 npart=5000000 cross_level=436847 identity max_resid=9.103829e-14 (tol 3.769922e-08) (global)
+elapsed=1.001851e+03 cycle=89 time=5.562500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=89 migrations: face=1695 edge=0 corner=0 search_fail=0 npart=2500871
+[prtcl-debug] rank=1 cycle=89 migrations: face=1794 edge=0 corner=0 search_fail=0 npart=2499129
+[tmunu-debug] cycle=89 ghost images sent==received==51018 (global)
+[tmunu-debug] cycle=89 npart=5000000 cross_level=436848 identity max_resid=1.265654e-14 (tol 3.769925e-08) (global)
+elapsed=1.014639e+03 cycle=90 time=5.625000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=90 migrations: face=1720 edge=0 corner=0 search_fail=0 npart=2500868
+[prtcl-debug] rank=1 cycle=90 migrations: face=1687 edge=0 corner=0 search_fail=0 npart=2499132
+[tmunu-debug] cycle=90 ghost images sent==received==51046 (global)
+[tmunu-debug] cycle=90 npart=5000000 cross_level=436739 identity max_resid=5.329071e-15 (tol 3.769927e-08) (global)
+elapsed=1.027510e+03 cycle=91 time=5.687500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=91 migrations: face=1756 edge=1 corner=0 search_fail=0 npart=2499136
+[prtcl-debug] rank=0 cycle=91 migrations: face=1816 edge=0 corner=0 search_fail=0 npart=2500864
+[tmunu-debug] cycle=91 ghost images sent==received==51040 (global)
+[tmunu-debug] cycle=91 npart=5000000 cross_level=436607 identity max_resid=1.085798e-13 (tol 3.769929e-08) (global)
+elapsed=1.040353e+03 cycle=92 time=5.750000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=92 migrations: face=1780 edge=0 corner=0 search_fail=0 npart=2500878
+[prtcl-debug] rank=1 cycle=92 migrations: face=1803 edge=0 corner=0 search_fail=0 npart=2499122
+[tmunu-debug] cycle=92 ghost images sent==received==50989 (global)
+[tmunu-debug] cycle=92 npart=5000000 cross_level=436626 identity max_resid=6.217249e-15 (tol 3.769931e-08) (global)
+elapsed=1.053233e+03 cycle=93 time=5.812500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=93 migrations: face=1805 edge=0 corner=0 search_fail=0 npart=2500888
+[prtcl-debug] rank=1 cycle=93 migrations: face=1825 edge=0 corner=0 search_fail=0 npart=2499112
+[tmunu-debug] cycle=93 ghost images sent==received==50988 (global)
+[tmunu-debug] cycle=93 npart=5000000 cross_level=436473 identity max_resid=1.228184e-15 (tol 3.769933e-08) (global)
+elapsed=1.066157e+03 cycle=94 time=5.875000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=94 migrations: face=1740 edge=0 corner=0 search_fail=0 npart=2499132
+[prtcl-debug] rank=0 cycle=94 migrations: face=1808 edge=1 corner=0 search_fail=0 npart=2500868
+[tmunu-debug] cycle=94 ghost images sent==received==50998 (global)
+[tmunu-debug] cycle=94 npart=5000000 cross_level=436347 identity max_resid=1.070255e-13 (tol 3.769936e-08) (global)
+elapsed=1.079122e+03 cycle=95 time=5.937500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=95 migrations: face=1829 edge=1 corner=0 search_fail=0 npart=2500868
+[prtcl-debug] rank=1 cycle=95 migrations: face=1720 edge=0 corner=0 search_fail=0 npart=2499132
+[tmunu-debug] cycle=95 ghost images sent==received==50985 (global)
+[tmunu-debug] cycle=95 npart=5000000 cross_level=436424 identity max_resid=1.094680e-13 (tol 3.769938e-08) (global)
+elapsed=1.092120e+03 cycle=96 time=6.000000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=96 migrations: face=1729 edge=1 corner=0 search_fail=0 npart=2499143
+[prtcl-debug] rank=0 cycle=96 migrations: face=1788 edge=0 corner=0 search_fail=0 npart=2500857
+[tmunu-debug] cycle=96 ghost images sent==received==50962 (global)
+[tmunu-debug] cycle=96 npart=5000000 cross_level=436667 identity max_resid=7.793766e-14 (tol 3.769940e-08) (global)
+elapsed=1.105163e+03 cycle=97 time=6.062500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=97 migrations: face=1777 edge=0 corner=0 search_fail=0 npart=2500858
+[prtcl-debug] rank=1 cycle=97 migrations: face=1780 edge=1 corner=0 search_fail=0 npart=2499142
+[tmunu-debug] cycle=97 ghost images sent==received==50935 (global)
+[tmunu-debug] cycle=97 npart=5000000 cross_level=436772 identity max_resid=2.287059e-14 (tol 3.769943e-08) (global)
+elapsed=1.118223e+03 cycle=98 time=6.125000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=98 migrations: face=1831 edge=1 corner=0 search_fail=0 npart=2500860
+[prtcl-debug] rank=1 cycle=98 migrations: face=1742 edge=0 corner=0 search_fail=0 npart=2499140
+[tmunu-debug] cycle=98 ghost images sent==received==50941 (global)
+[tmunu-debug] cycle=98 npart=5000000 cross_level=436851 identity max_resid=2.109424e-14 (tol 3.769945e-08) (global)
+elapsed=1.131252e+03 cycle=99 time=6.187500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=99 migrations: face=1773 edge=0 corner=0 search_fail=0 npart=2500862
+[prtcl-debug] rank=1 cycle=99 migrations: face=1857 edge=2 corner=0 search_fail=0 npart=2499138
+[tmunu-debug] cycle=99 ghost images sent==received==50960 (global)
+[tmunu-debug] cycle=99 npart=5000000 cross_level=437120 identity max_resid=9.015011e-14 (tol 3.769948e-08) (global)
+elapsed=1.144342e+03 cycle=100 time=6.250000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=100 migrations: face=1792 edge=0 corner=0 search_fail=0 npart=2499112
+[prtcl-debug] rank=0 cycle=100 migrations: face=1669 edge=0 corner=0 search_fail=0 npart=2500888
+[tmunu-debug] cycle=100 ghost images sent==received==50988 (global)
+[tmunu-debug] cycle=100 npart=5000000 cross_level=436827 identity max_resid=8.260059e-14 (tol 3.769950e-08) (global)
+elapsed=1.157428e+03 cycle=101 time=6.312500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=101 migrations: face=1790 edge=0 corner=0 search_fail=0 npart=2499108
+[prtcl-debug] rank=0 cycle=101 migrations: face=1868 edge=0 corner=0 search_fail=0 npart=2500892
+[tmunu-debug] cycle=101 ghost images sent==received==50991 (global)
+[tmunu-debug] cycle=101 npart=5000000 cross_level=436692 identity max_resid=2.109424e-14 (tol 3.769953e-08) (global)
+elapsed=1.170577e+03 cycle=102 time=6.375000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=102 migrations: face=1795 edge=0 corner=0 search_fail=0 npart=2499113
+[prtcl-debug] rank=0 cycle=102 migrations: face=1765 edge=0 corner=0 search_fail=0 npart=2500887
+[tmunu-debug] cycle=102 ghost images sent==received==50983 (global)
+[tmunu-debug] cycle=102 npart=5000000 cross_level=436852 identity max_resid=1.820766e-14 (tol 3.769955e-08) (global)
+elapsed=1.183715e+03 cycle=103 time=6.437500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=103 migrations: face=1778 edge=0 corner=0 search_fail=0 npart=2499095
+[prtcl-debug] rank=0 cycle=103 migrations: face=1761 edge=1 corner=0 search_fail=0 npart=2500905
+[tmunu-debug] cycle=103 ghost images sent==received==50962 (global)
+[tmunu-debug] cycle=103 npart=5000000 cross_level=436936 identity max_resid=1.754152e-14 (tol 3.769958e-08) (global)
+elapsed=1.196888e+03 cycle=104 time=6.500000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=104 migrations: face=1781 edge=1 corner=0 search_fail=0 npart=2500915
+[prtcl-debug] rank=1 cycle=104 migrations: face=1694 edge=0 corner=0 search_fail=0 npart=2499085
+[tmunu-debug] cycle=104 ghost images sent==received==50958 (global)
+[tmunu-debug] cycle=104 npart=5000000 cross_level=437081 identity max_resid=5.551115e-15 (tol 3.769960e-08) (global)
+elapsed=1.210067e+03 cycle=105 time=6.562500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=105 migrations: face=1797 edge=0 corner=0 search_fail=0 npart=2499071
+[prtcl-debug] rank=0 cycle=105 migrations: face=1749 edge=0 corner=0 search_fail=0 npart=2500929
+[tmunu-debug] cycle=105 ghost images sent==received==50961 (global)
+[tmunu-debug] cycle=105 npart=5000000 cross_level=436910 identity max_resid=7.283063e-14 (tol 3.769963e-08) (global)
+elapsed=1.223308e+03 cycle=106 time=6.625000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=106 migrations: face=1786 edge=1 corner=0 search_fail=0 npart=2500948
+[prtcl-debug] rank=1 cycle=106 migrations: face=1811 edge=0 corner=0 search_fail=0 npart=2499052
+[tmunu-debug] cycle=106 ghost images sent==received==50968 (global)
+[tmunu-debug] cycle=106 npart=5000000 cross_level=437017 identity max_resid=4.574119e-14 (tol 3.769965e-08) (global)
+elapsed=1.236559e+03 cycle=107 time=6.687500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=107 migrations: face=1828 edge=1 corner=0 search_fail=0 npart=2500935
+[prtcl-debug] rank=1 cycle=107 migrations: face=1745 edge=2 corner=0 search_fail=0 npart=2499065
+[tmunu-debug] cycle=107 ghost images sent==received==50951 (global)
+[tmunu-debug] cycle=107 npart=5000000 cross_level=436840 identity max_resid=2.464695e-14 (tol 3.769968e-08) (global)
+elapsed=1.249814e+03 cycle=108 time=6.750000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=108 migrations: face=1764 edge=0 corner=0 search_fail=0 npart=2500957
+[prtcl-debug] rank=1 cycle=108 migrations: face=1826 edge=0 corner=0 search_fail=0 npart=2499043
+[tmunu-debug] cycle=108 ghost images sent==received==51005 (global)
+[tmunu-debug] cycle=108 npart=5000000 cross_level=436573 identity max_resid=5.639933e-14 (tol 3.769971e-08) (global)
+elapsed=1.263096e+03 cycle=109 time=6.812500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=109 migrations: face=1805 edge=1 corner=0 search_fail=0 npart=2499039
+[prtcl-debug] rank=0 cycle=109 migrations: face=1819 edge=0 corner=0 search_fail=0 npart=2500961
+[tmunu-debug] cycle=109 ghost images sent==received==51039 (global)
+[tmunu-debug] cycle=109 npart=5000000 cross_level=436613 identity max_resid=5.084821e-14 (tol 3.769973e-08) (global)
+elapsed=1.276386e+03 cycle=110 time=6.875000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=110 migrations: face=1784 edge=0 corner=0 search_fail=0 npart=2499023
+[prtcl-debug] rank=0 cycle=110 migrations: face=1756 edge=0 corner=0 search_fail=0 npart=2500977
+[tmunu-debug] cycle=110 ghost images sent==received==51052 (global)
+[tmunu-debug] cycle=110 npart=5000000 cross_level=436573 identity max_resid=2.264855e-14 (tol 3.769976e-08) (global)
+elapsed=1.289754e+03 cycle=111 time=6.937500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=111 migrations: face=1737 edge=0 corner=0 search_fail=0 npart=2500987
+[prtcl-debug] rank=1 cycle=111 migrations: face=1841 edge=0 corner=0 search_fail=0 npart=2499013
+[tmunu-debug] cycle=111 ghost images sent==received==51044 (global)
+[tmunu-debug] cycle=111 npart=5000000 cross_level=436676 identity max_resid=8.282264e-14 (tol 3.769979e-08) (global)
+elapsed=1.303152e+03 cycle=112 time=7.000000e-01 dt=6.250000e-03
+### WARNING gr_boris: fixed-point did not converge, forward-Euler fallback used | tag=3253791 gid=266 x=(-3.117130e+00, 4.119044e-02,-1.378857e-01) u_i=(-3.742251e-02,-1.512159e-01, 2.942617e-02) dt=6.250000e-03
+### WARNING in /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/code/src/particles/gr_boris.cpp: gr_boris implicit geodesic substep did not converge for the first time this run (rank 0, cycle 112, dt = 6.250000e-03).
+    The step falls back to forward Euler, which is a documented first-order fallback, not a crash.
+    It is expected at large CFL and disappears as dt is reduced; if it persists, reduce <time> cfl_number.
+    Per-particle detail is printed for at most 3 particles per cycle; every failure is counted in the per-cycle summary below.
+### gr_boris non-convergence: rank 0 cycle 112: 1 of 2500987 particles fell back to forward Euler (rank total 1)
+[prtcl-debug] rank=0 cycle=112 migrations: face=1784 edge=0 corner=0 search_fail=0 npart=2500971
+[prtcl-debug] rank=1 cycle=112 migrations: face=1885 edge=0 corner=0 search_fail=0 npart=2499029
+[tmunu-debug] cycle=112 ghost images sent==received==51023 (global)
+[tmunu-debug] cycle=112 npart=5000000 cross_level=436693 identity max_resid=4.884981e-14 (tol 3.769982e-08) (global)
+elapsed=1.316545e+03 cycle=113 time=7.062500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=113 migrations: face=1789 edge=0 corner=0 search_fail=0 npart=2499038
+[prtcl-debug] rank=0 cycle=113 migrations: face=1699 edge=1 corner=0 search_fail=0 npart=2500962
+[tmunu-debug] cycle=113 ghost images sent==received==51027 (global)
+[tmunu-debug] cycle=113 npart=5000000 cross_level=436767 identity max_resid=6.061818e-14 (tol 3.769984e-08) (global)
+elapsed=1.329950e+03 cycle=114 time=7.125000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=114 migrations: face=1851 edge=0 corner=0 search_fail=0 npart=2499037
+[prtcl-debug] rank=0 cycle=114 migrations: face=1774 edge=0 corner=0 search_fail=0 npart=2500963
+[tmunu-debug] cycle=114 ghost images sent==received==51038 (global)
+[tmunu-debug] cycle=114 npart=5000000 cross_level=436680 identity max_resid=5.329071e-14 (tol 3.769987e-08) (global)
+elapsed=1.343413e+03 cycle=115 time=7.187500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=115 migrations: face=1779 edge=0 corner=0 search_fail=0 npart=2500948
+[prtcl-debug] rank=1 cycle=115 migrations: face=1775 edge=1 corner=0 search_fail=0 npart=2499052
+[tmunu-debug] cycle=115 ghost images sent==received==51016 (global)
+[tmunu-debug] cycle=115 npart=5000000 cross_level=436584 identity max_resid=6.017409e-14 (tol 3.769990e-08) (global)
+elapsed=1.356886e+03 cycle=116 time=7.250000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=116 migrations: face=1816 edge=0 corner=0 search_fail=0 npart=2499040
+[prtcl-debug] rank=0 cycle=116 migrations: face=1838 edge=1 corner=0 search_fail=0 npart=2500960
+[tmunu-debug] cycle=116 ghost images sent==received==51034 (global)
+[tmunu-debug] cycle=116 npart=5000000 cross_level=436627 identity max_resid=1.731948e-14 (tol 3.769993e-08) (global)
+elapsed=1.370351e+03 cycle=117 time=7.312500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=117 migrations: face=1877 edge=1 corner=0 search_fail=0 npart=2499031
+[prtcl-debug] rank=0 cycle=117 migrations: face=1822 edge=0 corner=0 search_fail=0 npart=2500969
+[tmunu-debug] cycle=117 ghost images sent==received==51029 (global)
+[tmunu-debug] cycle=117 npart=5000000 cross_level=436866 identity max_resid=4.973799e-14 (tol 3.769996e-08) (global)
+elapsed=1.383840e+03 cycle=118 time=7.375000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=118 migrations: face=1844 edge=0 corner=0 search_fail=0 npart=2500967
+[prtcl-debug] rank=1 cycle=118 migrations: face=1764 edge=1 corner=0 search_fail=0 npart=2499033
+[tmunu-debug] cycle=118 ghost images sent==received==51016 (global)
+[tmunu-debug] cycle=118 npart=5000000 cross_level=436618 identity max_resid=3.508305e-14 (tol 3.769999e-08) (global)
+elapsed=1.397350e+03 cycle=119 time=7.437500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=119 migrations: face=1783 edge=0 corner=0 search_fail=0 npart=2499043
+[prtcl-debug] rank=0 cycle=119 migrations: face=1767 edge=0 corner=0 search_fail=0 npart=2500957
+[tmunu-debug] cycle=119 ghost images sent==received==51034 (global)
+[tmunu-debug] cycle=119 npart=5000000 cross_level=436379 identity max_resid=9.459100e-14 (tol 3.770002e-08) (global)
+elapsed=1.410901e+03 cycle=120 time=7.500000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=120 migrations: face=1803 edge=0 corner=0 search_fail=0 npart=2500962
+[prtcl-debug] rank=1 cycle=120 migrations: face=1791 edge=0 corner=0 search_fail=0 npart=2499038
+[tmunu-debug] cycle=120 ghost images sent==received==51022 (global)
+[tmunu-debug] cycle=120 npart=5000000 cross_level=436456 identity max_resid=4.729550e-14 (tol 3.770005e-08) (global)
+elapsed=1.424481e+03 cycle=121 time=7.562500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=121 migrations: face=1794 edge=1 corner=0 search_fail=0 npart=2500972
+[prtcl-debug] rank=1 cycle=121 migrations: face=1810 edge=1 corner=0 search_fail=0 npart=2499028
+[tmunu-debug] cycle=121 ghost images sent==received==51054 (global)
+[tmunu-debug] cycle=121 npart=5000000 cross_level=436252 identity max_resid=7.016610e-14 (tol 3.770008e-08) (global)
+elapsed=1.438073e+03 cycle=122 time=7.625000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=122 migrations: face=1787 edge=1 corner=0 search_fail=0 npart=2500971
+[prtcl-debug] rank=1 cycle=122 migrations: face=1816 edge=1 corner=0 search_fail=0 npart=2499029
+[tmunu-debug] cycle=122 ghost images sent==received==51094 (global)
+[tmunu-debug] cycle=122 npart=5000000 cross_level=436448 identity max_resid=3.996803e-14 (tol 3.770011e-08) (global)
+elapsed=1.451669e+03 cycle=123 time=7.687500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=123 migrations: face=1791 edge=0 corner=0 search_fail=0 npart=2500970
+[prtcl-debug] rank=1 cycle=123 migrations: face=1789 edge=0 corner=0 search_fail=0 npart=2499030
+[tmunu-debug] cycle=123 ghost images sent==received==51109 (global)
+[tmunu-debug] cycle=123 npart=5000000 cross_level=436507 identity max_resid=3.197442e-14 (tol 3.770014e-08) (global)
+elapsed=1.465310e+03 cycle=124 time=7.750000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=124 migrations: face=1823 edge=0 corner=0 search_fail=0 npart=2500956
+[prtcl-debug] rank=1 cycle=124 migrations: face=1753 edge=0 corner=0 search_fail=0 npart=2499044
+[tmunu-debug] cycle=124 ghost images sent==received==51104 (global)
+[tmunu-debug] cycle=124 npart=5000000 cross_level=436607 identity max_resid=1.358913e-13 (tol 3.770017e-08) (global)
+elapsed=1.478979e+03 cycle=125 time=7.812500e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=125 migrations: face=1853 edge=0 corner=0 search_fail=0 npart=2500970
+[prtcl-debug] rank=1 cycle=125 migrations: face=1833 edge=0 corner=0 search_fail=0 npart=2499030
+[tmunu-debug] cycle=125 ghost images sent==received==51118 (global)
+[tmunu-debug] cycle=125 npart=5000000 cross_level=436828 identity max_resid=1.030287e-13 (tol 3.770021e-08) (global)
+elapsed=1.492665e+03 cycle=126 time=7.875000e-01 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=126 migrations: face=1785 edge=0 corner=0 search_fail=0 npart=2500976
+[prtcl-debug] rank=1 cycle=126 migrations: face=1829 edge=1 corner=0 search_fail=0 npart=2499024
+[tmunu-debug] cycle=126 ghost images sent==received==51138 (global)
+[tmunu-debug] cycle=126 npart=5000000 cross_level=436687 identity max_resid=2.353673e-14 (tol 3.770024e-08) (global)
+elapsed=1.506388e+03 cycle=127 time=7.937500e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=127 migrations: face=1851 edge=0 corner=0 search_fail=0 npart=2499000
+[prtcl-debug] rank=0 cycle=127 migrations: face=1732 edge=1 corner=0 search_fail=0 npart=2501000
+[tmunu-debug] cycle=127 ghost images sent==received==51119 (global)
+[tmunu-debug] cycle=127 npart=5000000 cross_level=436606 identity max_resid=9.170442e-14 (tol 3.770027e-08) (global)
+elapsed=1.520121e+03 cycle=128 time=8.000000e-01 dt=6.250000e-03
+[prtcl-debug] rank=1 cycle=128 migrations: face=1837 edge=0 corner=0 search_fail=0 npart=2499016
+[prtcl-debug] rank=0 cycle=128 migrations: face=1849 edge=1 corner=0 search_fail=0 npart=2500984
+[tmunu-debug] cycle=128 ghost images sent==received==51161 (global)
+[tmunu-debug] cycle=128 npart=5000000 cross_level=436584 identity max_resid=4.041212e-14 (tol 3.770030e-08) (global)
+elapsed=1.548728e+03 cycle=129 time=8.062500e-01 dt=6.250000e-03
+
+Terminating on cycle limit
+time=8.062500e-01 cycle=129
+tlim=4.000000e+02 nlim=129
+
+particles: initial=5000000 final=5000000 destroyed: exit=0 sphere=0 lapse=0 horizon=0  [conservation OK]
+
+MeshBlock-cycles = 101376
+cpu time used  = 1.534039e+03
+zone-cycles/cpu_second = 2.165453e+06
+particle-updates/cpu_second = 4.171993e+05

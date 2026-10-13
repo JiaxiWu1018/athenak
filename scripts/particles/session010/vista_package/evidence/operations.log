@@ -1,0 +1,43 @@
+test_checkpoint_progress_mismatch_is_rejected (test_session010.ArchiveIntegrity.test_checkpoint_progress_mismatch_is_rejected) ... ok
+test_manifest_cannot_escape_destination (test_session010.ArchiveIntegrity.test_manifest_cannot_escape_destination) ... ok
+test_relocated_inventory_and_native_progress_agree (test_session010.ArchiveIntegrity.test_relocated_inventory_and_native_progress_agree) ... ok
+test_same_size_corruption_is_rejected (test_session010.ArchiveIntegrity.test_same_size_corruption_is_rejected) ... ok
+test_controller_finalizes_clean_memory_stop_before_terminal_return (test_session010.IntegratedStop.test_controller_finalizes_clean_memory_stop_before_terminal_return) ... ok
+test_terminal_state_cannot_release_another_segment (test_session010.IntegratedStop.test_terminal_state_cannot_release_another_segment) ... ok
+test_actual_slurm_accounting_not_requested_wall (test_session010.Stops.test_actual_slurm_accounting_not_requested_wall) ... ok
+test_duplicate_accounting_rejected (test_session010.Stops.test_duplicate_accounting_rejected) ... ok
+test_invalid_checkpoint_cannot_promote (test_session010.Stops.test_invalid_checkpoint_cannot_promote) ... ok
+test_notifications_in_every_submission (test_session010.Stops.test_notifications_in_every_submission) ... ok
+test_regression_rejected (test_session010.Stops.test_regression_rejected) ... ok
+test_resource_stop_promotes_final_checkpoint (test_session010.Stops.test_resource_stop_promotes_final_checkpoint) ... ok
+test_user_stop_keeps_verified_progress (test_session010.Stops.test_user_stop_keeps_verified_progress) ... ok
+test_config_and_prepare_only_submits_nothing (test_workflow.ConfigAndSubmission.test_config_and_prepare_only_submits_nothing) ... ok
+test_full_chain_dependencies_and_duplicate_prevention (test_workflow.ConfigAndSubmission.test_full_chain_dependencies_and_duplicate_prevention) ... ok
+test_gate_binding_pass_and_tamper_fail (test_workflow.ConfigAndSubmission.test_gate_binding_pass_and_tamper_fail) ... ok
+test_interrupted_state_update_recovers_from_sacct (test_workflow.ConfigAndSubmission.test_interrupted_state_update_recovers_from_sacct) ... ok
+test_restart_config_initializes_progress_and_checks_checkpoint (test_workflow.ConfigAndSubmission.test_restart_config_initializes_progress_and_checks_checkpoint) ... ok
+test_site_wrapper_output_yields_one_numeric_job_id (test_workflow.ConfigAndSubmission.test_site_wrapper_output_yields_one_numeric_job_id) ... ok
+test_stops_are_sticky_and_cancel_only_recorded_jobs (test_workflow.ConfigAndSubmission.test_stops_are_sticky_and_cancel_only_recorded_jobs) ... ok
+test_authorized_early_stop_only_when_enabled (test_workflow.Decisions.test_authorized_early_stop_only_when_enabled) ... ok
+test_caps (test_workflow.Decisions.test_caps) ... ok
+test_checkpoint_no_progress_and_storage (test_workflow.Decisions.test_checkpoint_no_progress_and_storage) ... ok
+test_continue_and_physical_endpoint (test_workflow.Decisions.test_continue_and_physical_endpoint) ... ok
+test_infrastructure_retry_and_ambiguous_exit (test_workflow.Decisions.test_infrastructure_retry_and_ambiguous_exit) ... ok
+test_numerical_and_diagnostic_failures (test_workflow.Decisions.test_numerical_and_diagnostic_failures) ... ok
+test_sticky_stops (test_workflow.Decisions.test_sticky_stops) ... ok
+test_common_horizon_requires_persistence_time_and_enclosure (test_workflow.HorizonAndCheckpointFixtures.test_common_horizon_requires_persistence_time_and_enclosure) ... ok
+test_truncated_checkpoint_is_rejected (test_workflow.HorizonAndCheckpointFixtures.test_truncated_checkpoint_is_rejected) ... ok
+test_inspector_accepts_canonical_and_legacy_result_paths (test_workflow.SourceContracts.test_inspector_accepts_canonical_and_legacy_result_paths) ... ok
+test_quicktest_requires_all_participating_node_memory (test_workflow.SourceContracts.test_quicktest_requires_all_participating_node_memory) ... ok
+test_restart_reader_accepts_large_bounded_parameter_headers (test_workflow.SourceContracts.test_restart_reader_accepts_large_bounded_parameter_headers) ... ok
+test_restart_state_is_non_authoritative_until_live_acceptance (test_workflow.SourceContracts.test_restart_state_is_non_authoritative_until_live_acceptance) ... ok
+test_segment_outputs_and_result_are_kept_under_segment (test_workflow.SourceContracts.test_segment_outputs_and_result_are_kept_under_segment) ... ok
+test_three_components_and_clean_stop_are_wired (test_workflow.SourceContracts.test_three_components_and_clean_stop_are_wired) ... ok
+
+----------------------------------------------------------------------
+Ran 35 tests in 0.095s
+
+OK
+{"decision": "resource_limit", "reason": "memory guard requested a clean stop"}
+GRACEFUL STOP recorded for test-campaign; state=/tmp/tmp_fkiu5n2/work/control/state.json
+EMERGENCY CANCEL recorded for test-campaign; state=/tmp/tmp_fkiu5n2/work/control/state.json

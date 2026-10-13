@@ -1,0 +1,36 @@
+{
+  "prior_root": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12773",
+  "reference": {
+    "path": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12773/reference/rst/s10_validation_only.00001.rst",
+    "bytes": 10537783907,
+    "header_bytes": 167719,
+    "time": 0.0125,
+    "cycle": 2,
+    "dt": 0.00625,
+    "blocks": 792,
+    "particles": 5000000,
+    "removed": [
+      0,
+      0,
+      0
+    ],
+    "sha256": "626f2c5acff942cb744c761825a778c9be7a34d4b84977de781291646db17c7d"
+  },
+  "baseline_seed": {
+    "path": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12773/seed/rst/s10_validation_only.00001.rst",
+    "bytes": 10537783852,
+    "header_bytes": 167664,
+    "time": 0.00625,
+    "cycle": 1,
+    "dt": 0.00625,
+    "blocks": 792,
+    "particles": 5000000,
+    "removed": [
+      0,
+      0,
+      0
+    ],
+    "sha256": "1e541ea3055b7d0eed2bc51e6853971bbd4f93740bb366806599a14625173fb9"
+  },
+  "reason": "Repaired SetReal precision; reuse accepted field/particle/reference evidence."
+}

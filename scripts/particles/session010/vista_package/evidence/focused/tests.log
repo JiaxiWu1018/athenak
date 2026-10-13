@@ -1,0 +1,9 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.9, pytest-8.3.5, pluggy-1.6.0 -- /home/jiaxiwu/miniconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013
+collecting ... collected 1 item
+
+../../../../code/tst/test_suite/particles/test_part_feedback_amr_mpicpu.py::test_feedback_amr_is_rank_invariant PASSED [100%]
+
+======================== 1 passed in 180.79s (0:03:00) =========================

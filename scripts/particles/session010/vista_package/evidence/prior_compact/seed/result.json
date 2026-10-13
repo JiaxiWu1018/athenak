@@ -1,0 +1,21 @@
+{
+  "exit_code": 0,
+  "elapsed_seconds": 113.4510087966919,
+  "checkpoint": {
+    "path": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12773/seed/rst/s10_validation_only.00001.rst",
+    "bytes": 10537783852,
+    "header_bytes": 167664,
+    "time": 0.00625,
+    "cycle": 1,
+    "dt": 0.00625,
+    "blocks": 792,
+    "particles": 5000000,
+    "removed": [
+      0,
+      0,
+      0
+    ],
+    "sha256": "1e541ea3055b7d0eed2bc51e6853971bbd4f93740bb366806599a14625173fb9"
+  },
+  "log_sha256": "00006d124045562b27ac9df40d0fd9032ab02a6feea8e27f1c6fd9c898c958a0"
+}

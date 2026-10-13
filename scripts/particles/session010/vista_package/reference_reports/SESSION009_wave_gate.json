@@ -1,0 +1,64 @@
+{
+  "strain_convention_verified": true,
+  "passed": true,
+  "cases": [
+    {
+      "wavelength": 2.5,
+      "time_initial": 0.0,
+      "time_final": 80.0,
+      "initial": {
+        "amplitude": 1.0015339579896354e-05,
+        "phase": 2.4420908408215634e-05,
+        "offset": 2.9336911713313957e-09,
+        "rms": 7.081189722582869e-06
+      },
+      "final": {
+        "amplitude": 9.990599499656082e-06,
+        "phase": 0.007056041802273108,
+        "offset": -3.0290544426976347e-07,
+        "rms": 7.070209800550606e-06
+      },
+      "amplitude_fractional_error": 0.0024702188121441537,
+      "phase_error_rad": 0.007031620893847169,
+      "passed": true,
+      "weak_field_weyl_calibration": {
+        "expected": "Psi4=ddot(hplus-i hcross); hplus=gzz-1 on+x near axis",
+        "scale": 0.0,
+        "relative_residual": 0.0,
+        "cross_leakage": 0.0,
+        "passed": false
+      }
+    },
+    {
+      "wavelength": 5.0,
+      "time_initial": 0.0,
+      "time_final": 80.0,
+      "initial": {
+        "amplitude": 1.0006076671373056e-05,
+        "phase": 9.616663970474035e-05,
+        "offset": 3.119978296813443e-09,
+        "rms": 7.075771125985265e-06
+      },
+      "final": {
+        "amplitude": 9.999809808080899e-06,
+        "phase": 6.871524450266589e-06,
+        "offset": -8.982605891743533e-08,
+        "rms": 7.071915314751147e-06
+      },
+      "amplitude_fractional_error": 0.0006263057437972952,
+      "phase_error_rad": 8.929511526326572e-05,
+      "passed": true,
+      "weak_field_weyl_calibration": {
+        "expected": "Psi4=ddot(hplus-i hcross); hplus=gzz-1 on+x near axis",
+        "scale": 0.0,
+        "relative_residual": 0.0,
+        "cross_leakage": 0.0,
+        "passed": false
+      }
+    }
+  ],
+  "method": "Area-weighted sine/cosine/constant fit of gzz-1 over every leaf cell on z0; periodic plane travels80M across dx.25/.125/.0625 static AMR; same RK4/CFL/gauge/dissipation. Finite sampling heuristic, not nonlinear convergence evidence.",
+  "limitations": "Axis-aligned linear wave only; no spherical/nonlinear/ringdown convergence proof.",
+  "weyl_convention_receipt": "evidence/weyl_convention.json",
+  "original_disabled_extraction_calibration": "Nonphysical zero arrays; superseded only for strain convention by the separately recorded enabled-extraction test."
+}

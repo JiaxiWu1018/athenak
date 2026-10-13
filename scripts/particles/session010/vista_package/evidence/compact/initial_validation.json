@@ -1,0 +1,211 @@
+{
+  "passed": true,
+  "checks": {
+    "inside_domain": true,
+    "centers": true,
+    "widths": true,
+    "thermal": true,
+    "counts": true,
+    "tags": true,
+    "finite": true,
+    "positive_weights": true,
+    "ledger": true,
+    "boost_signs": true,
+    "positive_Jz": true
+  },
+  "written": {
+    "path": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12773/reference/pvtk/s10_validation_only.prtcl_all.00000.part.vtk",
+    "profile": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12773/reference/gi_profile_M076_two_clump_s10.txt",
+    "time": 0.0,
+    "count": 5000000,
+    "finite": true,
+    "integer_tags": true,
+    "exact_unique_tag_range": true,
+    "positive_rest_weights": true,
+    "inside_domain": true,
+    "components": [
+      {
+        "component": 0,
+        "count": 3000000,
+        "tag_min": 0,
+        "tag_max": 2999999,
+        "rest_weight_min": 2.6072393666254357e-07,
+        "rest_weight_max": 2.6072393666254357e-07,
+        "position_mean": [
+          -0.005050883357347759,
+          -0.005575209341477538,
+          -0.008163499655540286
+        ],
+        "position_std": [
+          6.575313186676094,
+          6.5758472893566084,
+          6.577744276936568
+        ],
+        "orthonormal_momentum_mean": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rest_frame_thermal_mean": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rest_frame_thermal_std": [
+          0.1097653748668418,
+          0.10979578451940436,
+          0.10965930082093947
+        ]
+      },
+      {
+        "component": 1,
+        "count": 1000000,
+        "tag_min": 3000000,
+        "tag_max": 3999999,
+        "rest_weight_min": 1.3123998598985054e-07,
+        "rest_weight_max": 1.3123998598985054e-07,
+        "position_mean": [
+          -2.999673800061589,
+          0.00027681120278490835,
+          -0.0008060835736831577
+        ],
+        "position_std": [
+          0.6970575205030229,
+          0.6974366777630324,
+          0.697135292983552
+        ],
+        "orthonormal_momentum_mean": [
+          0.0,
+          -0.13449358648009796,
+          0.0
+        ],
+        "rest_frame_thermal_mean": [
+          0.0,
+          2.13168075176998e-11,
+          0.0
+        ],
+        "rest_frame_thermal_std": [
+          0.019997757582074928,
+          0.020021445320626007,
+          0.019972482870975524
+        ]
+      },
+      {
+        "component": 2,
+        "count": 1000000,
+        "tag_min": 4000000,
+        "tag_max": 4999999,
+        "rest_weight_min": 1.3123998598985054e-07,
+        "rest_weight_max": 1.3123998598985054e-07,
+        "position_mean": [
+          2.9995472410842665,
+          -0.00014858009854080864,
+          0.0013414758895223203
+        ],
+        "position_std": [
+          0.698001838422433,
+          0.6969844777823678,
+          0.6971847594048134
+        ],
+        "orthonormal_momentum_mean": [
+          0.0,
+          0.1344936117912408,
+          0.0
+        ],
+        "rest_frame_thermal_mean": [
+          0.0,
+          -1.4679175454753237e-11,
+          0.0
+        ],
+        "rest_frame_thermal_std": [
+          0.020017687898278378,
+          0.0199993089289152,
+          0.019984128762020232
+        ]
+      }
+    ]
+  },
+  "logged": [
+    {
+      "name": "envelope",
+      "component": 0,
+      "count": 3000000,
+      "rest_mass": 0.7821717958,
+      "sum_mW": 0.7961148546,
+      "P_cov": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "P_hat": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "J_origin_cov": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "J_internal_cov": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "clump",
+      "component": 1,
+      "count": 1000000,
+      "rest_mass": 0.1312399829,
+      "sum_mW": 0.1324996133,
+      "P_cov": [
+        0.0,
+        -0.02152634,
+        0.0
+      ],
+      "P_hat": [
+        0.0,
+        -0.01765094,
+        0.0
+      ],
+      "J_origin_cov": [
+        -1.649484099e-05,
+        0.0,
+        0.06451816869
+      ],
+      "J_internal_cov": [
+        -1.649484099e-05,
+        0.0,
+        -6.08510626e-05
+      ]
+    },
+    {
+      "name": "clump",
+      "component": 2,
+      "count": 1000000,
+      "rest_mass": 0.1312399829,
+      "sum_mW": 0.1324996382,
+      "P_cov": [
+        0.0,
+        0.02152597,
+        0.0
+      ],
+      "P_hat": [
+        0.0,
+        0.01765094,
+        0.0
+      ],
+      "J_origin_cov": [
+        -2.904069342e-05,
+        0.0,
+        0.06451347307
+      ],
+      "J_internal_cov": [
+        -2.904069342e-05,
+        0.0,
+        -6.444365957e-05
+      ]
+    }
+  ]
+}

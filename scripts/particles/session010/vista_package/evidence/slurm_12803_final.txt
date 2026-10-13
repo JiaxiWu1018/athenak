@@ -1,0 +1,34 @@
+JobId=12803 JobName=jeans10-repair
+   UserId=jiaxiwu(1011) GroupId=jiaxiwu(1011) MCS_label=N/A
+   Priority=1 Nice=0 Account=(null) QOS=(null)
+   JobState=COMPLETED Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:11 TimeLimit=00:20:00 TimeMin=N/A
+   SubmitTime=2026-10-13T17:28:45 EligibleTime=2026-10-13T17:28:45
+   AccrueTime=2026-10-13T17:28:45
+   StartTime=2026-10-13T17:28:45 EndTime=2026-10-13T17:28:56 Deadline=N/A
+   PreemptEligibleTime=2026-10-13T17:28:45 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-13T17:28:45 Scheduler=Main
+   Partition=debug AllocNode:Sid=perseus:451178
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=perseus
+   BatchHost=perseus
+   NumNodes=1 NumCPUs=2 NumTasks=1 CPUs/Task=2 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=2,mem=24G,node=1,billing=2
+   AllocTRES=cpu=2,mem=24G,node=1,billing=2
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=2 MinMemoryNode=24G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=debug_gpu_jiaxiwu:1 Network=(null)
+   Command=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/scripts/perseus_repair_build.sbatch
+   WorkDir=/data/jiaxiwu/NRPIC
+   StdErr=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/build_repair.12803.log
+   StdIn=/dev/null
+   StdOut=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/build_repair.12803.log
+   Power=
+   TresPerJob=gres/gpu:1
+   TresPerNode=gres/gpu:1
+   TresPerTask=cpu:2
+   MailUser=jiaxiwu@caltech.edu MailType=BEGIN,END,FAIL
+   
+

@@ -1,0 +1,34 @@
+JobId=12813 JobName=jeans10-cuda-amr
+   UserId=jiaxiwu(1011) GroupId=jiaxiwu(1011) MCS_label=N/A
+   Priority=1 Nice=0 Account=(null) QOS=(null)
+   JobState=FAILED Reason=NonZeroExitCode Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=1:0
+   RunTime=00:02:42 TimeLimit=00:25:00 TimeMin=N/A
+   SubmitTime=2026-10-13T18:19:46 EligibleTime=2026-10-13T18:28:44
+   AccrueTime=Unknown
+   StartTime=2026-10-13T18:28:44 EndTime=2026-10-13T18:31:26 Deadline=N/A
+   PreemptEligibleTime=2026-10-13T18:28:44 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-13T18:28:44 Scheduler=Backfill
+   Partition=debug AllocNode:Sid=perseus:646144
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=perseus
+   BatchHost=perseus
+   NumNodes=1 NumCPUs=4 NumTasks=3 CPUs/Task=1 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=3,mem=256G,node=1,billing=3
+   AllocTRES=cpu=4,mem=256G,node=1,billing=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=1 MinMemoryNode=256G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=debug_gpu_jiaxiwu:3 Network=(null)
+   Command=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/scripts/perseus_gpu_amr.sbatch
+   WorkDir=/data/jiaxiwu/NRPIC
+   StdErr=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/gpu_amr.12813.log
+   StdIn=/dev/null
+   StdOut=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/gpu_amr.12813.log
+   Power=
+   TresPerJob=gres/gpu:3
+   TresPerNode=gres/gpu:3
+   TresPerTask=cpu:1
+   MailUser=jiaxiwu@caltech.edu MailType=BEGIN,END,FAIL
+   
+

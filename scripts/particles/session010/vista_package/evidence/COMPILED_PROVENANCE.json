@@ -1,0 +1,10 @@
+{
+  "baseline_commit": "7c4f8b68a0afbac013e880f425183dbc98ef35b0",
+  "patched_cpp_commit": "80ef74255e0b94892b8ff976a160105132767ab1",
+  "kokkos_commit": "6739bc623081648af9e752b616d9671527922cbf",
+  "baseline_executable": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/build_12753/baseline/src/athena",
+  "baseline_sha256": "3945ce5350962b14644874bd9db6e48690f8c6efc36131f2422e0f2d6ab3c6be",
+  "patched_executable": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/build_repair_12803/athena",
+  "patched_sha256": "44c643e11f1794274b5640c5a3050630587366567e7bd8df0da9f3678a1799e0",
+  "host": "perseus"
+}

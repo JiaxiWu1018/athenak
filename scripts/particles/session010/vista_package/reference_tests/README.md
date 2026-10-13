@@ -1,0 +1,1 @@
+Historical Session007 login-wrapper regressions; original wrapper/config fixtures are retained onAnta, not used by Session010. The active tests/ directory covers the reused finite controller and new Session010 accounting/email behavior.

@@ -1,0 +1,327 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.78in]{geometry}
+\usepackage{amsmath,amssymb,bm,booktabs,graphicx,microtype,siunitx,xcolor}
+\usepackage[colorlinks=true,allcolors=blue!55!black]{hyperref}
+\usepackage[font=small,labelfont=bf]{caption}
+\graphicspath{{../plots/}{../reduced_data/envelope_stability/}{../reduced_data/orbital_gate/}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\RR}{\mathbb{R}}
+\title{Session 004 Initial Data: A Two-Clump Perturbation of an\\
+       $M_{\rm env}=0.76$ Einstein--Vlasov Equilibrium}
+\author{GI-in-cluster campaign}
+\date{31 August 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We independently construct the Session-004 initial slice: a finite-radius spherical
+Einstein--Vlasov equilibrium with ADM mass $0.76$ and areal radius $30$, plus two cold
+Gaussian conformal sources of mass $0.12$ at $x=\pm3$.  Conformal flatness and
+$K_{ij}=0$ make the Hamiltonian solve linear and give continuum ADM mass one.  We give
+the component-dependent five-million-particle realization, the recalculated Jeans and
+horizon scales, the compact AMR hierarchy, and the actual Z4c/gauge choices.  A separate
+construction gives opposite orthonormal $y$ boosts for orbital angular momentum.  It
+preserves the Hamiltonian normalization but introduces a local momentum current which
+$K_{ij}=0$ does not balance; its measured constraint gate is reported explicitly.
+\end{abstract}
+
+\section{Static spherical envelope}
+
+In areal radius $r$ use
+\begin{equation}
+ \dd s^2=-e^{2\mu(r)}\dd t^2+\left(1-\frac{2m(r)}r\right)^{-1}\dd r^2+r^2\dd\Omega^2.
+\end{equation}
+For orthonormal spatial four-velocity $\bm v$, $W=\sqrt{1+|\bm v|^2}$ and particle
+energy $E=e^\mu W$.  The isotropic cutoff ansatz is newly solved, not rescaled from the
+old $M_0=0.61$ table:
+\begin{equation}
+ f_0(E)=A(E_{\rm cut}-E)_+,
+ \quad \rho_0=4\pi\int_0^{v_{\max}}f_0Wv^2\dd v,
+ \quad p_0=\frac{4\pi}{3}\int_0^{v_{\max}}f_0\frac{v^4}{W}\dd v .
+\end{equation}
+Writing $y=\log E_{\rm cut}-\mu$ and $B=AE_{\rm cut}$ gives
+$v_{\max}=\sqrt{e^{2y}-1}$.  The shooting equations are
+\begin{equation}
+ m'=4\pi r^2\rho_0(y),\qquad
+ y'=-\frac{m+4\pi r^3p_0(y)}{r(r-2m)},\qquad m(0)=0,\quad y(0)=y_c,
+\end{equation}
+and the first zero $y(R_0)=0$ is matched to Schwarzschild,
+\begin{equation}
+ E_{\rm cut}=e^{\mu(R_0)}=\sqrt{1-2M_{\rm env}/R_0}.
+\end{equation}
+For $(M_{\rm env},R_0)=(0.76,30)$ the converged result is
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+$y_c$ & $0.0705113472056$ \\
+$E_{\rm cut}$ & $0.974337381677$ \\
+$A$, $B$ & $0.0264154946062$, $0.0257376038503$ \\
+rest mass $M_{\rm rest}$ & $0.771406673590$ \\
+central $\rho_0$, $p_0$ & $1.7583951\times10^{-4}$, $3.5275987\times10^{-6}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The code's independent conformal-source integral is
+$\int4\pi R^2q_0\dd R=0.7599999985$.  Radial-step convergence is
+\begin{center}
+\begin{tabular}{@{}cc@{}}
+\toprule
+$\Delta r$ & $y_c$ \\
+\midrule
+0.004 & 0.070511361859 \\
+0.002 & 0.070511351402 \\
+0.001 & 0.070511347206 \\
+0.0005 & 0.070511346737 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Isotropic radius and conformal fields}
+
+The isotropic radius $R$ obeys
+\begin{equation}
+ \frac{\dd R}{R}=\frac{\dd r}{r\sqrt{1-2m/r}},\qquad
+ r=\psi_0^2R,\qquad
+ R(R_0)=\frac{R_0-M_{\rm env}+\sqrt{R_0(R_0-2M_{\rm env})}}2.
+\end{equation}
+Numerically $R(R_0)=29.2350607252$, $\psi_0(0)=1.04808910510$, and
+$\alpha_0(0)=0.908001730301$.  Define
+\begin{equation}
+ q_0(R)=\psi_0^5\rho_0,\qquad
+ \gamma^{(0)}_{ij}=\psi_0^4\delta_{ij},\qquad K^{(0)}_{ij}=0,
+\end{equation}
+so $\nabla^2\psi_0=-2\pi q_0$.  Figure~\ref{fig:eq} records the solved profiles,
+areal--isotropic map, enclosed mass, fixed-microscopic-ansatz sequence, and new source.
+
+\begin{figure}[ht]
+ \centering\includegraphics[width=0.96\linewidth]{equilibrium_construction.pdf}
+ \caption{Independent equilibrium and two-clump construction.  The first ADM-mass
+ maximum on the fixed $\Phi(\eta)=B\eta$ sequence is at $y_c=0.10375414$; the target is
+ on its low-redshift side.  This fact alone is not a stability theorem.}
+ \label{fig:eq}
+\end{figure}
+
+\subsection{Stability statement and numerical gate}
+
+The linear stability result of Had\v{z}i\'c, Lin, and Rein is conditional on both a
+negative-Morse-index hypothesis for a reduced operator and a derivative-sign condition.
+We have not computed that operator for this particular member.  Small-redshift results
+also do not provide a numerical threshold proving that $y_c=0.0705$ lies in their regime.
+Therefore existence, weak compactness, and location before the first mass maximum are
+\emph{not} promoted to an analytic stability certificate.
+
+Instead, a cheap unperturbed realization used $500{,}000$ particles, root
+$\Delta x=1$, localized refinement through $\Delta x=1/4$, and evolved to $t=30$.
+All particles and rest mass were conserved.  Energy-weighted $r_{50}$ changed by
+$+3.64\times10^{-4}$, central lapse by $-2.65\times10^{-4}$, and total $\sum mW$ by
+$-7.18\times10^{-5}$.  Enclosed energy changed by at most $0.58\%$ at radii
+$2,4,8,\ldots,30$; $\|H\|_2$ fell from $4.49\times10^{-2}$ to $2.67\times10^{-3}$
+and $\|M\|_2$ from $6.74\times10^{-3}$ to $8.68\times10^{-4}$.  The central deposited
+cell is visibly PIC-noisy, but the $R<4$ mean density changed only $1.88\%$ and there is
+no secular radial contraction or expansion.  This is the operational stability pass.
+
+\begin{figure}[ht]
+ \centering\includegraphics[width=0.92\linewidth]{figure1_envelope_stability.pdf}
+ \caption{Unperturbed-envelope stability test.  Grid-free particle radii and enclosed
+ energy are authoritative for size evolution; the Eulerian density slice shows the
+ expected single-cell PIC noise.}
+\end{figure}
+
+\section{Two-clump conformal solve}
+
+Let $\bm X_\pm=(\pm3,0,0)$, $M_+=M_-=0.12$, and $\sigma=0.70$.  With
+\begin{equation}
+ G_a(\bm X)=\frac{\exp[-|\bm X-\bm X_a|^2/(2\sigma^2)]}
+ {(2\pi\sigma^2)^{3/2}},\quad
+ q=q_0+\sum_{a=\pm}M_aG_a,\quad
+ \rho=\psi^{-5}q,
+\end{equation}
+choose $K_{ij}=0$ and initially $j^i=0$.  The Hamiltonian constraint is linear:
+\begin{equation}
+ \nabla^2\psi=-2\pi q,\qquad
+ \psi=\psi_0+\sum_{a=\pm}\frac{M_a}{2r_a}
+       \operatorname{erf}\!\left(\frac{r_a}{\sqrt2\sigma}\right),
+ \quad r_a=|\bm X-\bm X_a|.
+\end{equation}
+Since $\int q_0\dd^3X=0.76$, $\int G_a\dd^3X=1$, and the mass dipole cancels,
+\begin{equation}
+ \psi=1+\frac{0.76+0.12+0.12}{2R}+O(R^{-3})
+      =1+\frac1{2R}+O(R^{-3}),
+\end{equation}
+which proves continuum $M_{\rm ADM}=1$ without angular momentum.  At either clump
+center $\psi=1.124482509$, with envelope, clump, and total Eulerian densities
+$1.0518072\times10^{-4}$, $1.2355314\times10^{-2}$, and
+$1.2460495\times10^{-2}$, respectively.  The initial lapse is
+$\alpha=\alpha_0(\psi_0/\psi)^2=0.7889962$ at a clump center.
+
+\section{Phase-space and five-million-particle realization}
+
+For the envelope,
+\begin{equation}
+ f_{\rm env}(\bm X,\bm v)=\left(\frac{\psi_0}{\psi}\right)^5f_0(R,\bm v),
+\end{equation}
+which gives $\rho_{\rm env}=\psi^{-5}q_0$.  Its position measure is
+$\psi\psi_0^5n_0\dd^3X$; momenta are drawn from $f_0/n_0$.  Thus
+\begin{equation}
+ {\cal N}_{\rm env}=\int\psi\psi_0^5n_0\dd^3X=0.782171796044,\qquad
+ \mu_{\rm env}={\cal N}_{\rm env}/3{,}000{,}000
+ =2.60723932015\times10^{-7}.
+\end{equation}
+For each clump use an isotropic Maxwellian $h_a\propto\exp[-v^2/(2s^2)]$ with
+$s=0.02$ and $\langle W\rangle=1.00059970042$.  Define
+\begin{equation}
+ \begin{aligned}
+ I_a&=\int\psi M_aG_a\dd^3X=0.132499635245,\\
+ f_a&=\frac{\psi^{-5}M_aG_a}{\langle W\rangle}h_a,\qquad
+ \mu_a=\frac{I_a}{N_a\langle W\rangle}=1.32420222782\times10^{-7}.
+ \end{aligned}
+\end{equation}
+with $N_a=1{,}000{,}000$.  Positions are sampled from $\psi G_a$ and every thermal
+draw is inserted as a same-position antithetic pair $(\bm v,-\bm v)$.  The two clumps
+use the established seeded sampler rather than an exact mirrored realization.  In the
+5M startup ledger their $\sum mW$ values differ by only $1.88\times10^{-7}$ relative;
+the envelope and both clump currents cancel pairwise to floating-point roundoff.
+
+\section{Jeans, collapse, and horizon scales}
+
+Using the full new local density and metric at $R=3$, the collisionless estimate is
+\begin{equation}
+ k_J=\frac{\sqrt{4\pi\rho}}s,\qquad
+ \lambda_{J,{\rm proper}}=\frac{2\pi}{k_J},\qquad
+ \lambda_{J,{\rm coord}}=\frac{\lambda_{J,{\rm proper}}}{\psi^2},
+\end{equation}
+and the stated Jeans-mass convention is a sphere whose diameter is $\lambda_J$:
+\begin{equation}
+ M_J=\frac{4\pi}{3}\rho\left(\frac{\lambda_{J,{\rm proper}}}{2}\right)^3.
+\end{equation}
+Numerically,
+\begin{equation}
+ \lambda_{J,{\rm proper}}=0.3175684,\quad
+ \lambda_{J,{\rm coord}}=0.2511492,\quad
+ M_J=2.0895163\times10^{-4},\quad
+ \frac{0.12}{M_J}=574.3.
+\end{equation}
+The clump diameter is $2\sigma=5.57\lambda_{J,{\rm coord}}$,
+$t_{\rm ff}=\sqrt{3\pi/(32\rho)}=4.862$, and the Newtonian Gaussian estimate gives
+$2T/|W|=0.0248$: thermal support is negligible.  At $\Delta x=1/64$ the initial
+Jeans length spans $16.1$ cells, so it is already well resolved.
+
+Black-hole resolution is stricter.  A $0.12M$ Schwarzschild hole has areal radius
+$2M=0.24$ and isotropic horizon radius about $M/2=0.06$.  This is $3.84$, $7.68$,
+and $15.36$ cells at $\Delta x=1/64,1/128,1/256$.  The empirical FastFlow calibration
+found two cells unreliable, four marginal/intermittent, and eight or more substantially
+healthier.  Hence $1/64$ is sufficient for the initial Jeans problem but not the trusted
+horizon gate; $1/128$ is the intended formation scale and $1/256$ is the protected
+production maximum.
+
+\section{Actual Session-004 hierarchy and evolution}
+
+The box is $[-128,128]^3$.  Four root MeshBlocks per dimension, each with $32^3$
+cells and width $64$, give exact root $\Delta x=2$.  Compact central safety regions and
+two towers use physical widths
+\begin{equation}
+ 2,1,1/2,1/4,1/8,1/16,1/32,1/64,
+\end{equation}
+without filling the domain at fine resolution.  The priced initial mesh has 904 leaf
+blocks after 2:1 closure.  L\"ohner refinement of $\alpha\psi^7$ at threshold $0.2$
+may create $\Delta x=1/128$ and then the emergency maximum $1/256$.
+
+Evolution uses ordinary Z4c, RK4, CFL $0.4$, standard advective $1+\log$ slicing
+(``oplog'' coefficient 2), the established shift with $\eta=2$, dissipation $0.1$, and
+Z4 damping $\kappa_1=0.02$, $\kappa_2=0$.  No experimental Gamma-B driver, filtering,
+diffusion, or higher-order deposition experiment is enabled.  Particle feedback uses
+conservative cross-level deposition and the GR-Boris pusher with fatal rejected-update
+protection plus the validated trilinear metric-interpolation fallback.  Two individual
+FastFlow finders start at $t=2.5$ and search every full step.  AH publication requires
+finite positive on-mesh geometry, radius no smaller than four \emph{local} cells,
+normalized expansion tolerance, and three persistent finds.  Only published AHs excise
+particles; lapse excision is disabled.
+
+The proposed Session-005 Vista box is $[-256,256]^3$, with eight $32^3$ root blocks
+per dimension so root $\Delta x$ remains 2.  It retains compact $1/64$ initial towers,
+targets $1/128$ adaptively, and permits $1/256$ near each collapse.  The final block,
+GPU, memory, walltime, and output counts are to be filled from the Session-004 evolution
+measurements rather than extrapolated from logical level numbers alone.
+
+\section{Orbital-angular-momentum construction}
+
+The intended signs for positive $L_z$ are $\beta_y<0$ at $x=-3$ and $\beta_y>0$ at
+$x=+3$.  In the spherical envelope at isotropic $R=3$, the areal radius, enclosed mass,
+and pressure are $r=3.28292793$, $m=0.02379189$, and $p=2.85580\times10^{-6}$.
+The local circular-geodesic estimate plus a Newtonian companion term is
+\begin{equation}
+ v_{\rm circ}^2\simeq
+ \frac{m+4\pi r^3p}{r-2m}+\frac{M_c(3)}{6^2}
+ =0.00774621+0.0100000,\qquad v_{\rm circ}=0.133215.
+\end{equation}
+One fiducial, not a scan, uses $\beta=0.7v_{\rm circ}=0.09325043$.
+
+Each antithetic thermal pair is formed in the clump rest frame and both members receive
+the same orthonormal Lorentz boost,
+\begin{equation}
+ W'=\gamma(W+\beta v_{\hat y}),\qquad
+ v'_{\hat y}=\gamma(v_{\hat y}+\beta W),\qquad
+ v'_{\hat x}=v_{\hat x},\quad v'_{\hat z}=v_{\hat z},
+\end{equation}
+with opposite $\beta$ for the other clump.  Stored covariant momenta are
+$u_i=\psi^2v'_{\hat i}$.  Because $\langle W'\rangle=\gamma\langle W\rangle$, the
+energy-preserving particle weight is
+\begin{equation}
+ \mu_a^{\rm boost}=\frac{I_a}{N_a\gamma\langle W\rangle}
+ =1.31843226262\times10^{-7}.
+\end{equation}
+Thus the boost adds no avoidable Hamiltonian normalization error.  The measured 5M
+ledger gives $P_{\hat y}=\mp0.01235565$ per clump, zero summed orthonormal momentum,
+covariant $P_y^{\rm tot}=-2.6\times10^{-7}$, and $L_z^{\rm cov}=0.0903221$.
+
+\subsection{Momentum-constraint defect and gate}
+
+The boosted clumps have local $j_{\hat y}/\rho_a=\pm\beta$ even though global linear
+momentum cancels.  Therefore
+\begin{equation}
+ D_j(K^{ij}-\gamma^{ij}K)=8\pi j^i
+\end{equation}
+is not solved by $K_{ij}=0$.  Matched 5M runs used identical positions, mesh, and seed.
+At $t=0$ the local current has the expected opposite lobes; the first computed
+constraint slice at $t=0.00625$ gives, in the $[-8,8]\times[-4,4]$ clump window,
+\begin{center}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+ & non-AM & boosted & ratio \\
+\midrule
+$H$ RMS & 0.0966497 & 0.0966989 & 1.00051 \\
+$|M|$ RMS & 0.00360761 & 0.00390603 & 1.08272 \\
+$M_y$ RMS & 0.0174054 & 0.0192321 & 1.10495 \\
+\bottomrule
+\end{tabular}
+\end{center}
+The maximum $|M|$ increases by $30.8\%$, localized at the clumps, while ordinary
+PIC/discretization residuals dominate the area-weighted RMS.  The predeclared exploratory
+gate required less than $25\%$ added local momentum RMS and less than $5\%$ Hamiltonian
+RMS; it passes at $8.27\%$ and $0.051\%$.  This permits one clearly labeled exploratory
+evolution, but does not make the slice constraint-solved or suitable as a default
+production model.
+
+\begin{figure}[ht]
+ \centering\includegraphics[width=0.98\linewidth]{initial_constraint_comparison.pdf}
+ \caption{Direct matched-slice constraint comparison.  The orbital current adds a
+ localized momentum residual; the Hamiltonian residual is essentially unchanged.}
+\end{figure}
+
+\begin{thebibliography}{9}
+\bibitem{rein1994}
+G.~Rein, ``Static solutions of the spherically symmetric Vlasov--Einstein system,''
+\emph{Math. Proc. Cambridge Philos. Soc.} \textbf{115}, 559 (1994),
+\href{https://arxiv.org/abs/gr-qc/9304028}{arXiv:gr-qc/9304028}.
+\bibitem{smallredshift}
+M.~Had\v{z}i\'c and G.~Rein, ``On the small redshift limit of steady states of the
+spherically symmetric Einstein--Vlasov system and their stability,''
+\href{https://arxiv.org/abs/1407.4649}{arXiv:1407.4649}.
+\bibitem{hlr}
+M.~Had\v{z}i\'c, Z.~Lin, and G.~Rein, ``Stability and instability of self-gravitating
+relativistic matter distributions,'' \emph{Commun. Math. Phys.} (2021),
+\href{https://arxiv.org/abs/1810.00809}{arXiv:1810.00809}.
+\end{thebibliography}
+
+\end{document}

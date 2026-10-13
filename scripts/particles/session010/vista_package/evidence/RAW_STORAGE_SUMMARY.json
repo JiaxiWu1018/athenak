@@ -1,0 +1,387 @@
+{
+  "root": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013",
+  "groups": {
+    "evidence/operations.12811.log": {
+      "files": 1,
+      "bytes": 4861
+    },
+    "evidence/mesh_options_receipt.json": {
+      "files": 1,
+      "bytes": 135
+    },
+    "evidence/build.12753.log": {
+      "files": 1,
+      "bytes": 0
+    },
+    "evidence/operations.12757.log": {
+      "files": 1,
+      "bytes": 21868
+    },
+    "evidence/build_repair.12803.log": {
+      "files": 1,
+      "bytes": 0
+    },
+    "evidence/compact_provenance_12765.txt": {
+      "files": 1,
+      "bytes": 2327
+    },
+    "evidence/build_submission_rejection.txt": {
+      "files": 1,
+      "bytes": 795
+    },
+    "evidence/compact.12773.log": {
+      "files": 1,
+      "bytes": 829
+    },
+    "evidence/operations.12759.log": {
+      "files": 1,
+      "bytes": 3947
+    },
+    "evidence/slurm_12804_final.txt": {
+      "files": 1,
+      "bytes": 1672
+    },
+    "evidence/compact_provenance_12813.txt": {
+      "files": 1,
+      "bytes": 2210
+    },
+    "evidence/pytest_install_12766.log": {
+      "files": 1,
+      "bytes": 2939
+    },
+    "evidence/pytest_install_12764.log": {
+      "files": 1,
+      "bytes": 2939
+    },
+    "evidence/focused.12763.log": {
+      "files": 1,
+      "bytes": 0
+    },
+    "evidence/slurm_12757_1791870765.txt": {
+      "files": 1,
+      "bytes": 48
+    },
+    "evidence/slurm_12761_1791870765.txt": {
+      "files": 1,
+      "bytes": 1668
+    },
+    "evidence/slurm_12809_final.txt": {
+      "files": 1,
+      "bytes": 1667
+    },
+    "evidence/slurm_12754_1791870765.txt": {
+      "files": 1,
+      "bytes": 1640
+    },
+    "evidence/compact_provenance_12804.txt": {
+      "files": 1,
+      "bytes": 2224
+    },
+    "evidence/compact_provenance_12772.txt": {
+      "files": 1,
+      "bytes": 2218
+    },
+    "evidence/operations.12774.log": {
+      "files": 1,
+      "bytes": 4343
+    },
+    "evidence/slurm_12753_1791870765.txt": {
+      "files": 1,
+      "bytes": 1645
+    },
+    "evidence/focused.12758.log": {
+      "files": 1,
+      "bytes": 0
+    },
+    "evidence/slurm_12803_final.txt": {
+      "files": 1,
+      "bytes": 1668
+    },
+    "evidence/slurm_12808_final.txt": {
+      "files": 1,
+      "bytes": 1667
+    },
+    "evidence/compact.12765.log": {
+      "files": 1,
+      "bytes": 1072
+    },
+    "evidence/build_receipt.json": {
+      "files": 1,
+      "bytes": 504
+    },
+    "evidence/gpu_amr.12814.log": {
+      "files": 1,
+      "bytes": 39
+    },
+    "evidence/slurm_12763_1791870765.txt": {
+      "files": 1,
+      "bytes": 1667
+    },
+    "evidence/compact.12805.log": {
+      "files": 1,
+      "bytes": 33
+    },
+    "evidence/slurm_12764_1791870765.txt": {
+      "files": 1,
+      "bytes": 1663
+    },
+    "evidence/compact_provenance_12773.txt": {
+      "files": 1,
+      "bytes": 2222
+    },
+    "evidence/slurm_12811_final.txt": {
+      "files": 1,
+      "bytes": 1663
+    },
+    "evidence/operations_receipt.json": {
+      "files": 1,
+      "bytes": 31
+    },
+    "evidence/gpu_amr.12813.log": {
+      "files": 1,
+      "bytes": 567
+    },
+    "evidence/kokkos_history_receipt.json": {
+      "files": 1,
+      "bytes": 83
+    },
+    "evidence/compact_provenance_12805.txt": {
+      "files": 1,
+      "bytes": 2224
+    },
+    "evidence/compact.12772.log": {
+      "files": 1,
+      "bytes": 1072
+    },
+    "evidence/operations.12808.log": {
+      "files": 1,
+      "bytes": 4343
+    },
+    "evidence/adapted_buffer_reuse.patch": {
+      "files": 1,
+      "bytes": 12647
+    },
+    "evidence/slurm_12807_final.txt": {
+      "files": 1,
+      "bytes": 1675
+    },
+    "evidence/collect.12810.log": {
+      "files": 1,
+      "bytes": 0
+    },
+    "evidence/historical_7093f488.patch": {
+      "files": 1,
+      "bytes": 12647
+    },
+    "evidence/slurm_12755_1791870765.txt": {
+      "files": 1,
+      "bytes": 48
+    },
+    "evidence/feedback.12770.log": {
+      "files": 1,
+      "bytes": 0
+    },
+    "evidence/slurm_12812_final.txt": {
+      "files": 1,
+      "bytes": 1675
+    },
+    "evidence/compact.12804.log": {
+      "files": 1,
+      "bytes": 1686
+    },
+    "evidence/memory_receipt.json": {
+      "files": 1,
+      "bytes": 260
+    },
+    "evidence/kokkos_history.12812.log": {
+      "files": 1,
+      "bytes": 642
+    },
+    "evidence/memory_analysis.12807.log": {
+      "files": 1,
+      "bytes": 309
+    },
+    "evidence/focused_receipt.json": {
+      "files": 1,
+      "bytes": 169
+    },
+    "evidence/slurm_12813_final.txt": {
+      "files": 1,
+      "bytes": 1658
+    },
+    "evidence/mesh_options.12809.log": {
+      "files": 1,
+      "bytes": 1318
+    },
+    "evidence/slurm_12805_final.txt": {
+      "files": 1,
+      "bytes": 1664
+    },
+    "evidence/focused.12764.log": {
+      "files": 1,
+      "bytes": 0
+    },
+    "evidence/slurm_12759_1791870765.txt": {
+      "files": 1,
+      "bytes": 48
+    },
+    "evidence/slurm_12758_1791870765.txt": {
+      "files": 1,
+      "bytes": 48
+    },
+    "evidence/pytest_install_12763.log": {
+      "files": 1,
+      "bytes": 766
+    },
+    "evidence/compact_receipt.json": {
+      "files": 1,
+      "bytes": 130
+    },
+    "evidence/gpu_amr_receipt.json": {
+      "files": 1,
+      "bytes": 130
+    },
+    "evidence/compact_provenance_12814.txt": {
+      "files": 1,
+      "bytes": 2218
+    },
+    "evidence/focused.12766.log": {
+      "files": 1,
+      "bytes": 121
+    },
+    "evidence/build_12753": {
+      "files": 1524,
+      "bytes": 640600678
+    },
+    "evidence/feedback_12770": {
+      "files": 21,
+      "bytes": 40381241
+    },
+    "evidence/focused_12766": {
+      "files": 1614,
+      "bytes": 117890623
+    },
+    "evidence/kokkos_history_12812": {
+      "files": 24,
+      "bytes": 38070436
+    },
+    "evidence/focused_12763": {
+      "files": 5,
+      "bytes": 70523
+    },
+    "evidence/compact_12805": {
+      "files": 191,
+      "bytes": 83463526450
+    },
+    "evidence/compact_12772": {
+      "files": 6,
+      "bytes": 1318907
+    },
+    "evidence/focused_12758": {
+      "files": 862,
+      "bytes": 78475236
+    },
+    "evidence/mesh_options_12809": {
+      "files": 16,
+      "bytes": 5167126
+    },
+    "evidence/compact_12804": {
+      "files": 3,
+      "bytes": 2307
+    },
+    "evidence/build_repair_12803": {
+      "files": 6,
+      "bytes": 101652776
+    },
+    "evidence/gpu_amr_12814": {
+      "files": 22,
+      "bytes": 7877118171
+    },
+    "evidence/focused_12764": {
+      "files": 5,
+      "bytes": 126123
+    },
+    "evidence/compact_12773": {
+      "files": 165,
+      "bytes": 77464664806
+    },
+    "evidence/gpu_amr_12813": {
+      "files": 21,
+      "bytes": 10744293458
+    },
+    "evidence/pip_cache": {
+      "files": 27,
+      "bytes": 649372
+    },
+    "evidence/compact_12765": {
+      "files": 5,
+      "bytes": 1268310
+    },
+    "inputs/VALIDATION_ONLY_compact128_before_queue_adjustment.athinput": {
+      "files": 1,
+      "bytes": 52149
+    },
+    "inputs/gi_cluster_s10.athinput": {
+      "files": 1,
+      "bytes": 7850
+    },
+    "inputs/VALIDATION_ONLY_compact.athinput": {
+      "files": 1,
+      "bytes": 52128
+    },
+    "scripts/perseus_feedback.sbatch": {
+      "files": 1,
+      "bytes": 2196
+    },
+    "scripts/perseus_compact_resume.sbatch": {
+      "files": 1,
+      "bytes": 1156
+    },
+    "scripts/perseus_package.sbatch": {
+      "files": 1,
+      "bytes": 4079
+    },
+    "scripts/perseus_operations.sbatch": {
+      "files": 1,
+      "bytes": 909
+    },
+    "scripts/perseus_collect.sbatch": {
+      "files": 1,
+      "bytes": 482
+    },
+    "scripts/perseus_gpu_amr.sbatch": {
+      "files": 1,
+      "bytes": 1087
+    },
+    "scripts/perseus_mesh_options.sbatch": {
+      "files": 1,
+      "bytes": 641
+    },
+    "scripts/perseus_repair_build.sbatch": {
+      "files": 1,
+      "bytes": 1368
+    },
+    "scripts/perseus_focused.sbatch": {
+      "files": 1,
+      "bytes": 3265
+    },
+    "scripts/perseus_memory_analysis.sbatch": {
+      "files": 1,
+      "bytes": 476
+    },
+    "scripts/perseus_compact.sbatch": {
+      "files": 1,
+      "bytes": 1108
+    },
+    "scripts/perseus_kokkos_bundle_prep.sbatch": {
+      "files": 1,
+      "bytes": 1191
+    },
+    "scripts/perseus_build.sbatch": {
+      "files": 1,
+      "bytes": 1743
+    }
+  },
+  "total_bytes": 180575528723,
+  "status": "Retained on Perseus; no deletion or new large-data transfer. Raw/checkpoints omitted from handoff."
+}

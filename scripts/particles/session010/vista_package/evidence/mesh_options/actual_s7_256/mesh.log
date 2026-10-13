@@ -1,0 +1,17 @@
+
+Root grid = 8 x 8 x 8 MeshBlocks
+Total number of MeshBlocks = 1352
+Number of logical  levels of refinement = 12 (13 levels total)
+Number of physical levels of refinement = 9 (10 levels total)
+  Physical level = 0 (logical level = 3): 496 MeshBlocks, cost = 496
+  Physical level = 1 (logical level = 4): 112 MeshBlocks, cost = 112
+  Physical level = 2 (logical level = 5): 112 MeshBlocks, cost = 112
+  Physical level = 3 (logical level = 6): 112 MeshBlocks, cost = 112
+  Physical level = 4 (logical level = 7): 112 MeshBlocks, cost = 112
+  Physical level = 5 (logical level = 8): 104 MeshBlocks, cost = 104
+  Physical level = 6 (logical level = 9): 176 MeshBlocks, cost = 176
+  Physical level = 7 (logical level = 10): 128 MeshBlocks, cost = 128
+Number of parallel ranks = 1
+See the 'mesh_structure.dat' file for MeshBlock data
+Use 'plot_mesh.py' script to visualize data
+

@@ -1,0 +1,34 @@
+JobId=12805 JobName=jeans10-compact
+   UserId=jiaxiwu(1011) GroupId=jiaxiwu(1011) MCS_label=N/A
+   Priority=1 Nice=0 Account=(null) QOS=(null)
+   JobState=COMPLETED Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:58:14 TimeLimit=04:00:00 TimeMin=N/A
+   SubmitTime=2026-10-13T17:30:30 EligibleTime=2026-10-13T17:30:30
+   AccrueTime=2026-10-13T17:30:30
+   StartTime=2026-10-13T17:30:30 EndTime=2026-10-13T18:28:44 Deadline=N/A
+   PreemptEligibleTime=2026-10-13T17:30:30 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-13T17:30:30 Scheduler=Main
+   Partition=debug AllocNode:Sid=perseus:453886
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=perseus
+   BatchHost=perseus
+   NumNodes=1 NumCPUs=4 NumTasks=3 CPUs/Task=1 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=3,mem=256G,node=1,billing=3
+   AllocTRES=cpu=4,mem=256G,node=1,billing=4
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=1 MinMemoryNode=256G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=debug_gpu_jiaxiwu:3 Network=(null)
+   Command=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/scripts/perseus_compact_resume.sbatch
+   WorkDir=/data/jiaxiwu/NRPIC
+   StdErr=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact.12805.log
+   StdIn=/dev/null
+   StdOut=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact.12805.log
+   Power=
+   TresPerJob=gres/gpu:3
+   TresPerNode=gres/gpu:3
+   TresPerTask=cpu:1
+   MailUser=jiaxiwu@caltech.edu MailType=BEGIN,END,FAIL
+   
+

@@ -1,0 +1,9 @@
+# Restart predictor precision repair
+
+The first compact changed-rank check completed with identical tag-sorted float32 particle positions/momenta/weights and matching metric, constraint and stress-energy planes. Tracker positions, live core counts, lapse and flags matched, but predictor velocity differed by up to 3.79220318e-4.
+
+Inspection of the native checkpoint explained the mismatch: `ParameterInput::SetReal` streamed runtime values with its default six significant digits. For example the persisted core motion coordinate was `2.99966`; the next predictor update divides the rounded displacement by dt=0.00625. This is a restart serialization defect, rather than evidence of changed particle evolution.
+
+Commit `80ef7425` writes runtime Reals with `std::numeric_limits<Real>::max_digits10`, preserving exact floating-point round trips for tracker and other persisted real parameters. The wire format remains the existing text header plus native binary payload; the 1 MiB header reader safeguard remains. A newly written full-precision seed is necessary for the strict comparison: previously lost digits cannot be reconstructed from an old header. Historical checkpoint read compatibility is retained. The accepted earlier particle/field evidence is preserved, and only the affected seed/restart legs are repeated. The before/after memory test starts both executables from the same existing baseline checkpoint, so rounded seed state is matched in both arms; final header precision does not change evolution within an arm.
+
+The repaired two-to-three-rank restart passed in job 12805: maximum persistent tracker differences were 1.67e-15 and 7.11e-14; all tracker live diagnostics reacquired, particles remained exact, and field planes passed rtol=1e-5/atol=1e-8. The large native header was over 160 KiB, exercising the retained 1 MiB safeguard. See the restart comparison receipt; failed attempts and exact old inputs/logs remain in the Perseus archive.

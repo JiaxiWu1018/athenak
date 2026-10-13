@@ -1,0 +1,7 @@
+# Perseus preparation storage and closeout
+
+Raw validation data and native checkpoints remain under `/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/`. Inventory: `/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/RAW_INVENTORY.json`; grouped sizes are in evidence/RAW_STORAGE_SUMMARY.json. This snapshot totals 180,575,528,723 bytes (168.17 GiB) across evidence/inputs/scripts, including retained build objects and failed attempts. Source clones are separate source snapshots. No raw-data deletion or new large-data transfer was performed, and earlier sessions are preserved.
+
+Perseus /data had approximately 11 TiB free at the compact allocation, 91% filesystem use. It is an authoritative archive, not a second-site backup; retention/cleanup remains explicit. The transfer contains only small test evidence, scripts, source bundles, exact inputs and context, without any restart/VTK/field payload.
+
+Preparation jobs include builds 12753/12803, focused 12766/12770, final operations 12811, exact geometry comparison 12809, compact 12805, CUDA AMR 12814 and reduction 12807. The packaging audit records its own allocation in PACKAGE_RECEIPT.json. The final root closeout records any remaining queued/running jobs; no production or Vista job is launched here. Perseus Slurm accounting is not configured for sacct historical usage, so no invented usage total is reported; retained allocation/job records and application times provide the preparation provenance.

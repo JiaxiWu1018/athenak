@@ -1,0 +1,6 @@
+# Preserve archived record bytes (including CSV CRLF and patch context lines).
+vista_package/evidence/** -whitespace
+vista_package/reference_session007/** -whitespace
+vista_package/reference_reports/** -whitespace
+vista_package/reference_tests/** -whitespace
+*.athinput -whitespace

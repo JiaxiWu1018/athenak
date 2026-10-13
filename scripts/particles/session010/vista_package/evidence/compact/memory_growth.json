@@ -1,0 +1,82 @@
+{
+  "method": "Same checkpoint/input, fixed mesh and5M particles,128 advances/arm. Fit solver advances32..126 after seed; exclude startup/final output. Theil-Sen pairwise median and endpoint slopes, not OLS sawtooth.",
+  "arms": {
+    "memory_baseline": {
+      "gpu/0": {
+        "theil_sen_MiB_min": 0.0,
+        "endpoint_MiB_min": 0.0,
+        "fit_minutes": 20.166934899489085,
+        "fit_samples": 515,
+        "begin_MiB": 64959.0,
+        "end_MiB": 64959.0,
+        "peak_MiB": 64959.0
+      },
+      "gpu/1": {
+        "theil_sen_MiB_min": 0.0,
+        "endpoint_MiB_min": 0.0,
+        "fit_minutes": 20.166934899489085,
+        "fit_samples": 515,
+        "begin_MiB": 64951.0,
+        "end_MiB": 64951.0,
+        "peak_MiB": 64951.0
+      },
+      "host/total": {
+        "theil_sen_MiB_min": 0.01462876271814761,
+        "endpoint_MiB_min": 0.037576979534911806,
+        "fit_minutes": 20.166934899489085,
+        "fit_samples": 515,
+        "begin_MiB": 1366.4921875,
+        "end_MiB": 1367.25,
+        "peak_MiB": 1367.25
+      }
+    },
+    "memory_patched": {
+      "gpu/0": {
+        "theil_sen_MiB_min": 0.0,
+        "endpoint_MiB_min": 0.0,
+        "fit_minutes": 19.69026734828949,
+        "fit_samples": 523,
+        "begin_MiB": 65025.0,
+        "end_MiB": 65025.0,
+        "peak_MiB": 65025.0
+      },
+      "gpu/1": {
+        "theil_sen_MiB_min": 0.0,
+        "endpoint_MiB_min": 0.0,
+        "fit_minutes": 19.69026734828949,
+        "fit_samples": 523,
+        "begin_MiB": 64969.0,
+        "end_MiB": 64969.0,
+        "peak_MiB": 64969.0
+      },
+      "host/total": {
+        "theil_sen_MiB_min": 0.01229630712726939,
+        "endpoint_MiB_min": 0.0321383396581953,
+        "fit_minutes": 19.69026734828949,
+        "fit_samples": 523,
+        "begin_MiB": 1421.375,
+        "end_MiB": 1422.0078125,
+        "peak_MiB": 1422.0078125
+      }
+    }
+  },
+  "full_mesh_Vista_validation_pending": true,
+  "comparison": {
+    "gpu/0": {
+      "before": 0.0,
+      "after": 0.0,
+      "reduction_percent": null
+    },
+    "gpu/1": {
+      "before": 0.0,
+      "after": 0.0,
+      "reduction_percent": null
+    },
+    "host/total": {
+      "before": 0.01462876271814761,
+      "after": 0.01229630712726939,
+      "reduction_percent": 15.944312145993786
+    }
+  },
+  "segmentation": "Vista must measure every GPU restart baseline, AMR/rank high-water occupancy, host RSS and residual growth. Reserve measured final checkpoint/manifest time and memory. Use T<=min(reviewed wall budget minus finalization, half observed memory headroom divided by conservative positive growth); flat short-test slopes do not authorize unlimited segments. Begin with a bounded short segment and re-evaluate at collapse and after restart."
+}

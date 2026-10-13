@@ -1,0 +1,65 @@
+
+Root grid = 2 x 2 x 2 MeshBlocks
+Total number of MeshBlocks = 792
+Number of logical  levels of refinement = 10 (11 levels total)
+Number of physical levels of refinement = 9 (10 levels total)
+  Physical level = 1 (logical level = 2): 48 MeshBlocks, cost = 48
+  Physical level = 2 (logical level = 3): 112 MeshBlocks, cost = 112
+  Physical level = 3 (logical level = 4): 112 MeshBlocks, cost = 112
+  Physical level = 4 (logical level = 5): 112 MeshBlocks, cost = 112
+  Physical level = 5 (logical level = 6): 104 MeshBlocks, cost = 104
+  Physical level = 6 (logical level = 7): 176 MeshBlocks, cost = 176
+  Physical level = 7 (logical level = 8): 128 MeshBlocks, cost = 128
+Number of parallel ranks = 2
+  Rank = 0: 396 MeshBlocks, cost = 396
+  Rank = 1: 396 MeshBlocks, cost = 396
+Load Balancing:
+  Maximum normalized cost = 1, Average = 1
+AssembleZ4cTasks
+AssembleZ4cTasks
+GI cluster initialized (Einstein-Vlasov envelope + clumps):
+  background: M0=0.76 R0=30 Riso_s=29.23506073 yc=0.07051134721
+  f0 consts : Ecut=0.9743373817 A=0.02641549461 B=0.02573760385
+  checks    : int 4piR^2 q0 dR=0.7599999985 (M0 target, rel err 2.02e-09); psi0_c=1.0480891 alpha0_c=0.90800173
+  envelope  : N=3000000 mu_env=2.607239319e-07 rest_mass=0.771406672 Nenv_int=0.7821717958
+  clumps    : n=2 sum_Ma=0.24 dipole=(0.000e+00,0.000e+00,0.000e+00) M_ADM=1
+  clump 1   : Ma=0.12 X=(-3,0,0) sigma=0.7 s=0.02 bulk_vy=-0.133215 Na=1000000 Ia=0.1324996352 <W>=1.009598084 mu=1.312399829e-07
+  clump 2   : Ma=0.12 X=(3,0,0) sigma=0.7 s=0.02 bulk_vy=0.133215 Na=1000000 Ia=0.1324996352 <W>=1.009598084 mu=1.312399829e-07
+  sampling  : seed=4001 k_env=1.13503 psi_bound=1.18487 env_accept=0.8929 clump_accept=0.9317 mom_accept=0.3966
+  ledger envelope 0: N=3000000 rest_mass=0.7821717958 sum(mW)=0.7961148546 P_cov=(0.000000e+00,0.000000e+00,0.000000e+00) P_hat=(0.000000e+00,0.000000e+00,0.000000e+00) J_origin_cov=(0,0,0) J_internal_cov=(0,0,0)
+  ledger clump    1: N=1000000 rest_mass=0.1312399829 sum(mW)=0.1324996133 P_cov=(0.000000e+00,-2.152634e-02,0.000000e+00) P_hat=(0.000000e+00,-1.765094e-02,0.000000e+00) J_origin_cov=(-1.649484099e-05,0,0.06451816869) J_internal_cov=(-1.649484099e-05,0,-6.08510626e-05)
+  ledger clump    2: N=1000000 rest_mass=0.1312399829 sum(mW)=0.1324996382 P_cov=(0.000000e+00,2.152597e-02,0.000000e+00) P_hat=(0.000000e+00,1.765094e-02,0.000000e+00) J_origin_cov=(-2.904069342e-05,0,0.06451347307) J_internal_cov=(-2.904069342e-05,0,-6.444365957e-05)
+  ledger system    : rest_mass=1.044651762 sum(mW)=1.061114106 P_cov=(0.000000e+00,-3.676726e-07,0.000000e+00) J_origin_cov=(-4.553553441e-05,0,0.1290316418)
+  particles : total=5000000 (envelope 3000000 + clumps 2000000), antithetic pairs
+  profile table written to gi_profile_M076_two_clump_s10.txt
+[tmunu-debug] cycle=0 ghost images sent==received==51016 (global)
+[tmunu-debug] cycle=0 npart=5000000 cross_level=440008 identity max_resid=2.33147e-14 (tol 3.76983e-08) (global)
+
+Setup complete, executing task list(s)...
+
+elapsed=5.631887e+01 cycle=0 time=0.000000e+00 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=0 migrations: face=1664 edge=0 corner=0 search_fail=0 npart=2500842
+[prtcl-debug] rank=1 cycle=0 migrations: face=1706 edge=0 corner=0 search_fail=0 npart=2499158
+[tmunu-debug] cycle=0 ghost images sent==received==51041 (global)
+[tmunu-debug] cycle=0 npart=5000000 cross_level=439984 identity max_resid=6.217249e-14 (tol 3.769835e-08) (global)
+elapsed=6.656524e+01 cycle=1 time=6.250000e-03 dt=6.250000e-03
+[prtcl-debug] rank=0 cycle=1 migrations: face=1676 edge=0 corner=0 search_fail=0 npart=2500843
+[prtcl-debug] rank=1 cycle=1 migrations: face=1609 edge=0 corner=0 search_fail=0 npart=2499157
+[tmunu-debug] cycle=1 ghost images sent==received==51039 (global)
+[tmunu-debug] cycle=1 npart=5000000 cross_level=440008 identity max_resid=1.059153e-13 (tol 3.769834e-08) (global)
+elapsed=1.046723e+02 cycle=2 time=1.250000e-02 dt=6.250000e-03
+
+Terminating on cycle limit
+time=1.250000e-02 cycle=2
+tlim=4.000000e+02 nlim=2
+
+Current number of MeshBlocks = 792
+0 MeshBlocks created, 0 deleted by AMR
+0 communicated for load balancing, load balancing efficiency = 1.000000e+00
+
+particles: initial=5000000 final=5000000 destroyed: exit=0 sphere=0 lapse=0 horizon=0  [conservation OK]
+
+MeshBlock-cycles = 1584
+cpu time used  = 4.835339e+01
+zone-cycles/cpu_second = 1.073441e+06
+particle-updates/cpu_second = 2.068107e+05

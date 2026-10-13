@@ -1,0 +1,77 @@
+{
+  "passed": true,
+  "root": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12805",
+  "initial": {
+    "inside_domain": true,
+    "centers": true,
+    "widths": true,
+    "thermal": true,
+    "counts": true,
+    "tags": true,
+    "finite": true,
+    "positive_weights": true,
+    "ledger": true,
+    "boost_signs": true,
+    "positive_Jz": true
+  },
+  "seed_checkpoint": {
+    "path": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12773/seed/rst/s10_validation_only.00001.rst",
+    "bytes": 10537783852,
+    "header_bytes": 167664,
+    "time": 0.00625,
+    "cycle": 1,
+    "dt": 0.00625,
+    "blocks": 792,
+    "particles": 5000000,
+    "removed": [
+      0,
+      0,
+      0
+    ],
+    "sha256": "1e541ea3055b7d0eed2bc51e6853971bbd4f93740bb366806599a14625173fb9"
+  },
+  "arms": {
+    "memory_baseline": {
+      "run": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12805/memory_baseline",
+      "checkpoint": {
+        "path": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12805/memory_baseline/rst/s10_validation_only.00002.rst",
+        "bytes": 10537783973,
+        "header_bytes": 167785,
+        "time": 0.8062499999999981,
+        "cycle": 129,
+        "dt": 0.00625,
+        "blocks": 792,
+        "particles": 5000000,
+        "removed": [
+          0,
+          0,
+          0
+        ],
+        "sha256": "d9c15c07793b558f3889f4ae2953e53b985fbe04379a5f84256546a34a529294"
+      }
+    },
+    "memory_patched": {
+      "run": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12805/memory_patched",
+      "checkpoint": {
+        "path": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/compact_12805/memory_patched/rst/s10_validation_only.00002.rst",
+        "bytes": 10537784241,
+        "header_bytes": 168053,
+        "time": 0.8062499999999981,
+        "cycle": 129,
+        "dt": 0.00625,
+        "blocks": 792,
+        "particles": 5000000,
+        "removed": [
+          0,
+          0,
+          0
+        ],
+        "sha256": "3f0b98a498301f1e9211cfc94855e989f1d173eff27de740a3597e0b32ffa51c"
+      }
+    }
+  },
+  "production_blocks": 4936,
+  "memory_advances": 128,
+  "memory_warmup_advances": 32,
+  "full_production_GPU_gate_deferred_to_Vista": true
+}
