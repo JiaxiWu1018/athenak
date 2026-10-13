@@ -396,11 +396,16 @@ void Particles::set_prtcl_tmunu() {
     // if they were all same-rank (the upper bound); cross-rank-bound images go to the
     // separate send-staging array.
     if (npart + nimg_need > static_cast<int>(tmunu_images.extent(0))) {
-      Kokkos::realloc(tmunu_images, npart + nimg_need);
+      int need = npart + nimg_need;
+      int old_cap = tmunu_images.extent_int(0);
+      int new_cap = std::max(need, old_cap + std::max(old_cap/8, 1));
+      Kokkos::realloc(tmunu_images, new_cap);
     }
 #if MPI_PARALLEL_ENABLED
     if (nimg_need > static_cast<int>(tmunu_img_send.extent(0))) {
-      Kokkos::realloc(tmunu_img_send, nimg_need);
+      int old_cap = tmunu_img_send.extent_int(0);
+      int new_cap = std::max(nimg_need, old_cap + std::max(old_cap/8, 1));
+      Kokkos::realloc(tmunu_img_send, new_cap);
     }
 #endif
     Kokkos::deep_copy(tmunu_nimg, 0);   // {0: same-rank imgs beyond npart, 1: cross-rank}

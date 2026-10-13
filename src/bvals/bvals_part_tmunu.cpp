@@ -140,8 +140,18 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
 
   // ---- (d) post non-blocking receives (one contiguous slice per sending rank), tags 2/3
   if (n_img_recv > 0) {
-    Kokkos::realloc(img_rrecvbuf, kImgNR*n_img_recv);
-    Kokkos::realloc(img_irecvbuf, kImgNI*n_img_recv);
+    int rneed = kImgNR*n_img_recv;
+    int ineed = kImgNI*n_img_recv;
+    if (rneed > img_rrecvbuf.extent_int(0)) {
+      int old_cap = img_rrecvbuf.extent_int(0);
+      int new_cap = std::max(rneed, old_cap + std::max(old_cap/8, 1));
+      Kokkos::realloc(img_rrecvbuf, new_cap);
+    }
+    if (ineed > img_irecvbuf.extent_int(0)) {
+      int old_cap = img_irecvbuf.extent_int(0);
+      int new_cap = std::max(ineed, old_cap + std::max(old_cap/8, 1));
+      Kokkos::realloc(img_irecvbuf, new_cap);
+    }
   }
   img_rrecv_req.assign(n_img_recv_msgs, MPI_REQUEST_NULL);
   img_irecv_req.assign(n_img_recv_msgs, MPI_REQUEST_NULL);
@@ -163,8 +173,18 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
 
   // ---- (e) pack the staged images into flat buffers on device, then post the sends
   if (n_send > 0) {
-    Kokkos::realloc(img_rsendbuf, kImgNR*n_send);
-    Kokkos::realloc(img_isendbuf, kImgNI*n_send);
+    int rneed = kImgNR*n_send;
+    int ineed = kImgNI*n_send;
+    if (rneed > img_rsendbuf.extent_int(0)) {
+      int old_cap = img_rsendbuf.extent_int(0);
+      int new_cap = std::max(rneed, old_cap + std::max(old_cap/8, 1));
+      Kokkos::realloc(img_rsendbuf, new_cap);
+    }
+    if (ineed > img_isendbuf.extent_int(0)) {
+      int old_cap = img_isendbuf.extent_int(0);
+      int new_cap = std::max(ineed, old_cap + std::max(old_cap/8, 1));
+      Kokkos::realloc(img_isendbuf, new_cap);
+    }
     auto &rbuf = img_rsendbuf;
     auto &ibuf = img_isendbuf;
     auto &simg = imgs;
@@ -234,7 +254,9 @@ void ParticlesBoundaryValues::ExchangeTmunuImages() {
     // preserves) the device copy unambiguously, not a stale host mirror.
     pmy_part->tmunu_images.template modify<DevExeSpace>();
     if (need > static_cast<int>(pmy_part->tmunu_images.extent(0))) {
-      Kokkos::resize(pmy_part->tmunu_images, need);   // grows, preserving [0, base)
+      int old_cap = pmy_part->tmunu_images.extent_int(0);
+      int new_cap = std::max(need, old_cap + std::max(old_cap/8, 1));
+      Kokkos::resize(pmy_part->tmunu_images, new_cap);  // preserve [0, base)
     }
     auto &img = pmy_part->tmunu_images;
     auto &rbuf = img_rrecvbuf;
