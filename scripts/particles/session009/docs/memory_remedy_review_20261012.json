@@ -1,0 +1,30 @@
+{
+  "status": "read_only_historical_remedy_verified_not_implemented",
+  "historical_commit": "7093f488d926338ed67eef9af51db28395cc8873",
+  "historical_source": "/data/jiaxiwu/NRPIC/Singularity/session_02_validation_20260907/code_session2",
+  "compiled_session009_source": "6892be3e3f04ec573f91cb2034bc9d3009a3bdff",
+  "files": {
+    "src/bvals/bvals_part.cpp": {
+      "current_matches_compiled_source": true,
+      "sha256": "b0a717f73288959745b4b36ddfdf5671a47a5ab502840fd0d237bd46533b9f8b"
+    },
+    "src/bvals/bvals_part_amr.cpp": {
+      "current_matches_compiled_source": true,
+      "sha256": "e2cd3eea264d75084c2dd0ef0c7bbb666df9ed63bcf7eb7cda5a47281262fb2f"
+    },
+    "src/bvals/bvals_part_tmunu.cpp": {
+      "current_matches_compiled_source": true,
+      "sha256": "b92dbd850214384afdfdacabae7e278f78646cc519411a531c2e537afb74aee9"
+    },
+    "src/particles/particles_tmunu.cpp": {
+      "current_matches_compiled_source": true,
+      "sha256": "9f9631723d69cdb1b798421e557c632e1533c4890c6740d691ef1815545bfdd8"
+    }
+  },
+  "missing_equivalent_reuse_implementation": true,
+  "GPU_growth_reduction_percent_in_historical_test": 54.0,
+  "host_growth_reduction_percent_in_historical_test": 88.4,
+  "current_cause_proven": false,
+  "implementation_authorized": false,
+  "tests_run_this_review": false
+}

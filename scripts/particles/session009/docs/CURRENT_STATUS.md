@@ -1,6 +1,10 @@
 # Session009 — stopped by GPU memory guard; data archived and analyzed
 
-Checked **October 08, 2026 07:35 PM PDT**. **The simulation is stopped and no registered AMD or Anta job is live.** The memory watchdog requested a clean stop at **October 08, 2026 04:01:27 PM PDT** after a GPU reached **85.075%**, crossing the approved85% threshold. Production455477 exited0:0 and wrote a verified final checkpoint at **t=9.33125M_ref**. REQUEST_STOP and RESOURCE_STOP.json remain intact; no USER_STOP is present. No automatic retry, physics change, stop override, production restart or agent was performed.
+Checked **October 12, 2026 05:01 PM PDT**. **The simulation is stopped and no registered AMD or Anta job is live.** The memory watchdog requested a clean stop at **October 08, 2026 04:01:27 PM PDT** after a GPU reached **85.075%**, crossing the approved85% threshold. Production455477 exited0:0 and wrote a verified final checkpoint at **t=9.33125M_ref**. REQUEST_STOP and RESOURCE_STOP.json remain intact; no USER_STOP is present. No automatic retry, physics change, stop override, production restart or agent was performed.
+
+## New-chat handoff — October 12, 2026 05:01 PM PDT
+
+REPORT_Jeans9.md and REPORT_AGENT.md now consolidate setup, all completed checks/repairs, final science/resources/artifacts, cancelled monitors and concrete proposed continuation steps. Fresh read-only AMD/Anta metadata confirms no live registered jobs, unchanged verified t9.33125 checkpoint, all44 frozen runtime hashes/source/input matching and retained archive products. The historical buffer-reuse repair7093f488 is verified absent from compiledSession009 source; it is a candidate remedy, not implemented or tested here. Jiaxi requested the remedy without implementation and this handoff authorizes documentation only. Keep resource stop and cancelled wakes intact; discuss repair/continuation authorization in the next chat. Receipts:evidence/handoff_amd_20261012.json, handoff_anta_20261012.json, memory_remedy_review_20261012.json.
 
 ## User cancellation of periodic checks
 

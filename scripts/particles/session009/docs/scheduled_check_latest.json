@@ -1,36 +1,15 @@
 {
-  "action": "cancel_session009_two_hour_checks",
-  "status": "user_cancelled_two_hour_checks",
-  "utc": "2026-10-09T02:33:27.948958+00:00",
-  "local": "2026-10-08T19:33:27.948958-07:00",
-  "user_instruction": "OK. No need to continue the two-hour check. Cancel that. Report the progress to me and why it stops.",
-  "marker": "JEANS9_R40_TWO_HOUR_WAKE",
-  "sticky_wake_stop": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/control/WAKE_STOP",
-  "schedule_absent_verified": true,
-  "unrelated_crontab_entries_preserved": true,
-  "removed_entries": 1,
-  "production_actions_taken": false,
-  "checked_Pacific": "October 08, 2026 07:35 PM PDT",
-  "AMD_live_jobs": [],
-  "Anta_live_jobs": [],
-  "latest_verified_checkpoint": {
-    "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/segment_001/rst/s9_orbit_gw.00005.rst",
-    "bytes": 64575856941,
-    "header_bytes": 52193,
-    "time": 9.331250000000624,
-    "cycle": 2256,
-    "dt": 0.0015625,
-    "blocks": 5020,
-    "particles": 3996300,
-    "removed": [
-      0,
-      0,
-      1003700
-    ],
-    "sha256": "7b4a82e8ec74a027a97ab51b6b27d9a36eb0ad81f6cad97f2cfc0c82b708d77b"
-  },
+  "action": "documentation_handoff",
+  "checked_Pacific": "October 12, 2026 05:01 PM PDT",
+  "last_verified_time": 9.331250000000624,
   "AMD_actual_node_hours": 72.69777777777777,
   "Anta_actual_node_hours": 3.8519444444444444,
-  "AMD_evidence": "evidence/wake_cancel_amd_status.json",
-  "Anta_evidence": "evidence/wake_cancel_anta_status.json"
+  "live_registered_jobs": [],
+  "two_hour_wake_enabled": false,
+  "memory_remedy_implemented": false,
+  "implementation_authorized": false,
+  "receipts": [
+    "evidence/handoff_amd_20261012.json",
+    "evidence/handoff_anta_20261012.json"
+  ]
 }

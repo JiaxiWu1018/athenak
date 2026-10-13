@@ -25,7 +25,7 @@
   "push_status": "evidence/PUSH_STATUS.txt",
   "wave_gate": "evidence/wave_gate.json",
   "convention": "evidence/weyl_convention.json (passed)",
-  "current_phase": "resource_limit: clean stop at verified t9.33125; no live jobs; archived/analysed partial production, memory review before resume",
+  "current_phase": "resource_limit: stopped at verified t9.33125; no live jobs; reports consolidated; historical memory remedy reviewed but not implemented",
   "extraction_radius": 40,
   "wave_floor_radius": 46,
   "initial_blocks": 5384,
@@ -57,9 +57,9 @@
     "k005-009"
   ],
   "mpi_witness_sha256": "3df8ece08a69ecfc81ec0ce519ece02935445bdfb2d50a135231b38d6ab82b1a",
-  "last_check": "evidence/two_hour_wake_cancelled.json",
+  "last_check": "evidence/handoff_amd_20261012.json",
   "report_plot_status": "Unchanged stopped-run figures/movies/reports and completed plane/accounting review retained; no new science data or milestones.",
-  "checked_Pacific": "October 08, 2026 07:35 PM PDT",
+  "checked_Pacific": "October 12, 2026 05:01 PM PDT",
   "latest_verified_checkpoint": {
     "path": "/work1/eliasmost/jiaxiwu/gi_s009_amd_20261005/runs/segment_001/rst/s9_orbit_gw.00005.rst",
     "bytes": 64575856941,
@@ -186,7 +186,7 @@
     "input_sha256": "deb6f631f7b06f8df6927662e01d6a3fa88bda4b0322ade3a1a07ff10f05dffd",
     "executable_hashes_recomputed": false
   },
-  "Anta_filesystem_free_bytes": 28916468187136,
+  "Anta_filesystem_free_bytes": 28916466475008,
   "two_hour_wake_enabled": false,
   "two_hour_wake_cancelled": {
     "action": "cancel_session009_two_hour_checks",
@@ -200,5 +200,16 @@
     "unrelated_crontab_entries_preserved": true,
     "removed_entries": 1,
     "production_actions_taken": false
-  }
+  },
+  "handoff_report": "REPORT_AGENT.md",
+  "human_report": "REPORT_Jeans9.md",
+  "handoff_receipts": [
+    "evidence/handoff_amd_20261012.json",
+    "evidence/handoff_anta_20261012.json"
+  ],
+  "memory_remedy_review": "evidence/memory_remedy_review_20261012.json",
+  "memory_remedy_commit": "7093f488d926338ed67eef9af51db28395cc8873",
+  "memory_remedy_implemented": false,
+  "implementation_authorized_for_handoff": false,
+  "historical_reports": "history/handoff_20261012/"
 }

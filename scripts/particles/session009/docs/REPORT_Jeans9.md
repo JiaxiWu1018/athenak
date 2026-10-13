@@ -1,76 +1,117 @@
-# Current update — October 08, 2026 07:35 PM PDT
+# Session009 — progress report and continuation handoff
 
-## Periodic checks cancelled by the user
+Updated **October 12, 2026 05:01 PM PDT**. This report supersedes the earlier preparation/status text, preserved under `history/handoff_20261012/`. Read [REPORT_AGENT.md](REPORT_AGENT.md) for exact checkpoint, source, job history and continuation steps.
 
-No registered AMD or Anta job is running or queued; the verified checkpoint is still t9.33125. The two-hour checks have been cancelled at your request and persistent wake-disable intent is recorded. Usage remains 72.697778 AMD raw node-hours and 3.851944 Anta allocated node/GPU-hours. Saved plots, movies and verified archive receipts are retained. Cancellation receipt: evidence/two_hour_wake_cancelled.json.
+## Current result and why the run stopped
 
-**Simulation stopped cleanly at t9.33125M_ref after a GPU reached85.075%, crossing the approved85% memory limit.** No simulation job is running or queued. The final checkpoint and segment science outputs are verified on AMD and checksum-archived on Anta. REQUEST_STOP/RESOURCE_STOP remain set; no automatic restart, tuning or physics change. Controller time0.03125 is stale because its continuation inspector refused the stop; it is not current science time.
+The fresh Session009 run reached **t = 9.33125 M_ref** and is stopped. No registered AMD or Anta job is running or queued at this handoff. The production job ended cleanly and saved a verified checkpoint after one GPU reached **85.075% memory use**, crossing the approved **85% limit** on October 8 at 4:01:27 PM PDT. This was a preventive resource stop; it was not an out-of-memory crash, a numerical failure, or completion of the scientific goal.
 
-Strict individual horizons are accepted for both clumps by t8.48594. At t9.32969 their measured horizon masses are about0.074953 and0.074854M_ref (distinct from0.12 source parameters), with small inherited spin estimates0.002973/0.004864. M_ref=1 is the fixed inherited reference unit, not a measured horizon or ADM mass. The0.133215 local Lorentz boost remains approximate companion support, not exact circular GR initial data; K_ij≈0 leaves the local momentum constraint unsolved. Only about1.52degrees of motion are saved after both horizons have accepted measurements; this cannot establish nearly circular motion or sustained inspiral. No accepted common horizon, merger or ringdown waveform exists. Raw R40 complex multipoles are retained through t9.32656; strain is deferred for insufficient time/causal coverage.
+Both clumps have accepted individual apparent horizons by **t = 8.48594**. Only **0.0042207 revolutions, about 1.52 degrees**, were measured afterward. The available run is too short to establish a nearly circular orbit, sustained inspiral or secular orbital shrinkage. No accepted common horizon, merger or ringdown waveform exists. Neither the early t12 review nor any 50M milestone was reached.
 
-The final count is3,996,300 surviving particles. The exact removal ledger conserves all five million initially simulated particles: envelope1,999 removed; left501,109; right500,592. No imposed recoil, new symmetry or reduction of the initial particle count. Saved metric fields in all three latest diagnostic planes are finite, checked by allocated Anta2423; this is not convergence evidence.
+The checkpoint and science outputs are checksum-archived on **Anta /data3**, and plots and movies have been generated and reviewed. The word `final` in the stopped-run analysis directory describes the closeout of this partial attempt; it does not mean a completed inspiral–merger–ringdown calculation.
 
-Usage: **72.697778 AMD raw node-hours**, **3.851944 Anta node/GPU-hours**,11/96Antajobs completed. Last allocated AMD storage was0.217TiB session/0.912TiB whole user before archival cleanup; no fresh post-cleanup size is claimed. Anta archive measured0.644TiB. Generated cost estimates using stale controller time were corrected with originals preserved; no remaining-cost forecast is issued while memory feasibility requires review.
+## Setup and changes from earlier sessions
 
-## Recommended review products
+Session007 used envelope-only orbital boosts and showed rapid inward motion. Session008 introduced the approved approximate companion-supported boost; its short orbital arc did not establish a full revolution. Session009 starts independently at t0 with the same approved boost and a much larger, continuously refined wave region. The R50 proposal was changed at Jiaxi's request to **one extraction surface at coordinate R40**, with fine propagation spacing through R46.
 
-- [Separation versus time](/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/figures/stopped_review_2408/separation_vs_time.png): surviving-particle centers, trackers and simultaneous accepted horizon centers are distinct; the short post-formation interval and diagnostic gaps remain visible. Full centroid separation5.99922→6.02825; AH separation6.06094→6.06769.
-- [Accepted horizon masses and spins](/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/figures/stopped_review_2408/accepted_horizons.png): only strict accepted measurements, with gaps preserved; spin estimates are qualitative.
-- [Central movie final frame](/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/figures/stopped_review_2408/central_frames_00036.png): separated blue/orange clumps and their envelope at t9.331. Full movie on Anta:`/data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/analysis/update_final_2408/central.mp4`.
-- Envelope/context and fixed-grid-density movies on Anta in the same directory:context.mp4 and density.mp4. Representative final frames and plot values were inspected. Rendering subsampling never changes simulated particle counts.
-
-This is a partial production closeout after a resource stop; no t12 or50M milestone was reached. The two-hour checks were cancelled by the user; Anta removed its terminal archival trigger after completion. Stop flags remain intact. Exact status, original limits, source/configuration hashes, outstanding memory/operations review and scoped controls are in evidence/CURRENT_STATUS.md. Receipt:evidence/scheduled_check_20261009T000844Z.json.
-
-## Earlier dated setup and status records
-
-
-
-# Session009 — fresh orbit and gravitational-wave production at R40
-
-Updated 2026-10-06T22:47:06.919839+00:00. **Full startup submitted and waiting for AMD resources. No binary evolution/results yet.** See evidence/CURRENT_STATUS.md for exact jobs and controls. Historical R50 preparation/failure reports are preserved under history/r50_before_reset_20261006/.
-
-## Aim and approved change
-
-Session008 showed both clumps forming horizons with a short orbital arc; its t12 assessment did not establish a full orbit, merger or a distant merger waveform. Session009 starts again at t0 with the same approximate companion-supported local Lorentz speed0.133215, left−y/right+y. The companion estimate v_new²≈v_old²+Gm/(4R) motivates that approved value; it is not an exact general-relativistic circular orbit. No speed/separation optimization or new pusher force is introduced.
-
-October6 amendment moves the one detector from coordinateR50 to **R40**, retaining a six-unit fine-grid buffer through **R46**. Exact initial seeded mesh drops7456→5384blocks,2072 fewer(27.79%). Later collapse refinement and particle work mean this does not imply an identical reduction in runtime. Domain and outer wave layers are unchanged.
-
-| Setting | Current approved configuration |
+| Parameter | Approved and actually used |
 |---|---|
-| Particles | Envelope3M; left1M; right1M; total5M |
-| Source mass parameters/centers | .76 atorigin; .12 atx−3; .12 atx+3 |
-| Envelope/clump sampling | Independent spherical EV envelope, arealR30; Gaussian sigma.70; local internalspread.02; seed4001/tags retained |
-| Bulk velocity | Local orthonormal Lorentz boost±.133215 alongy; no recoil/radial boost/internal spin |
-| Allocation |12exclusiveMI210nodes,48GPUs/ranks |
-| Domain/root |[−1024,1024]³;256³cells;dx8 |
-| Blocks/central AMR |32³cells,ghost4;physicallevels0–11;configuredceilingdx1/256;compactinitialtowersdx1/64 |
-| Refinement |Löhneralpha*psi⁷threshold.2;tracker_floor=false |
-| Wave region |dx≤.25 throughout r≤46;dx≤.5/1/2/4 to72/104/168/296 |
-| Evolution |RK4/CFL.4; inherited gauge/deposition/pusher protection; removealpha<.05; AH-removalOFF |
-| GW |One coordinateR40 sphere; rawcomplexrPsi4 ell2–8;dt.025M_ref |
-| Saved data |Fullparticlesdt.25;3diagnosticplanesdt.1;full3D/checkpointsdt10;checkpointsatcleanstops |
-| Hard endpoint |t400M_ref or10000rawAMDnodeh,original45-daydeadline;mergernotguaranteed |
+| Envelope | Source/model mass 0.76, center (0,0,0), 3,000,000 particles; independently solved spherical Einstein–Vlasov envelope, areal radius 30 |
+| Left/right clumps | Source/model mass 0.12 each, centers x = −3/+3, 1,000,000 particles each |
+| Sampling | Gaussian sigma = 0.70; internal orthonormal spread s = 0.02; established deterministic seeds including 4001 and immutable component tags |
+| Initial orbital boost | Local orthonormal Lorentz speed 0.133215; left −y, right +y; positive orbital J_z |
+| Total initial particles | Exactly 5,000,000; no imposed envelope recoil, internal spin or radial boost |
+| AMD allocation | 12 exclusive MI210 nodes, 48 GPUs/MPI ranks |
+| Domain/root grid | [−1024,1024]^3; 256^3 cells; root dx = 8 |
+| MeshBlocks and refinement | 32^3 interior cells, 4 ghost cells; physical levels 0–11; central allowed minimum dx = 1/256; initial compact clump towers reach 1/64 |
+| Wave propagation region | dx ≤ 1/4 throughout r ≤ 46; dx ≤ 1/2, 1, 2, 4 to r72, 104, 168, 296 |
+| Adaptive refinement | Löhner estimate of alpha*psi^7, threshold 0.2; tracker_floor=false |
+| Evolution | RK4, CFL 0.4; inherited gauge, damping, conservative deposition and pusher protections |
+| Particle removal | alpha < 0.05; AH-driven removal OFF |
+| Gravitational-wave data | Raw complex rPsi4, ell = 2–8, coordinate R40, cadence 0.025 M_ref |
+| Other output cadences | Full particles 0.25M; three diagnostic planes 0.1M; full 3D snapshots/checkpoints 10M, plus checkpoints at clean stops |
 
-M_ref=1 is the inherited reference unit. Source normalization, sampled rest mass, measured horizon masses and any ADM estimate are distinct. Kij≈0 and the local momentum constraint remains unsolved; opposite global boosts do not fix it. Initialization must regenerate combined geometry/weights and boosted samples, preserving unaffected envelope assets where valid.
+The initial R40 mesh has **5,384 blocks**, compared with 7,456 for R50: 2,072 fewer blocks (27.79%). The final checkpoint has 5,020 blocks; tracker locations reached dx=1/256. Neither this count nor an allowed refinement ceiling describes every block's actual spacing.
 
-## Wave interpretation and stopping
+The boost is an approximate Newtonian companion correction applied through the existing local Lorentz transformation, not an exact general-relativistic circular-orbit construction. The initial K_ij is approximately zero and the local momentum constraint is unsolved. No speed tuning, added force, eccentricity survey or constraint solver was introduced.
 
-Intended band f≤.4/M_ref, wavelengths≥2.5M_ref, gives at least10cells atdx.25. This is a planning heuristic. The retained80M linear/interface test passes approved amplitude≤10% and phase≤.2rad limits; it is not nonlinear spherical convergence. R40 shortens propagation but increases finite-radius/near-source/gauge concerns relative toR50. Check matter near coordinateR40 and do not confuse envelope arealR30 with isotropic coordinateR30. With one detector, no multi-radius accuracy test or extrapolation to infinity is possible.
+**Time and the 50M updates use M_ref = 1**, the inherited reference unit. Source masses sum to one, but sampled rest mass is approximately **1.04465**, and measured horizon masses are different again. No equality to ADM mass is assumed.
 
-Weak-field boundary gauge travel estimate(1024−40)/sqrt2≈696M_ref exceeds hardt400; actual metric/shift propagation and boundary diagnostics still require inspection. Coarser transitions can reflect waves.
+## Checks completed before and after production
 
-An early scientific stop needs a strictly accepted common horizon enclosing both objects, usable inband post-merger/ringdown signal atR40, diagnostic gaps checked, and at least100savedM_ref after the observed outgoing wavepeak. A common horizon alone is insufficient. If merger/ringdown is absent or outside supported coverage at a cap, report the incomplete outcome.
+The full initialization census, component tags, finite positive weights, centers, thermal samples, boost signs and positive orbital J_z passed. The net initial covariant momentum was approximately **(0, −3.7e−7, 0)**, a residual fraction 8.59e−6 relative to the sum of clump momentum magnitudes; no new symmetry or recoil forced cancellation.
 
-## Current findings
+The actual 48-rank allocation passed communication and startup checks. Startup memory peaked at about **70.34%**. Brief uninterrupted/restart and clean-stop tests passed, required output paths were checked from batch working directories, and a real checkpoint with a 35,007-byte parameter header exercised the retained restart-header repair. The final production checkpoint has a 52,193-byte header.
 
-The old R50 attempt did not evolve: a strict input override was missing. The input now explicitly defines output7/last_time. The repaired R40 actual-executable input preflight453630 passed; full5M startup453631 is pendingresources, followed by inspector453632. GPU memory, initialization residuals, finite evolved fields, real large-header restart and production timing remain pending. Reused propagation errors are .2470%/.06263% amplitude and .007032/.00008930rad phase at wavelength2.5/5; these are test-wave findings, not binary radiation measurements.
+The retained linear propagation tests at wavelengths 2.5M and 5M over 80M passed the approved amplitude/phase bounds. This is limited test-wave evidence; it does not establish convergence or accuracy of the nonlinear binary waveform.
 
-No new separation/orbital/horizon/waveform result or movie is available. Earlier Anta analysis/update_final_2353 is the preserved failed R50 closeout. Do not infer a merger waveform from a central merger before radiation arrives at the detector.
+Allocated stopped-run analysis checked particle accounting, accepted horizon associations and finite waveforms/history. Anta job2423 checked all fields in the three latest saved metric planes: all finite. This is not a full 3D or convergence audit. Local constraint comparisons are retained, but the global Session007/009 comparison is unmatched and no fully matched physical momentum-constraint ratio is claimed.
 
-## Monitoring, analysis and budgets
+## Available scientific measurements
 
-Every2hours, the Perseus monitor checks registered jobs and wakes this same Codex thread when idle. Five-minute Anta metadata checks submit allocated archive/analysis work as sealed outputs arrive. Successful AMD inspectors chain finite checkpointed jobs independently of the agent. Initial/t12/every50M/final reports include separation, absolute/envelope-relative motion, post-horizon revolutions and radial/tangential ratios, strictly accepted horizons, particles/removals/covariantmatterJ, numerical health, rawGW and supported strain. Coordinate shrinkage alone does not prove radiation-driven inspiral. Figures/movies require representative visual/value review once data exist.
+| Measurement | Available finding |
+|---|---|
+| Surviving-particle center separation | 5.999221 at initialization to 6.028254 at t9.33125, about +0.484% |
+| Paired accepted horizon-center separation | 6.060942 to 6.067694 over t8.64531–9.32969; range/mean about 0.142% |
+| Individual horizon masses | Approximately 0.074953 and 0.074854 at t9.32969, in inherited reference units |
+| Inherited horizon spin estimates | chi ≈ 0.002973 and 0.004864; qualitative diagnostics with no precision/convergence claim |
+| Accepted measurements | Left 423 rows, right 463; uniquely associated with their summaries; no accepted common horizon |
+| Post-formation phase | About 1.52 degrees; insufficient to establish circularity or sustained inspiral |
+| Raw waveform coverage | 318 finite, strictly increasing samples through t9.3265625 at R40 |
 
-AMD used0.9225rawnodeh so far; Anta0.096944444node/GPUh(3/96jobs). Queued AMD startup/inspector reserve48.5nodeh; maximum49.4225 so far. All earlier jobs count; reset did not renew budgets/deadline. No monetary tariff is known. Session009 AMDcap1.25TiB plus whole-user guards; Anta/data3cap16TiB and96four-hourjobs; latest3verifiedAMDcheckpoints retained. No rawsimulation data onPerseus.
+Particle centers, trackers and horizon centers have different definitions. Removal changes surviving-particle centroids; all reported orbital diagnostics are coordinate quantities. Gaps and rejected/stale horizon surfaces are excluded rather than converted to physical zeros. A small separation change cannot identify gravitational radiation as its cause.
 
-Future most useful products will be separation/orbital_motion/horizon/waveform figures and central-orbit/context/fixed-grid-density movies under Anta/data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/analysis/update_*/. These are planned paths, not existing Session009 science products. README and manifest map exact inputs, status, stop commands, verified data, reports and provenance.
+Exactly **3,996,300 particles survive**. The remaining **1,003,700** were removed by the approved lapse criterion:
+
+| Component | Initially simulated | Surviving | Removed |
+|---|---:|---:|---:|
+| Envelope | 3,000,000 | 2,998,001 | 1,999 |
+| Left clump | 1,000,000 | 498,891 | 501,109 |
+| Right clump | 1,000,000 | 499,408 | 500,592 |
+| Total | 5,000,000 | 3,996,300 | 1,003,700 |
+
+The exact event ledger agrees with full-particle snapshots and the checkpoint. Matter angular momentum uses covariant particle momenta; removed-matter J and horizon spin are separate diagnostics, not an exact conserved sum.
+
+There is not enough time for radiation from the central collapse/possible later merger to reach R40 and provide a complete waveform. Strain integration and radiated energy/angular momentum claims are deferred. With one extraction radius, radius dependence and extrapolation to infinity cannot be measured. The intended frequency band f ≤ 0.4/M_ref and ten cells per shortest intended wavelength are planning limits, not convergence evidence.
+
+## Plots and movies to inspect
+
+- [Separation versus time](/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/figures/stopped_review_2408/separation_vs_time.png): compares surviving-particle centers, trackers and paired accepted horizon centers; watch the brief coverage and horizon gaps.
+- [Orbital motion](/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/figures/stopped_review_2408/orbit.png): shows the short trajectories; the saved arc does not establish a full orbit.
+- [Accepted horizon measurements](/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/figures/stopped_review_2408/accepted_horizons.png): individual masses and small spin estimates, with gaps and no common-horizon curve.
+- [Central movie representative final frame](/data/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/figures/stopped_review_2408/central_frames_00036.png): separated blue/orange clumps at t9.331.
+
+Full products are on Anta in **`/data3/jiaxiwu/NRPIC/GI_in_cluster/session_009_orbit_gw_production_20261005/analysis/update_final_2408/`**: `central.mp4`, `context.mp4`, `density.mp4`, and separation/orbit/horizon/constraint/removal/raw-waveform figures. The central movie shows tagged clumps, the context movie shows the envelope, and the density movie uses deposition onto fixed Cartesian bins to avoid native-AMR seams. Rendering subsampling never reduces the simulated particle count. Plot values and representative movie frames were visually checked; provenance is in `evidence/visual_review_2408.json`.
+
+## Costs, storage and original limits
+
+| Resource | Recorded usage |
+|---|---|
+| AMD total | **72.697778 raw node-hours**, including preparation, failed allocations, production and inspectors |
+| Production job455477 | 20,119 allocated seconds × 12 nodes = **67.063333 node-hours** |
+| Anta | **3.851944 allocated node/GPU-hours**, 11 of 96 registered jobs; all completed |
+| AMD storage | Last allocated sample before archival cleanup: Session009 0.217TiB, whole user 0.912TiB; not a current post-cleanup measurement |
+| Anta archive | Last allocated measurement 0.644TiB; checkpoint and science copies checksum-verified |
+| Monetary cost | No account tariff supplied; no dollar estimate |
+
+The corrected historical production average is 7.211111 node-hours/M over t0.03125–9.33125. It is not a forecast for later collapse, orbits or merger. An earlier generated report used stale controller time; originals are preserved and the false extrapolation was withdrawn.
+
+Original hard limits remain **t400 or 10,000 raw AMD node-hours**, at most 90 finite evolution segments of no more than 12 hours with 40 minutes reserved for finalization, and the original deadline **November 19, 2026 02:01 PM PST**. AMD session cap is 1.25TiB, with whole-user warning/stop/projected limits 1.5/1.7/1.9TiB. Anta archive cap is 16TiB and analysis/archive allowance 96 jobs of at most four hours. Resetting the detector or restarting does not renew these budgets.
+
+An earlier scientific stop requires a strictly accepted common horizon enclosing both objects, usable in-band outgoing ringdown at R40, checked gaps and at least 100 saved M after the observed outgoing waveform peak. None of these completion conditions has been reached.
+
+## Earlier memory remedy and proposed continuation
+
+The read-only review found a directly relevant earlier repair in **Singularity Session002**, commit **`7093f488d926338ed67eef9af51db28395cc8873`**. It retains particle communication/storage buffers and enlarges them only when necessary, with 12.5% growth margin. Its matched test reduced host-memory growth by 88.4% and GPU-memory growth by 54%; residual growth was not eliminated. [Historical report](/data/jiaxiwu/NRPIC/Singularity/session_02_validation_20260907/REPORT.md:181).
+
+The equivalent buffer-reuse implementation is **absent from Session009's frozen compiled source**. Four relevant source files were compared read-only against that frozen revision. This is a strong candidate for the observed growth; the Session009 stop alone does not prove that all memory increase has the same cause. Mesh changes, rank populations and reserved capacity still need measurement.
+
+Recommended after approval: adapt the existing repair while preserving Session009's newer diagnostics, validate a short continuation from **t9.33125**, and select shorter checkpointed segments using the measured restart memory and growth rate. Earlier ST-migration Session007 completed five bounded segments with memory resets and no lost progress. Keep the 85% guard; any capacity change must retain measured mesh headroom and approved physical resolution. Shorter segments must also respect the original 90-segment/calendar/resource caps.
+
+**The repair has not been implemented, built or tested in Session009.** Jiaxi explicitly requested the solution without implementation; this handoff request authorizes documentation. The next chat should read the technical report and discuss authorization for the concrete repair/continuation before execution. No job was submitted or restarted for this handoff.
+
+## Monitoring and where to start the next chat
+
+Jiaxi cancelled the two-hour checks on October8 at 7:33 PM PDT. The campaign cron entry is absent and `control/WAKE_STOP` persists on Perseus. Anta's five-minute trigger removed itself after stopped-run archival/analysis completed. AMD `REQUEST_STOP` and `RESOURCE_STOP.json` remain set. These states were checked again for this handoff; no monitor was re-enabled.
+
+Start with **[REPORT_AGENT.md](REPORT_AGENT.md)**, then `evidence/CURRENT_STATUS.md`, `notes/APPROVED_PLAN.md` and `manifest.json`. The final verified checkpoint defines current progress; controller `state.json` still displays stale t0.03125. Exact status/stop commands and required repairs are in the technical report. Documentation push status is recorded in `evidence/PUSH_STATUS.txt`.
