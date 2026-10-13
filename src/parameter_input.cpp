@@ -39,6 +39,8 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <iomanip>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -730,7 +732,9 @@ Real ParameterInput::SetReal(std::string block, std::string name, Real value) {
 
   Lock();
   pb = FindOrAddBlock(block);
-  ss_value << value;
+  // Runtime parameters include tracker/AH predictor state in restart headers.
+  // Preserve an exact Real round trip rather than the stream's default six digits.
+  ss_value << std::setprecision(std::numeric_limits<Real>::max_digits10) << value;
   AddParameter(pb, name, ss_value.str(), "# Updated during run time", true);
   Unlock();
   return value;
