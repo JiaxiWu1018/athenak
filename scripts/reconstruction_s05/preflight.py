@@ -61,7 +61,7 @@ def main():
         _,_,_,pv=R.read_pvtk(str(sorted((out/'pvtk').glob('*vtk'))[0]))
         energy=pv['prtcl_energy']; target=json.loads((ROOT/'evidence/model.json').read_text())['alpha_s']
         if np.max(np.abs(energy-target))>3e-6:raise ValueError('Initial monoenergy mismatch')
-        hist=np.loadtxt(next(out.glob('*.user.hst')))
+        hist=np.loadtxt(out/(case+'.user.hst'))
         if not np.all(hist[0,[3,4,9,10]]>0):raise ValueError('Placeholder initial constraints')
         particles=list((out/'pvtk').glob('*.part.vtk'))
         cubes=list((out/'bin').glob('*.tme3d.*.bin'))+list((out/'bin').glob('*.con3d.*.bin'))

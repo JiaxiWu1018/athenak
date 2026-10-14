@@ -108,9 +108,11 @@ def angular_residual(values,radii):
 
 def history(path):
     a=np.atleast_2d(np.loadtxt(path));rows=[]
+    if a.shape[1]!=19:raise ValueError('Completed-timestep history column missing')
     for v in a:
-        # Columns: t,dt,V10,H2,M2,E1,E2,J2,V16,H2,M2,E1,E2,J2,Vcore,alpha,Vouter,alpha.
-        row={'time':float(v[0]),'dt':float(v[1]),'constraint_usable':bool(v[0]==0 or v[1]>1e-6),
+        # Columns: t,dt,V10,H2,M2,E1,E2,J2,V16,H2,M2,E1,E2,J2,Vcore,alpha,Vouter,alpha,dt_done.
+        row={'time':float(v[0]),'dt':float(v[1]),'dt_completed':float(v[18]),
+             'constraint_usable':bool(v[0]==0 or v[18]>1e-6),
              'core_lapse':float(v[15]/v[14]),'outer_lapse':float(v[17]/v[16])}
         for rad,o in ((10,2),(16,8)):
             row.update({f'H_rms_r{rad}':float(np.sqrt(max(v[o+1],0)/v[o])),
@@ -185,16 +187,21 @@ def analyze(case,until=None,run_root=None,dest_root=None):
     times=np.array([r['time'] for r in shells]);nominal=np.array([r['nominal_time'] for r in shells])
     if not np.array_equal(nominal,np.arange(0,nominal[-1]+1,2)):raise ValueError('Missing/duplicate snapshot cadence')
     write_csv(dest/'shells.csv',shells);write_csv(dest/'cohorts.csv',cohorts);write_csv(dest/'cohort_mixing.csv',mixing);write_csv(dest/'occupancy.csv',sampling)
-    hs=history(next(out.glob('*.user.hst')))
+    hs=history(out/(case+'.user.hst'))
     if until is not None:hs=[r for r in hs if r['time']<=until+.25]
     write_csv(dest/'health.csv',hs)
-    ga=np.atleast_2d(np.loadtxt(next(out.glob('*.z4c.hst'))))
+    # The pinned writer uses '.z4c.user' for spacetime output; avoid matching
+    # that file as the custom user history.
+    ga=np.atleast_2d(np.loadtxt(out/(case+'.z4c.user.hst')))
     if until is not None:ga=ga[ga[:,0]<=until+.25]
+    if len(ga)!=len(hs) or not np.array_equal(ga[:,0],np.array([h['time'] for h in hs])):
+        raise ValueError('User/native constraint timestamps differ')
     np.savez_compressed(dest/'profiles.npz',time=times,edges=EDGES,mass_bins=profiles,
                         target_mass=p['M0_over_M']*np.diff(np.interp(EDGES,p['riso_over_m'],p[radial])),
                         equilibrium_mass=p['M0_over_M']*np.diff(np.interp(EDGES,p['riso_over_m'],p['proper'])))
-    write_csv(dest/'global_constraints.csv',[{'time':float(v[0]),'constraint_usable':bool(v[0]==0 or v[1]>1e-6),'H_rms':float(np.sqrt(max(v[3],0)/v[10])),
-               'M_rms':float(np.sqrt(max(v[4],0)/v[10]))} for v in ga])
+    write_csv(dest/'global_constraints.csv',[{'time':float(v[0]),'dt_completed':h['dt_completed'],
+               'constraint_usable':h['constraint_usable'],'H_rms':float(np.sqrt(max(v[3],0)/v[10])),
+               'M_rms':float(np.sqrt(max(v[4],0)/v[10]))} for v,h in zip(ga,hs)])
     errors=[];error_checks=[]
     for path in sorted((out/'bin').glob('*.tme3d.*.bin')):
         if until is not None:

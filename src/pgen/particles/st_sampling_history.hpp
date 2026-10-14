@@ -1,6 +1,7 @@
 #ifndef PGEN_PARTICLES_ST_SAMPLING_HISTORY_HPP_
 #define PGEN_PARTICLES_ST_SAMPLING_HISTORY_HPP_
 
+#include "globals.hpp"
 #include "outputs/outputs.hpp"
 #include "z4c/tmunu.hpp"
 
@@ -13,11 +14,11 @@ void STSamplingHistory(HistoryData *data, Mesh *mesh) {
   auto con = pack->pz4c->u_con;
   auto adm = pack->padm->adm;
   auto mat = pack->ptmunu->tmunu;
-  data->nhist = 16;
-  const char *labels[16] = {"V10", "H2r10", "M2r10", "E1r10", "E2r10", "J2r10",
+  data->nhist = 17;
+  const char *labels[17] = {"V10", "H2r10", "M2r10", "E1r10", "E2r10", "J2r10",
                            "V16", "H2r16", "M2r16", "E1r16", "E2r16", "J2r16",
-                           "Vcore", "acore", "Vouter", "aouter"};
-  for (int n=0; n<16; ++n) {
+                           "Vcore", "acore", "Vouter", "aouter", "dt_done"};
+  for (int n=0; n<17; ++n) {
     data->label[n] = labels[n];
   }
   const int is=idx.is, js=idx.js, ks=idx.ks;
@@ -67,6 +68,9 @@ void STSamplingHistory(HistoryData *data, Mesh *mesh) {
   for (int n=0; n<16; ++n) {
     data->hdata[n]=sum.the_array[n];
   }
+  // History's standard dt can be the NEXT timestep at final output. Retain the
+  // completed step explicitly; user history is summed over ranks, so emit it once.
+  data->hdata[16]=(global_variable::my_rank == 0 ? mesh->dt_last_completed : 0.0);
 }
 
 #endif  // PGEN_PARTICLES_ST_SAMPLING_HISTORY_HPP_
