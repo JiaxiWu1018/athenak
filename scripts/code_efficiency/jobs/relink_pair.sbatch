@@ -30,7 +30,7 @@ args=['gmake','-C',str(b),'-f','src/CMakeFiles/athena.dir/build.make','src/CMake
 (r/'release_object.command.txt').write_text(repr(args)+'\n')
 with (r/'release_object.log').open('w') as out:subprocess.run(args,stdout=out,stderr=subprocess.STDOUT,check=True)
 PY
-cd "$BUILD"
+cd "$BUILD/src"
 cmake -E cmake_link_script "$BUILD/src/CMakeFiles/athena.dir/link.txt" --verbose=1 > "$REC/release_link.log" 2>&1
 cp "$BUILD/src/athena" "$SESSION/binaries/release/athena"
 sha256sum "$SESSION/binaries/release/athena" "$SESSION/binaries/profile/athena" > "$REC/executables.sha256"

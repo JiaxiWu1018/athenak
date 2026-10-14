@@ -28,7 +28,7 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
     exe=ROOT/'binaries'/('profile' if kind=='device' else 'release')/'athena'
     job=os.environ.get('SLURM_JOB_ID')
     if not job:raise RuntimeError('Runs require a Slurm compute allocation')
-    launch=['/home/emost/codes/openmpi/bin/mpirun','-np',str(c['ranks']),'--bind-to','none',str(exe),'--kokkos-map-device-id-by=mpi_rank','-i',str(inp),'-d',str(folder)]
+    launch=['/home/emost/codes/openmpi/bin/mpirun','-np',str(c['ranks']),'--bind-to','none',str(exe),'--kokkos-map-device-id-by=mpi_rank','-t',('05:30:00' if c['n']>=100000000 else ('01:45:00' if c['n']>=10000000 else '00:25:00')),'-i',str(inp),'-d',str(folder)]
     if trace:launch=['/usr/local/cuda-12.9/bin/nsys','profile','--trace=cuda,nvtx,mpi','--sample=none','--cpuctxsw=none','--capture-range=nvtx','--nvtx-capture=benchmark_window','--capture-range-end=stop','--force-overwrite=false','--output',str(folder/'timeline')]+launch
     provenance=dict(case=c,kind=kind,job_id=job,host=command(['hostname']).strip(),start_utc=command(['date','-u','+%FT%TZ']).strip(),launch=launch,exe_sha256=hashlib.file_digest(exe.open('rb'),'sha256').hexdigest(),input_sha256=hashlib.file_digest(inp.open('rb'),'sha256').hexdigest(),commit=command(['git','-C',str(ROOT/'src/athenak'),'rev-parse','HEAD']).strip(),submodule=command(['git','-C',str(ROOT/'src/athenak'),'submodule','status']).strip(),source_status=command(['git','-C',str(ROOT/'src/athenak'),'status','--porcelain']),cuda_visible=os.environ.get('CUDA_VISIBLE_DEVICES'),slurm_gpus=os.environ.get('SLURM_JOB_GPUS'),slurm=command(['scontrol','show','job',job]),gpu_metadata=command(['nvidia-smi','--query-gpu=index,uuid,name,memory.total,driver_version','--format=csv']),mpi=command(['/home/emost/codes/openmpi/bin/mpirun','--version']))
     (folder/'source.patch').write_text(command(['git','-C',str(ROOT/'src/athenak'),'diff','HEAD']))
@@ -49,8 +49,9 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
     timings=[json.loads(p.read_text()) for p in sorted(folder.glob('timing.rank*.json'))]
     finals=[json.loads(p.read_text()) for p in sorted(folder.glob('final.rank*.json'))]
     initials=[json.loads(p.read_text()) for p in sorted(folder.glob('initial.rank*.json'))]
-    valid=process.returncode==0 and len(timings)==c['ranks'] and len(finals)==c['ranks'] and all(x['valid'] for x in finals) and all(abs(x['final_time']-target)<1e-8 for x in timings) and all(x['cycles']>0 for x in timings)
-    rec=dict(case=c,kind=kind,job_id=job,valid=valid,exit_code=process.returncode,wall_seconds=time.time()-start,endpoint=target,timings=timings,initial=initials,final=finals,trace_requested=trace,end_utc=command(['date','-u','+%FT%TZ']).strip())
+    target_reached=bool(timings and all(abs(x['final_time']-target)<1e-8 for x in timings))
+    valid=process.returncode==0 and len(timings)==c['ranks'] and len(finals)==c['ranks'] and all(x['valid'] for x in finals) and all(x['final_time']<=target+1e-8 and x['cycles']>=10 for x in timings)
+    rec=dict(case=c,kind=kind,job_id=job,valid=valid,exit_code=process.returncode,wall_seconds=time.time()-start,endpoint=target,timings=timings,initial=initials,final=finals,target_reached=target_reached,stop_reason='time_or_cycle_limit' if target_reached else 'wall_limit_or_incomplete',trace_requested=trace,end_utc=command(['date','-u','+%FT%TZ']).strip())
     rec['attempt_path']=str(folder.relative_to(ROOT))
     (folder/'receipt.json').write_text(json.dumps(rec,indent=2)+'\n')
     if folder!=base:(base/'receipt.json').write_text(json.dumps(rec,indent=2)+'\n')

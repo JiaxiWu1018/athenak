@@ -21,7 +21,10 @@ def elapsed(r):return r['timings'][0]['elapsed_max']
 def spm(r):return r['timings'][0]['seconds_per_M']
 def step(r):return 1000*elapsed(r)/r['timings'][0]['cycles']
 def save(fig,name,caption):
-    fig.tight_layout(pad=1.3)
+    if len(valid)<60:
+        fig.text(.99,.006,f'Partial campaign: {len(valid)}/60 throughput cases complete',ha='right',fontsize=7,color='.35')
+        caption='Partial campaign; only completed measurements are shown. '+caption
+    fig.tight_layout(pad=1.3,rect=(0,.035,1,1))
     for ext in ['pdf','png']:fig.savefig(ROOT/'figures'/f'{name}.{ext}',dpi=550)
     FILES.append((name,caption));plt.close(fig)
 def phase_groups(r):
@@ -37,7 +40,7 @@ devices=[r for r in load('device') if r['valid']];device_byname={r['case']['name
 through=load('throughput');valid=[r for r in through if r['valid']];profiles=[r for r in load('profile') if r['valid']];allcases=json.loads((ROOT/'matrix.json').read_text());byname={r['case']['name']:r for r in valid}
 rows=[]
 for r in through:
-    c=r['case'];t=r['timings'][0] if r['timings'] else {};row={**c,'valid':r['valid'],'job_id':r['job_id'],'endpoint':r['endpoint'],'elapsed_seconds':t.get('elapsed_max'),'cycles':t.get('cycles'),'particle_updates_per_second':t.get('particles_per_second'),'cell_cycles_per_second':t.get('cells_per_second'),'seconds_per_M':t.get('seconds_per_M'),'M_per_second':1/t['seconds_per_M'] if t.get('seconds_per_M',0)>0 else None,'step_ms':1000*t['elapsed_max']/t['cycles'] if t.get('cycles',0)>0 else None,'cell_rate_kind':'mesh-normalized' if c['frozen'] else 'physical-cell evolution','boris_fallbacks':sum(t.get('boris_fallbacks',0) for t in r['timings']),'boris_rejections':sum(t.get('boris_rejections',0) for t in r['timings'])}
+    c=r['case'];t=r['timings'][0] if r['timings'] else {};row={**c,'valid':r['valid'],'job_id':r['job_id'],'endpoint':r['endpoint'],'actual_endpoint':t.get('final_time'),'target_reached':r.get('target_reached',True),'elapsed_seconds':t.get('elapsed_max'),'cycles':t.get('cycles'),'particle_updates_per_second':t.get('particles_per_second'),'cell_cycles_per_second':t.get('cells_per_second'),'seconds_per_M':t.get('seconds_per_M'),'M_per_second':1/t['seconds_per_M'] if t.get('seconds_per_M',0)>0 else None,'step_ms':1000*t['elapsed_max']/t['cycles'] if t.get('cycles',0)>0 else None,'cell_rate_kind':'mesh-normalized' if c['frozen'] else 'physical-cell evolution','boris_fallbacks':sum(t.get('boris_fallbacks',0) for t in r['timings']),'boris_rejections':sum(t.get('boris_rejections',0) for t in r['timings'])}
     rows.append(row)
 if rows:
     with (ROOT/'results/throughput.csv').open('w') as out:
@@ -169,12 +172,12 @@ if sampling:
     if base and point:findings.append(f'On {p} GPU(s), the same-site sampling case costs {spm(point)/spm(base):.2f}x the uniform case at the same particle count and initial source.')
 if not findings:findings=['The campaign is active; completed cases are tabulated below. Bottleneck conclusions will be added when the corresponding comparisons finish.']
 report=f'# Paper Session 02 — code efficiency\n\nUpdated {NOW}. **{len(valid)}/60 throughput cases complete**, {len(profiles)} diagnostic profiles complete; {len(through)-len(valid)} failed or incomplete cases.\n\n'+ '\n\n'.join(findings)+'\n\n'
-report+='All throughput measurements are single passes ending at 5M, with a 0.5M warm-up excluded. Reported particle rates count complete cycle updates; physical-cell rates exclude ghosts. Frozen cell rates are mesh-size normalizations and represent no spacetime evolution. Wall seconds/M uses the measured physical-time interval.\n\n'
+report+='All throughput measurements are single passes targeting 5M, with a 0.5M warm-up excluded. A solver wall-clock guard finishes cleanly before the Slurm limit; shorter runs are labeled by their actual endpoint and need at least ten measured cycles to supply a rate. Reported particle rates count complete cycle updates; physical-cell rates exclude ghosts. Frozen cell rates are mesh-size normalizations and represent no spacetime evolution. Wall seconds/M uses the measured physical-time interval.\n\n'
 report+='## Figures\n\n'
 for name,caption in FILES:report+=f'![{name}](../figures/{name}.png)\n\n{caption} [PDF](../figures/{name}.pdf).\n\n'
-report+='## Exact performance table\n\n| Case | GPUs | N | Particle updates/s | Cell cycles/s | Wall s/M | Step ms |\n|---|---:|---:|---:|---:|---:|---:|\n'
+report+='## Exact performance table\n\n| Case | GPUs | N | Particle updates/s | Cell cycles/s | Wall s/M | Step ms | Actual end (M) |\n|---|---:|---:|---:|---:|---:|---:|---:|\n'
 for r in valid:
- c=r['case'];t=r['timings'][0];report+=f'| {c["name"]} | {c["ranks"]} | {c["n"]} | {t["particles_per_second"]:.6g} | {t["cells_per_second"]:.6g} | {spm(r):.6g} | {step(r):.6g} |\n'
+ c=r['case'];t=r['timings'][0];report+=f'| {c["name"]} | {c["ranks"]} | {c["n"]} | {t["particles_per_second"]:.6g} | {t["cells_per_second"]:.6g} | {spm(r):.6g} | {step(r):.6g} | {t['final_time']:.6g} |\n'
 report+='\n## Interpretation and limits\n\nThese are numerical workload measurements, not ST stability or convergence results. Single passes have no replicate-based confidence intervals. Profiling fences, sampled device clocks, and tracing affect diagnostic timings; throughput runs disable them. The interpolation ratio concerns geodesic-evaluation cycles in the instrumented pusher, not a directly separable production kernel. Mesh-only evolves with the initial source held fixed. Weighted replicas keep initial deposited stress-energy fixed within accumulation roundoff, while exact trajectories and accumulation order can diverge during evolution.\n\n'
 report+=f'Initial source-moment matching: {("PASS" if source_ok else "FAIL/INCOMPLETE") if source_candidates else "not yet measured"}; maximum scaled difference {source_max:.3g}. Cell-by-cell source checks use the common six-direction template; maximum relative error {max(source_cell_errors) if source_cell_errors else 'not yet measured'}. Every promoted case passed initial/final count, ID-checksum, finite-state, ownership, zero-destruction and frozen-geometry checks. Boris fallback/rejection counts are included in the [CSV](../results/throughput.csv).\n\n'
 if checks:report+='## Failed or incomplete cases\n\n'+'\n'.join('- '+x for x in checks)+'\n\n'
