@@ -38,7 +38,8 @@ def launch(work, deck, end, executable='athena', restart=None, extra=()):
          '-r' if restart else '-i',str(restart or deck),'-d',str(out),f'time/tlim={end}']+list(extra)
     atomic(work/'launch.json',{'job':os.environ['SLURM_JOB_ID'],'host':__import__('socket').gethostname(),
            'command':cmd,'input':str(deck),'input_sha256':sha(deck),'executable_sha256':sha(exe),
-           'source':subprocess.check_output(['git','-C',str(ROOT/'src/athenak'),'rev-parse','HEAD'],text=True).strip(),
+           'source':(ROOT/'evidence/source_commit.txt').read_text().strip(),
+           'analysis_source':subprocess.check_output(['git','-C',str(ROOT/'src/athenak'),'rev-parse','HEAD'],text=True).strip(),
            'kokkos':subprocess.check_output(['git','-C',str(ROOT/'src/athenak/kokkos'),'rev-parse','HEAD'],text=True).strip()})
     begin=time.monotonic()
     with open(work/'solver.log','w') as log:

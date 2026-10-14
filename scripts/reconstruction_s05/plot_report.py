@@ -48,6 +48,9 @@ def main():
             ds=[states[(rad,method,s)] for s in (1,2,3)]
             profiles=[d['profiles'] for d in ds];edges=profiles[0]['edges']
             target=np.cumsum(profiles[0]['target_mass'])/p['M0_over_M']
+            if method=='mc':
+                eq=np.cumsum(profiles[0]['equilibrium_mass'])/p['M0_over_M']
+                ax[row,0].plot(edges[1:],100*(eq-target),'--',color='#888888',label='Equilibrium relative to chosen profile')
             ys=[100*(np.cumsum(d['mass_bins'][0])/p['M0_over_M']-target) for d in profiles]
             band(ax[row,0],edges[1:],ys,method)
             for col,key in ((1,'E_target_error_rms'),(2,'J_coordinate_rms'),(3,'stress_coordinate_anisotropy_rms')):
@@ -98,6 +101,16 @@ def main():
             ax[row,col].set_title(f'{rad}: radius enclosing {q}% rest mass');ax[row,col].set_xlabel('Time / M');ax[row,col].set_ylabel('Change from own start (%)')
     ax[0,0].legend(fontsize=8);fig.suptitle('Shell response: COM solid, origin dotted; seed ranges are not time-sample confidence intervals')
     save(fig,out,'f3_shell_histories')
+    fig,ax=plt.subplots(2,3,figsize=(13,7),layout='constrained')
+    for row,rad in enumerate(('legacy','proper')):
+        for col,q in enumerate((10,50,90)):
+            reference=np.interp(q/100,p['proper'],p['riso_over_m'])
+            for method in METHODS:
+                ds=[states[(rad,method,s)]['shells'] for s in (1,2,3)]
+                band(ax[row,col],ds[0]['nominal_time'],[100*(d[f'r{q}']/reference-1) for d in ds],method)
+            ax[row,col].axhline(0,color='#888888',ls='--',lw=.7)
+            ax[row,col].set_title(f'{rad}: r{q} versus intended equilibrium');ax[row,col].set_xlabel('Time / M');ax[row,col].set_ylabel('Departure from equilibrium (%)')
+    ax[0,0].legend(fontsize=8);save(fig,out,'f3_equilibrium_departures')
     fig,ax=plt.subplots(2,4,figsize=(15,7),layout='constrained')
     all_maps=[]
     for rad in ('legacy','proper'):
@@ -188,7 +201,7 @@ def main():
             '', 'All runs share the same analytic metric, gauge, pusher, CIC deposition and removal settings. No constraint re-solve, frozen arm, larger domain, reweighting, or imposed perturbation was used. Core constraint norms use coordinate volume; native global norms retain their original proper-volume convention.',
             '', 'The ±128M boundary is within causal reach during this interval and was not varied. Consequently these results cannot establish physical instability, numerical convergence, or long-term Plummer stability. A preferred sampler requires improvements that persist after motion and are consistent across seeds; opposing diagnostics remain a tradeoff.',
             '', 'Figures:']
-    for name in ('f1_initial_errors','f2_sampling_after_motion','f3_shell_histories','f3_mass_fraction_heatmaps','f4_constraints_lapse_com','f4_native_global_constraints','f5_amplitude_ratios','f5_mean_shell_shifts'):
+    for name in ('f1_initial_errors','f2_sampling_after_motion','f3_shell_histories','f3_equilibrium_departures','f3_mass_fraction_heatmaps','f4_constraints_lapse_com','f4_native_global_constraints','f5_amplitude_ratios','f5_mean_shell_shifts'):
         lines.append(f'- [{name} PNG](../plots/{out.name}/{name}.png) / [PDF](../plots/{out.name}/{name}.pdf)')
     lines+=['','Exact source, submodule, toolchain, inputs, initialization samples, executable hashes, launch commands, checkpoints and raw manifests are retained in the campaign. All raw data remain on AMD under `/work1/eliasmost/jiaxiwu/st_reconstruction_s05_20261014`; no deletion or Mac mirror was performed. See the storage receipt for exact retained sizes and allocated job accounting.']
     report=ROOT/'reports'/('REPORT_interim100.md' if args.interim else 'REPORT_session5.md');atomic(report,'\n'.join(lines)+'\n')
