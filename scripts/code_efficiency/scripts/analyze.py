@@ -209,7 +209,7 @@ if count:
     if large and off:findings.append(f'At 100 million particles in the {metric.upper()} fixed background, the complete particle loop costs {spm(large):.3g} s/M versus {spm(off):.3g} s/M with deposition off ({spm(large)/spm(off):.2f}x).')
 if pdyn:
   for r in sorted(pdyn,key=lambda r:r['case']['ppc']):
-    g=phase_groups(r);key=max(g,key=g.get);findings.append(f'At {r["case"]["ppc"]} particles/cell, {PHASE_LABELS[key].lower()} is the largest measured phase ({100*g[key]/sum(g.values()):.1f}% of the diagnostic timestep).')
+    g=phase_groups(r);key=max(g,key=g.get);total=sum(g.values());particle=sum(v for k,v in g.items() if k not in ['mesh','other']);findings.append(f'At {r["case"]["ppc"]} particles/cell, particle phases account for {100*particle/total:.1f}% of the diagnostic timestep, spacetime for {100*g["mesh"]/total:.1f}%, and other work for {100*g["other"]/total:.1f}%. The largest individual phase is {PHASE_LABELS[key].lower()} ({100*g[key]/total:.1f}%).')
 for metric in ['st','flat']:
   for feedback in [False,True]:
     layout=[byname.get(f'blocks_{metric}_dep{int(feedback)}_B{b}') for b in [64,32,16]]
