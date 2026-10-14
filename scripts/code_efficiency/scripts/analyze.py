@@ -25,7 +25,7 @@ def spm(r):return r['timings'][0]['seconds_per_M']
 def step(r):return 1000*elapsed(r)/r['timings'][0]['cycles']
 def save(fig,name,caption):
     if len(valid)<60:
-        fig.text(.99,.006,f'Partial campaign: {len(valid)}/60 throughput cases complete',ha='right',fontsize=7,color='.35')
+        fig.text(.99,.006,f'Partial campaign: {len(valid)}/60 throughput cases complete',ha='right',fontsize=7,color='.35',usetex=False)
         caption='Partial campaign; only completed measurements are shown. '+caption
     fig.tight_layout(pad=1.3,rect=(0,.035,1,1))
     for ext in ['pdf','png']:fig.savefig(ROOT/'figures'/f'{name}.{ext}',dpi=550)
@@ -91,7 +91,7 @@ if ranksets:
         data=[(1,baseline)]+[(p,byname[f'ranks_{metric}_dep{int(feedback)}_R{p}']) for p in [2,4] if f'ranks_{metric}_dep{int(feedback)}_R{p}' in byname]
         x=[p for p,r in data];s=[spm(baseline)/spm(r) for p,r in data];label=f'{metric.upper()}, dep '+('on' if feedback else 'off');style='-' if feedback else '--'
         axes[0].plot(x,s,style+'o',color=COLORS[metric],label=label,ms=4);axes[1].plot(x,[100*a/p for a,p in zip(s,x)],style+'o',color=COLORS[metric],label=label,ms=4)
-    axes[0].plot([1,2,4],[1,2,4],':',color='.4',label='Ideal');axes[0].set_ylabel('Speedup over one GPU');axes[1].axhline(100,color='.4',ls=':');axes[1].set_ylabel('Parallel efficiency (%)')
+    axes[0].plot([1,2,4],[1,2,4],':',color='.4',label='Ideal');axes[0].set_ylabel('Speedup over one GPU');axes[1].axhline(100,color='.4',ls=':');axes[1].set_ylabel('Parallel efficiency (%)',usetex=False)
     for ax in axes:ax.set_xticks([1,2,4]);ax.set_xlabel('MPI ranks / A100 GPUs');ax.grid(alpha=.18)
     axes[0].legend(fontsize=7)
     save(fig,'03_strong_scaling','Strong scaling of N=1 million with eight 32^3 blocks on a fixed global 64^3 grid. One A100 per MPI rank; speedup uses wall seconds/M against the matching one-rank eight-block case. Node sharing is recorded in provenance.')
@@ -138,12 +138,12 @@ if profiles:
       if q:chosen.append(q)
     if not chosen:chosen=profiles[:2]
     fig,axes=plt.subplots(1,2,figsize=(7.1,3.2));r=chosen[-1];groups=phase_groups(r);order=sorted(groups,key=groups.get);total=sum(groups.values())
-    axes[0].barh(order,[100*groups[k]/total for k in order],color=[COLORS[k] for k in order]);axes[0].set_xlabel('Profiled timestep cost (%)');axes[0].grid(axis='x',alpha=.18);axes[0].text(.97,.04,r['case']['name'],ha='right',transform=axes[0].transAxes,fontsize=8)
+    axes[0].barh(order,[100*groups[k]/total for k in order],color=[COLORS[k] for k in order]);axes[0].set_xlabel('Profiled timestep cost (%)',usetex=False);axes[0].grid(axis='x',alpha=.18);axes[0].text(.97,.04,r['case']['name'],ha='right',transform=axes[0].transAxes,fontsize=8,usetex=False)
     labels=[];fractions=[]
     for q in chosen:
       device=device_byname.get(q['case']['name']);dc=np.sum([t['device_cycles'] for t in device['timings']],axis=0) if device else np.zeros(5)
       if dc[1]:labels.append(str(q['case']['ppc']));fractions.append(100*dc[0]/dc[1])
-    axes[1].bar(labels,fractions,color=COLORS['push']);axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell');axes[1].set_ylabel('Interpolation / geodesic evaluation cycles (%)');axes[1].grid(axis='y',alpha=.18)
+    axes[1].bar(labels,fractions,color=COLORS['push']);axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell');axes[1].set_ylabel('Interpolation / geodesic evaluation cycles (%)',usetex=False);axes[1].grid(axis='y',alpha=.18)
     save(fig,'06_kernel_cost_and_interpolation','Cost ranking uses the slowest rank of a diagnostic run, without double-counting nested deposition timers. Interpolation fractions use sampled device clock cycles inside geodesic evaluations; they are estimates in an instrumented kernel, not percentages of total GPU wall time. Hardware performance counters are administrator-restricted.')
 # Evidence checks and readable reports.
 checks=[]
@@ -200,9 +200,9 @@ No scientific snapshots or restarts were generated. Compact initialization count
 '''
 (ROOT/'reports/REPORT_AGENT.md').write_text(agent)
 with PdfPages(ROOT/'reports/REPORT_code_efficiency.pending.pdf') as pdf:
- fig=plt.figure(figsize=(8.3,11.7));fig.text(.08,.94,'NRPIC code efficiency — Paper Session 02',fontsize=16,va='top');text=f'{len(valid)}/60 throughput cases complete; {len(profiles)} profiles.\nUpdated {NOW}\n\n'+'\n\n'.join(findings)+'\n\nSingle-pass evolution timings exclude initialization and a 0.5M warm-up. Diagnostic profiling timings are measured separately; phase profiles use the release binary, and device-clock samples use a separate instrumented binary. See the Markdown report and CSV tables for exact values, definitions and provenance.';fig.text(.08,.86,'\n'.join(textwrap.fill(line,88) if line else '' for line in text.split('\n')),fontsize=10,va='top');pdf.savefig(fig);plt.close(fig)
+ fig=plt.figure(figsize=(8.3,11.7));fig.text(.08,.94,'NRPIC code efficiency — Paper Session 02',fontsize=16,va='top',usetex=False);text=f'{len(valid)}/60 throughput cases complete; {len(profiles)} profiles.\nUpdated {NOW}\n\n'+'\n\n'.join(findings)+'\n\nSingle-pass evolution timings exclude initialization and a 0.5M warm-up. Diagnostic profiling timings are measured separately; phase profiles use the release binary, and device-clock samples use a separate instrumented binary. See the Markdown report and CSV tables for exact values, definitions and provenance.';fig.text(.08,.86,'\n'.join(textwrap.fill(line,88) if line else '' for line in text.split('\n')),fontsize=10,va='top',usetex=False);pdf.savefig(fig);plt.close(fig)
  for name,caption in FILES:
-  fig=plt.figure(figsize=(8.3,11.7));ax=fig.add_axes([.06,.32,.88,.6]);ax.imshow(plt.imread(ROOT/'figures'/f'{name}.png'));ax.axis('off');fig.text(.08,.28,'\n'.join(textwrap.wrap(caption,100)),fontsize=9,va='top');pdf.savefig(fig,dpi=220);plt.close(fig)
+  fig=plt.figure(figsize=(8.3,11.7));ax=fig.add_axes([.06,.32,.88,.6]);ax.imshow(plt.imread(ROOT/'figures'/f'{name}.png'));ax.axis('off');fig.text(.08,.28,'\n'.join(textwrap.wrap(caption,100)),fontsize=9,va='top',usetex=False);pdf.savefig(fig,dpi=220);plt.close(fig)
 os.replace(ROOT/'reports/REPORT_code_efficiency.pending.pdf',ROOT/'reports/REPORT_code_efficiency.pdf')
 # Keep live state truthful; no completion based only on reaching the last scheduler job.
 queue=subprocess.run(['squeue','-u','jiaxiwu','-h','-o','%i %j %t %M %R'],text=True,stdout=subprocess.PIPE,check=False).stdout
