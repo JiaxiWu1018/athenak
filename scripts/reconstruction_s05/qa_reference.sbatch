@@ -9,7 +9,7 @@
 #SBATCH -o /data/jiaxiwu/NRPIC/reconstruction_ST/05_sampling_shell_response_20261014/logs/refqa.%j.log
 set -euo pipefail
 session=/data/jiaxiwu/NRPIC/reconstruction_ST/05_sampling_shell_response_20261014
-export ROOT="$session/qa_reference_v2"
+export ROOT="$session/qa_reference_v3"
 export PYTHONPATH="$session/scripts"
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MPLBACKEND=Agg
 mkdir -p "$ROOT/evidence"

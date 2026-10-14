@@ -92,17 +92,27 @@ def ensure(p):
     out=ROOT/'reference';out.mkdir(exist_ok=True)
     for radial in ('legacy','proper'):
         path=out/(radial+'.npz')
-        if path.exists():continue
+        receipt=out/(radial+'.json')
+        if path.exists():
+            import json
+            if not receipt.exists():raise ValueError('Reference cache lacks a validation receipt: '+str(path))
+            quality=json.loads(receipt.read_text())
+            if quality.get('version')!=3 or quality['sha256']!=sha(path):
+                raise ValueError('Reference cache version/hash differs: '+str(path))
+            continue
         before=project(p,radial,2);after=project(p,radial,4)
-        rel=float(np.linalg.norm(after['E']-before['E'])/np.linalg.norm(after['E']))
-        if rel>1e-4:
+        def differences(a,b):
+            return {key:float(np.linalg.norm(b[key]-a[key])/np.linalg.norm(b[key])) for key in ('mass','E','Sdiag')}
+        errors=differences(before,after)
+        if max(errors.values())>1e-4:
             before=after;after=project(p,radial,8)
-            rel=float(np.linalg.norm(after['E']-before['E'])/np.linalg.norm(after['E']))
-        if rel>1e-4:raise ValueError('Continuum CIC reference quadrature not converged')
+            errors=differences(before,after)
+        if max(errors.values())>1e-4:raise ValueError('Continuum CIC reference quadrature not converged')
         mass_error=float(abs(after['mass'].sum()/p['M0_over_M']-1))
         if mass_error>1e-4:raise ValueError('Continuum source normalization failed')
         np.savez_compressed(path,**after)
-        atomic(out/(radial+'.json'),{'energy_relative_L2_quadrature_difference':rel,
+        atomic(receipt,{'version':3,'energy_relative_L2_quadrature_difference':errors['E'],
+               'relative_L2_quadrature_differences':errors,
                'mass_relative_error':mass_error,'sha256':sha(path),'cube_half_M':HALF,'dx_M':DX,
                'metric_interpolation':'eight-point Lagrange of nodal inverse metric, matching particles_tmunu.cpp',
                'quadrature':'Gauss-Legendre on each half cell; split at CIC derivative breaks; relative L2 tolerance1e-4',
