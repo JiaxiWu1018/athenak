@@ -24,6 +24,7 @@
 #include "mesh/mesh.hpp"
 #include "driver/driver.hpp"
 #include "particles.hpp"
+#include "driver/code_efficiency.hpp"
 
 namespace particles {
 
@@ -31,6 +32,8 @@ namespace particles {
 //! \fn TaskStatus Particles::NewTimeStep
 
 TaskStatus Particles::NewTimeStep(Driver *pdrive, int stage) {
+  if(efficiency::Get().mesh_only && efficiency::Get().measuring) return TaskStatus::complete;
+  efficiency::Phase phase("particle_timestep");
   bool multi_d = pmy_pack->pmesh->multi_d;
   bool three_d = pmy_pack->pmesh->three_d;
   int nmb = pmy_pack->nmb_thispack;

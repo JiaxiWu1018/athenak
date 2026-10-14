@@ -1,0 +1,73 @@
+<comment>
+problem = Paper Session 02 performance benchmark ranks_st_dep1_R4
+<job>
+basename = ranks_st_dep1_R4
+<mesh>
+nghost = 4
+nx1 = 64
+x1min = -4
+x1max = 4
+ix1_bc = periodic
+ox1_bc = periodic
+nx2 = 64
+x2min = -4
+x2max = 4
+ix2_bc = periodic
+ox2_bc = periodic
+nx3 = 64
+x3min = -4
+x3max = 4
+ix3_bc = periodic
+ox3_bc = periodic
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+<time>
+evolution = dynamic
+integrator = rk4
+cfl_number = 0.40000000000000002
+tlim = 5
+nlim = 100
+ndiag = 1000000
+<z4c>
+frozen_background = true
+use_z4c = true
+lapse_harmonic = 0.0
+lapse_oplog = 2.0
+shift_driver = legacy
+shift_Gamma = 1.0
+shift_H = 0.0
+shift_alpha2Gamma = 0.0
+shift_eta = 2.0
+diss = 0.1
+chi_div_floor = 0.00001
+damp_kappa1 = 0.02
+damp_kappa2 = 0.0
+<particles>
+particle_type = dust
+pusher = gr_boris
+init = pgen
+feedback = true
+mass = 1.0
+debug = 0
+destroy_log = false
+excise_radius = 0.0
+excise_lapse = 0.0
+excise_ah = false
+cross_level_deposit = conservative
+<fastflow>
+num_horizons = 0
+<benchmark>
+enabled = true
+profile = false
+mesh_only = false
+metric = st
+sampling = random
+distribution = uniform
+yc = 0.819
+seed = 1
+n = 1000000
+ppc = 6
+warmup = 0.5

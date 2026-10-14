@@ -1,0 +1,15 @@
+# Benchmark implementation
+
+The source branch is experiment/code-efficiency from origin/NRPIC ca0f5298. The dedicated problem generator is particles/code_efficiency. ST profile construction is selectively imported from b51efb27; the complete freeze is selectively ported from320ba2b0. Production pusher, interpolation, deposition and migration algorithms are preserved.
+
+Inputs use a newly registered <benchmark> block. Controls: enabled (master instrumentation switch), profile (synchronized phase timers), mesh_only (hold initialized source and skip particle advancement), metric (st/flat), sampling (random/replicas), distribution (uniform/central4/central1/block/point), n, ppc, seed, yc and warmup. All instrumentation defaults off. z4c/frozen_background separately defaults false. Four ghost zones, fresh uniform3D mesh and particles+Z4c are required for this pgen.
+
+Random draws use a deterministic global-ID counter hash. Replica sampling assigns the same normalized ST rest-mass budget and monoenergetic six-direction velocity distribution to every occupied cell. Replicas share positions and velocities and divide mass by multiplicity. Vacuum cells retain zero-mass, initially stationary particles. Counts and tags remain independent of rank assignment. Integer allocation for concentration uses deterministic largest-remainder rounding, equally for each of six directions.
+
+Timing covers completed evolution after0.5M with GPU fences at its start/end and a maximum over ranks. nlim is the exact target cycle count to prevent an extra near-zero step at the endpoint. Main throughput uses the release executable without per-phase fences or device-clock instrumentation. Phase profiles use the release executable with profile=true. Device-clock estimates use the separately compiled pusher; they never supply the phase-cost ranking.
+
+Audits check count and modular tag checksums, payload hashes, finite particle/geometry data, ownership, no destruction, fixed background hashes including ghosts and both pusher time levels, and initial source against the common six-direction cell reference. Numerical comparison additionally tests frozen release versus instrumented payloads. Failed attempts are retained; a retry creates a new attempt directory and preserves the previous receipt.
+
+The validated Perseus MPI launch uses --bind-to none and one GPU per rank. Core binding failed under the Slurm allocation before any simulation. The scheduler enforces at most two CPUs per GPU. Toolchain: OpenMPI5.0.7 at /home/emost/codes/openmpi, CUDA12.9, Kokkos AMPERE80, MPI, double precision, Release. Runs write no scientific snapshots or restarts.
+
+Set EFFICIENCY_SESSION to relocate the launch package to another dated Perseus session. Keep its scripts/, jobs/, inputs/, matrix.json and gates.json layout and an independent source clone at src/athenak. Build directories are temporary; binaries/release/athena and binaries/profile/athena are stable run artifacts. Exact source, build environments, command lines and executable hashes are retained under provenance/ and each result receipt.

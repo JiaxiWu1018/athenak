@@ -33,6 +33,9 @@
 #include "globals.hpp"
 #include "mesh/mesh.hpp"
 #include "particles.hpp"
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+#include "driver/code_efficiency.hpp"
+#endif
 #include "boris_utils.hpp"
 #include "lagrange_interp.hpp"
 #include "calc_tetrad.hpp"
@@ -65,8 +68,27 @@ namespace particles {
 //! both operators live spills registers on GPU targets (measured >1000x slower on
 //! MI210), so each kernel must instantiate exactly one operator.
 
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+KOKKOS_INLINE_FUNCTION unsigned long long EfficiencyClock() {
+#if defined(__CUDA_ARCH__)
+  asm volatile("" ::: "memory");
+  return clock64();
+#else
+  return 0;
+#endif
+}
+struct EfficiencyDeviceTimer {
+  unsigned long long *sum; unsigned long long start;
+  KOKKOS_INLINE_FUNCTION explicit EfficiencyDeviceTimer(unsigned long long *p):sum(p),start(p?EfficiencyClock():0) {}
+  KOKKOS_INLINE_FUNCTION ~EfficiencyDeviceTimer(){if(sum)*sum+=EfficiencyClock()-start;}
+};
+#endif
 template <int NG, bool TRI>
 struct GeodesicPush {
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+  bool sample=false;
+  mutable unsigned long long interp_ticks=0,eval_ticks=0,interp_calls=0,eval_calls=0;
+#endif
   const Real *x_old, *u_old, *mb_par;
   const int *ncell;
   const DvceArray5D<Real> adm_old, adm_new, z4c_old, z4c_new;
@@ -90,6 +112,10 @@ struct GeodesicPush {
   KOKKOS_INLINE_FUNCTION
   Real Interp(const DvceArray5D<Real>& u0, const int nvar, const int *idcs,
               const Real *Wx, const Real *Wy, const Real *Wz) const {
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+    EfficiencyDeviceTimer timer(sample?&interp_ticks:nullptr);
+    if(sample)++interp_calls;
+#endif
     if constexpr (TRI) {
       return TrilinearInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz);
     } else {
@@ -99,6 +125,10 @@ struct GeodesicPush {
   KOKKOS_INLINE_FUNCTION
   void Interp(const DvceArray5D<Real>& u0, const int nvar, const int *idcs,
               const Real *Wx, const Real *Wy, const Real *Wz, Real *res) const {
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+    EfficiencyDeviceTimer timer(sample?&interp_ticks:nullptr);
+    if(sample)++interp_calls;
+#endif
     if constexpr (TRI) {
       TrilinearInterpolator<NG>(u0, nvar, idcs, Wx, Wy, Wz, res);
     } else {
@@ -109,6 +139,10 @@ struct GeodesicPush {
   KOKKOS_INLINE_FUNCTION
   bool operator()(const Real xin[3], const Real uin[3], Real xout[3], Real uout[3],
                   bool Euler) const {
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+    EfficiencyDeviceTimer timer(sample?&eval_ticks:nullptr);
+    if(sample)++eval_calls;
+#endif
     Real x_mid[3] = {0.0}, u_mid[3] = {0.0};
     for (int i = 0; i < 3; ++i) {
       x_mid[i] = 0.5 * (xin[i] + x_old[i]);   // x_mid = x_old for the Euler step
@@ -441,6 +475,10 @@ void Particles::GR_BorisPush() {
     z4c_np1 = pmy_pack->pz4c->u0;
   }
 
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+  auto cycles=efficiency::Get().device_cycles;
+  bool device_profile=efficiency::Get().profile&&efficiency::Get().measuring;
+#endif
   par_for("gr_boris_push", DevExeSpace(), 0, nprtcl_thispack - 1,
   KOKKOS_LAMBDA(const int p) {
     int mb = pi(PGID, p) - gids;
@@ -593,19 +631,37 @@ void Particles::GR_BorisPush() {
     case 2: {
       GeodesicPush<2, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
                                 use_z4c, z4c_n, z4c_np1);
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+      gp.sample=device_profile&&(pi(PTAG,p)%1024==0);
+#endif
       gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+      if(gp.sample){Kokkos::atomic_add(&cycles(0,0),gp.interp_ticks);Kokkos::atomic_add(&cycles(1,0),gp.eval_ticks);Kokkos::atomic_add(&cycles(2,0),gp.interp_calls);Kokkos::atomic_add(&cycles(3,0),gp.eval_calls);Kokkos::atomic_add(&cycles(4,0),1ULL);}
+#endif
       break;
     }
     case 3: {
       GeodesicPush<3, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
                                 use_z4c, z4c_n, z4c_np1);
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+      gp.sample=device_profile&&(pi(PTAG,p)%1024==0);
+#endif
       gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+      if(gp.sample){Kokkos::atomic_add(&cycles(0,0),gp.interp_ticks);Kokkos::atomic_add(&cycles(1,0),gp.eval_ticks);Kokkos::atomic_add(&cycles(2,0),gp.interp_calls);Kokkos::atomic_add(&cycles(3,0),gp.eval_calls);Kokkos::atomic_add(&cycles(4,0),1ULL);}
+#endif
       break;
     }
     case 4: {
       GeodesicPush<4, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
                                 use_z4c, z4c_n, z4c_np1);
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+      gp.sample=device_profile&&(pi(PTAG,p)%1024==0);
+#endif
       gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+      if(gp.sample){Kokkos::atomic_add(&cycles(0,0),gp.interp_ticks);Kokkos::atomic_add(&cycles(1,0),gp.eval_ticks);Kokkos::atomic_add(&cycles(2,0),gp.interp_calls);Kokkos::atomic_add(&cycles(3,0),gp.eval_calls);Kokkos::atomic_add(&cycles(4,0),1ULL);}
+#endif
       break;
     }
     }

@@ -38,6 +38,11 @@ void Z4c::QueueZ4cTasks() {
   NumericalRelativity *pnr = pmy_pack->pnr;
   auto &indcs = pmy_pack->pmesh->mb_indcs;
 
+  if (opt.frozen_background) {
+    pnr->QueueTask(&Z4c::NewTimeStep, this, Z4c_Newdt, "Z4c_Newdt", Task_Run);
+    return;
+  }
+
   // Start task list
   pnr->QueueTask(&Z4c::InitRecv, this, Z4c_Recv, "Z4c_Recv", Task_Start);
   pnr->QueueTask(&Z4c::InitRecvWeyl, this, Z4c_IRecvW, "Z4c_IRecvW", Task_Start);

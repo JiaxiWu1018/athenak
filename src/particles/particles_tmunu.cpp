@@ -48,6 +48,7 @@
 #include "z4c/tmunu.hpp"
 #include "bvals/prtcl_search.hpp"
 #include "particles.hpp"
+#include "driver/code_efficiency.hpp"
 #include "lagrange_interp.hpp"
 
 #if MPI_PARALLEL_ENABLED
@@ -318,6 +319,8 @@ struct SortTmunuImage {
 
 template <int NGHOST>
 void Particles::set_prtcl_tmunu() {
+  if(efficiency::Get().mesh_only && efficiency::Get().initial_count>0) return;
+  efficiency::Phase total_phase("deposition_total");
   auto &indcs = pmy_pack->pmesh->mb_indcs;
   auto &size = pmy_pack->pmb->mb_size;
   auto &mblev = pmy_pack->pmb->mb_lev;
@@ -347,6 +350,7 @@ void Particles::set_prtcl_tmunu() {
   // cells only and nothing else writes u_tmunu in the feedback configuration -- dyn_grmhd
   // is fatal-guarded). Runs even with npart == 0: an all-excised ensemble must source
   // vacuum, which is exactly the trumpet end state of the OS collapse.
+  efficiency::Phase records_phase("deposition_zero_count_records");
   Kokkos::deep_copy(u_tmunu, 0.0);
 
   auto &psum = tmunu_psums;
@@ -727,12 +731,15 @@ void Particles::set_prtcl_tmunu() {
     }
   }   // end (npart > 0): per-particle records generated
 
+  records_phase.Stop();
   // ---- cross-rank ghost-image transport (Stage 4c): ship the staged images and append
   // the received ones into tmunu_images, growing nimages_thispack. Serial no-op.
   // Runs on EVERY rank even with npart==0 (a neighbor may image into this rank's blocks),
   // so the collective census never deadlocks.
 #if MPI_PARALLEL_ENABLED
+  {efficiency::Phase exchange_phase("deposition_image_exchange");
   pbval_part->ExchangeTmunuImages();
+  if(efficiency::Get().measuring)efficiency::Get().source_images+=nimg_send_thispack;}
 #endif
 
   // ---- (c) canonical deposit order: sort the merged queue (self records + same-rank +
@@ -742,8 +749,11 @@ void Particles::set_prtcl_tmunu() {
   // means duplicate particle tags (an init=pgen contract violation) or a generation bug:
   // fatal.
   if (nimages_thispack > 0) {
+    efficiency::Phase d2h_phase("deposition_device_to_host");
     tmunu_images.template modify<DevExeSpace>();
     tmunu_images.template sync<HostMemSpace>();
+    d2h_phase.Stop();
+    efficiency::Phase sort_phase("deposition_host_sort_validate");
     TmunuImage *ibeg = tmunu_images.h_view.data();
     std::sort(ibeg, ibeg + nimages_thispack, SortTmunuImage());
     for (int g=1; g<nimages_thispack; ++g) {
@@ -769,9 +779,13 @@ void Particles::set_prtcl_tmunu() {
 #endif
       }
     }
+    sort_phase.Stop();
+    efficiency::Phase h2d_phase("deposition_host_to_device");
     tmunu_images.template modify<HostMemSpace>();
     tmunu_images.template sync<DevExeSpace>();
 
+    h2d_phase.Stop();
+    efficiency::Phase atomic_phase("deposition_atomic_kernel");
     // ---- (d) one unified deposit pass over every record (self + same-rank images +
     // received cross-rank images), in canonical order (serial RangePolicy executes in
     // index order; on GPU the atomics keep it correct, not bitwise-reproducible).

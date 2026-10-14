@@ -180,6 +180,7 @@ class Z4c {
     Real turn_on_time;
     // Enable BSSN if false (disable theta)
     bool use_z4c;
+    bool frozen_background; // complete fixed geometry/gauge, default off
     // Apply the Sommerfeld condition for user BCs.
     bool user_Sbc;
     // Boundary extrapolation order

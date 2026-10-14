@@ -19,6 +19,7 @@
 #include "mesh/mesh.hpp"
 #include "bvals/bvals.hpp"
 #include "particles.hpp"
+#include "driver/code_efficiency.hpp"
 
 namespace particles {
 //----------------------------------------------------------------------------------------
@@ -70,6 +71,8 @@ void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> t
 //! MeshBlocks.
 
 TaskStatus Particles::NewGID(Driver *pdrive, int stage) {
+  if (efficiency::Get().mesh_only) return TaskStatus::complete;
+  efficiency::Phase phase("ownership");
   TaskStatus tstat = pbval_part->SetNewPrtclGID();
   return tstat;
 }
@@ -80,6 +83,8 @@ TaskStatus Particles::NewGID(Driver *pdrive, int stage) {
 //! MPI between all ranks
 
 TaskStatus Particles::SendCnt(Driver *pdrive, int stage) {
+  if (efficiency::Get().mesh_only) return TaskStatus::complete;
+  efficiency::Phase phase("migration_census");
   TaskStatus tstat = pbval_part->CountSendsAndRecvs();
   return tstat;
 }
@@ -89,6 +94,8 @@ TaskStatus Particles::SendCnt(Driver *pdrive, int stage) {
 //! \brief Wrapper task list function to post non-blocking receives (with MPI).
 
 TaskStatus Particles::InitRecv(Driver *pdrive, int stage) {
+  if (efficiency::Get().mesh_only) return TaskStatus::complete;
+  efficiency::Phase phase("migration_irecv");
   // post receives for particles
   TaskStatus tstat = pbval_part->InitPrtclRecv();
   return tstat;
@@ -99,7 +106,10 @@ TaskStatus Particles::InitRecv(Driver *pdrive, int stage) {
 //! \brief Wrapper task list function to pack/send particles
 
 TaskStatus Particles::SendP(Driver *pdrive, int stage) {
+  if (efficiency::Get().mesh_only) return TaskStatus::complete;
+  efficiency::Phase phase("migration_pack_send");
   TaskStatus tstat = pbval_part->PackAndSendPrtcls();
+  if(efficiency::Get().measuring) efficiency::Get().sent_particles += pbval_part->nprtcl_send;
   return tstat;
 }
 
@@ -108,6 +118,8 @@ TaskStatus Particles::SendP(Driver *pdrive, int stage) {
 //! \brief Wrapper task list function to receive/unpack particles
 
 TaskStatus Particles::RecvP(Driver *pdrive, int stage) {
+  if (efficiency::Get().mesh_only) return TaskStatus::complete;
+  efficiency::Phase phase("migration_wait_unpack");
   TaskStatus tstat = pbval_part->RecvAndUnpackPrtcls();
   return tstat;
 }
@@ -118,6 +130,8 @@ TaskStatus Particles::RecvP(Driver *pdrive, int stage) {
 //! \brief Wrapper task list function that checks all MPI sends have completed.
 
 TaskStatus Particles::ClearSend(Driver *pdrive, int stage) {
+  if (efficiency::Get().mesh_only) return TaskStatus::complete;
+  efficiency::Phase phase("migration_clear_send");
   // check sends of particles complete
   TaskStatus tstat = pbval_part->ClearPrtclSend();
   return tstat;
@@ -128,6 +142,8 @@ TaskStatus Particles::ClearSend(Driver *pdrive, int stage) {
 //! \brief Wrapper task list function that checks all MPI receives have completed.
 
 TaskStatus Particles::ClearRecv(Driver *pdrive, int stage) {
+  if (efficiency::Get().mesh_only) return TaskStatus::complete;
+  efficiency::Phase phase("migration_clear_recv");
   // check receives of particles complete
   TaskStatus tstat = pbval_part->ClearPrtclRecv();
   return tstat;
@@ -139,6 +155,8 @@ TaskStatus Particles::ClearRecv(Driver *pdrive, int stage) {
 //! count.
 
 TaskStatus Particles::EnergyCalculation(Driver *pdrive, int stage) {
+  if (efficiency::Get().mesh_only) return TaskStatus::complete;
+  efficiency::Phase phase("particle_energy");
   int ng = pmy_pack->pmesh->mb_indcs.ng;
   switch (ng) {
     case 2: calc_prtcl_energy<2>(); break;

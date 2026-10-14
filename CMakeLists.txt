@@ -275,3 +275,8 @@ target_include_directories(athena PUBLIC
 configure_file(config.hpp.in config.hpp)
 
 install( TARGETS athena DESTINATION bin )
+
+option(Athena_EFFICIENCY_DEVICE_TIMING "Sample device cycles inside the GR pusher" OFF)
+if(Athena_EFFICIENCY_DEVICE_TIMING)
+  set_source_files_properties(${CMAKE_SOURCE_DIR}/src/particles/gr_boris.cpp TARGET_DIRECTORY athena PROPERTIES COMPILE_DEFINITIONS ATHENA_EFFICIENCY_DEVICE_TIMING=1)
+endif()

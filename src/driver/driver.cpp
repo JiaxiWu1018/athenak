@@ -27,6 +27,7 @@
 #include "ion-neutral/ion-neutral.hpp"
 #include "radiation/radiation.hpp"
 #include "driver.hpp"
+#include "driver/code_efficiency.hpp"
 #include "gravity/gravity.hpp"
 #include "utils/utils.hpp"
 
@@ -293,6 +294,7 @@ Driver::Driver(ParameterInput *pin, Mesh *pmesh, Real wtlim, Kokkos::Timer* ptim
     }
 
     ValidateSTSConfiguration(pmesh);
+    efficiency::Configure(pin);
   }
 }
 
@@ -575,12 +577,14 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
         pmesh->nprtcl_initial += pmesh->nprtcl_destroyed_cum[k];
       }
     }
+    efficiency::Audit(pmesh, true);
     Real elapsed_time = -1.;
     if (wall_time > 0.) {
       elapsed_time = UpdateWallClock();
     }
     while ((pmesh->time < tlim) && (pmesh->ncycle < nlim || nlim < 0) &&
            (elapsed_time < wall_time)) {
+      efficiency::StartWindow(pmesh);
       if (global_variable::my_rank == 0) {OutputCycleDiagnostics(pmesh);}
       if (wdflag) {WatchDog(0);}
 
@@ -595,6 +599,7 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
         EndSTSSweep();
       }
 
+      efficiency::Phase mesh_phase("spacetime");
       // Execute TaskLists
       // Work before time integrator indicated by "0" in stage
       ExecuteTaskList(pmesh, "before_timeintegrator", 0);
@@ -609,6 +614,7 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
         ExecuteTaskList(pmesh, "after_stagen", stage);
       }
 
+      mesh_phase.Stop();
       // Work after time integrator indicated by "1" in stage
       ExecuteTaskList(pmesh, "after_timeintegrator", 1);
 
@@ -663,6 +669,7 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
       // AMR
       if (pmesh->adaptive) {pmesh->pmr->AdaptiveMeshRefinement(this, pin);}
       // compute new timestep AFTER all Meshblocks refined/derefined
+      efficiency::Phase dt_phase("driver_timestep");
       pmesh->NewTimeStep(tlim);
       RefreshSTSCycleState(pmesh);
 
@@ -671,6 +678,7 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
         elapsed_time = UpdateWallClock();
       }
     }  // end while
+    efficiency::Finish(pmesh);
   }    // end of (time_evolution != tstatic) clause
   return;
 }

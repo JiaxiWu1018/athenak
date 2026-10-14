@@ -40,6 +40,7 @@ add_executable(
         diffusion/viscosity.cpp
 
         driver/driver.cpp
+        driver/code_efficiency.cpp
 
         dyn_grmhd/dyn_grmhd.cpp
         dyn_grmhd/dyn_grmhd_fluxes.cpp

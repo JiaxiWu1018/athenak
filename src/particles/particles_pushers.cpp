@@ -10,6 +10,7 @@
 #include "mesh/mesh.hpp"
 #include "driver/driver.hpp"
 #include "particles.hpp"
+#include "driver/code_efficiency.hpp"
 
 namespace particles {
 //----------------------------------------------------------------------------------------
@@ -17,6 +18,8 @@ namespace particles {
 //  \brief
 
 TaskStatus Particles::Push(Driver *pdriver, int stage) {
+  if(efficiency::Get().mesh_only ) return TaskStatus::complete;
+  efficiency::Phase phase("particle_push");
   bool &multi_d = pmy_pack->pmesh->multi_d;
   bool &three_d = pmy_pack->pmesh->three_d;
   auto &pr = prtcl_rdata;
