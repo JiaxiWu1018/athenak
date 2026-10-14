@@ -24,6 +24,8 @@ if [ -f "$REPO/.git/modules/kokkos/objects/info/alternates" ]; then
 fi
 cmake -S "$REPO" -B "$SESSION/build_release" -DKokkos_ENABLE_CUDA=On -DKokkos_ARCH_AMPERE80=On -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER="$REPO/kokkos/bin/nvcc_wrapper" -DAthena_ENABLE_MPI=ON -DCMAKE_BUILD_TYPE=Release -DPROBLEM=particles/code_efficiency -DAthena_EFFICIENCY_DEVICE_TIMING=OFF > "$REC/release.configure.log" 2>&1
 cmake --build "$SESSION/build_release" -j 4 > "$REC/release.build.log" 2>&1
+gmake -C "$SESSION/build_release" -f src/CMakeFiles/athena.dir/build.make src/CMakeFiles/athena.dir/particles/gr_boris.cpp.o -B > "$REC/release.pusher.log" 2>&1
+gmake -C "$SESSION/build_release" -f src/CMakeFiles/athena.dir/build.make src/CMakeFiles/athena.dir/build -j 4 -o src/CMakeFiles/athena.dir/flags.make > "$REC/release.link.log" 2>&1
 cp "$SESSION/build_release/src/athena" "$SESSION/binaries/release/athena.$SLURM_JOB_ID"
 mv "$SESSION/binaries/release/athena.$SLURM_JOB_ID" "$SESSION/binaries/release/athena"
 cp "$SESSION/build_release/CMakeCache.txt" "$REC/release.CMakeCache.txt"
