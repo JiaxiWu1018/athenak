@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import fcntl
 """Generate source-backed performance tables, figures, reports, and live status in Slurm."""
 import csv,json,sys,math,datetime,textwrap,subprocess
 from pathlib import Path
@@ -12,6 +13,8 @@ ROOT=Path(os.environ.get('EFFICIENCY_SESSION',Path(__file__).resolve().parents[1
 sys.path.insert(0,str(ROOT.parents[0]/'scripts'))
 from paper_style import configure
 configure()
+report_lock=(ROOT/'results/.report.lock').open('a')
+fcntl.flock(report_lock,fcntl.LOCK_EX)
 COLORS={'st':'#0072B2','flat':'#D55E00','mesh':'#595959','push':'#0072B2','energy':'#56B4E9','migration':'#CC79A7','records':'#E69F00','sort':'#D55E00','transfer':'#009E73','atomic':'#F0E442','other':'#999999'}
 FILES=[]
 NOW=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
@@ -196,10 +199,11 @@ Reproduction: build with `jobs/build.sbatch`; generate inputs with `scripts/gene
 No scientific snapshots or restarts were generated. Compact initialization count maps, timing/audit JSON, resource samples, logs and selected profiler traces remain in this session. Storage size and running jobs are recorded in SESSION_STATE.md. Historical source snapshots and unrelated jobs remain preserved. No external messages or Mac mirror were requested.
 '''
 (ROOT/'reports/REPORT_AGENT.md').write_text(agent)
-with PdfPages(ROOT/'reports/REPORT_code_efficiency.pdf') as pdf:
+with PdfPages(ROOT/'reports/REPORT_code_efficiency.pending.pdf') as pdf:
  fig=plt.figure(figsize=(8.3,11.7));fig.text(.08,.94,'NRPIC code efficiency — Paper Session 02',fontsize=16,va='top');text=f'{len(valid)}/60 throughput cases complete; {len(profiles)} profiles.\nUpdated {NOW}\n\n'+'\n\n'.join(findings)+'\n\nSingle-pass evolution timings exclude initialization and a 0.5M warm-up. Diagnostic profiling timings are measured separately; phase profiles use the release binary, and device-clock samples use a separate instrumented binary. See the Markdown report and CSV tables for exact values, definitions and provenance.';fig.text(.08,.86,'\n'.join(textwrap.fill(line,88) if line else '' for line in text.split('\n')),fontsize=10,va='top');pdf.savefig(fig);plt.close(fig)
  for name,caption in FILES:
   fig=plt.figure(figsize=(8.3,11.7));ax=fig.add_axes([.06,.32,.88,.6]);ax.imshow(plt.imread(ROOT/'figures'/f'{name}.png'));ax.axis('off');fig.text(.08,.28,'\n'.join(textwrap.wrap(caption,100)),fontsize=9,va='top');pdf.savefig(fig,dpi=220);plt.close(fig)
+os.replace(ROOT/'reports/REPORT_code_efficiency.pending.pdf',ROOT/'reports/REPORT_code_efficiency.pdf')
 # Keep live state truthful; no completion based only on reaching the last scheduler job.
 queue=subprocess.run(['squeue','-u','jiaxiwu','-h','-o','%i %j %t %M %R'],text=True,stdout=subprocess.PIPE,check=False).stdout
 jobs=[line for line in queue.splitlines() if 'eff-' in line]
