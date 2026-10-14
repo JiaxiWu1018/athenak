@@ -85,6 +85,11 @@ KOKKOS_INLINE_FUNCTION unsigned long long EfficiencyClock() {
   return 0;
 #endif
 }
+KOKKOS_INLINE_FUNCTION bool EfficiencySampleTag(std::uint32_t tag) {
+  // Hash the tag so six-direction replicas do not alias a power-of-two stride.
+  tag^=tag>>16;tag*=0x7feb352dU;tag^=tag>>15;tag*=0x846ca68bU;tag^=tag>>16;
+  return (tag&1023U)==0;
+}
 struct EfficiencyDeviceTimer {
   unsigned long long *sum; unsigned long long start;
   KOKKOS_INLINE_FUNCTION explicit EfficiencyDeviceTimer(unsigned long long *p):sum(p),start(p?EfficiencyClock():0) {}
@@ -640,7 +645,7 @@ void Particles::GR_BorisPush() {
       GeodesicPush<2, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
                                 use_z4c, z4c_n, z4c_np1);
 #ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
-      gp.sample=device_profile&&(pi(PTAG,p)%1024==0);
+      gp.sample=device_profile&&EfficiencySampleTag(static_cast<std::uint32_t>(pi(PTAG,p)));
 #endif
       gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
 #ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
@@ -652,7 +657,7 @@ void Particles::GR_BorisPush() {
       GeodesicPush<3, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
                                 use_z4c, z4c_n, z4c_np1);
 #ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
-      gp.sample=device_profile&&(pi(PTAG,p)%1024==0);
+      gp.sample=device_profile&&EfficiencySampleTag(static_cast<std::uint32_t>(pi(PTAG,p)));
 #endif
       gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
 #ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
@@ -664,7 +669,7 @@ void Particles::GR_BorisPush() {
       GeodesicPush<4, false> gp(x_n, u_p, mb, mb_par, ncell, dt_, adm_n, adm_np1,
                                 use_z4c, z4c_n, z4c_np1);
 #ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
-      gp.sample=device_profile&&(pi(PTAG,p)%1024==0);
+      gp.sample=device_profile&&EfficiencySampleTag(static_cast<std::uint32_t>(pi(PTAG,p)));
 #endif
       gstat = FixedPointIteration(gp, x_n, u_p, x_np1, u_pp);
 #ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
