@@ -20,6 +20,7 @@ struct State {
   DvceArray1D<Real> source_mass, source_u;
 };
 State &Get();
+bool DeviceTimingCompiled();
 void Configure(ParameterInput *pin);
 void Audit(Mesh *mesh, bool initial);
 void StartWindow(Mesh *mesh);

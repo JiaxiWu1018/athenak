@@ -16,6 +16,7 @@ configure()
 report_lock=(ROOT/'results/.report.lock').open('a')
 fcntl.flock(report_lock,fcntl.LOCK_EX)
 COLORS={'st':'#0072B2','flat':'#D55E00','mesh':'#595959','push':'#0072B2','energy':'#56B4E9','migration':'#CC79A7','records':'#E69F00','sort':'#D55E00','transfer':'#009E73','atomic':'#F0E442','other':'#999999'}
+PHASE_LABELS={'mesh':'Spacetime','push':'Particle push','energy':'Particle energy','migration':'Communication / ownership','records':'Deposition records','sort':'Deposition host sort','transfer':'Deposition host/device copies','atomic':'Deposition atomic kernel','other':'Other'}
 FILES=[]
 NOW=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
 def load(kind):
@@ -40,9 +41,9 @@ def phase_groups(r):
     result['other']+=max(0,t['elapsed_local']-sum(result.values()))
     return {k:1000*v/t['cycles'] for k,v in result.items()}
 devices=[r for r in load('device') if r['valid']];device_byname={r['case']['name']:r for r in devices}
-through=load('throughput');valid=[r for r in through if r['valid']];profiles=[r for r in load('profile') if r['valid']];allcases=json.loads((ROOT/'matrix.json').read_text());byname={r['case']['name']:r for r in valid}
+allthrough=load('throughput');through=[r for r in allthrough if not r.get('superseded_reason')];valid=[r for r in through if r['valid']];profiles=[r for r in load('profile') if r['valid']];allcases=json.loads((ROOT/'matrix.json').read_text());byname={r['case']['name']:r for r in valid}
 rows=[]
-for r in through:
+for r in allthrough:
     c=r['case'];t=r['timings'][0] if r['timings'] else {};row={**c,'valid':r['valid'],'job_id':r['job_id'],'endpoint':r['endpoint'],'actual_endpoint':t.get('final_time'),'target_reached':r.get('target_reached',True),'elapsed_seconds':t.get('elapsed_max'),'cycles':t.get('cycles'),'particle_updates_per_second':t.get('particles_per_second'),'cell_cycles_per_second':t.get('cells_per_second'),'seconds_per_M':t.get('seconds_per_M'),'M_per_second':1/t['seconds_per_M'] if t.get('seconds_per_M',0)>0 else None,'step_ms':1000*t['elapsed_max']/t['cycles'] if t.get('cycles',0)>0 else None,'cell_rate_kind':'mesh-normalized' if c['frozen'] else 'physical-cell evolution','boris_fallbacks':sum(t.get('boris_fallbacks',0) for t in r['timings']),'boris_rejections':sum(t.get('boris_rejections',0) for t in r['timings'])}
     rows.append(row)
 if rows:
@@ -78,7 +79,10 @@ if blocks:
         for k,metric in enumerate(['st','flat']):
             y=[step(byname[f'blocks_{metric}_dep{int(feedback)}_B{b}']) if f'blocks_{metric}_dep{int(feedback)}_B{b}' in byname else np.nan for b in [64,32,16]]
             axes[j].bar(np.arange(3)+(k-.5)*.32,y,width=.30,color=COLORS[metric],label=metric.upper())
-        axes[j].set_xticks(range(3),labels);axes[j].set_ylabel('Wall ms / full timestep');axes[j].legend();axes[j].text(.04,.94,'Deposition '+('on' if feedback else 'off'),transform=axes[j].transAxes,va='top');axes[j].grid(axis='y',alpha=.18)
+        axes[j].set_xticks(range(3),labels);axes[j].set_ylabel('Wall ms / full timestep');axes[j].set_ylim(bottom=0);axes[j].legend();
+        if not any(r['case']['feedback']==feedback for r in blocks):
+            axes[j].text(.5,.5,'Awaiting measurements',ha='center',va='center',transform=axes[j].transAxes);axes[j].set_yticks([])
+        axes[j].text(.04,.94,'Deposition '+('on' if feedback else 'off'),transform=axes[j].transAxes,va='top');axes[j].grid(axis='y',alpha=.18)
     save(fig,'02_meshblock_layout','Same one-million-particle realization, periodic +/-4M box and global 64^3 grid, one rank/GPU, dt=0.05M. With four ghosts, stored/physical cell ratios are 1.424, 1.953 and 3.375 for the three layouts.')
 # 3: scaling. Baseline is the eight-block case, not one 64^3 block.
 ranksets=[r for r in valid if r['case']['test']==3]
@@ -107,8 +111,10 @@ if dyn:
     axes[0].set_xscale('log',base=2);axes[0].set_xticks([6,24,96,384],[6,24,96,384]);axes[0].set_xlabel('Particles / physical cell');axes[0].set_ylabel('Wall ms / full timestep');axes[0].legend(fontsize=7);axes[0].grid(alpha=.18)
     p=sorted(pdyn,key=lambda r:r['case']['ppc']);bottom=np.zeros(len(p))
     for key in ['mesh','push','energy','migration','records','sort','transfer','atomic','other']:
-      y=np.array([phase_groups(r)[key] for r in p]);axes[1].bar(range(len(p)),y,bottom=bottom,color=COLORS[key],label=key);bottom+=y
-    axes[1].set_xticks(range(len(p)),[r['case']['ppc'] for r in p]);axes[1].set_xlabel('Particles / physical cell');axes[1].set_ylabel('Profiled ms / full timestep');axes[1].legend(fontsize=6.5,ncol=2);axes[1].grid(axis='y',alpha=.18)
+      y=np.array([phase_groups(r)[key] for r in p]);axes[1].bar(range(len(p)),y,bottom=bottom,color=COLORS[key],label=PHASE_LABELS[key]);bottom+=y
+    axes[1].set_xticks(range(len(p)),[r['case']['ppc'] for r in p]);axes[1].set_xlabel('Particles / physical cell');axes[1].set_ylabel('Profiled ms / full timestep');axes[1].legend(fontsize=6,ncol=1,loc='upper left',bbox_to_anchor=(1.01,1));
+    if not p:axes[1].text(.5,.5,'Awaiting phase profiles',ha='center',va='center',transform=axes[1].transAxes);axes[1].set_yticks([])
+    axes[1].grid(axis='y',alpha=.18)
     save(fig,'04_dynamic_particle_mesh_cost','ST yc=0.819, global 64^3 grid in +/-12M, eight 32^3 blocks, one GPU, dt=0.05M. Throughput and profiled bars come from separate runs; phase fences affect profiled timings; device-clock instrumentation runs in separate diagnostic cases. Source replicas preserve initial stress-energy; mesh-only holds that initial source fixed.')
 # 5: sampling costs and initial rank imbalance.
 sampling={('uniform',1):byname['dynamic_ppc24']} if 'dynamic_ppc24' in byname else {}
@@ -138,12 +144,14 @@ if profiles:
       if q:chosen.append(q)
     if not chosen:chosen=profiles[:2]
     fig,axes=plt.subplots(1,2,figsize=(7.1,3.2));r=chosen[-1];groups=phase_groups(r);order=sorted(groups,key=groups.get);total=sum(groups.values())
-    axes[0].barh(order,[100*groups[k]/total for k in order],color=[COLORS[k] for k in order]);axes[0].set_xlabel('Profiled timestep cost (%)',usetex=False);axes[0].grid(axis='x',alpha=.18);axes[0].text(.97,.04,r['case']['name'],ha='right',transform=axes[0].transAxes,fontsize=8,usetex=False)
+    axes[0].barh([PHASE_LABELS[k] for k in order],[100*groups[k]/total for k in order],color=[COLORS[k] for k in order]);axes[0].set_xlabel('Profiled timestep cost (%)',usetex=False);axes[0].grid(axis='x',alpha=.18);axes[0].text(.97,.04,r['case']['name'],ha='right',transform=axes[0].transAxes,fontsize=8,usetex=False)
     labels=[];fractions=[]
     for q in chosen:
       device=device_byname.get(q['case']['name']);dc=np.sum([t['device_cycles'] for t in device['timings']],axis=0) if device else np.zeros(5)
       if dc[1]:labels.append(str(q['case']['ppc']));fractions.append(100*dc[0]/dc[1])
-    axes[1].bar(labels,fractions,color=COLORS['push']);axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell');axes[1].set_ylabel('Interpolation / geodesic evaluation cycles (%)',usetex=False);axes[1].grid(axis='y',alpha=.18)
+    axes[1].bar(labels,fractions,color=COLORS['push']);
+    if not fractions:axes[1].text(.5,.5,'Awaiting device-clock samples',ha='center',va='center',transform=axes[1].transAxes)
+    axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell');axes[1].set_ylabel('Interpolation / geodesic evaluation cycles (%)',usetex=False);axes[1].grid(axis='y',alpha=.18)
     save(fig,'06_kernel_cost_and_interpolation','Cost ranking uses the slowest rank of a diagnostic run, without double-counting nested deposition timers. Interpolation fractions use sampled device clock cycles inside geodesic evaluations; they are estimates in an instrumented kernel, not percentages of total GPU wall time. Hardware performance counters are administrator-restricted.')
 # Evidence checks and readable reports.
 checks=[]
@@ -159,7 +167,7 @@ if source_candidates:
         peak=max(float(np.max(np.abs(ref))),1e-30);scale=np.where(np.abs(ref)>peak*1e-12,np.abs(ref),peak);difference=float(np.max(np.abs(v-ref)/scale));source_max=max(source_max,difference);source_ok &= difference<1e-8
       else:source_ok=False
 source_cell_errors=[x.get('source_reference_max_relative_error') for r in source_candidates for x in r['initial'] if 'source_reference_max_relative_error' in x]
-summary=dict(source_cell_max_relative_error=max(source_cell_errors) if source_cell_errors else None,updated_utc=NOW,planned=60,completed=len(valid),failed=len(through)-len(valid),profiled=len(profiles),source_moments_match=bool(source_ok) if source_candidates else None,source_moments_max_scaled_difference=source_max,figures=[name for name,caption in FILES],failures=checks)
+summary=dict(superseded_attempts=len(allthrough)-len(through),source_cell_max_relative_error=max(source_cell_errors) if source_cell_errors else None,updated_utc=NOW,planned=60,completed=len(valid),failed=len(through)-len(valid),profiled=len(profiles),source_moments_match=bool(source_ok) if source_candidates else None,source_moments_max_scaled_difference=source_max,figures=[name for name,caption in FILES],failures=checks)
 (ROOT/'results/SUMMARY.json').write_text(json.dumps(summary,indent=2)+'\n')
 findings=[]
 if count:
@@ -168,12 +176,22 @@ if count:
     if large and off:findings.append(f'At 100 million particles in the {metric.upper()} fixed background, the complete particle loop costs {spm(large):.3g} s/M versus {spm(off):.3g} s/M with deposition off ({spm(large)/spm(off):.2f}x).')
 if pdyn:
   for r in sorted(pdyn,key=lambda r:r['case']['ppc']):
-    g=phase_groups(r);key=max(g,key=g.get);findings.append(f'At {r["case"]["ppc"]} particles/cell, {key} is the largest measured phase ({100*g[key]/sum(g.values()):.1f}% of the diagnostic timestep).')
+    g=phase_groups(r);key=max(g,key=g.get);findings.append(f'At {r["case"]["ppc"]} particles/cell, {PHASE_LABELS[key].lower()} is the largest measured phase ({100*g[key]/sum(g.values()):.1f}% of the diagnostic timestep).')
+for metric in ['st','flat']:
+  for feedback in [False,True]:
+    layout=[byname.get(f'blocks_{metric}_dep{int(feedback)}_B{b}') for b in [64,32,16]]
+    if all(layout):findings.append(f'At fixed global 64³ resolution in {metric.upper()} with deposition {"on" if feedback else "off"}, 1×64³, 8×32³ and 64×16³ blocks cost '+', '.join(f'{step(r):.3g}' for r in layout)+' ms/step, respectively.')
+    baseline=byname.get(f'blocks_{metric}_dep{int(feedback)}_B32')
+    multi=byname.get(f'ranks_{metric}_dep{int(feedback)}_R4')
+    if baseline and multi:findings.append(f'Four GPUs give {spm(baseline)/spm(multi):.2f}× speedup ({25*spm(baseline)/spm(multi):.1f}% parallel efficiency) for the {metric.upper()} million-particle eight-block case with deposition {"on" if feedback else "off"}.')
+for r in sorted(devices,key=lambda r:r['case']['n']):
+  dc=np.sum([t['device_cycles'] for t in r['timings']],axis=0)
+  if dc[1]:findings.append(f'For {r["case"]["name"]}, interpolation accounts for {100*dc[0]/dc[1]:.1f}% of sampled geodesic-evaluation cycles ({int(dc[4]):,} sampled particle steps); this is an instrumented device-cycle estimate.')
 if sampling:
   for p in [1,2,4]:
     base=sampling.get(('uniform',p));point=sampling.get(('point',p))
     if base and point:findings.append(f'On {p} GPU(s), the same-site sampling case costs {spm(point)/spm(base):.2f}x the uniform case at the same particle count and initial source.')
-if not findings:findings=['The campaign is active; completed cases are tabulated below. Bottleneck conclusions will be added when the corresponding comparisons finish.']
+if not findings:findings=['The campaign is active; completed cases are tabulated below. Superseded build-mode attempts are preserved and excluded from promoted measurements. Bottleneck conclusions will be added when the corresponding comparisons finish.']
 report=f'# Paper Session 02 — code efficiency\n\nUpdated {NOW}. **{len(valid)}/60 throughput cases complete**, {len(profiles)} diagnostic profiles complete; {len(through)-len(valid)} failed or incomplete cases.\n\n'+ '\n\n'.join(findings)+'\n\n'
 report+='All throughput measurements are single passes targeting 5M, with a 0.5M warm-up excluded. A solver wall-clock guard finishes cleanly before the Slurm limit; shorter runs are labeled by their actual endpoint and need at least ten measured cycles to supply a rate. Reported particle rates count complete cycle updates; physical-cell rates exclude ghosts. Frozen cell rates are mesh-size normalizations and represent no spacetime evolution. Wall seconds/M uses the measured physical-time interval.\n\n'
 report+='## Figures\n\n'
@@ -196,7 +214,7 @@ Status: {len(valid)} successful throughput cases; {len(through)-len(valid)} unsu
 
 Reproduction: build with `jobs/build.sbatch`; generate inputs with `scripts/generate_matrix.py`; run focused gates with `scripts/submit.py --kind gate`; submit the main matrix with `--kind throughput`; profiles with `--kind profile`; sampled clocks with `--kind device`; regenerate all artifacts in Slurm using `scripts/analyze.py`. Never run simulation or plotting on the login node.
 
-No scientific snapshots or restarts were generated. Compact initialization count maps, timing/audit JSON, resource samples, logs and selected profiler traces remain in this session. Storage size and running jobs are recorded in SESSION_STATE.md. Historical source snapshots and unrelated jobs remain preserved. No external messages or Mac mirror were requested.
+Superseded compile-mode attempts are excluded from performance results and preserved under their case directories. No scientific snapshots or restarts were generated. Compact initialization count maps, timing/audit JSON, resource samples, logs and selected profiler traces remain in this session. Storage size and running jobs are recorded in SESSION_STATE.md. Historical source snapshots and unrelated jobs remain preserved. No external messages or Mac mirror were requested.
 '''
 (ROOT/'reports/REPORT_AGENT.md').write_text(agent)
 with PdfPages(ROOT/'reports/REPORT_code_efficiency.pending.pdf') as pdf:

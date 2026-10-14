@@ -33,9 +33,7 @@
 #include "globals.hpp"
 #include "mesh/mesh.hpp"
 #include "particles.hpp"
-#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
 #include "driver/code_efficiency.hpp"
-#endif
 #include "boris_utils.hpp"
 #include "lagrange_interp.hpp"
 #include "calc_tetrad.hpp"
@@ -45,6 +43,16 @@
 #include "coordinates/cell_locations.hpp"
 #include "coordinates/coordinates.hpp"
 #include "eos/primitive-solver/geom_math.hpp"
+
+namespace efficiency {
+bool DeviceTimingCompiled() {
+#ifdef ATHENA_EFFICIENCY_DEVICE_TIMING
+  return true;
+#else
+  return false;
+#endif
+}
+}  // namespace efficiency
 
 namespace particles {
 
