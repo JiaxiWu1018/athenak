@@ -28,7 +28,8 @@ for c in cases:
     if a.gate_job:conditions.append(f'afterok:{a.gate_job}')
     if conditions:cmd+=['--dependency',','.join(conditions)]
     cmd+=[str(ROOT/'jobs/run.sbatch')]
-    result=subprocess.run(cmd,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    result=subprocess.run(cmd,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False)
+    if result.returncode:raise RuntimeError(result.stderr.strip())
     previous=result.stdout.strip().split(';')[0];row=dict(job_id=previous,case=c['name'],kind=a.kind,command=cmd);ledger.append(row)
     with (ROOT/'provenance/jobs.jsonl').open('a') as out:out.write(json.dumps(row)+'\n')
 print(json.dumps(dict(jobs=ledger,last_job=previous),indent=2))

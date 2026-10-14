@@ -44,7 +44,7 @@ gate_name='gate_ranks_st_dep1_R4'
 if not receipt('gate',gate_name).get('valid'):
     status=job_state(state['gate4'])
     if status in ['CANCELLED','PREEMPTED','TIMEOUT','NODE_FAIL']:
-        old=state['gate4'];new=submit('gate',[gate_name],partition='preempt');state['gate4']=new
+        old=state['gate4'];new=submit('gate',[gate_name],partition=state.get('four_rank_partition','debug'));state['gate4']=new
         ledger=[json.loads(x) for x in (ROOT/'provenance/jobs.jsonl').read_text().splitlines()]
         for row in ledger:
             if job_state(row['job_id'])!='PENDING':continue
@@ -70,7 +70,7 @@ if args.close:
     last=None
     for row in retry:
         c=next(c for c in matrix if c['name']==row['case'])
-        last=submit(row['kind'],[row['case']],dependency=last,partition='preempt' if c['ranks']==4 else 'debug',gate=state['gate4'] if c['ranks']==4 else None)
+        last=submit(row['kind'],[row['case']],dependency=last,partition=state.get('four_rank_partition','debug') if c['ranks']==4 else 'debug',gate=state['gate4'] if c['ranks']==4 else None)
     state['unresolved']=failed
     if pending or retry:
         dependencies=([last] if last else [])+pending
