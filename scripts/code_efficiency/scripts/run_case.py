@@ -44,8 +44,8 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
     def monitor():
         while not done.is_set():
             q=['nvidia-smi','--query-gpu=index,uuid,memory.used,utilization.gpu,temperature.gpu,clocks.sm','--format=csv,noheader,nounits']
-            ids=os.environ.get('SLURM_JOB_GPUS')
-            if ids:q+=['-i',ids]
+            # NVML indices are namespaced by the GPU allocation here; global
+            # SLURM_JOB_GPUS indices can produce 'No devices were found'.
             samples.append(dict(time=time.time(),gpu=command(q)))
             done.wait(5)
     t=threading.Thread(target=monitor,daemon=True);t.start();start=time.time()

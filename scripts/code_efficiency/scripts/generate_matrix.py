@@ -89,7 +89,7 @@ warmup = {warmup}
 for c in cases:(ROOT/'inputs'/f'{c["name"]}.athinput').write_text(deck(c))
 (ROOT/'matrix.json').write_text(json.dumps(cases,indent=2)+'\n')
 assert len(cases)==60
-# Focused gates: complete 5M liveness; small source matching and disabled-control tests.
+# Focused gates: complete 1M liveness; small source matching and disabled-control tests.
 gates=[]
 for c in cases:
   if c['name'] in ['count_st_dep1_N10000','count_flat_dep1_N10000','blocks_st_dep1_B16','ranks_st_dep1_R2','ranks_st_dep1_R4','dynamic_ppc6','sampling_central4_R1','sampling_central1_R1','sampling_block_R1','sampling_point_R1']:
