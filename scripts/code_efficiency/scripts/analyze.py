@@ -55,6 +55,13 @@ for r in profiles:
     profile_rows.append(dict(case=r['case']['name'],job_id=r['job_id'],**groups,interpolation_eval_cycle_fraction=float(cycles[0]/cycles[1]) if cycles[1] else None,sampled_particle_steps=int(cycles[4]),interpolation_calls=int(cycles[2]),geodesic_evaluations=int(cycles[3])))
 if profile_rows:
     with (ROOT/'results/profile_phases.csv').open('w') as out:w=csv.DictWriter(out,fieldnames=list(profile_rows[0]));w.writeheader();w.writerows(profile_rows)
+rank_rows=[]
+for r in profiles:
+ for t in r['timings']:
+  rank=t['rank'];initial=next(x for x in r['initial'] if x['rank']==rank);final=next(x for x in r['final'] if x['rank']==rank)
+  rank_rows.append(dict(case=r['case']['name'],job_id=r['job_id'],rank=rank,ranks=r['case']['ranks'],initial_particles=initial['local_count'],final_particles=final['local_count'],wall_ms_per_step=1000*t['elapsed_local']/t['cycles'],sent_particles_per_step=t['sent_particles']/t['cycles'],source_images_per_step=t['source_images']/t['cycles'],**phase_groups(dict(r,timings=[t]))))
+if rank_rows:
+ with (ROOT/'results/rank_phases.csv').open('w') as out:w=csv.DictWriter(out,fieldnames=list(rank_rows[0]));w.writeheader();w.writerows(rank_rows)
 # Nsight's kernel percentages sum GPU execution duration, not elapsed wall time.
 kernel_rows=[]
 for r in profiles:
@@ -223,10 +230,10 @@ for name,caption in FILES:report+=f'![{name}](../figures/{name}.png)\n\n{caption
 report+='## Exact performance table\n\n| Case | GPUs | N | Particle updates/s | Cell cycles/s | Wall s/M | Step ms | Actual end (M) |\n|---|---:|---:|---:|---:|---:|---:|---:|\n'
 for r in valid:
  c=r['case'];t=r['timings'][0];report+=f'| {c["name"]} | {c["ranks"]} | {c["n"]} | {t["particles_per_second"]:.6g} | {t["cells_per_second"]:.6g} | {spm(r):.6g} | {step(r):.6g} | {t['final_time']:.6g} |\n'
-report+='\n## Interpretation and limits\n\nThese are numerical workload measurements, not ST stability or convergence results. Single passes have no replicate-based confidence intervals. Profiling fences, sampled device clocks, and tracing affect diagnostic timings; throughput runs disable them. The interpolation ratio concerns geodesic-evaluation cycles in the instrumented pusher, not a directly separable production kernel. Mesh-only evolves with the initial source held fixed. Weighted replicas keep initial deposited stress-energy fixed within accumulation roundoff, while exact trajectories and accumulation order can diverge during evolution.\n\n'
+report+='\n## Interpretation and limits\n\nThese are numerical workload measurements, not ST stability or convergence results. Phase/device diagnostics end at1.5M; their interval can sample different migration behavior from the5M throughput average. Multi-rank communication/ownership timings include waits for slower ranks; use per-rank phase and traffic counts to distinguish load imbalance from transport cost. Single passes have no replicate-based confidence intervals. Profiling fences, sampled device clocks, and tracing affect diagnostic timings; throughput runs disable them. The interpolation ratio concerns geodesic-evaluation cycles in the instrumented pusher, not a directly separable production kernel. Mesh-only evolves with the initial source held fixed. Weighted replicas keep initial deposited stress-energy fixed within accumulation roundoff, while exact trajectories and accumulation order can diverge during evolution.\n\n'
 report+=f'Initial source-moment matching: {("PASS" if source_ok else "FAIL/INCOMPLETE") if source_candidates else "not yet measured"}; maximum scaled difference {source_max:.3g}. Cell-by-cell source checks use the common six-direction template; maximum relative error {max(source_cell_errors) if source_cell_errors else 'not yet measured'}. Every promoted case passed its compiled-mode check and initial/final count, ID-checksum, finite-state, ownership, zero-destruction and frozen-geometry checks. Boris fallback/rejection counts are included in the [CSV](../results/throughput.csv).\n\n'
 if checks:report+='## Failed or incomplete cases\n\n'+'\n'.join('- '+x for x in checks)+'\n\n'
-report+='[Compact summary](../results/SUMMARY.json), [throughput CSV](../results/throughput.csv), [profile phase CSV](../results/profile_phases.csv), [traced GPU kernels](../results/gpu_kernels.csv). Exact inputs, executable hashes, source state, launches, scheduler jobs and sampled resource observations are retained with each receipt under `results/`.\n'
+report+='[Compact summary](../results/SUMMARY.json), [throughput CSV](../results/throughput.csv), [profile phase CSV](../results/profile_phases.csv), [traced GPU kernels](../results/gpu_kernels.csv), [per-rank phases and traffic](../results/rank_phases.csv). Exact inputs, executable hashes, source state, launches, scheduler jobs and sampled resource observations are retained with each receipt under `results/`.\n'
 (ROOT/'reports/REPORT_code_efficiency.md').write_text(report)
 agent=f'''# Implementation and provenance report
 
@@ -252,7 +259,7 @@ os.replace(ROOT/'reports/REPORT_code_efficiency.pending.pdf',ROOT/'reports/REPOR
 # Version and checksum record for the current review artifacts.
 artifacts=[ROOT/'reports/REPORT_code_efficiency.md',ROOT/'reports/REPORT_code_efficiency.pdf',ROOT/'reports/REPORT_AGENT.md',ROOT/'results/SUMMARY.json',ROOT/'results/VALIDATION.json']
 artifacts += [ROOT/'figures'/f'{name}.{ext}' for name,caption in FILES for ext in ['pdf','png']]
-artifacts += [ROOT/'results'/name for name in ['throughput.csv','profile_phases.csv','gpu_kernels.csv'] if (ROOT/'results'/name).exists()]
+artifacts += [ROOT/'results'/name for name in ['throughput.csv','profile_phases.csv','gpu_kernels.csv','rank_phases.csv'] if (ROOT/'results'/name).exists()]
 manifest=dict(updated_utc=NOW,host=socket.gethostname(),slurm_job_id=os.environ.get('SLURM_JOB_ID'),python=sys.version,numpy=np.__version__,matplotlib=matplotlib.__version__,latex_enabled=bool(matplotlib.rcParams['text.usetex']),completed_cases=[dict(case=r['case']['name'],job_id=r['job_id']) for r in valid],files=[dict(path=str(p.relative_to(ROOT)),bytes=p.stat().st_size,sha256=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()) for p in artifacts])
 (ROOT/'provenance/report_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 # Keep live state truthful; no completion based only on reaching the last scheduler job.
