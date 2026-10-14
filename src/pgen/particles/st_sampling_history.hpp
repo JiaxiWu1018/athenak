@@ -17,7 +17,9 @@ void STSamplingHistory(HistoryData *data, Mesh *mesh) {
   const char *labels[16] = {"V10", "H2r10", "M2r10", "E1r10", "E2r10", "J2r10",
                            "V16", "H2r16", "M2r16", "E1r16", "E2r16", "J2r16",
                            "Vcore", "acore", "Vouter", "aouter"};
-  for (int n=0; n<16; ++n) {data->label[n] = labels[n];}
+  for (int n=0; n<16; ++n) {
+    data->label[n] = labels[n];
+  }
   const int is=idx.is, js=idx.js, ks=idx.ks;
   const int n1=idx.nx1, n2=idx.nx2, n3=idx.nx3;
   const int nc=n1*n2*n3;
@@ -34,9 +36,13 @@ void STSamplingHistory(HistoryData *data, Mesh *mesh) {
     Real z=CellCenterX(kk,n3,s.x3min,s.x3max);
     Real r2=x*x+y*y+z*z, dv=s.dx1*s.dx2*s.dx3;
     array_sum::GlobalSum values;
-    for (int n=0; n<NHISTORY_VARIABLES; ++n) {values.the_array[n]=0.0;}
+    for (int n=0; n<NHISTORY_VARIABLES; ++n) {
+      values.the_array[n]=0.0;
+    }
     Real e=mat.E(m,k,j,i), j2=0.0;
-    for (int a=0; a<3; ++a) {j2+=SQR(mat.S_d(m,a,k,j,i));}
+    for (int a=0; a<3; ++a) {
+      j2+=SQR(mat.S_d(m,a,k,j,i));
+    }
     for (int b=0; b<2; ++b) {
       if (r2 < (b==0 ? 100.0 : 256.0)) {
         int o=6*b;
@@ -58,7 +64,9 @@ void STSamplingHistory(HistoryData *data, Mesh *mesh) {
     }
     acc+=values;
   }, Kokkos::Sum<array_sum::GlobalSum>(sum));
-  for (int n=0; n<16; ++n) {data->hdata[n]=sum.the_array[n];}
+  for (int n=0; n<16; ++n) {
+    data->hdata[n]=sum.the_array[n];
+  }
 }
 
 #endif  // PGEN_PARTICLES_ST_SAMPLING_HISTORY_HPP_
