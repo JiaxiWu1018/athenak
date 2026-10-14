@@ -28,23 +28,45 @@ def compare(pa,pb,tolerance):
             remain-=take
     return {'particle_max_abs':pd,'grid_max_abs':gd,'rtol':tolerance,'atol':tolerance}
 
+def compare_snapshots(pa,pb,n,tolerance=1e-7):
+    """MPI migration changes storage order; compare the same original particles."""
+    ta,ca,na,a=R.read_pvtk(str(pa));tb,cb,nb,b=R.read_pvtk(str(pb))
+    if ta!=tb or ca!=cb or na!=n or nb!=n or a.keys()!=b.keys():
+        raise ValueError('Default snapshot time/cycle/count/fields differ')
+    ia=np.argsort(a['ptag']);ib=np.argsort(b['ptag'])
+    if not np.array_equal(a['ptag'][ia],np.arange(n)) or not np.array_equal(b['ptag'][ib],np.arange(n)):
+        raise ValueError('Default snapshot original IDs differ')
+    unaligned={};aligned={}
+    for key in a:
+        unaligned[key]=float(np.max(np.abs(a[key]-b[key])))
+        aligned[key]=float(np.max(np.abs(a[key][ia]-b[key][ib])))
+        if not np.allclose(a[key][ia],b[key][ib],rtol=tolerance,atol=tolerance):
+            raise ValueError('Default evolution changed '+key+' after original-ID alignment; max_abs='+str(aligned[key]))
+    return {'time_M':ta,'cycle':ca,'particles':n,'unaligned_max_abs':unaligned,
+            'original_ID_aligned_max_abs':aligned,'rtol':tolerance,'atol':tolerance,
+            'sources':[str(pa),str(pb)]}
+
 def main():
     require_job()
     if not (ROOT/'evidence/BUILD_OK').exists() or not (ROOT/'evidence/SAMPLES_OK').exists():raise ValueError('Build/sample gates absent')
     from reference import ensure
     ensure(dict(np.load(ROOT/'samples/model.npz')))
-    root=ROOT/'preflight';root.mkdir(exist_ok=True)
+    root=ROOT/'preflight_attempts'/os.environ['SLURM_JOB_ID'];root.mkdir(parents=True,exist_ok=False)
     deck=ROOT/'inputs/default_gate.athinput'
     baseline,_=launch(root/'baseline',deck,2,executable='athena.baseline')
     ordinary,_=launch(root/'default',deck,2)
     # The complete seeded DP initialization must remain byte-identical.
     if sha(root/'baseline/initial_particles.bin')!=sha(root/'default/initial_particles.bin'):
         raise ValueError('Historical initialization changed')
-    ta,ca,na,a=R.read_pvtk(str(sorted((baseline/'pvtk').glob('*vtk'))[-1]))
-    tb,cb,nb,b=R.read_pvtk(str(sorted((ordinary/'pvtk').glob('*vtk'))[-1]))
-    if na!=4096 or nb!=4096:raise ValueError('Default gate count')
-    for key in a:
-        if not np.allclose(a[key],b[key],rtol=1e-7,atol=1e-7):raise ValueError('Default evolution changed '+key)
+    regression=compare_snapshots(sorted((baseline/'pvtk').glob('*vtk'))[-1],
+                                 sorted((ordinary/'pvtk').glob('*vtk'))[-1],4096)
+    atomic(root/'DEFAULT_REGRESSION_OK.json',regression)
+    # Quantify the ordering failure on the preserved original attempt as well.
+    old=ROOT/'preflight'
+    if (old/'baseline/out/pvtk').exists() and (old/'default/out/pvtk').exists():
+        review=compare_snapshots(sorted((old/'baseline/out/pvtk').glob('*.part.vtk'))[-1],
+                                 sorted((old/'default/out/pvtk').glob('*.part.vtk'))[-1],4096)
+        atomic(ROOT/'evidence/REGRESSION_REVIEW_463500.json',review)
     records=[]
     for case,rad,method,seed in CASES:
         if seed!=1:continue
@@ -111,7 +133,8 @@ def main():
     if with_margin>90:raise ValueError('Fixed suite exceeds simulation budget')
     case_walltime=int(np.ceil((with_margin/24*3600+600)/60)*60)
     projected_bytes=24*max((end//2+1)*r['frame_bytes_estimate']+(end//100+1)*r['full_state_bytes_estimate']+N*9*8 for r in records)
-    atomic(ROOT/'evidence/PREFLIGHT_OK',{'job':os.environ['SLURM_JOB_ID'],'historical_t0_exact':True,
+    atomic(ROOT/'evidence/PREFLIGHT_OK',{'job':os.environ['SLURM_JOB_ID'],'preflight_root':str(root),'historical_t0_exact':True,
+           'historical_default_regression':regression,
            'cases':records,'weighted_restart':restart,'diagnostic_primary_state':diagnostic,
            'reduction_qa_seconds':qa_analysis_seconds,'reduction_qa_frames':frames,
            'projected_solver_node_hours_300':projected,'projected_production_node_hours_with_margin_and_reduction':with_margin,
