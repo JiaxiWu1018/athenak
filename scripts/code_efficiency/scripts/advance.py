@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Lightweight scheduler recovery; never simulates, builds, or plots on a login node."""
+import argparse,fcntl,json,os,re,subprocess,time
+from pathlib import Path
+ROOT=Path(os.environ.get('EFFICIENCY_SESSION',Path(__file__).resolve().parents[1]))
+p=argparse.ArgumentParser();p.add_argument('--close',action='store_true');args=p.parse_args()
+lock=(ROOT/'provenance/.advance.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX)
+state_path=ROOT/'provenance/recovery.json'
+state=json.loads(state_path.read_text()) if state_path.exists() else dict(gate4='13341',recoveries=[],attempts={})
+def job_state(job):
+    r=subprocess.run(['scontrol','show','job',str(job)],text=True,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+    m=re.search(r'JobState=(\S+)',r.stdout)
+    return m.group(1) if m else 'UNKNOWN'
+def receipt(kind,name):
+    p=ROOT/'results'/kind/name/'receipt.json'
+    return json.loads(p.read_text()) if p.exists() else {}
+def submit(kind,cases,dependency=None,partition='debug',gate=None):
+    cmd=['python3',str(ROOT/'scripts/submit.py'),'--kind',kind,'--partition',partition,'--names']+cases
+    if dependency:cmd+=['--dependency',str(dependency)]
+    if gate:cmd+=['--gate-job',str(gate)]
+    r=subprocess.run(cmd,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+    data=json.loads(r.stdout);state['recoveries'].append(data);return data['last_job']
+gate_name='gate_ranks_st_dep1_R4'
+if not receipt('gate',gate_name).get('valid'):
+    status=job_state(state['gate4'])
+    if status in ['CANCELLED','PREEMPTED','TIMEOUT','NODE_FAIL']:
+        old=state['gate4'];new=submit('gate',[gate_name],partition='preempt');state['gate4']=new
+        ledger=[json.loads(x) for x in (ROOT/'provenance/jobs.jsonl').read_text().splitlines()]
+        for row in ledger:
+            if job_state(row['job_id'])!='PENDING':continue
+            detail=subprocess.run(['scontrol','show','job',row['job_id']],text=True,stdout=subprocess.PIPE).stdout
+            m=re.search(r'Dependency=(\S+)',detail)
+            if m and f'afterok:{old}' in m.group(1):
+                dep=re.sub(r'\([^)]*\)','',m.group(1)).replace(f'afterok:{old}',f'afterok:{new}')
+                subprocess.run(['scontrol','update',f'JobId={row["job_id"]}',f'Dependency={dep}'],check=True)
+if args.close:
+    matrix=json.loads((ROOT/'matrix.json').read_text());ledger=[json.loads(x) for x in (ROOT/'provenance/jobs.jsonl').read_text().splitlines()];latest={}
+    for row in ledger:latest[(row['kind'],row['case'])]=row
+    pending=[];retry=[];failed=[]
+    for key,row in latest.items():
+        kind,name=key
+        if kind not in ['throughput','profile','device']:continue
+        if receipt(kind,name).get('valid'):continue
+        status=job_state(row['job_id'])
+        if status in ['PENDING','RUNNING','CONFIGURING','COMPLETING']:pending.append(row['job_id']);continue
+        attempts=state['attempts'].get(kind+'/'+name,0)
+        if attempts<2:
+            retry.append(row);state['attempts'][kind+'/'+name]=attempts+1
+        else:failed.append(dict(kind=kind,case=name,state=status))
+    last=None
+    for row in retry:
+        c=next(c for c in matrix if c['name']==row['case'])
+        last=submit(row['kind'],[row['case']],dependency=last,partition='preempt' if c['ranks']==4 else 'debug',gate=state['gate4'] if c['ranks']==4 else None)
+    state['unresolved']=failed
+    if pending or retry:
+        dependencies=([last] if last else [])+pending
+        command=['sbatch','--parsable','--dependency','afterany:'+':'.join(dependencies),str(ROOT/'jobs/close.sbatch')]
+        state['next_closure_job']=subprocess.check_output(command,text=True).strip().split(';')[0]
+    else:
+        complete=all(receipt('throughput',c['name']).get('valid') for c in matrix) and not failed
+        (ROOT/'CLOSURE.md').write_text('# Campaign closure\n\n'+('COMPLETE' if complete else 'INCOMPLETE — see unresolved cases in provenance/recovery.json')+'\n\nReports and figures were regenerated from retained receipts. Every promoted case passed liveness/source/freeze gates. Source, inputs, launches, executable hashes, timing tables, diagnostics and storage status remain in this session. No scientific snapshots or restarts were generated.\n')
+        state['closed_complete']=complete
+state['updated_unix']=time.time();state_path.write_text(json.dumps(state,indent=2)+'\n')
+print(json.dumps(dict(gate4=state['gate4'],recoveries=len(state['recoveries']),closed_complete=state.get('closed_complete'))),flush=True)

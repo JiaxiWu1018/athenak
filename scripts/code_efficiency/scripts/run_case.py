@@ -49,6 +49,7 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
     with (folder/'solver.log').open('w') as out:
         process=subprocess.run(['/usr/bin/time','-v','-o',str(folder/'resource.txt')]+launch,cwd=folder,stdout=out,stderr=subprocess.STDOUT,check=False)
     done.set();t.join(10)
+    # Interrupted attempts are never overwritten; recovery runs in a later allocation.
     (folder/'memory_samples.json').write_text(json.dumps(samples,indent=2)+'\n')
     timings=[json.loads(p.read_text()) for p in sorted(folder.glob('timing.rank*.json'))]
     finals=[json.loads(p.read_text()) for p in sorted(folder.glob('final.rank*.json'))]
@@ -62,6 +63,7 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
     if trace and list(folder.glob('timeline.nsys-rep')):
         with (folder/'nsys_stats.log').open('w') as out:
             subprocess.run(['/usr/local/cuda-12.9/bin/nsys','stats','--report','cuda_gpu_kern_sum,cuda_gpu_mem_time_sum,mpi_event_sum','--format','csv','--output',str(folder/'nsys'),str(folder/'timeline.nsys-rep')],stdout=out,stderr=subprocess.STDOUT,check=False)
+    subprocess.run(['python3',str(ROOT/'scripts/advance.py')],check=False)
     print(c['name'],kind,'PASS' if valid else 'FAIL',f'{rec["wall_seconds"]:.2f}s',flush=True)
     return rec
 if __name__=='__main__':

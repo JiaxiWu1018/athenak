@@ -13,5 +13,6 @@ args=()
 [ "$TRACE" != 1 ] || args+=(--trace)
 status=0
 python3 "$SESSION/scripts/run_case.py" "$CASE" --kind "$KIND" "${args[@]}" || status=$?
+python3 "$SESSION/scripts/advance.py" || true
 python3 "$SESSION/scripts/analyze.py" || printf 'REPORT GENERATION FAILED; see job log\n'
 exit "$status"
