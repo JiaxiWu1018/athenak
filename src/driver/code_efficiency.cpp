@@ -138,7 +138,7 @@ void Audit(Mesh *pm,bool initial) {
     auto real=Kokkos::create_mirror_view_and_copy(HostMemSpace(),pr);
     auto integer=Kokkos::create_mirror_view_and_copy(HostMemSpace(),pi);
     std::ofstream values(std::string(initial?"initial":"final")+".payload.rank"+std::to_string(global_variable::my_rank)+".csv");
-    values<<"tag,x,y,z,ux,uy,uz,energy,mass\n"<<std::setprecision(17);
+    values<<"tag,mass,energy,x,ux,y,uy,z,uz\n"<<std::setprecision(17);
     for(int i=0;i<np;++i){values<<integer(PTAG,i);for(int c=0;c<8;++c)values<<','<<real(c,i);values<<'\n';}
   }
   int ok=pass?1:0;
