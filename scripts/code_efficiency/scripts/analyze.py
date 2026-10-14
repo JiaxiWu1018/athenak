@@ -40,7 +40,7 @@ def phase_groups(r):
     result['other']=max(0,dep-children)+get('driver_timestep')+get('particle_timestep')
     result['other']+=max(0,t['elapsed_local']-sum(result.values()))
     return {k:1000*v/t['cycles'] for k,v in result.items()}
-devices=[r for r in load('device') if r['valid']];device_byname={r['case']['name']:r for r in devices}
+devices=[r for r in load('device') if r['valid'] and not r['case']['name'].startswith('numeric_')];device_byname={r['case']['name']:r for r in devices}
 allthrough=load('throughput');through=[r for r in allthrough if not r.get('superseded_reason')];valid=[r for r in through if r['valid']];profiles=[r for r in load('profile') if r['valid']];allcases=json.loads((ROOT/'matrix.json').read_text());byname={r['case']['name']:r for r in valid}
 rows=[]
 for r in allthrough:
@@ -210,7 +210,7 @@ if sampling:
 for name in sorted(set(x['case'] for x in kernel_rows)):
   ranked=[x for x in kernel_rows if x['case']==name and x['gpu_time_percent']]
   if ranked:
-    top=max(ranked,key=lambda x:float(x['gpu_time_percent']));findings.append(f'Nsight GPU kernel evidence for {name}: the top row contributes {float(top["gpu_time_percent"]):.1f}% of summed traced GPU kernel duration; exact kernel names and NVTX phase labels are in results/gpu_kernels.csv. GPU duration excludes host sorting and MPI waiting.')
+    top=max(ranked,key=lambda x:float(x['gpu_time_percent']));findings.append(f'Nsight GPU kernel evidence for {name}: the leading kernel is in {top['kernel'].split('/',1)[0][:100]} and contributes {float(top["gpu_time_percent"]):.1f}% of summed traced GPU kernel duration; exact kernel names and NVTX phase labels are in results/gpu_kernels.csv. GPU duration excludes host sorting and MPI waiting.')
 if not findings:findings=['The campaign is active; completed cases are tabulated below. Superseded build-mode attempts are preserved and excluded from promoted measurements. Bottleneck conclusions will be added when the corresponding comparisons finish.']
 report=f'# Paper Session 02 — code efficiency\n\nUpdated {NOW}. **{len(valid)}/60 throughput cases complete**, {len(profiles)} diagnostic profiles complete; {len(through)-len(valid)} failed or incomplete cases.\n\n'+ '\n\n'.join(findings)+'\n\n'
 report+='All throughput measurements are single passes targeting 5M, with a 0.5M warm-up excluded. A solver wall-clock guard finishes cleanly before the Slurm limit; shorter runs are labeled by their actual endpoint and need at least ten measured cycles to supply a rate. Reported particle rates count complete cycle updates; physical-cell rates exclude ghosts. Frozen cell rates are mesh-size normalizations and represent no spacetime evolution. Wall seconds/M uses the measured physical-time interval.\n\n'
