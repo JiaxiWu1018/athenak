@@ -2,7 +2,7 @@
 import os
 import fcntl
 """Generate source-backed performance tables, figures, reports, and live status in Slurm."""
-import csv,json,sys,math,datetime,textwrap,subprocess
+import csv,json,sys,math,datetime,textwrap,subprocess,hashlib,socket
 from pathlib import Path
 import numpy as np
 import matplotlib
@@ -249,6 +249,12 @@ with PdfPages(ROOT/'reports/REPORT_code_efficiency.pending.pdf') as pdf:
  for name,caption in FILES:
   fig=plt.figure(figsize=(8.3,11.7));ax=fig.add_axes([.06,.32,.88,.6]);ax.imshow(plt.imread(ROOT/'figures'/f'{name}.png'));ax.axis('off');fig.text(.08,.28,'\n'.join(textwrap.wrap(caption,100)),fontsize=9,va='top',usetex=False);pdf.savefig(fig,dpi=220);plt.close(fig)
 os.replace(ROOT/'reports/REPORT_code_efficiency.pending.pdf',ROOT/'reports/REPORT_code_efficiency.pdf')
+# Version and checksum record for the current review artifacts.
+artifacts=[ROOT/'reports/REPORT_code_efficiency.md',ROOT/'reports/REPORT_code_efficiency.pdf',ROOT/'reports/REPORT_AGENT.md',ROOT/'results/SUMMARY.json',ROOT/'results/VALIDATION.json']
+artifacts += [ROOT/'figures'/f'{name}.{ext}' for name,caption in FILES for ext in ['pdf','png']]
+artifacts += [ROOT/'results'/name for name in ['throughput.csv','profile_phases.csv','gpu_kernels.csv'] if (ROOT/'results'/name).exists()]
+manifest=dict(updated_utc=NOW,host=socket.gethostname(),slurm_job_id=os.environ.get('SLURM_JOB_ID'),python=sys.version,numpy=np.__version__,matplotlib=matplotlib.__version__,latex_enabled=bool(matplotlib.rcParams['text.usetex']),completed_cases=[dict(case=r['case']['name'],job_id=r['job_id']) for r in valid],files=[dict(path=str(p.relative_to(ROOT)),bytes=p.stat().st_size,sha256=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()) for p in artifacts])
+(ROOT/'provenance/report_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 # Keep live state truthful; no completion based only on reaching the last scheduler job.
 queue=subprocess.run(['squeue','-u','jiaxiwu','-h','-o','%i %j %t %M %R'],text=True,stdout=subprocess.PIPE,check=False).stdout
 jobs=[line for line in queue.splitlines() if 'eff-' in line]
