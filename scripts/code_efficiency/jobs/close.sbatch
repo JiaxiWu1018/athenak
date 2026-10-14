@@ -11,5 +11,5 @@
 set -euo pipefail
 SESSION=${EFFICIENCY_SESSION:-/data/jiaxiwu/NRPIC/paper/session_02_code_efficiency}
 export MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
-python3 "$SESSION/scripts/advance.py" --close
 python3 "$SESSION/scripts/analyze.py"
+python3 "$SESSION/scripts/advance.py" --close
