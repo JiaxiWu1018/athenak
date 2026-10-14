@@ -8,13 +8,15 @@ import sys
 import time
 from common import ROOT, atomic
 
+HEARTBEAT_INTERVAL_SECONDS = 2 * 60 * 60
+
 def main():
     thread=sys.argv[1]
     lock=open(ROOT/'evidence/controller.lock','a')
     fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     path=ROOT/'evidence/controller.json'
     state=json.loads(path.read_text()) if path.exists() else {'events':{},'observed':{},'last_heartbeat':time.time()}
-    state.update(pid=os.getpid(),thread=thread)
+    state.update(pid=os.getpid(),thread=thread,heartbeat_interval_seconds=HEARTBEAT_INTERVAL_SECONDS)
     def event(key,message):
         state['events'].setdefault(key,{'message':message,'last_delivery':0})
     event('continuation_test','Verify that this event arrived in the same chat; continue the already-authorized implementation and acknowledge it.')
@@ -55,8 +57,8 @@ def main():
                 if cancel:
                     subprocess.run(['ssh','hpcfund.amd.com','scancel',*cancel],check=True,timeout=30)
                 event('budget_stop','Allocated AMD cost reached '+str(used)+' node-hours. Production was stopped to preserve the 100-node-hour ceiling; inspect the retained evidence.')
-            if time.time()-state['last_heartbeat']>=1800:
-                event('heartbeat_'+str(int(time.time()//1800)), 'Review campaign progress, budget and storage; continue toward all 24 runs and final reports.')
+            if time.time()-state['last_heartbeat']>=HEARTBEAT_INTERVAL_SECONDS:
+                event('heartbeat_'+str(int(time.time()//HEARTBEAT_INTERVAL_SECONDS)), 'Review campaign progress, budget and storage; continue toward all 24 runs and final reports.')
                 state['last_heartbeat']=time.time()
             for key,ev in state['events'].items():
                 if (ROOT/'evidence/events'/(key+'.ack')).exists():continue
