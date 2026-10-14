@@ -105,6 +105,12 @@ def cell_positions(p, radial, seed, table):
     cell_id=np.repeat(np.arange(nc),counts)
     a,b=table['lo'][cell_id],table['hi'][cell_id]
     rmin=np.sqrt(np.sum(np.where(a>0,a,np.where(b<0,b,0))**2,axis=1))
+    near=np.where(a>0,a,np.where(b<0,b,0))
+    for axis in range(3):
+        other=np.sum(near*near,axis=1)-near[:,axis]**2
+        cap=np.sqrt(np.maximum(p['Riso_over_M']**2-other,0))
+        a[:,axis]=np.maximum(a[:,axis],-cap)
+        b[:,axis]=np.minimum(b[:,axis],cap)
     # Profile monotonicity is checked before using the nearest-radius rejection bound.
     d=p['D_'+radial]
     if np.max(np.diff(d))>1e-10*d.max(): raise ValueError('Density is not monotone')

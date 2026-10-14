@@ -26,6 +26,7 @@ sha256sum "$ROOT/protected/athena" > "$ROOT/evidence/executable_sha256.txt"
 cp "$ROOT/build/CMakeCache.txt" "$ROOT/evidence/CMakeCache.txt"
 mkdir -p "$ROOT/baseline_code"
 git -C "$repo" archive e011390767040f512286fcb7b461fdc1ca6246a2 | tar -x -C "$ROOT/baseline_code"
+rmdir "$ROOT/baseline_code/kokkos"
 ln -s "$repo/kokkos" "$ROOT/baseline_code/kokkos"
 cmake -S "$ROOT/baseline_code" -B "$ROOT/baseline_build" \
   -DKokkos_ENABLE_HIP=On -DKokkos_ARCH_AMD_GFX90A=On \

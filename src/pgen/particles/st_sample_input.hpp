@@ -15,7 +15,7 @@ class STSampleInput {
  public:
   STSampleInput(const std::string &path, int n, int seed, Real mass, Real yc,
                 Real dx, const std::string &sampling, const std::string &radial,
-                const std::string &velocity) : count_(n), sum_(0.0L) {
+                const std::string &velocity) : sum_(0.0L) {
     if (path.empty()) {return;}
     input_.open(path, std::ios::binary);
     std::string line, magic, s, r, v;
@@ -60,7 +60,6 @@ class STSampleInput {
     std::exit(EXIT_FAILURE);
   }
   std::ifstream input_;
-  int count_;
   long double sum_;
 };
 
