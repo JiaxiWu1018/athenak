@@ -9,6 +9,7 @@ class ParameterInput;
 namespace efficiency {
 struct State {
   bool enabled=false, profile=false, mesh_only=false, measuring=false;
+  bool validation_payload=false;
   double warmup=0.5, start_time=0.0, elapsed=0.0;
   int start_cycle=0;
   std::uint64_t initial_count=0, initial_sum=0, initial_square=0;

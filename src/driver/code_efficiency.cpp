@@ -27,6 +27,7 @@ void Configure(ParameterInput *pin) {
   if (!pin->DoesBlockExist("benchmark")) return;
   s.enabled=pin->GetOrAddBoolean("benchmark","enabled",false);
   s.profile=pin->GetOrAddBoolean("benchmark","profile",false);
+  s.validation_payload=s.enabled&&pin->GetOrAddBoolean("benchmark","validation_payload",false);
   s.mesh_only=s.enabled&&pin->GetOrAddBoolean("benchmark","mesh_only",false);
   s.warmup=pin->GetOrAddReal("benchmark","warmup",0.5);
   if (s.enabled && s.profile) Kokkos::realloc(s.device_cycles,5,1);
@@ -133,6 +134,13 @@ void Audit(Mesh *pm,bool initial) {
     pass=pass&&error<1.e-8;
   }
   out<<"}\n";out.close();
+  if(s.validation_payload) {
+    auto real=Kokkos::create_mirror_view_and_copy(HostMemSpace(),pr);
+    auto integer=Kokkos::create_mirror_view_and_copy(HostMemSpace(),pi);
+    std::ofstream values(std::string(initial?"initial":"final")+".payload.rank"+std::to_string(global_variable::my_rank)+".csv");
+    values<<"tag,x,y,z,ux,uy,uz,energy,mass\n"<<std::setprecision(17);
+    for(int i=0;i<np;++i){values<<integer(PTAG,i);for(int c=0;c<8;++c)values<<','<<real(c,i);values<<'\n';}
+  }
   int ok=pass?1:0;
 #if MPI_PARALLEL_ENABLED
   MPI_Allreduce(MPI_IN_PLACE,&ok,1,MPI_INT,MPI_MIN,MPI_COMM_WORLD);

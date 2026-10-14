@@ -26,6 +26,7 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
         folder=base/f'attempt{len(list(base.glob("attempt*")))+2:02d}';folder.mkdir()
         (folder/'interrupted_attempt.json').write_text(json.dumps(dict(preserved_files=[dict(path=str(p),bytes=p.stat().st_size) for p in base.iterdir() if p.is_file()]),indent=2)+'\n')
     inp=folder/'input.athinput';text=deck(c,profile=profile,tlim=target,warmup=warmup)
+    if c['name'].startswith('numeric_'):text=text.replace('enabled = true','enabled = true\nvalidation_payload = true')
     if gate:text=text.replace('debug = 0','debug = 1')
     inp.write_text(text)
     exe=ROOT/'binaries'/('profile' if kind=='device' else 'release')/'athena'
