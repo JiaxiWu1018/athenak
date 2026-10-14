@@ -19,6 +19,8 @@ def main():
         expected=.001*(row['start']+row['end'])/2
         if not np.isclose(row['mean_shift_fraction'],expected,atol=1e-14):
             raise ValueError('Nonuniform-time mean is incorrect')
+        if abs(row['detrended_half_range_fraction'])>1e-12 or not np.isclose(row['slope_fraction_per_M'],.001,atol=1e-14):
+            raise ValueError('Linear drift was mistaken for oscillation')
     rows=[{'time':t,'q':1+.001*t},{'time':t+.004,'q':1+.001*(t+.004)}]
     grid=np.arange(2,301,2)
     if not np.allclose(aligned(rows,'q',grid),1+.001*grid):raise ValueError('Seed alignment')

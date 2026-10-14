@@ -69,7 +69,13 @@ def main():
         checkpoints=list((out/'rst').glob('*.rst'))
         frame_bytes=max(p.stat().st_size for p in particles)+sum(p.stat().st_size for p in slices)/len(particles)
         state_bytes=sum(p.stat().st_size for p in cubes+checkpoints)/len(checkpoints)
+        memory=[json.loads(line) for line in (root/case/'memory_samples.jsonl').read_text().splitlines()]
+        if not any(r['athena_ranks']==4 and len(r['vram_used_bytes'])>=4 for r in memory):
+            raise ValueError('Full four-GPU memory telemetry is missing')
         records.append({'case':case,'wall_seconds':wall,'initial':d0,'final':end,
+           'sampled_max_host_rss_bytes':max(r['aggregate_host_rss_bytes'] for r in memory),
+           'sampled_max_gpu_vram_bytes':max(v for r in memory for v in r['vram_used_bytes'].values()),
+           'initial_energy_max_abs_error':float(np.max(np.abs(energy-target))),
            'frame_bytes_estimate':frame_bytes,'full_state_bytes_estimate':state_bytes,
            'raw_bytes':sum(p.stat().st_size for p in (root/case).rglob('*') if p.is_file())})
     case='proper_cell_s1';initial=ROOT/'samples'/(case+'.bin');deck=ROOT/'inputs'/(case+'.athinput')

@@ -54,17 +54,23 @@ def main():
     require_job();ap=argparse.ArgumentParser();ap.add_argument('--interim',action='store_true');args=ap.parse_args()
     data=ROOT/('reduced_interim' if args.interim else 'reduced');out=ROOT/'plots'/('interim100' if args.interim else 'final');out.mkdir(parents=True,exist_ok=True)
     states={};receipt=[]
+    expected_endpoint=100 if args.interim else json.loads((ROOT/'evidence/PREFLIGHT_OK').read_text())['endpoint_M']
     for case,rad,method,seed in CASES:
         base=data/case
         if not (base/'summary.json').exists():raise ValueError('Missing validated case '+case)
         d={name:read(base/(name+'.csv')) for name in ('shells','cohorts','cohort_mixing','health','occupancy','field_errors','windows','global_constraints')}
         d['weights']=json.loads((base/'weights.json').read_text())
         d['profiles']=dict(np.load(base/'profiles.npz'));d['summary']=json.loads((base/'summary.json').read_text())
+        if d['shells']['nominal_time'][-1]!=expected_endpoint:raise ValueError('Unequal/incomplete common endpoint: '+case)
+        if d['summary']['initial_sample_sha256']!=json.loads((ROOT/'evidence/samples'/(case+'.json')).read_text())['sha256']:
+            raise ValueError('Reduction refers to a different initial sample: '+case)
+        gate=ROOT/'runs'/case/('INTERIM_100_OK' if args.interim else 'RUN_OK')
+        if not gate.exists():raise ValueError('Run validation receipt absent: '+case)
         states[(rad,method,seed)]=d
         for path in sorted(base.iterdir()):
             if path.is_file():receipt.append({'path':str(path.relative_to(ROOT)),'bytes':path.stat().st_size,'sha256':sha(path)})
     p=dict(np.load(ROOT/'samples/model.npz'))
-    endpoint=min(d['shells']['nominal_time'][-1] for d in states.values())
+    endpoint=expected_endpoint
     grid=np.arange(0,endpoint+1,2)
     plt.rcParams.update({'font.family':'DejaVu Serif','font.size':9,'axes.grid':True,'grid.alpha':.2,'axes.spines.top':False,'axes.spines.right':False})
     # Initial errors: radial CDF, projected E, momentum and stress.
@@ -223,7 +229,8 @@ def main():
     save(fig,out,'f4_native_global_constraints')
     # Window amplitudes versus same-profile MC, and mean shell shifts.
     comparison=[]
-    for metric,stem in (('half_range_fraction','f5_amplitude_ratios'),('mean_shift_fraction','f5_mean_shell_shifts'),('absolute_drift_ratio','f5_drift_ratios')):
+    for metric,stem in (('half_range_fraction','f5_amplitude_ratios'),('detrended_half_range_fraction','f5_detrended_amplitude_ratios'),
+                        ('mean_shift_fraction','f5_mean_shell_shifts'),('absolute_drift_ratio','f5_drift_ratios')):
         fig,ax=plt.subplots(2,3,figsize=(13,7),layout='constrained')
         for row,rad in enumerate(('legacy','proper')):
             for col,q in enumerate((10,50,90)):
@@ -233,13 +240,14 @@ def main():
                         d=states[(rad,method,seed)]['windows'];sel=d['quantile']==q
                         value=d['mean_shift_fraction' if metric=='absolute_drift_ratio' else metric][sel]
                         starts=d['start'][sel]
-                        if metric=='half_range_fraction':
+                        if metric in ('half_range_fraction','detrended_half_range_fraction'):
                             mc=states[(rad,'mc',seed)]['windows'];den=mc[metric][mc['quantile']==q]
                             value=ratio(value,den)
                             shift=d['mean_shift_fraction'][sel];md=mc['mean_shift_fraction'][mc['quantile']==q]
                             drift=ratio(shift,md)
                             for low,v,dr,sv,mv in zip(starts,value,drift,shift,md):
                                 comparison.append({'radial':rad,'method':method,'seed':seed,'quantile':q,'window_start':low,
+                                   'amplitude_definition':metric,
                                    'amplitude_ratio_to_mc':float(v) if np.isfinite(v) else None,
                                    'signed_mean_shift_ratio_to_mc':float(dr) if np.isfinite(dr) else None,
                                    'absolute_mean_shift_ratio_to_mc':float(abs(dr)) if np.isfinite(dr) else None,
@@ -251,7 +259,7 @@ def main():
                         ys.append(value)
                     band(ax[row,col],starts+50,ys,method,marker='o')
                 ax[row,col].set_title(f'{rad}: r{q}');ax[row,col].set_xlabel('Window midpoint / M')
-                ax[row,col].set_ylabel('Amplitude / Monte Carlo' if metric=='half_range_fraction' else ('Absolute mean shift / Monte Carlo' if metric=='absolute_drift_ratio' else 'Mean shift from own start (%)'))
+                ax[row,col].set_ylabel('Amplitude / Monte Carlo' if metric=='half_range_fraction' else ('Detrended amplitude / Monte Carlo' if metric=='detrended_half_range_fraction' else ('Absolute mean shift / Monte Carlo' if metric=='absolute_drift_ratio' else 'Mean shift from own start (%)')))
         ax[0,0].legend(fontsize=8);save(fig,out,stem)
     atomic(out/'amplitude_and_drift_ratios.json',comparison)
     # Durable report: describe observations and bounds without promoting physical instability.
@@ -277,13 +285,13 @@ def main():
                 'all_three_drift_magnitudes_lower_than_mc':bool(np.all(drifts<1))})
             drift_text=f'{drifts.mean():.4g} ({drifts.min():.4g}–{drifts.max():.4g})' if np.isfinite(drifts).all() else 'Undefined (near-zero MC drift)'
             lines.append(f'| {rad} | {LABELS[method]} | {initial.mean():.5g} ({initial.min():.5g}–{initial.max():.5g}) | {ratios.mean():.4g} ({ratios.min():.4g}–{ratios.max():.4g}) | {drift_text} |')
-    lines+=['','Amplitude is half the saved peak-to-peak range divided by each run’s own initial radius. The aggregate uses the RMS across r10…r90 in the final complete 100M window. Window boundaries are exactly 0/100/200/300M; boundary values are interpolated between adjacent saved states. Window means use actual timestamps and trapezoidal time weighting. Displayed ensemble curves are interpolated onto common 2M times; actual timestamps are retained in CSV files. These are short-time comparisons, not tests of permanent stability.',
+    lines+=['','The table uses half the saved peak-to-peak range divided by each run’s own initial radius, and the RMS across r10…r90 in the final complete 100M window. This excursion measure includes secular motion. A companion plot removes each window’s time-weighted least-squares linear trend before measuring the half-range; detrending may also remove part of a slow oscillation. Neither measure estimates the amplitude of an unsampled complete cycle. Window boundaries are exactly 0/100/200/300M; boundary values are interpolated between adjacent saved states. Window means use actual timestamps and trapezoidal time weighting. Displayed ensemble curves are interpolated onto common 2M times; actual timestamps are retained in CSV files. These are short-time comparisons, not tests of permanent stability.',
             '', 'The velocity ablation has exactly the same positions and masses as its stratified partner. Cell-aware weights remain fixed to each original ID. Cohort histories are retained to inspect mixing; they are not a stationarity criterion.',
             '', 'Thin curves show individual realizations; thick curves and shading show their mean and range. Saved time samples are not independent trials. Angular density scatter subtracts the radial mean at each exact Cartesian-cell radius before binning. Momentum/stress noise uses explicitly labelled coordinate covariant-component norms. Signed and absolute drift ratios versus same-profile Monte Carlo are retained alongside amplitude ratios; an MC drift magnitude below 1e-12 makes that ratio undefined, rather than zero.',
             '', 'All runs share the same analytic metric, gauge, pusher, CIC deposition and removal settings. No constraint re-solve, frozen arm, larger domain, reweighting, or imposed perturbation was used. Core constraint norms use coordinate volume; native global norms retain their original proper-volume convention.',
             '', 'The ±128M boundary is within causal reach during this interval and was not varied. Consequently these results cannot establish physical instability, numerical convergence, or long-term Plummer stability. A preferred sampler requires improvements that persist after motion and are consistent across seeds; opposing diagnostics remain a tradeoff.',
             '', 'Figures:']
-    for name in ('f1_initial_errors','f1_radial_and_angular_errors','f2_occupancy_profiles','f2_effective_count_profiles','f2_empty_cells_and_weights','f3_shell_histories','f3_equilibrium_departures','f3_mass_fraction_heatmaps','f3_initial_cohorts','f3_cohort_mixing','f4_constraints_lapse_com','f4_native_global_constraints','f5_amplitude_ratios','f5_mean_shell_shifts','f5_drift_ratios'):
+    for name in ('f1_initial_errors','f1_radial_and_angular_errors','f2_occupancy_profiles','f2_effective_count_profiles','f2_empty_cells_and_weights','f3_shell_histories','f3_equilibrium_departures','f3_mass_fraction_heatmaps','f3_initial_cohorts','f3_cohort_mixing','f4_constraints_lapse_com','f4_native_global_constraints','f5_amplitude_ratios','f5_detrended_amplitude_ratios','f5_mean_shell_shifts','f5_drift_ratios'):
         lines.append(f'- [{name} PNG](../plots/{out.name}/{name}.png) / [PDF](../plots/{out.name}/{name}.pdf)')
     lines+=['','Exact source, submodule, toolchain, inputs, initialization samples, executable hashes, launch commands, checkpoints and raw manifests are retained in the campaign. All raw data remain on AMD under `/work1/eliasmost/jiaxiwu/st_reconstruction_s05_20261014`; no deletion or Mac mirror was performed. See the storage receipt for exact retained sizes and allocated job accounting.']
     report=ROOT/'reports'/('REPORT_interim100.md' if args.interim else 'REPORT_session5.md');atomic(report,'\n'.join(lines)+'\n')

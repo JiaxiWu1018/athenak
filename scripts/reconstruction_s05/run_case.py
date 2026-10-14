@@ -31,6 +31,19 @@ def newest(out):
     if not paths:raise ValueError('No checkpoint')
     return max(paths,key=lambda p:C.header(p)[0]['time'])
 
+def memory_sample(executable):
+    """Read allocation-local host RSS and AMD VRAM counters; no GPU work is launched."""
+    host=0;ranks=0;gpus={}
+    for path in Path('/proc').glob('[0-9]*/cmdline'):
+        try:
+            if path.read_bytes().split(b'\0')[0]!=str(executable).encode():continue
+            host+=int((path.parent/'statm').read_text().split()[1])*os.sysconf('SC_PAGE_SIZE');ranks+=1
+        except (OSError,ValueError,IndexError):continue
+    for path in Path('/sys/class/drm').glob('card[0-9]*/device/mem_info_vram_used'):
+        try:gpus[str(path.parent.parent.name)]=int(path.read_text())
+        except (OSError,ValueError):continue
+    return {'time_utc':time.time(),'athena_ranks':ranks,'aggregate_host_rss_bytes':host,'vram_used_bytes':gpus}
+
 def launch(work, deck, end, executable='athena', restart=None, extra=()):
     work=Path(work); out=work/'out';out.mkdir(parents=True,exist_ok=False)
     exe=ROOT/'protected'/executable
@@ -48,6 +61,8 @@ def launch(work, deck, end, executable='athena', restart=None, extra=()):
         proc=subprocess.Popen(cmd,cwd=work,stdout=log,stderr=subprocess.STDOUT)
         interim=False
         while proc.poll() is None:
+            with open(work/'memory_samples.jsonl','a') as evidence:
+                evidence.write(json.dumps(memory_sample(exe))+'\n')
             time.sleep(30)
             if work.parent==ROOT/'runs' and not interim:
                 with open(work/'solver.log','rb') as recent:
@@ -85,6 +100,9 @@ def main():
            'manifest':files,'input_sample_sha256':expected['sha256']})
     # Allocated analysis immediately reduces this case; failed analysis is a job failure.
     subprocess.run(['python3',str(ROOT/'scripts/analyze.py'),'--case',case],check=True)
+    if not (work/'INTERIM_100_OK').exists():
+        subprocess.run(['python3',str(ROOT/'scripts/analyze.py'),'--case',case,'--until','100'],check=True)
+        atomic(work/'INTERIM_100_OK','Validated initial-to100M comparison data\n')
     atomic(work/'RUN_OK',f'{case} verified and reduced through {end}M\n')
 
 if __name__=='__main__':main()

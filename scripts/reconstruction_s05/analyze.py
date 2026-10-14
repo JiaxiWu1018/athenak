@@ -129,8 +129,14 @@ def window_measurements(times,q,endpoint):
         tt=np.r_[low,times[(times>low)&(times<high)],high]
         qq=np.column_stack([np.interp(tt,times,col) for col in q.T])
         mean=np.trapz(qq,tt,axis=0)/(high-low)
-        for f,a,b in zip(range(10,100,10),(qq.max(0)-qq.min(0))/(2*q0),(mean-q0)/q0):
-            windows.append({'start':low,'end':high,'quantile':f,'half_range_fraction':float(a),'mean_shift_fraction':float(b)})
+        weights=np.r_[np.diff(tt)[0]/2,(tt[2:]-tt[:-2])/2,np.diff(tt)[-1]/2]
+        centered=tt-(low+high)/2
+        slope=np.sum(weights[:,None]*centered[:,None]*(qq-mean),axis=0)/np.sum(weights*centered**2)
+        residual=qq-mean-centered[:,None]*slope
+        raw=(qq.max(0)-qq.min(0))/(2*q0);detrended=(residual.max(0)-residual.min(0))/(2*q0)
+        for f,a,b,c,s in zip(range(10,100,10),raw,(mean-q0)/q0,detrended,slope/q0):
+            windows.append({'start':low,'end':high,'quantile':f,'half_range_fraction':float(a),
+               'mean_shift_fraction':float(b),'detrended_half_range_fraction':float(c),'slope_fraction_per_M':float(s)})
     return windows
 
 def analyze(case,until=None,run_root=None,dest_root=None):
@@ -209,7 +215,7 @@ def analyze(case,until=None,run_root=None,dest_root=None):
         checks[str(rad)]={'H_rms':h,'M_rms':mm}
     q=np.array([[s[f'r{i}'] for i in range(10,100,10)] for s in shells]);q0=q[0]
     windows=window_measurements(times,q,nominal[-1])
-    write_csv(dest/'windows.csv',windows,('start','end','quantile','half_range_fraction','mean_shift_fraction'))
+    write_csv(dest/'windows.csv',windows,('start','end','quantile','half_range_fraction','mean_shift_fraction','detrended_half_range_fraction','slope_fraction_per_M'))
     atomic(dest/'summary.json',{'case':case,'endpoint_M':float(times[-1]),'initial_error':error_checks[0],
            'field_checks':error_checks,'sampling_checks':sampling_checks,'initial_constraint_crosscheck':checks,
            'initial_sample_sha256':sha(ROOT/'samples'/(case+'.bin')),'sources':sources,
