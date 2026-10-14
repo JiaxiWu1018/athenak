@@ -22,6 +22,9 @@ FILES=[]
 NOW=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
 def load(kind):
     return [json.loads(p.read_text()) for p in sorted((ROOT/'results'/kind).glob('*/receipt.json'))]
+def imbalance(records,blocks=False):
+    counts=[v for x in records for v in (x['block_counts'] if blocks else [x['local_count']])]
+    return max(counts)*len(counts)/sum(counts) if counts and sum(counts)>0 else None
 def elapsed(r):return r['timings'][0]['elapsed_max']
 def spm(r):return r['timings'][0]['seconds_per_M']
 def step(r):return 1000*elapsed(r)/r['timings'][0]['cycles']
@@ -45,7 +48,7 @@ devices=[r for r in load('device') if r['valid'] and not r['case']['name'].start
 allthrough=load('throughput');through=[r for r in allthrough if not r.get('superseded_reason')];valid=[r for r in through if r['valid']];profiles=[r for r in load('profile') if r['valid']];allcases=json.loads((ROOT/'matrix.json').read_text());byname={r['case']['name']:r for r in valid}
 rows=[]
 for r in allthrough:
-    c=r['case'];t=r['timings'][0] if r['timings'] else {};row={**c,'valid':r['valid'],'superseded_reason':r.get('superseded_reason',''),'device_timing_compiled':t.get('device_timing_compiled'),'job_id':r['job_id'],'endpoint':r['endpoint'],'actual_endpoint':t.get('final_time'),'target_reached':r.get('target_reached',True),'elapsed_seconds':t.get('elapsed_max'),'cycles':t.get('cycles'),'particle_updates_per_second':t.get('particles_per_second'),'cell_cycles_per_second':t.get('cells_per_second'),'seconds_per_M':t.get('seconds_per_M'),'M_per_second':1/t['seconds_per_M'] if t.get('seconds_per_M',0)>0 else None,'step_ms':1000*t['elapsed_max']/t['cycles'] if t.get('cycles',0)>0 else None,'cell_rate_kind':'mesh-normalized' if c['frozen'] else 'physical-cell evolution','boris_fallbacks':sum(t.get('boris_fallbacks',0) for t in r['timings']),'boris_rejections':sum(t.get('boris_rejections',0) for t in r['timings'])}
+    c=r['case'];t=r['timings'][0] if r['timings'] else {};row={**c,'valid':r['valid'],'superseded_reason':r.get('superseded_reason',''),'device_timing_compiled':t.get('device_timing_compiled'),'job_id':r['job_id'],'endpoint':r['endpoint'],'actual_endpoint':t.get('final_time'),'target_reached':r.get('target_reached',True),'initial_rank_max_mean':imbalance(r['initial']),'final_rank_max_mean':imbalance(r['final']),'initial_block_max_mean':imbalance(r['initial'],True),'final_block_max_mean':imbalance(r['final'],True),'sent_particles_per_step':sum(x.get('sent_particles',0) for x in r['timings'])/t['cycles'] if t.get('cycles',0)>0 else None,'source_images_per_step':sum(x.get('source_images',0) for x in r['timings'])/t['cycles'] if t.get('cycles',0)>0 else None,'elapsed_seconds':t.get('elapsed_max'),'cycles':t.get('cycles'),'particle_updates_per_second':t.get('particles_per_second'),'cell_cycles_per_second':t.get('cells_per_second'),'seconds_per_M':t.get('seconds_per_M'),'M_per_second':1/t['seconds_per_M'] if t.get('seconds_per_M',0)>0 else None,'step_ms':1000*t['elapsed_max']/t['cycles'] if t.get('cycles',0)>0 else None,'cell_rate_kind':'mesh-normalized' if c['frozen'] else 'physical-cell evolution','boris_fallbacks':sum(t.get('boris_fallbacks',0) for t in r['timings']),'boris_rejections':sum(t.get('boris_rejections',0) for t in r['timings'])}
     rows.append(row)
 if rows:
     with (ROOT/'results/throughput.csv').open('w') as out:
@@ -134,7 +137,7 @@ if dyn:
       y=np.array([phase_groups(r)[key] for r in p]);axes[1].bar(range(len(p)),y,bottom=bottom,color=COLORS[key],label=PHASE_SHORT[key]);bottom+=y
     axes[1].set_xticks(range(len(p)),[r['case']['ppc'] for r in p]);axes[1].set_xlabel('Particles / physical cell');axes[1].set_ylabel('Profiled ms / full timestep');
     if p:
-      handles,labels=axes[1].get_legend_handles_labels();fig.legend(handles,labels,loc='lower center',bbox_to_anchor=(.5,.04),ncol=3,fontsize=7,title='Profiled phases',title_fontsize=7)
+      handles,labels=axes[1].get_legend_handles_labels();fig.legend(handles,labels,loc='lower center',bbox_to_anchor=(.5,.055),ncol=3,fontsize=7,title='Profiled phases',title_fontsize=7)
     if not p:axes[1].text(.5,.5,'Awaiting phase profiles',ha='center',va='center',transform=axes[1].transAxes);axes[1].set_yticks([])
     axes[1].grid(axis='y',alpha=.18)
     save(fig,'04_dynamic_particle_mesh_cost','ST yc=0.819, global 64^3 grid in +/-12M, eight 32^3 blocks, one GPU, dt=0.05M. Throughput and profiled bars come from separate runs; phase fences affect profiled timings; device-clock instrumentation runs in separate diagnostic cases. Source replicas preserve initial stress-energy; mesh-only holds that initial source fixed.',bottom=.23)
@@ -210,6 +213,9 @@ if count:
   for metric in ['st','flat']:
     large=byname.get(f'count_{metric}_dep1_N100000000');off=byname.get(f'count_{metric}_dep0_N100000000')
     if large and off:findings.append(f'At 100 million particles in the {metric.upper()} fixed background, the complete particle loop costs {spm(large):.3g} s/M versus {spm(off):.3g} s/M with deposition off ({spm(large)/spm(off):.2f}x).')
+fixed_profile=next((r for r in profiles if r['case']['name']=='count_st_dep1_N1000000'),None)
+if fixed_profile:
+  g=phase_groups(fixed_profile);total=sum(g.values());findings.append(f'In the frozen ST million-particle, one-block case with deposition on, the particle push accounts for {100*g["push"]/total:.1f}% of the diagnostic timestep and deposition host sorting for {100*g["sort"]/total:.1f}%.')
 if pdyn:
   for r in sorted(pdyn,key=lambda r:r['case']['ppc']):
     g=phase_groups(r);key=max(g,key=g.get);total=sum(g.values());particle=sum(v for k,v in g.items() if k not in ['mesh','other']);findings.append(f'At {r["case"]["ppc"]} particles/cell, particle phases account for {100*particle/total:.1f}% of the diagnostic timestep, spacetime for {100*g["mesh"]/total:.1f}%, and other work for {100*g["other"]/total:.1f}%. The largest individual phase is {PHASE_LABELS[key].lower()} ({100*g[key]/total:.1f}%).')
