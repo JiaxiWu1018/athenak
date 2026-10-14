@@ -26,7 +26,7 @@ def spm(r):return r['timings'][0]['seconds_per_M']
 def step(r):return 1000*elapsed(r)/r['timings'][0]['cycles']
 def save(fig,name,caption):
     if len(valid)<60 or len(profiles)<27 or len(devices)<6:
-        fig.text(.99,.006,f'In progress: throughput {len(valid)}/60; phase profiles {len(profiles)}/27; device diagnostics {len(devices)}/6',ha='right',fontsize=7,color='.35',usetex=False)
+        fig.text(.99,.012,f'In progress: throughput {len(valid)}/60; phase profiles {len(profiles)}/27; device diagnostics {len(devices)}/6',ha='right',fontsize=7,color='.35',usetex=False)
         caption='Partial campaign; only completed measurements are shown. '+caption
     fig.tight_layout(pad=1.3,rect=(0,.035,1,1))
     for ext in ['pdf','png']:fig.savefig(ROOT/'figures'/f'{name}.{ext}',dpi=550)

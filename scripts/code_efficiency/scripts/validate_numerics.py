@@ -28,9 +28,10 @@ for metric in ['st','flat']:
     release_clocks=release['timings'][0]['device_cycles'] if release['timings'] else []
     checks.append(dict(expected_sampled_steps=expected_samples,sampled_steps_match=sampled_steps_match,matching_ids=matching_ids,matching_mass=matching_mass,max_scaled_payload_difference=difference,numerically_equivalent=bool(matching_ids and matching_mass and difference<1e-12),timeline_captured=trace_ok,release_device_cycles_zero=bool(release_clocks and not any(release_clocks)),metric=metric,matching_frozen_payload=same,device_cycles_recorded=bool(clocks and clocks[1]>0)))
 mask=sample_mask(24*64**3);tags=np.flatnonzero(mask);directions=np.bincount((tags%24)//4,minlength=6);columns=np.bincount((tags//24)%64,minlength=64)
-(ROOT/'provenance/sampling_audit.json').write_text(json.dumps(dict(n=24*64**3,sampled=int(mask.sum()),direction_counts=directions.tolist(),occupied_x_columns=int((columns>0).sum()),x_column_min=int(columns.min()),x_column_max=int(columns.max()),rule='32-bit tag hash; low ten bits zero'),indent=2)+'\n')
+sampling_balanced=bool(0.8*(24*64**3/1024)<mask.sum()<1.2*(24*64**3/1024) and (columns>0).all() and directions.min()>0.8*mask.sum()/6 and directions.max()<1.2*mask.sum()/6)
+(ROOT/'provenance/sampling_audit.json').write_text(json.dumps(dict(passed=sampling_balanced,n=24*64**3,sampled=int(mask.sum()),direction_counts=directions.tolist(),occupied_x_columns=int((columns>0).sum()),x_column_min=int(columns.min()),x_column_max=int(columns.max()),rule='32-bit tag hash; low ten bits zero'),indent=2)+'\n')
 executables={kind:hashlib.file_digest((ROOT/'binaries'/kind/'athena').open('rb'),'sha256').hexdigest() for kind in ['release','profile']}
-result=dict(executables=executables,job_id=os.environ.get('SLURM_JOB_ID'),passed=all(x['numerically_equivalent'] and x['device_cycles_recorded'] and x['release_device_cycles_zero'] and x['timeline_captured'] and x['sampled_steps_match'] for x in checks),checks=checks)
+result=dict(executables=executables,job_id=os.environ.get('SLURM_JOB_ID'),sampling_balanced=sampling_balanced,passed=sampling_balanced and all(x['numerically_equivalent'] and x['device_cycles_recorded'] and x['release_device_cycles_zero'] and x['timeline_captured'] and x['sampled_steps_match'] for x in checks),checks=checks)
 (ROOT/'provenance/numerical_gate.json').write_text(json.dumps(result,indent=2)+'\n')
 print(json.dumps(result),flush=True)
 sys.exit(0 if result['passed'] else 1)
