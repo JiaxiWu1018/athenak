@@ -44,7 +44,7 @@ integrator = rk4
 cfl_number = {cfl:.17g}
 tlim = {tlim}
 nlim = {round(tlim/.05)}
-ndiag = 1000000
+ndiag = 10
 <z4c>
 frozen_background = {str(c['frozen']).lower()}
 use_z4c = true

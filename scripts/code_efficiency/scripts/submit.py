@@ -4,7 +4,7 @@ import os
 import argparse,json,subprocess
 from pathlib import Path
 ROOT=Path(os.environ.get('EFFICIENCY_SESSION',Path(__file__).resolve().parents[1]))
-p=argparse.ArgumentParser();p.add_argument('--kind',choices=['gate','throughput','profile','device'],required=True);p.add_argument('--dependency');p.add_argument('--dependency-condition',choices=['afterok','afterany'],default='afterany');p.add_argument('--ranks',type=int);p.add_argument('--partition',choices=['debug','preempt'],default='debug');p.add_argument('--names',nargs='*');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--kind',choices=['gate','throughput','profile','device'],required=True);p.add_argument('--dependency');p.add_argument('--dependency-condition',choices=['afterok','afterany'],default='afterany');p.add_argument('--ranks',type=int);p.add_argument('--gate-job');p.add_argument('--partition',choices=['debug','preempt'],default='debug');p.add_argument('--names',nargs='*');a=p.parse_args()
 cases=json.loads((ROOT/('gates.json' if a.kind=='gate' else 'matrix.json')).read_text())
 if a.names:cases=[x for x in cases if x['name'] in a.names]
 if a.ranks:cases=[x for x in cases if x['ranks']==a.ranks]
@@ -22,8 +22,11 @@ for c in cases:
     minutes=360 if c['n']>=100000000 else (120 if c['n']>=10000000 else 30)
     if a.kind in ['profile','device']:minutes=min(minutes,120)
     if a.partition=='preempt':minutes=min(minutes,120)
-    cmd=['sbatch','--partition',a.partition,'--parsable','--job-name',f'eff-{a.kind[:1]}-{c["name"][:18]}','--ntasks',str(c['ranks']),'--gres',f'gpu:{c["ranks"]}','--mem',f'{max(32*c["ranks"],128 if c["n"]>=100000000 else 32)}G','--time',str(minutes),'--output',str(ROOT/'logs'/f'{a.kind}_{c["name"]}.%j.log'),'--export',f'ALL,CASE={c["name"]},KIND={a.kind},TRACE={int(trace)}']
-    if previous:cmd+=['--dependency',f'{a.dependency_condition}:{previous}']
+    cmd=['sbatch','--partition',a.partition,'--parsable','--job-name',f'eff-{a.kind[:1]}-{c["name"][:18]}','--ntasks',str(c['ranks']),'--gres',f'gpu:{c["ranks"]}','--mem',f'{max(32*c["ranks"],128 if c["n"]>=100000000 else 32)}G','--time',str(minutes),'--output',str(ROOT/'logs'/f'{a.kind}_{c["name"]}.%j.log'),'--export',f'ALL,CASE={c["name"]},KIND={a.kind},TRACE={int(trace)},EFFICIENCY_WALL_MINUTES={minutes}']
+    conditions=[]
+    if previous:conditions.append(f'{a.dependency_condition}:{previous}')
+    if a.gate_job:conditions.append(f'afterok:{a.gate_job}')
+    if conditions:cmd+=['--dependency',','.join(conditions)]
     cmd+=[str(ROOT/'jobs/run.sbatch')]
     result=subprocess.run(cmd,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
     previous=result.stdout.strip().split(';')[0];row=dict(job_id=previous,case=c['name'],kind=a.kind,command=cmd);ledger.append(row)

@@ -22,6 +22,9 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
         shutil.copy2(base/'receipt.json',previous)
         assert previous.read_bytes()==(base/'receipt.json').read_bytes()
         (folder/'previous_attempt.json').write_text(json.dumps(dict(previous_receipt=str(previous),preserved_files=[dict(path=str(p),bytes=p.stat().st_size) for p in base.iterdir() if p.is_file()]),indent=2)+'\n')
+    if folder==base and not (base/'receipt.json').exists() and any(base.iterdir()):
+        folder=base/f'attempt{len(list(base.glob("attempt*")))+2:02d}';folder.mkdir()
+        (folder/'interrupted_attempt.json').write_text(json.dumps(dict(preserved_files=[dict(path=str(p),bytes=p.stat().st_size) for p in base.iterdir() if p.is_file()]),indent=2)+'\n')
     inp=folder/'input.athinput';text=deck(c,profile=profile,tlim=target,warmup=warmup)
     if gate:text=text.replace('debug = 0','debug = 1')
     inp.write_text(text)
@@ -29,7 +32,7 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
     job=os.environ.get('SLURM_JOB_ID')
     if not job:raise RuntimeError('Runs require a Slurm compute allocation')
     os.environ.update(OMPI_MCA_opal_cuda_support='true',OMPI_MCA_pml='ucx',UCX_TLS='self,sm,cuda_copy,cuda_ipc',UCX_MEMTYPE_CACHE='n')
-    launch=['/home/emost/codes/openmpi/bin/mpirun','-np',str(c['ranks']),'--bind-to','none',str(exe),'--kokkos-map-device-id-by=mpi_rank','-t',('05:30:00' if c['n']>=100000000 else ('01:45:00' if c['n']>=10000000 else '00:25:00')),'-i',str(inp),'-d',str(folder)]
+    launch=['/home/emost/codes/openmpi/bin/mpirun','-np',str(c['ranks']),'--bind-to','none',str(exe),'--kokkos-map-device-id-by=mpi_rank','-t',f'{max(1,int(os.environ.get("EFFICIENCY_WALL_MINUTES",360 if c["n"]>=100000000 else (120 if c["n"]>=10000000 else 30)))-15)//60:02d}:{max(1,int(os.environ.get("EFFICIENCY_WALL_MINUTES",360 if c["n"]>=100000000 else (120 if c["n"]>=10000000 else 30)))-15)%60:02d}:00','-i',str(inp),'-d',str(folder)]
     if trace:launch=['/usr/local/cuda-12.9/bin/nsys','profile','--trace=cuda,nvtx,mpi','--sample=none','--cpuctxsw=none','--capture-range=nvtx','--nvtx-capture=benchmark_window','--capture-range-end=stop','--force-overwrite=false','--output',str(folder/'timeline')]+launch
     provenance=dict(case=c,kind=kind,job_id=job,host=command(['hostname']).strip(),start_utc=command(['date','-u','+%FT%TZ']).strip(),launch=launch,exe_sha256=hashlib.file_digest(exe.open('rb'),'sha256').hexdigest(),input_sha256=hashlib.file_digest(inp.open('rb'),'sha256').hexdigest(),commit=command(['git','-C',str(ROOT/'src/athenak'),'rev-parse','HEAD']).strip(),submodule=command(['git','-C',str(ROOT/'src/athenak'),'submodule','status']).strip(),mpi_transport={k:os.environ.get(k) for k in ['OMPI_MCA_pml','OMPI_MCA_opal_cuda_support','UCX_TLS','UCX_MEMTYPE_CACHE']},source_status=command(['git','-C',str(ROOT/'src/athenak'),'status','--porcelain']),cuda_visible=os.environ.get('CUDA_VISIBLE_DEVICES'),slurm_gpus=os.environ.get('SLURM_JOB_GPUS'),slurm=command(['scontrol','show','job',job]),gpu_metadata=command(['nvidia-smi','--query-gpu=index,uuid,name,memory.total,driver_version','--format=csv']),mpi=command(['/home/emost/codes/openmpi/bin/mpirun','--version']))
     (folder/'source.patch').write_text(command(['git','-C',str(ROOT/'src/athenak'),'diff','HEAD']))
