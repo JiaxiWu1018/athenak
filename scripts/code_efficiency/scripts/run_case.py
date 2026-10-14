@@ -6,7 +6,7 @@ ROOT=Path(os.environ.get('EFFICIENCY_SESSION',Path(__file__).resolve().parents[1
 def command(args):
     return subprocess.run(args,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,check=False).stdout
 
-def run(c,kind='throughput',trace=False,gate=False,target_override=None):
+def run(c,kind='throughput',trace=False,gate=False,target_override=None,force=False):
     from generate_matrix import deck
     profile=kind in ['profile','device','validation_release']
     target=target_override if target_override is not None else (1.5 if profile else (1 if gate else 5))
@@ -15,7 +15,7 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
     folder=base
     if (folder/'receipt.json').exists():
         old=json.loads((folder/'receipt.json').read_text())
-        if old.get('valid'):return old
+        if old.get('valid') and not force:return old
         number=len(list(base.glob('attempt*')))+2
         folder=base/f'attempt{number:02d}';folder.mkdir()
         previous=base/f'previous_receipt_{number-1:02d}.json'

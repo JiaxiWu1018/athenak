@@ -80,7 +80,10 @@ if args.close:
         complete=all(receipt('throughput',c['name']).get('valid') for c in matrix) and not failed
         complete=complete and sum(receipt('profile',c['name']).get('valid',False) for c in matrix)==27 and sum(receipt('device',c['name']).get('valid',False) for c in matrix)==6
         numerics=ROOT/'provenance/numerical_gate.json'
-        complete=complete and numerics.exists() and json.loads(numerics.read_text()).get('passed',False)
+        numerical=json.loads(numerics.read_text()) if numerics.exists() else {}
+        current_manifest=json.loads((ROOT/'provenance/executables/manifest.json').read_text())
+        current_hashes={record['kind']:digest for digest,record in current_manifest.items()}
+        complete=complete and numerical.get('passed',False) and numerical.get('executables')==current_hashes
         validation_path=ROOT/'results/VALIDATION.json'
         final_validation=json.loads(validation_path.read_text()) if validation_path.exists() else {}
         figure_names=['01_particle_count','02_meshblock_layout','03_strong_scaling','04_dynamic_particle_mesh_cost','05_sampling_and_rank_imbalance','06_kernel_cost_and_interpolation']

@@ -39,3 +39,17 @@ mv "$SESSION/binaries/profile/athena.$SLURM_JOB_ID" "$SESSION/binaries/profile/a
 cp "$SESSION/build_release/CMakeCache.txt" "$REC/profile.CMakeCache.txt"
 sha256sum "$SESSION/binaries/release/athena" "$SESSION/binaries/profile/athena" > "$REC/executables.sha256"
 printf '{"job_id":"%s","status":"built"}\n' "$SLURM_JOB_ID" > "$SESSION/provenance/build_receipt.json"
+
+python3 - "$SESSION" "$SLURM_JOB_ID" <<'PY'
+import sys,json,hashlib,subprocess
+from pathlib import Path
+root=Path(sys.argv[1]);job=sys.argv[2];manifest={}
+for kind in ['release','profile']:
+ exe=root/'binaries'/kind/'athena';digest=hashlib.file_digest(exe.open('rb'),'sha256').hexdigest()
+ dest=root/'provenance/executables'/digest
+ if not dest.exists():dest.write_bytes(exe.read_bytes())
+ manifest[digest]=dict(kind=kind,source_commit=subprocess.check_output(['git','-C',str(root/'src/athenak'),'rev-parse','HEAD'],text=True).strip(),build_job=job,build_record=f'provenance/build_{job}',device_timing=kind=='profile')
+(root/'provenance/executables/manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+(root/'provenance/build_receipt.json').write_text(json.dumps(dict(job_id=job,status='built'))+'\n')
+PY
+python3 "$SESSION/scripts/validate_numerics.py"
