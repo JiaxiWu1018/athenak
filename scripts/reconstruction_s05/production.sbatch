@@ -7,7 +7,7 @@
 #SBATCH --exclusive
 #SBATCH --no-requeue
 #SBATCH --exclude=k003-002,k003-009,k003-010
-#SBATCH -t 02:00:00
+#SBATCH -t 04:00:00
 #SBATCH --array=0-23%3
 #SBATCH -o /work1/eliasmost/jiaxiwu/st_reconstruction_s05_20261014/logs/%x.%A_%a.log
 source /work1/eliasmost/jiaxiwu/st_reconstruction_s05_20261014/scripts/amd_common.sh

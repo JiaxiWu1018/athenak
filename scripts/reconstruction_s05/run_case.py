@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 import numpy as np
 import s8_checkpoint as C
-from common import ROOT, N, CASES, atomic, sha, sample, require_job
+from common import ROOT, N, BASE, CASES, atomic, sha, sample, require_job
 
 def checkpoint(path, expected=None, initial=None, n=N):
     d,b=C.header(path); C.payload(path,d,b)
@@ -34,11 +34,13 @@ def newest(out):
 def launch(work, deck, end, executable='athena', restart=None, extra=()):
     work=Path(work); out=work/'out';out.mkdir(parents=True,exist_ok=False)
     exe=ROOT/'protected'/executable
-    cmd=['prun',str(exe),'--kokkos-map-device-id-by=mpi_rank','-t','01:40:00',
+    seconds=int(os.environ.get('SOLVER_WALLTIME_SECONDS',6000))
+    limit=f'{seconds//3600:02d}:{seconds%3600//60:02d}:{seconds%60:02d}'
+    cmd=['prun',str(exe),'--kokkos-map-device-id-by=mpi_rank','-t',limit,
          '-r' if restart else '-i',str(restart or deck),'-d',str(out),f'time/tlim={end}']+list(extra)
     atomic(work/'launch.json',{'job':os.environ['SLURM_JOB_ID'],'host':__import__('socket').gethostname(),
            'command':cmd,'input':str(deck),'input_sha256':sha(deck),'executable_sha256':sha(exe),
-           'source':(ROOT/'evidence/source_commit.txt').read_text().strip(),
+           'source':BASE if executable=='athena.baseline' else (ROOT/'evidence/source_commit.txt').read_text().strip(),
            'analysis_source':subprocess.check_output(['git','-C',str(ROOT/'src/athenak'),'rev-parse','HEAD'],text=True).strip(),
            'kokkos':subprocess.check_output(['git','-C',str(ROOT/'src/athenak/kokkos'),'rev-parse','HEAD'],text=True).strip()})
     begin=time.monotonic()
@@ -65,11 +67,13 @@ def main():
     require_job(); ap=argparse.ArgumentParser();ap.add_argument('index',type=int);a=ap.parse_args()
     if not (ROOT/'evidence/PREFLIGHT_OK').exists():raise ValueError('Preflight gate missing')
     if (ROOT/'evidence/STORAGE_STOP').exists():raise ValueError('Storage stop remains active')
+    if (ROOT/'evidence/BUDGET_STOP').exists():raise ValueError('Budget stop remains active')
     case,radial,method,seed=CASES[a.index]
     work=ROOT/'runs'/case; deck=ROOT/'inputs'/(case+'.athinput');initial=ROOT/'samples'/(case+'.bin')
     expected=json.loads((ROOT/'evidence/samples'/(case+'.json')).read_text())
     if sha(initial)!=expected['sha256']:raise ValueError('Sample identity changed')
-    end=json.loads((ROOT/'evidence/PREFLIGHT_OK').read_text())['endpoint_M']
+    gate=json.loads((ROOT/'evidence/PREFLIGHT_OK').read_text());end=gate['endpoint_M']
+    os.environ['SOLVER_WALLTIME_SECONDS']=str(gate['case_walltime_seconds']-300)
     out,wall=launch(work,deck,end)
     states=[checkpoint(p,initial=initial) for p in sorted((out/'rst').glob('*.rst'))]
     if not states or abs(max(s['time'] for s in states)-end)>1e-7:raise ValueError('Incomplete endpoint')

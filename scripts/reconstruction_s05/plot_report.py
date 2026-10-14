@@ -12,6 +12,7 @@ from common import ROOT, CASES, N, atomic, sha, require_job
 METHODS=('mc','stratified','cell','ablation')
 LABELS={'mc':'Monte Carlo','stratified':'Stratified','cell':'Cell-aware','ablation':'Random-velocity ablation'}
 COLORS={'mc':'#333333','stratified':'#0072B2','cell':'#D55E00','ablation':'#009E73'}
+STYLES={'mc':'-','stratified':'--','cell':'-.','ablation':':'}
 
 def read(path):
     with open(path) as f: rows=list(csv.DictReader(f))
@@ -23,8 +24,31 @@ def save(fig,out,name):
 
 def band(ax,x,ys,method,**kwargs):
     a=np.asarray(ys);color=COLORS[method]
+    kwargs.setdefault('linestyle',STYLES[method])
+    for y in a:ax.plot(x,y,color=color,lw=.55,alpha=.3,linestyle=kwargs['linestyle'])
     ax.plot(x,a.mean(0),color=color,label=LABELS[method],**kwargs)
     ax.fill_between(x,a.min(0),a.max(0),color=color,alpha=.13)
+
+def aligned(rows,key,grid,mask=False):
+    """Align actual output times for display; retain invalid-constraint gaps."""
+    ys=[]
+    for d in rows:
+        y=d[key].copy()
+        if mask:y[d['constraint_usable']==0]=np.nan
+        if np.any(np.diff(d['time'])<0):raise ValueError('Unordered output times')
+        if grid[0]<d['time'][0]-.03 or grid[-1]>d['time'][-1]+.03:
+            raise ValueError('Time comparison exceeds saved coverage')
+        ys.append(np.interp(grid,d['time'],y))
+    return ys
+
+def at_slot(d,slot,key):
+    use=np.rint(d['time']/100).astype(int)==slot
+    if not use.any():raise ValueError('Missing occupancy time slot')
+    return d[key][use]
+
+def ratio(value,den):
+    # A near-zero Monte Carlo drift has no defensible multiplicative comparison.
+    return np.divide(value,den,out=np.full_like(value,np.nan),where=np.abs(den)>1e-12)
 
 def main():
     require_job();ap=argparse.ArgumentParser();ap.add_argument('--interim',action='store_true');args=ap.parse_args()
@@ -33,13 +57,15 @@ def main():
     for case,rad,method,seed in CASES:
         base=data/case
         if not (base/'summary.json').exists():raise ValueError('Missing validated case '+case)
-        d={name:read(base/(name+'.csv')) for name in ('shells','health','occupancy','field_errors','windows','global_constraints')}
+        d={name:read(base/(name+'.csv')) for name in ('shells','cohorts','cohort_mixing','health','occupancy','field_errors','windows','global_constraints')}
+        d['weights']=json.loads((base/'weights.json').read_text())
         d['profiles']=dict(np.load(base/'profiles.npz'));d['summary']=json.loads((base/'summary.json').read_text())
         states[(rad,method,seed)]=d
         for path in sorted(base.iterdir()):
             if path.is_file():receipt.append({'path':str(path.relative_to(ROOT)),'bytes':path.stat().st_size,'sha256':sha(path)})
     p=dict(np.load(ROOT/'samples/model.npz'))
-    endpoint=min(d['shells']['time'][-1] for d in states.values())
+    endpoint=min(d['shells']['nominal_time'][-1] for d in states.values())
+    grid=np.arange(0,endpoint+1,2)
     plt.rcParams.update({'font.family':'DejaVu Serif','font.size':9,'axes.grid':True,'grid.alpha':.2,'axes.spines.top':False,'axes.spines.right':False})
     # Initial errors: radial CDF, projected E, momentum and stress.
     fig,ax=plt.subplots(2,4,figsize=(16,7),layout='constrained')
@@ -63,41 +89,57 @@ def main():
             ax[row,col].set_xlim(0,10)
     ax[0,0].legend(fontsize=8);fig.suptitle('Initial error relative to each chosen radial measure; shading spans three realizations')
     save(fig,out,'f1_initial_errors')
-    # Occupancy and effective count: both initial and endpoint, with time evolution of empty fraction.
     fig,ax=plt.subplots(2,3,figsize=(13,7),layout='constrained')
     for row,rad in enumerate(('legacy','proper')):
         for method in METHODS:
+            ff=[states[(rad,method,s)]['field_errors'] for s in (1,2,3)]
+            for col,key in enumerate(('E_radial_mean_error','E_target_angular_rms','stress_target_error_rms')):
+                use=ff[0]['time']==0
+                band(ax[row,col],ff[0]['r'][use],[f[key][f['time']==0] for f in ff],method)
+                if col>0:ax[row,col].set_yscale('log')
+        for col,title in enumerate(('Density radial-mean error','Density angular error about radial mean','Full stress error versus CIC continuum')):
+            ax[row,col].set_title(rad+': '+title);ax[row,col].set_xlabel('Coordinate radius / M');ax[row,col].set_ylabel('$M^{-2}$');ax[row,col].set_xlim(0,10)
+    ax[0,0].legend(fontsize=8);save(fig,out,'f1_radial_and_angular_errors')
+    # Separate panels at every common checkpoint; select each seed by nominal slot.
+    slots=np.arange(0,int(endpoint)//100+1)
+    for key,stem,label in (('count_mean','f2_occupancy_profiles','Particle count per cell'),
+                           ('neff_mean','f2_effective_count_profiles','CIC effective count per cell')):
+        fig,ax=plt.subplots(2,len(slots),figsize=(4*len(slots),7),layout='constrained',squeeze=False)
+        for row,rad in enumerate(('legacy','proper')):
+            for col,slot in enumerate(slots):
+                for method in METHODS:
+                    os=[states[(rad,method,s)]['occupancy'] for s in (1,2,3)]
+                    band(ax[row,col],at_slot(os[0],slot,'r'),[at_slot(o,slot,key) for o in os],method)
+                ax[row,col].set_title(f'{rad}: {100*slot}M');ax[row,col].set_xlabel('Coordinate radius / M');ax[row,col].set_ylabel(label);ax[row,col].set_xlim(0,16)
+        ax[0,0].legend(fontsize=8);fig.suptitle(label+' at common saved-state slots; actual timestamps retained in reductions')
+        save(fig,out,stem)
+    fig,ax=plt.subplots(2,2,figsize=(11,7),layout='constrained')
+    for row,rad in enumerate(('legacy','proper')):
+        for method in METHODS:
             os=[states[(rad,method,s)]['occupancy'] for s in (1,2,3)]
-            times=np.unique(os[0]['time']);last=times[-1]
-            for t,style in ((0,'--'),(last,'-')):
-                sel=os[0]['time']==t;x=os[0]['r'][sel]
-                for col,key in ((0,'count_mean'),(1,'neff_mean')):
-                    ys=[o[key][o['time']==t] for o in os]
-                    band(ax[row,col],x,ys,method,linestyle=style)
             empty=[]
             for o in os:
                 arr=[]
-                for t in np.unique(o['time']):
-                    sel=(o['time']==t)&(o['initial_matter_cells']>0)
+                for slot in slots:
+                    sel=(np.rint(o['time']/100)==slot)&(o['initial_matter_cells']>0)
                     arr.append(np.average(o['initial_matter_empty_fraction'][sel],weights=o['initial_matter_cells'][sel]))
                 empty.append(arr)
-            band(ax[row,2],times,np.asarray(empty)*100,method,marker='o')
-        for col,title in enumerate(('Particle count per cell','CIC effective count per cell','Initially intersecting cells now empty')):
-            ax[row,col].set_title(rad+': '+title);ax[row,col].set_xlabel('Time / M' if col==2 else 'Coordinate radius / M')
-            ax[row,col].set_ylabel('Empty fraction (%)' if col==2 else 'Count')
-            if col<2:ax[row,col].set_xlim(0,16)
-    ax[0,2].legend(fontsize=8);fig.suptitle('Sampling after motion: dashed initial, solid endpoint; effective count uses fixed mass × CIC weight')
-    save(fig,out,'f2_sampling_after_motion')
+            band(ax[row,0],100*slots,np.asarray(empty)*100,method,marker='o')
+            ws=[states[(rad,method,s)]['weights'] for s in (1,2,3)]
+            xx=np.asarray(ws[0]['log10_mass_edges']);xx=(xx[:-1]+xx[1:])/2
+            band(ax[row,1],xx,[np.asarray(w['particle_count'])/N for w in ws],method,drawstyle='steps-mid')
+        ax[row,0].set_title(rad+': Initially intersecting cells now empty');ax[row,0].set_xlabel('Time / M');ax[row,0].set_ylabel('Empty fraction (%)')
+        ax[row,1].set_title(rad+': Fixed particle-weight distribution');ax[row,1].set_xlabel('$\\log_{10}(m_i/M)$');ax[row,1].set_ylabel('Particle fraction per bin');ax[row,1].set_xlim(-14,-4)
+    ax[0,0].legend(fontsize=8);save(fig,out,'f2_empty_cells_and_weights')
     # Shell histories, with dotted origin-based companions.
     fig,ax=plt.subplots(2,3,figsize=(13,7),layout='constrained')
     for row,rad in enumerate(('legacy','proper')):
         for col,q in enumerate((10,50,90)):
             for method in METHODS:
-                ds=[states[(rad,method,s)]['shells'] for s in (1,2,3)];tt=ds[0]['nominal_time']
-                if any(not np.array_equal(d['nominal_time'],tt) for d in ds):raise ValueError('Unequal shell cadence')
-                band(ax[row,col],tt,[100*(d[f'r{q}']/d[f'r{q}'][0]-1) for d in ds],method)
-                origin=np.mean([100*(d[f'r{q}_origin']/d[f'r{q}_origin'][0]-1) for d in ds],axis=0)
-                ax[row,col].plot(tt,origin,':',color=COLORS[method],lw=.7)
+                ds=[states[(rad,method,s)]['shells'] for s in (1,2,3)]
+                band(ax[row,col],grid,[100*(v/d[f'r{q}'][0]-1) for v,d in zip(aligned(ds,f'r{q}',grid),ds)],method)
+                origin=np.mean([100*(v/d[f'r{q}_origin'][0]-1) for v,d in zip(aligned(ds,f'r{q}_origin',grid),ds)],axis=0)
+                ax[row,col].plot(grid,origin,':',color=COLORS[method],lw=.7)
             ax[row,col].set_title(f'{rad}: radius enclosing {q}% rest mass');ax[row,col].set_xlabel('Time / M');ax[row,col].set_ylabel('Change from own start (%)')
     ax[0,0].legend(fontsize=8);fig.suptitle('Shell response: COM solid, origin dotted; seed ranges are not time-sample confidence intervals')
     save(fig,out,'f3_shell_histories')
@@ -107,7 +149,7 @@ def main():
             reference=np.interp(q/100,p['proper'],p['riso_over_m'])
             for method in METHODS:
                 ds=[states[(rad,method,s)]['shells'] for s in (1,2,3)]
-                band(ax[row,col],ds[0]['nominal_time'],[100*(d[f'r{q}']/reference-1) for d in ds],method)
+                band(ax[row,col],grid,[100*(v/reference-1) for v in aligned(ds,f'r{q}',grid)],method)
             ax[row,col].axhline(0,color='#888888',ls='--',lw=.7)
             ax[row,col].set_title(f'{rad}: r{q} versus intended equilibrium');ax[row,col].set_xlabel('Time / M');ax[row,col].set_ylabel('Departure from equilibrium (%)')
     ax[0,0].legend(fontsize=8);save(fig,out,'f3_equilibrium_departures')
@@ -116,95 +158,132 @@ def main():
     for rad in ('legacy','proper'):
         for method in METHODS:
             ds=[states[(rad,method,s)]['shells'] for s in (1,2,3)]
-            all_maps.append(np.mean([np.stack([100*(d[f'r{q}']/d[f'r{q}'][0]-1) for q in range(10,100,10)]) for d in ds],axis=0))
+            all_maps.append(np.stack([np.mean([100*(v/d[f'r{q}'][0]-1) for v,d in zip(aligned(ds,f'r{q}',grid),ds)],axis=0) for q in range(10,100,10)]))
     vmax=max(float(np.max(np.abs(a))) for a in all_maps)
     for axes,a,(rad,method) in zip(ax.ravel(),all_maps,[(r,m) for r in ('legacy','proper') for m in METHODS]):
-        im=axes.imshow(a,origin='lower',aspect='auto',extent=[0,endpoint,5,95],cmap='RdBu_r',vmin=-vmax,vmax=vmax)
+        im=axes.pcolormesh(np.r_[grid-1,grid[-1]+1],np.arange(5,100,10),a,shading='flat',cmap='RdBu_r',vmin=-vmax,vmax=vmax)
+        axes.set_xlim(0,endpoint)
         axes.set_title(rad+': '+LABELS[method]);axes.set_xlabel('Time / M');axes.set_ylabel('Enclosed rest mass (%)');axes.grid(False)
     fig.colorbar(im,ax=ax.ravel().tolist(),label='Mean shell-radius change from own start (%)')
     save(fig,out,'f3_mass_fraction_heatmaps')
+    fig,ax=plt.subplots(2,4,figsize=(15,7),layout='constrained')
+    for row,rad in enumerate(('legacy','proper')):
+        for col,method in enumerate(METHODS):
+            ds=[states[(rad,method,s)]['cohorts'] for s in (1,2,3)]
+            for cohort in (1,3,5,7,9):
+                ys=aligned(ds,f'cohort{cohort}',grid)
+                mean=np.mean(ys,axis=0);axes=ax[row,col]
+                line=axes.plot(grid,mean,label=f'Cohort {cohort}')[0]
+                for y in ys:axes.plot(grid,y,color=line.get_color(),lw=.55,alpha=.3)
+                axes.fill_between(grid,np.min(ys,axis=0),np.max(ys,axis=0),color=line.get_color(),alpha=.12)
+            axes.set_title(rad+': '+LABELS[method]);axes.set_xlabel('Time / M');axes.set_ylabel('Mean COM radius / M')
+    ax[0,0].legend(fontsize=8);fig.suptitle('Initial rest-mass cohorts: curves follow the same original particle IDs')
+    save(fig,out,'f3_initial_cohorts')
+    fig,ax=plt.subplots(2,4,figsize=(14,7),layout='constrained')
+    for row,rad in enumerate(('legacy','proper')):
+        for col,method in enumerate(METHODS):
+            arrays=[]
+            for seed in (1,2,3):
+                d=states[(rad,method,seed)]['cohort_mixing'];sel=np.rint(d['time']/100)==int(endpoint)//100
+                a=d['mass_fraction'][sel].reshape(10,10)
+                if not np.allclose(a.sum(1),1,atol=1e-10):raise ValueError('Cohort transfer does not conserve mass')
+                arrays.append(a)
+            im=ax[row,col].imshow(np.mean(arrays,axis=0),origin='lower',extent=[.5,10.5,.5,10.5],vmin=0,vmax=1,cmap='Blues')
+            ax[row,col].set_title(rad+': '+LABELS[method]);ax[row,col].set_xlabel('Current rest-mass decile');ax[row,col].set_ylabel('Initial rest-mass cohort');ax[row,col].grid(False)
+    fig.colorbar(im,ax=ax.ravel().tolist(),label='Fraction of initial cohort rest mass (seed mean)')
+    fig.suptitle(f'Radial mixing at {endpoint:g}M; cohort rows each sum to one')
+    save(fig,out,'f3_cohort_mixing')
     # Core constraints, lapse and centre motion.
     fig,ax=plt.subplots(2,4,figsize=(15,7),layout='constrained')
     for row,rad in enumerate(('legacy','proper')):
         for method in METHODS:
             ds=[states[(rad,method,s)] for s in (1,2,3)];hs=[d['health'] for d in ds]
             for col,key in ((0,'H_rms_r10'),(1,'M_rms_r10'),(2,'core_lapse')):
-                tt=hs[0]['time'];ys=[]
-                for h in hs:
-                    y=h[key].copy()
-                    if col<2:y[h['constraint_usable']==0]=np.nan
-                    ys.append(y)
-                band(ax[row,col],tt,ys,method)
+                ys=aligned(hs,key,grid,mask=col<2)
+                band(ax[row,col],grid,ys,method)
                 if col<2:
                     key16=key.replace('r10','r16')
-                    ys16=[]
-                    for h in hs:
-                        y=h[key16].copy();y[h['constraint_usable']==0]=np.nan;ys16.append(y)
-                    ax[row,col].plot(tt,np.mean(ys16,axis=0),'--',color=COLORS[method],lw=.7)
+                    ys16=aligned(hs,key16,grid,mask=True)
+                    ax[row,col].plot(grid,np.mean(ys16,axis=0),'--',color=COLORS[method],lw=.7)
                     ax[row,col].set_yscale('log')
-            ss=[d['shells'] for d in ds];band(ax[row,3],ss[0]['nominal_time'],[s['com_mag'] for s in ss],method)
+            ss=[d['shells'] for d in ds];band(ax[row,3],grid,aligned(ss,'com_mag',grid),method)
         for col,title in enumerate(('Hamiltonian RMS','Momentum-constraint RMS','Fixed-origin core lapse','COM displacement')):
             ax[row,col].set_title(rad+': '+title);ax[row,col].set_xlabel('Time / M')
             ax[row,col].set_ylabel('$M^{-2}$' if col<2 else ('Lapse' if col==2 else 'M'))
-    ax[0,0].legend(fontsize=8);fig.suptitle('Coordinate-volume core constraints: r<10M solid, r<16M dashed; tiny-step H/M masked')
+    ax[0,0].legend(fontsize=8);fig.suptitle('Coordinate-volume core constraints: r<10M thick, r<16M thin dashed; tiny-step H/M masked')
     save(fig,out,'f4_constraints_lapse_com')
     fig,ax=plt.subplots(2,2,figsize=(10,7),layout='constrained')
     for row,rad in enumerate(('legacy','proper')):
         for col,key in enumerate(('H_rms','M_rms')):
             for method in METHODS:
                 ds=[states[(rad,method,s)]['global_constraints'] for s in (1,2,3)]
-                ys=[]
-                for d in ds:
-                    y=d[key].copy();y[d['constraint_usable']==0]=np.nan;ys.append(y)
-                band(ax[row,col],ds[0]['time'],ys,method)
+                band(ax[row,col],grid,aligned(ds,key,grid,mask=True),method)
             ax[row,col].set_yscale('log');ax[row,col].set_title(rad+': native global '+key);ax[row,col].set_xlabel('Time / M');ax[row,col].set_ylabel('$M^{-2}$')
     ax[0,0].legend(fontsize=8);fig.suptitle('Native global norms retain their proper-volume convention')
     save(fig,out,'f4_native_global_constraints')
     # Window amplitudes versus same-profile MC, and mean shell shifts.
     comparison=[]
-    for metric,stem in (('half_range_fraction','f5_amplitude_ratios'),('mean_shift_fraction','f5_mean_shell_shifts')):
+    for metric,stem in (('half_range_fraction','f5_amplitude_ratios'),('mean_shift_fraction','f5_mean_shell_shifts'),('absolute_drift_ratio','f5_drift_ratios')):
         fig,ax=plt.subplots(2,3,figsize=(13,7),layout='constrained')
         for row,rad in enumerate(('legacy','proper')):
             for col,q in enumerate((10,50,90)):
                 for method in METHODS:
                     ys=[]
                     for seed in (1,2,3):
-                        d=states[(rad,method,seed)]['windows'];sel=d['quantile']==q;value=d[metric][sel]
+                        d=states[(rad,method,seed)]['windows'];sel=d['quantile']==q
+                        value=d['mean_shift_fraction' if metric=='absolute_drift_ratio' else metric][sel]
                         starts=d['start'][sel]
                         if metric=='half_range_fraction':
                             mc=states[(rad,'mc',seed)]['windows'];den=mc[metric][mc['quantile']==q]
-                            value=value/den
-                            for low,v in zip(starts,value):comparison.append({'radial':rad,'method':method,'seed':seed,'quantile':q,'window_start':low,'amplitude_ratio_to_mc':float(v)})
+                            value=ratio(value,den)
+                            shift=d['mean_shift_fraction'][sel];md=mc['mean_shift_fraction'][mc['quantile']==q]
+                            drift=ratio(shift,md)
+                            for low,v,dr,sv,mv in zip(starts,value,drift,shift,md):
+                                comparison.append({'radial':rad,'method':method,'seed':seed,'quantile':q,'window_start':low,
+                                   'amplitude_ratio_to_mc':float(v) if np.isfinite(v) else None,
+                                   'signed_mean_shift_ratio_to_mc':float(dr) if np.isfinite(dr) else None,
+                                   'absolute_mean_shift_ratio_to_mc':float(abs(dr)) if np.isfinite(dr) else None,
+                                   'mean_shift_fraction':float(sv),'mc_mean_shift_fraction':float(mv)})
+                        elif metric=='absolute_drift_ratio':
+                            mc=states[(rad,'mc',seed)]['windows'];den=mc['mean_shift_fraction'][mc['quantile']==q]
+                            value=np.abs(ratio(value,den))
                         else:value=100*value
                         ys.append(value)
                     band(ax[row,col],starts+50,ys,method,marker='o')
                 ax[row,col].set_title(f'{rad}: r{q}');ax[row,col].set_xlabel('Window midpoint / M')
-                ax[row,col].set_ylabel('Amplitude / Monte Carlo' if metric=='half_range_fraction' else 'Mean shift from own start (%)')
+                ax[row,col].set_ylabel('Amplitude / Monte Carlo' if metric=='half_range_fraction' else ('Absolute mean shift / Monte Carlo' if metric=='absolute_drift_ratio' else 'Mean shift from own start (%)'))
         ax[0,0].legend(fontsize=8);save(fig,out,stem)
-    atomic(out/'amplitude_ratios.json',comparison)
+    atomic(out/'amplitude_and_drift_ratios.json',comparison)
     # Durable report: describe observations and bounds without promoting physical instability.
     lines=['# Reconstruction Session 5: sampling effects on ST shell response','',
            f'All 24 configurations have validated reductions through approximately {endpoint:.3f}M. Each uses N={N:,}, live Z4c, dx=0.5M and a ±128M box.',
            '', 'The historical and corrected radial measures are analyzed separately. Historical sampling and the equilibrium proper-rest-mass profile differ systematically; this is distinct from finite-particle noise.',
-           '', '| Radial measure | Sampler | Initial projected-E relative L2, mean (range) | Final-window shell amplitude / MC, mean (range) |',
-           '|---|---|---:|---:|']
+           '', '| Radial measure | Sampler | Initial projected-E relative L2, mean (range) | Final-window shell amplitude / MC, mean (range) | Final-window shell mean-shift RMS / MC, mean (range) |',
+           '|---|---|---:|---:|---:|']
     findings=[]
     for rad in ('legacy','proper'):
         for method in METHODS:
             initial=np.array([states[(rad,method,s)]['summary']['initial_error']['E_relative_L2_target'] for s in (1,2,3)])
-            ratios=[]
+            ratios=[];drifts=[]
             for seed in (1,2,3):
                 w=states[(rad,method,seed)]['windows'];mc=states[(rad,'mc',seed)]['windows'];last=w['end'].max()
                 amp=np.sqrt(np.mean(w['half_range_fraction'][w['end']==last]**2));base=np.sqrt(np.mean(mc['half_range_fraction'][mc['end']==last]**2));ratios.append(amp/base)
-            ratios=np.array(ratios);findings.append({'radial':rad,'method':method,'initial_E_error':initial.tolist(),'final_window_rms_shell_amplitude_ratio':ratios.tolist(),'all_three_amplitudes_lower_than_mc':bool(np.all(ratios<1))})
-            lines.append(f'| {rad} | {LABELS[method]} | {initial.mean():.5g} ({initial.min():.5g}–{initial.max():.5g}) | {ratios.mean():.4g} ({ratios.min():.4g}–{ratios.max():.4g}) |')
-    lines+=['','Amplitude is half the saved peak-to-peak range divided by each run’s own initial radius. The aggregate uses the RMS across r10…r90 in the final complete 100M window. Window means use actual timestamps and trapezoidal time weighting. These are short-time comparisons, not tests of permanent stability.',
+                drift=np.sqrt(np.mean(w['mean_shift_fraction'][w['end']==last]**2));mb=np.sqrt(np.mean(mc['mean_shift_fraction'][mc['end']==last]**2))
+                drifts.append(drift/mb if mb>1e-12 else np.nan)
+            ratios=np.array(ratios);drifts=np.array(drifts)
+            findings.append({'radial':rad,'method':method,'initial_E_error':initial.tolist(),'final_window_rms_shell_amplitude_ratio':ratios.tolist(),
+                'final_window_rms_shell_mean_shift_ratio':[float(v) if np.isfinite(v) else None for v in drifts],
+                'all_three_amplitudes_lower_than_mc':bool(np.all(ratios<1)),
+                'all_three_drift_magnitudes_lower_than_mc':bool(np.all(drifts<1))})
+            drift_text=f'{drifts.mean():.4g} ({drifts.min():.4g}–{drifts.max():.4g})' if np.isfinite(drifts).all() else 'Undefined (near-zero MC drift)'
+            lines.append(f'| {rad} | {LABELS[method]} | {initial.mean():.5g} ({initial.min():.5g}–{initial.max():.5g}) | {ratios.mean():.4g} ({ratios.min():.4g}–{ratios.max():.4g}) | {drift_text} |')
+    lines+=['','Amplitude is half the saved peak-to-peak range divided by each run’s own initial radius. The aggregate uses the RMS across r10…r90 in the final complete 100M window. Window boundaries are exactly 0/100/200/300M; boundary values are interpolated between adjacent saved states. Window means use actual timestamps and trapezoidal time weighting. Displayed ensemble curves are interpolated onto common 2M times; actual timestamps are retained in CSV files. These are short-time comparisons, not tests of permanent stability.',
             '', 'The velocity ablation has exactly the same positions and masses as its stratified partner. Cell-aware weights remain fixed to each original ID. Cohort histories are retained to inspect mixing; they are not a stationarity criterion.',
-            '', 'Shading shows the range of three independent realizations. It does not treat saved time samples as independent trials. Within-bin angular scatter includes radial gradients over the finite bin width. Momentum/stress noise uses explicitly labelled coordinate covariant-component norms.',
+            '', 'Thin curves show individual realizations; thick curves and shading show their mean and range. Saved time samples are not independent trials. Angular density scatter subtracts the radial mean at each exact Cartesian-cell radius before binning. Momentum/stress noise uses explicitly labelled coordinate covariant-component norms. Signed and absolute drift ratios versus same-profile Monte Carlo are retained alongside amplitude ratios; an MC drift magnitude below 1e-12 makes that ratio undefined, rather than zero.',
             '', 'All runs share the same analytic metric, gauge, pusher, CIC deposition and removal settings. No constraint re-solve, frozen arm, larger domain, reweighting, or imposed perturbation was used. Core constraint norms use coordinate volume; native global norms retain their original proper-volume convention.',
             '', 'The ±128M boundary is within causal reach during this interval and was not varied. Consequently these results cannot establish physical instability, numerical convergence, or long-term Plummer stability. A preferred sampler requires improvements that persist after motion and are consistent across seeds; opposing diagnostics remain a tradeoff.',
             '', 'Figures:']
-    for name in ('f1_initial_errors','f2_sampling_after_motion','f3_shell_histories','f3_equilibrium_departures','f3_mass_fraction_heatmaps','f4_constraints_lapse_com','f4_native_global_constraints','f5_amplitude_ratios','f5_mean_shell_shifts'):
+    for name in ('f1_initial_errors','f1_radial_and_angular_errors','f2_occupancy_profiles','f2_effective_count_profiles','f2_empty_cells_and_weights','f3_shell_histories','f3_equilibrium_departures','f3_mass_fraction_heatmaps','f3_initial_cohorts','f3_cohort_mixing','f4_constraints_lapse_com','f4_native_global_constraints','f5_amplitude_ratios','f5_mean_shell_shifts','f5_drift_ratios'):
         lines.append(f'- [{name} PNG](../plots/{out.name}/{name}.png) / [PDF](../plots/{out.name}/{name}.pdf)')
     lines+=['','Exact source, submodule, toolchain, inputs, initialization samples, executable hashes, launch commands, checkpoints and raw manifests are retained in the campaign. All raw data remain on AMD under `/work1/eliasmost/jiaxiwu/st_reconstruction_s05_20261014`; no deletion or Mac mirror was performed. See the storage receipt for exact retained sizes and allocated job accounting.']
     report=ROOT/'reports'/('REPORT_interim100.md' if args.interim else 'REPORT_session5.md');atomic(report,'\n'.join(lines)+'\n')

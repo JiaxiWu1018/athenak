@@ -21,20 +21,40 @@ def main():
     while not (ROOT/'evidence/CAMPAIGN_COMPLETE').exists():
         try:
             work=json.loads((ROOT/'evidence/state.json').read_text())
-            for job in work.get('jobs',[]):
-                if job.get('host')!='amd':
-                    # Perseus disables sacct; local QA is recorded by its own receipt.
-                    continue
-                cmd=['sacct','-j',str(job['id']),'-n','-P','--format=JobIDRaw,State,ElapsedRaw']
-                if job.get('host')=='amd':cmd=['ssh','-o','BatchMode=yes','-o','ConnectTimeout=15','hpcfund.amd.com',*cmd]
-                reply=subprocess.check_output(cmd,text=True,timeout=45).strip()
-                signature='\n'.join('|'.join(line.split('|')[:2]) for line in reply.splitlines())
+            jobs=[j for j in work.get('jobs',[]) if j.get('host')=='amd']
+            # Query allocations together, including all array tasks but excluding steps.
+            # Perseus disables sacct; its QA has separate completion receipts.
+            cmd=['ssh','-o','BatchMode=yes','-o','ConnectTimeout=15','hpcfund.amd.com',
+                 'sacct','--allocations','-j',','.join(str(j['id']) for j in jobs),
+                 '-n','-P','--format=JobID,State,ElapsedRaw,AllocNodes']
+            reply=subprocess.check_output(cmd,text=True,timeout=45).strip() if jobs else ''
+            rows=[line.split('|') for line in reply.splitlines() if line]
+            used=sum(int(r[2])*int(r[3]) for r in rows)/3600
+            atomic(ROOT/'evidence/AMD_ACCOUNTING.json',{'allocated_node_hours':used,'rows':rows,
+                   'updated_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                   'definition':'allocation elapsed seconds times allocated nodes; includes failed attempts; excludes steps'})
+            state.setdefault('terminal',{})
+            for job in jobs:
+                own=[r for r in rows if r[0].split('_')[0]==str(job['id'])]
+                signature='\n'.join('|'.join(r[:2]) for r in own)
                 previous=state['observed'].get(str(job['id']),'')
                 if signature!=previous:
                     state['observed'][str(job['id'])]=signature
-                    if any(word in reply for word in ('COMPLETED','FAILED','TIMEOUT','CANCELLED','OUT_OF_MEMORY')):
+                    terminal='\n'.join('|'.join(r[:2]) for r in own if any(word in r[1] for word in
+                                      ('COMPLETED','FAILED','TIMEOUT','CANCELLED','OUT_OF_MEMORY','NODE_FAIL')))
+                    if terminal and terminal!=state['terminal'].get(str(job['id']),''):
+                        state['terminal'][str(job['id'])]=terminal
                         event('job_'+str(job['id'])+'_'+str(sum(1 for k in state['events'] if k.startswith('job_'+str(job['id'])))),
-                              'Inspect '+job['role']+' job '+str(job['id'])+' status: '+reply[:1500])
+                              'Inspect '+job['role']+' job '+str(job['id'])+' status: '+terminal[:1500])
+            # Enforce the authorized raw allocation cap; leave 2 hours for closure.
+            if used>=98:
+                atomic(ROOT/'evidence/BUDGET_STOP',{'allocated_node_hours':used,'ceiling':100})
+                active={r[0].split('_')[0] for r in rows if r[1] in ('RUNNING','PENDING','CONFIGURING','COMPLETING')}
+                cancel=[str(j['id']) for j in jobs if j.get('role')=='production' and str(j['id']) in active]
+                if used>=100:cancel=[str(j['id']) for j in jobs if str(j['id']) in active]
+                if cancel:
+                    subprocess.run(['ssh','hpcfund.amd.com','scancel',*cancel],check=True,timeout=30)
+                event('budget_stop','Allocated AMD cost reached '+str(used)+' node-hours. Production was stopped to preserve the 100-node-hour ceiling; inspect the retained evidence.')
             if time.time()-state['last_heartbeat']>=1800:
                 event('heartbeat_'+str(int(time.time()//1800)), 'Review campaign progress, budget and storage; continue toward all 24 runs and final reports.')
                 state['last_heartbeat']=time.time()
@@ -45,6 +65,7 @@ def main():
                 receipt=subprocess.check_output(['/home/jiaxiwu/.local/bin/codex','queue','--thread',thread,'--message',message],text=True,stderr=subprocess.STDOUT,timeout=30)
                 ev.update(last_delivery=time.time(),receipt=receipt)
             state['updated_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat()
+            state.pop('last_error',None)
             atomic(path,state)
         except Exception as ex:
             state['last_error']=repr(ex);atomic(path,state)

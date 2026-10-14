@@ -155,17 +155,32 @@ def generate_one(p, radial, method, seed, table=None, n=N):
     velocity='stratified' if method=='stratified' else 'random'
     case=f'{radial}_{method}_s{seed}'; path=ROOT/'samples'/(case+'.bin')
     if path.exists(): raise FileExistsError(path)
+    com=np.average(pos,weights=mass,axis=0); unit=u/umag[:,None]
+    neff=mass.sum()**2/np.sum(mass*mass)
+    pos_unit=pos/rr[:,None]
+    moments={}
+    for label,direction in (('position',pos_unit),('velocity',unit)):
+        first=np.average(direction,weights=mass,axis=0)
+        second=(direction*mass[:,None]).T@direction/mass.sum()
+        if np.max(abs(first))>6/np.sqrt(3*neff):raise ValueError(label+' first angular moment failed')
+        if np.max(abs(np.diag(second)-1/3))>6*np.sqrt(4/(45*neff)):
+            raise ValueError(label+' diagonal second angular moment failed')
+        if np.max(abs(second-np.diag(np.diag(second))))>6/np.sqrt(15*neff):
+            raise ValueError(label+' off-diagonal angular moment failed')
+        moments[label+'_first_moment']=first.tolist();moments[label+'_second_moment']=second.tolist()
+    cross=(pos_unit*mass[:,None]).T@unit/mass.sum()
+    if np.max(abs(cross))>2/np.sqrt(neff):raise ValueError('Position/velocity direction correlation failed')
+    initial_energy=p['alpha_s']*np.sqrt(y)*np.sqrt(1+np.sum(u*u,axis=1)/(a*a))
+    if np.max(abs(initial_energy-p['alpha_s']))>1e-12:raise ValueError('Monoenergetic prescription failed')
     with open(path,'wb') as f:
         f.write(f'STSAMP05 {n} {seed} 1 .819 .0001 {sampling} {radial} {velocity}\n'.encode())
         data.astype('<f8').tofile(f)
-    com=np.average(pos,weights=mass,axis=0); unit=u/umag[:,None]
-    mm=(unit*mass[:,None]).T@unit/mass.sum()
     atomic(ROOT/'evidence/samples'/(case+'.json'),
            dict(case=case,sha256=sha(path),bytes=path.stat().st_size,n=n,
                 rest_mass=float(mass.sum()),mass_min=float(mass.min()),mass_max=float(mass.max()),
-                global_neff=float(mass.sum()**2/np.sum(mass*mass)),com=com.tolist(),
-                velocity_first_moment=np.average(unit,weights=mass,axis=0).tolist(),
-                velocity_second_moment=mm.tolist(),radial=radial,method=method,seed=seed,**extra))
+                global_neff=float(neff),com=com.tolist(),initial_energy=float(np.sum(mass*initial_energy)),
+                position_velocity_moment=cross.tolist(),angular_moment_tolerance_sigma=6,
+                radial=radial,method=method,seed=seed,**moments,**extra))
     return data
 
 def main():
@@ -176,7 +191,12 @@ def main():
     tables={rad:cells(p,rad) for rad in ('legacy','proper')}
     if args.profiles_only:return
     for case,rad,method,seed in CASES:
-        if (ROOT/'samples'/(case+'.bin')).exists():continue
+        path=ROOT/'samples'/(case+'.bin')
+        if path.exists():
+            receipt=json.loads((ROOT/'evidence/samples'/(case+'.json')).read_text())
+            if receipt['n']!=N or receipt['sha256']!=sha(path) or receipt.get('angular_moment_tolerance_sigma')!=6:
+                raise ValueError('Existing sample has incomplete validation: '+case)
+            continue
         t=time.monotonic(); generate_one(p,rad,method,seed,tables[rad]); print(case,time.monotonic()-t,flush=True)
     for rad in ('legacy','proper'):
         for seed in (1,2,3):

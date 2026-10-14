@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import time
 from pathlib import Path
 import numpy as np
 import reduce_run as R
@@ -62,7 +63,15 @@ def main():
         if np.max(np.abs(energy-target))>3e-6:raise ValueError('Initial monoenergy mismatch')
         hist=np.loadtxt(next(out.glob('*.user.hst')))
         if not np.all(hist[0,[3,4,9,10]]>0):raise ValueError('Placeholder initial constraints')
-        records.append({'case':case,'wall_seconds':wall,'initial':d0,'final':end})
+        particles=list((out/'pvtk').glob('*.part.vtk'))
+        cubes=list((out/'bin').glob('*.tme3d.*.bin'))+list((out/'bin').glob('*.con3d.*.bin'))
+        slices=[p for p in (out/'bin').glob('*.bin') if p not in cubes]
+        checkpoints=list((out/'rst').glob('*.rst'))
+        frame_bytes=max(p.stat().st_size for p in particles)+sum(p.stat().st_size for p in slices)/len(particles)
+        state_bytes=sum(p.stat().st_size for p in cubes+checkpoints)/len(checkpoints)
+        records.append({'case':case,'wall_seconds':wall,'initial':d0,'final':end,
+           'frame_bytes_estimate':frame_bytes,'full_state_bytes_estimate':state_bytes,
+           'raw_bytes':sum(p.stat().st_size for p in (root/case).rglob('*') if p.is_file())})
     case='proper_cell_s1';initial=ROOT/'samples'/(case+'.bin');deck=ROOT/'inputs'/(case+'.athinput')
     split=checkpoint(newest(root/case/'out'),10.,initial)
     continued,_=launch(root/'weighted_restart',deck,12.,restart=split['path'])
@@ -74,12 +83,28 @@ def main():
     dfirst=min((direct/'rst').glob('*.rst'),key=lambda p:checkpoint(p)['time'])
     offirst=min((disabled/'rst').glob('*.rst'),key=lambda p:checkpoint(p)['time'])
     diagnostic=compare(dfirst,offirst,0.)
+    # Exercise the full reduction against genuine native GPU data before the suite.
+    from analyze import analyze
+    begin=time.monotonic()
+    analyze(case,run_root=root,dest_root=root/'reduced_qa')
+    qa_analysis_seconds=time.monotonic()-begin
+    frames=len(list((root/case/'out/pvtk').glob('*.part.vtk')))
     projected=24*max(r['wall_seconds'] for r in records)*30/3600
-    end=300 if projected<=90 else 200
-    if projected*end/300>90:raise ValueError('Fixed suite exceeds simulation budget')
+    # Include time variation, verification/reduction and larger endpoint I/O in the forecast.
+    def forecast(end):
+        # Interim 0..100M is reduced again during the run; charge that extra work.
+        reduction=24*qa_analysis_seconds*((end//2+1)+51)/frames/3600
+        return 1.25*projected*end/300+reduction
+    end=300 if forecast(300)<=90 else 200
+    with_margin=forecast(end)
+    if with_margin>90:raise ValueError('Fixed suite exceeds simulation budget')
+    case_walltime=int(np.ceil((with_margin/24*3600+600)/60)*60)
+    projected_bytes=24*max((end//2+1)*r['frame_bytes_estimate']+(end//100+1)*r['full_state_bytes_estimate']+N*9*8 for r in records)
     atomic(ROOT/'evidence/PREFLIGHT_OK',{'job':os.environ['SLURM_JOB_ID'],'historical_t0_exact':True,
            'cases':records,'weighted_restart':restart,'diagnostic_primary_state':diagnostic,
-           'projected_solver_node_hours_300':projected,'endpoint_M':end})
+           'reduction_qa_seconds':qa_analysis_seconds,'reduction_qa_frames':frames,
+           'projected_solver_node_hours_300':projected,'projected_production_node_hours_with_margin_and_reduction':with_margin,
+           'case_walltime_seconds':case_walltime,'projected_suite_raw_bytes':projected_bytes,'endpoint_M':end})
     print('PREFLIGHT_OK',projected,end,flush=True)
 
 if __name__=='__main__':main()

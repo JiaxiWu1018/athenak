@@ -13,9 +13,9 @@ from reference import cloud, coordinates, HALF, DX, SIDE
 QS=np.arange(1,10)/10
 EDGES=np.arange(0,32.0001,.5)
 
-def write_csv(path,rows):
+def write_csv(path,rows,fieldnames=None):
     with open(path,'w') as f:
-        w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
+        w=csv.DictWriter(f,fieldnames=list(rows[0]) if rows else fieldnames);w.writeheader();w.writerows(rows)
 
 def cube(path):
     fd=L.read_binary(str(path));fields={n:np.full((SIDE,SIDE,SIDE),np.nan) for n in fd['var_names']}
@@ -56,13 +56,17 @@ def sampling_state(pos,m):
     neff=np.divide(w*w,w2,out=np.zeros_like(w),where=w2>0)
     radius=json.loads((ROOT/'evidence/model.json').read_text())['Riso_over_M']
     near=np.maximum(np.abs(xyz)-DX/2,0);matter=np.sum(near*near,axis=1)<radius**2
-    rows=[]
+    rows=[];particle_r=np.linalg.norm(pos,axis=1)
     for low,high in zip(EDGES[:-1],EDGES[1:]):
         use=(rr>=low)&(rr<high);initial=use&matter
         if not use.any():continue
+        local=m[(particle_r>=low)&(particle_r<high)]
         rows.append({'r':float((low+high)/2),'cells':int(use.sum()),
           'count_mean':float(count[use].mean()),'neff_mean':float(neff[use].mean()),
           'neff_mass_weighted':float(np.sum(neff[use]*w[use])/w[use].sum()) if w[use].sum()>0 else 0.,
+          'particle_weight_mean':float(local.mean()) if len(local) else None,
+          'particle_weight_p10':float(np.quantile(local,.1)) if len(local) else None,
+          'particle_weight_p90':float(np.quantile(local,.9)) if len(local) else None,
           'initial_matter_cells':int(initial.sum()),
           'initial_matter_empty_fraction':float(np.mean(count[initial]==0)) if initial.any() else None})
     return rows,{'grid_cloud_mass':float(w.sum()),'outside_diagnostic_cube_mass_fraction':float(m[~inside].sum()/m.sum()),
@@ -71,6 +75,9 @@ def sampling_state(pos,m):
 def native_errors(path,radial):
     t,f=cube(path);rr=np.linalg.norm(coordinates(),axis=1);ref=dict(np.load(ROOT/'reference'/(radial+'.npz')))
     eq=dict(np.load(ROOT/'reference/proper.npz'));energy=f['tmunu_E']
+    # Cartesian cells at the same radius form exact angular comparison groups.
+    # Remove each group's radial mean before reducing angular scatter in finite bins.
+    scatter=angular_residual(energy,rr);target_scatter=angular_residual(energy-ref['E'],rr)
     rows=[]
     for low,high in zip(EDGES[:-1],EDGES[1:]):
         use=(rr>=low)&(rr<high)
@@ -80,14 +87,24 @@ def native_errors(path,radial):
         diag=[f['tmunu_S'+a+a][use] for a in 'xyz'];trace=sum(diag)/3
         dev=sum((d-trace)**2 for d in diag)+2*sum(f['tmunu_S'+a][use]**2 for a in ('xy','xz','yz'))
         rows.append({'time':t,'r':float((low+high)/2),'E_mean':mean,'E_target_mean':target,
-          'E_angular_rms':float(np.std(energy[use])),
+          'E_angular_rms':float(np.sqrt(np.mean(scatter[use]**2))),
+          'E_target_angular_rms':float(np.sqrt(np.mean(target_scatter[use]**2))),
+          'E_radial_mean_error':mean-target,
+          'E_equilibrium_mean_error':mean-float(eq['E'][use].mean()),
           'E_target_error_rms':float(np.sqrt(np.mean((energy[use]-ref['E'][use])**2))),
           'E_equilibrium_error_rms':float(np.sqrt(np.mean((energy[use]-eq['E'][use])**2))),
           'J_coordinate_rms':float(np.sqrt(np.mean(momentum))),
-          'stress_coordinate_anisotropy_rms':float(np.sqrt(np.mean(dev)))})
+          'stress_coordinate_anisotropy_rms':float(np.sqrt(np.mean(dev))),
+          'stress_target_error_rms':float(np.sqrt(np.mean(sum((d-ref['Sdiag'][use])**2 for d in diag)
+                                        +2*sum(f['tmunu_S'+a][use]**2 for a in ('xy','xz','yz')))))})
     support=rr<10;norm=np.linalg.norm(ref['E'][support])
     return rows,{'time':t,'E_relative_L2_target':float(np.linalg.norm(energy[support]-ref['E'][support])/norm),
       'E_relative_L2_equilibrium':float(np.linalg.norm(energy[support]-eq['E'][support])/np.linalg.norm(eq['E'][support]))}
+
+def angular_residual(values,radii):
+    groups=np.unique(np.rint(4*(radii/DX)**2).astype(int),return_inverse=True)[1]
+    counts=np.bincount(groups)
+    return values-(np.bincount(groups,weights=values)/counts)[groups]
 
 def history(path):
     a=np.atleast_2d(np.loadtxt(path));rows=[]
@@ -102,15 +119,40 @@ def history(path):
         rows.append(row)
     return rows
 
-def analyze(case,until=None):
-    out=ROOT/'runs'/case/'out';dest=ROOT/('reduced_interim' if until is not None else 'reduced')/case;dest.mkdir(parents=True,exist_ok=True)
+def window_measurements(times,q,endpoint):
+    """Common exact window bounds; interpolate only between adjacent 2M snapshots."""
+    q0=q[0];windows=[]
+    for low,high in ((0,100),(100,200),(200,300)):
+        if high>endpoint:continue
+        if times[0]>low or times[-1]<high-1e-8:
+            raise ValueError('Saved states do not cover common window')
+        tt=np.r_[low,times[(times>low)&(times<high)],high]
+        qq=np.column_stack([np.interp(tt,times,col) for col in q.T])
+        mean=np.trapz(qq,tt,axis=0)/(high-low)
+        for f,a,b in zip(range(10,100,10),(qq.max(0)-qq.min(0))/(2*q0),(mean-q0)/q0):
+            windows.append({'start':low,'end':high,'quantile':f,'half_range_fraction':float(a),'mean_shift_fraction':float(b)})
+    return windows
+
+def analyze(case,until=None,run_root=None,dest_root=None):
+    out=(Path(run_root) if run_root else ROOT/'runs')/case/'out'
+    dest=(Path(dest_root) if dest_root else ROOT/('reduced_interim' if until is not None else 'reduced'))/case
+    dest.mkdir(parents=True,exist_ok=True)
     radial,method,seed=case.split('_');p=dict(np.load(ROOT/'samples/model.npz'))
     _,initial=sample(ROOT/'samples'/(case+'.bin'))
     im=initial[:,7];ix=initial[:,1:4];ic=np.average(ix,weights=im,axis=0)
     io=np.argsort(np.linalg.norm(ix-ic,axis=1));cohort=np.empty(N,dtype=np.int8)
     cohort[io]=np.minimum((np.cumsum(im[io])/im.sum()*10).astype(int),9)
     cohort_mass=np.bincount(cohort,weights=im,minlength=10)
-    shells=[];profiles=[];sampling=[];sampling_checks=[];cohorts=[];sources=[]
+    weight_edges=np.linspace(-30,1,156)
+    if np.any((np.log10(im)<weight_edges[0])|(np.log10(im)>weight_edges[-1])):
+        raise ValueError('Weight histogram range does not cover all particles')
+    atomic(dest/'weights.json',{'log10_mass_edges':weight_edges.tolist(),
+       'particle_count':np.histogram(np.log10(im),weight_edges)[0].tolist(),
+       'rest_mass_per_bin':np.histogram(np.log10(im),weight_edges,weights=im)[0].tolist(),
+       'mass_min':float(im.min()),'mass_max':float(im.max()),
+       'global_effective_count':float(im.sum()**2/np.sum(im**2)),
+       'definition':'Initial fixed weights; every saved state is verified by original ID'})
+    shells=[];profiles=[];sampling=[];sampling_checks=[];cohorts=[];mixing=[];sources=[]
     for path in sorted((out/'pvtk').glob('*.part.vtk')):
         t,cycle,n,d=R.read_pvtk(str(path));tags=d['ptag'].astype(np.int64)
         if until is not None and t>until+.25:continue
@@ -127,11 +169,16 @@ def analyze(case,until=None):
         cohorts.append(dict(time=t,**{f'cohort{i+1}':float(v) for i,v in enumerate(means)}))
         if slot in (0,50,100,150):
             ss,check=sampling_state(pos,m);sampling.extend([dict(time=t,**v) for v in ss]);sampling_checks.append(dict(time=t,**check))
+            order=np.argsort(r);current=np.empty(N,dtype=np.int8)
+            current[order]=np.minimum((np.cumsum(m[order])/m.sum()*10).astype(int),9)
+            transfer=np.bincount(cc*10+current,weights=m,minlength=100).reshape(10,10)/mass_now[:,None]
+            mixing.extend({'time':t,'initial_cohort':a+1,'current_mass_decile':b+1,'mass_fraction':float(transfer[a,b])}
+                          for a in range(10) for b in range(10))
         sources.append({'path':str(path.relative_to(ROOT)),'bytes':path.stat().st_size,'time':t,'cycle':cycle})
     if not shells or shells[0]['time']!=0:raise ValueError('Initial state missing')
     times=np.array([r['time'] for r in shells]);nominal=np.array([r['nominal_time'] for r in shells])
     if not np.array_equal(nominal,np.arange(0,nominal[-1]+1,2)):raise ValueError('Missing/duplicate snapshot cadence')
-    write_csv(dest/'shells.csv',shells);write_csv(dest/'cohorts.csv',cohorts);write_csv(dest/'occupancy.csv',sampling)
+    write_csv(dest/'shells.csv',shells);write_csv(dest/'cohorts.csv',cohorts);write_csv(dest/'cohort_mixing.csv',mixing);write_csv(dest/'occupancy.csv',sampling)
     hs=history(next(out.glob('*.user.hst')))
     if until is not None:hs=[r for r in hs if r['time']<=until+.25]
     write_csv(dest/'health.csv',hs)
@@ -161,22 +208,16 @@ def analyze(case,until=None):
             raise ValueError('History/3D initial constraint mismatch')
         checks[str(rad)]={'H_rms':h,'M_rms':mm}
     q=np.array([[s[f'r{i}'] for i in range(10,100,10)] for s in shells]);q0=q[0]
-    windows=[]
-    for low,high in ((0,100),(100,200),(200,300)):
-        if high>nominal[-1]:continue
-        use=(nominal>=low)&(nominal<=high);tt=times[use];qq=q[use]
-        duration=tt[-1]-tt[0]
-        mean=np.trapz(qq,tt,axis=0)/duration
-        for f,a,b in zip(range(10,100,10),(qq.max(0)-qq.min(0))/(2*q0),(mean-q0)/q0):
-            windows.append({'start':low,'end':high,'quantile':f,'half_range_fraction':float(a),'mean_shift_fraction':float(b)})
-    write_csv(dest/'windows.csv',windows)
+    windows=window_measurements(times,q,nominal[-1])
+    write_csv(dest/'windows.csv',windows,('start','end','quantile','half_range_fraction','mean_shift_fraction'))
     atomic(dest/'summary.json',{'case':case,'endpoint_M':float(times[-1]),'initial_error':error_checks[0],
            'field_checks':error_checks,'sampling_checks':sampling_checks,'initial_constraint_crosscheck':checks,
            'initial_sample_sha256':sha(ROOT/'samples'/(case+'.bin')),'sources':sources,
            'max_outside_finest_mass_fraction':max(s['outside_finest_mass_fraction'] for s in shells),
            'definitions':{'radii':'COM coordinate radius weighted by rest mass','density':'rest mass per coordinate shell volume',
                           'momentum_stress':'coordinate covariant-component norms','constraints':'coordinate-volume RMS within fixed origin spheres',
-                          'angular_scatter':'within finite radial bins; includes the radial variation inside a bin'}})
+                          'angular_scatter':'RMS residual after subtracting the mean at each exact Cartesian-cell radius',
+                          'windows':'exact common bounds with linear interpolation between saved states; actual-time trapezoidal means'}})
     print('REDUCED',case,len(shells),flush=True)
 
 def main():
