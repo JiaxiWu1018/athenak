@@ -58,7 +58,7 @@ def main():
     for case,rad,method,seed in CASES:
         base=data/case
         if not (base/'summary.json').exists():raise ValueError('Missing validated case '+case)
-        d={name:read(base/(name+'.csv')) for name in ('shells','cohorts','cohort_mixing','health','occupancy','field_errors','windows','global_constraints')}
+        d={name:read(base/(name+'.csv')) for name in ('shells','cohorts','cohort_mixing','health','occupancy','field_errors','initial_mass_errors','windows','global_constraints')}
         d['weights']=json.loads((base/'weights.json').read_text())
         d['profiles']=dict(np.load(base/'profiles.npz'));d['summary']=json.loads((base/'summary.json').read_text())
         if d['shells']['nominal_time'][-1]!=expected_endpoint:raise ValueError('Unequal/incomplete common endpoint: '+case)
@@ -95,6 +95,18 @@ def main():
             ax[row,col].set_xlim(0,10)
     ax[0,0].legend(fontsize=8);fig.suptitle('Initial error relative to each chosen radial measure; shading spans three realizations')
     save(fig,out,'f1_initial_errors')
+    fig,ax=plt.subplots(2,2,figsize=(11,7),layout='constrained')
+    for row,rad in enumerate(('legacy','proper')):
+        for col,baseline in enumerate(('target','equilibrium')):
+            for method in METHODS:
+                ds=[states[(rad,method,s)]['initial_mass_errors'] for s in (1,2,3)]
+                band(ax[row,col],ds[0]['r'],[100*d['CIC_error_'+baseline] for d in ds],method)
+                point=np.mean([100*d['point_error_'+baseline] for d in ds],axis=0)
+                ax[row,col].plot(ds[0]['r'],point,':',lw=.65,color=COLORS[method])
+            ax[row,col].set_title(rad+': '+('chosen radial measure' if baseline=='target' else 'proper-rest-mass equilibrium'))
+            ax[row,col].set_xlabel('Origin coordinate radius / M');ax[row,col].set_ylabel('Cumulative rest-mass error (%)');ax[row,col].set_xlim(0,10)
+    ax[0,0].legend(fontsize=8);fig.suptitle('Initial cumulative mass: thick CIC-projected comparison, thin dotted particle-centre companion')
+    save(fig,out,'f1_initial_mass_projection')
     fig,ax=plt.subplots(2,3,figsize=(13,7),layout='constrained')
     for row,rad in enumerate(('legacy','proper')):
         for method in METHODS:
@@ -291,7 +303,7 @@ def main():
             '', 'All runs share the same analytic metric, gauge, pusher, CIC deposition and removal settings. No constraint re-solve, frozen arm, larger domain, reweighting, or imposed perturbation was used. Core constraint norms use coordinate volume; native global norms retain their original proper-volume convention.',
             '', 'The ±128M boundary is within causal reach during this interval and was not varied. Consequently these results cannot establish physical instability, numerical convergence, or long-term Plummer stability. A preferred sampler requires improvements that persist after motion and are consistent across seeds; opposing diagnostics remain a tradeoff.',
             '', 'Figures:']
-    for name in ('f1_initial_errors','f1_radial_and_angular_errors','f2_occupancy_profiles','f2_effective_count_profiles','f2_empty_cells_and_weights','f3_shell_histories','f3_equilibrium_departures','f3_mass_fraction_heatmaps','f3_initial_cohorts','f3_cohort_mixing','f4_constraints_lapse_com','f4_native_global_constraints','f5_amplitude_ratios','f5_detrended_amplitude_ratios','f5_mean_shell_shifts','f5_drift_ratios'):
+    for name in ('f1_initial_errors','f1_initial_mass_projection','f1_radial_and_angular_errors','f2_occupancy_profiles','f2_effective_count_profiles','f2_empty_cells_and_weights','f3_shell_histories','f3_equilibrium_departures','f3_mass_fraction_heatmaps','f3_initial_cohorts','f3_cohort_mixing','f4_constraints_lapse_com','f4_native_global_constraints','f5_amplitude_ratios','f5_detrended_amplitude_ratios','f5_mean_shell_shifts','f5_drift_ratios'):
         lines.append(f'- [{name} PNG](../plots/{out.name}/{name}.png) / [PDF](../plots/{out.name}/{name}.pdf)')
     lines+=['','Exact source, submodule, toolchain, inputs, initialization samples, executable hashes, launch commands, checkpoints and raw manifests are retained in the campaign. All raw data remain on AMD under `/work1/eliasmost/jiaxiwu/st_reconstruction_s05_20261014`; no deletion or Mac mirror was performed. See the storage receipt for exact retained sizes and allocated job accounting.']
     report=ROOT/'reports'/('REPORT_interim100.md' if args.interim else 'REPORT_session5.md');atomic(report,'\n'.join(lines)+'\n')

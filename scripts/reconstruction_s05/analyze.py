@@ -160,6 +160,21 @@ def analyze(case,until=None,run_root=None,dest_root=None):
        'mass_min':float(im.min()),'mass_max':float(im.max()),
        'global_effective_count':float(im.sum()**2/np.sum(im**2)),
        'definition':'Initial fixed weights; every saved state is verified by original ID'})
+    # Apply the same CIC operator to initial rest masses as to their continuum
+    # expectation; keep particle-centre CDF errors as a separate measurement.
+    grid_r=np.linalg.norm(coordinates(),axis=1)
+    deposited_mass=cloud(ix,im)
+    target=dict(np.load(ROOT/'reference'/(radial+'.npz')))
+    equilibrium=dict(np.load(ROOT/'reference/proper.npz'))
+    point_cdf=np.cumsum(np.histogram(np.linalg.norm(ix,axis=1),EDGES,weights=im)[0])/im.sum()
+    cic_cdf=np.cumsum(np.histogram(grid_r,EDGES,weights=deposited_mass)[0])/im.sum()
+    target_cic=np.cumsum(np.histogram(grid_r,EDGES,weights=target['mass'])[0])/im.sum()
+    eq_cic=np.cumsum(np.histogram(grid_r,EDGES,weights=equilibrium['mass'])[0])/im.sum()
+    target_point=np.interp(EDGES[1:],p['riso_over_m'],p[radial])
+    eq_point=np.interp(EDGES[1:],p['riso_over_m'],p['proper'])
+    write_csv(dest/'initial_mass_errors.csv',[{'r':float(r),'point_error_target':float(a-b),
+              'point_error_equilibrium':float(a-c),'CIC_error_target':float(d-e),'CIC_error_equilibrium':float(d-f)}
+              for r,a,b,c,d,e,f in zip(EDGES[1:],point_cdf,target_point,eq_point,cic_cdf,target_cic,eq_cic)])
     shells=[];profiles=[];sampling=[];sampling_checks=[];cohorts=[];mixing=[];sources=[]
     for path in sorted((out/'pvtk').glob('*.part.vtk')):
         t,cycle,n,d=R.read_pvtk(str(path));tags=d['ptag'].astype(np.int64)
