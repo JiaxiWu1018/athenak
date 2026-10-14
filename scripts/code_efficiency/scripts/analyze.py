@@ -44,7 +44,7 @@ devices=[r for r in load('device') if r['valid']];device_byname={r['case']['name
 allthrough=load('throughput');through=[r for r in allthrough if not r.get('superseded_reason')];valid=[r for r in through if r['valid']];profiles=[r for r in load('profile') if r['valid']];allcases=json.loads((ROOT/'matrix.json').read_text());byname={r['case']['name']:r for r in valid}
 rows=[]
 for r in allthrough:
-    c=r['case'];t=r['timings'][0] if r['timings'] else {};row={**c,'valid':r['valid'],'job_id':r['job_id'],'endpoint':r['endpoint'],'actual_endpoint':t.get('final_time'),'target_reached':r.get('target_reached',True),'elapsed_seconds':t.get('elapsed_max'),'cycles':t.get('cycles'),'particle_updates_per_second':t.get('particles_per_second'),'cell_cycles_per_second':t.get('cells_per_second'),'seconds_per_M':t.get('seconds_per_M'),'M_per_second':1/t['seconds_per_M'] if t.get('seconds_per_M',0)>0 else None,'step_ms':1000*t['elapsed_max']/t['cycles'] if t.get('cycles',0)>0 else None,'cell_rate_kind':'mesh-normalized' if c['frozen'] else 'physical-cell evolution','boris_fallbacks':sum(t.get('boris_fallbacks',0) for t in r['timings']),'boris_rejections':sum(t.get('boris_rejections',0) for t in r['timings'])}
+    c=r['case'];t=r['timings'][0] if r['timings'] else {};row={**c,'valid':r['valid'],'superseded_reason':r.get('superseded_reason',''),'device_timing_compiled':t.get('device_timing_compiled'),'job_id':r['job_id'],'endpoint':r['endpoint'],'actual_endpoint':t.get('final_time'),'target_reached':r.get('target_reached',True),'elapsed_seconds':t.get('elapsed_max'),'cycles':t.get('cycles'),'particle_updates_per_second':t.get('particles_per_second'),'cell_cycles_per_second':t.get('cells_per_second'),'seconds_per_M':t.get('seconds_per_M'),'M_per_second':1/t['seconds_per_M'] if t.get('seconds_per_M',0)>0 else None,'step_ms':1000*t['elapsed_max']/t['cycles'] if t.get('cycles',0)>0 else None,'cell_rate_kind':'mesh-normalized' if c['frozen'] else 'physical-cell evolution','boris_fallbacks':sum(t.get('boris_fallbacks',0) for t in r['timings']),'boris_rejections':sum(t.get('boris_rejections',0) for t in r['timings'])}
     rows.append(row)
 if rows:
     with (ROOT/'results/throughput.csv').open('w') as out:
@@ -55,6 +55,18 @@ for r in profiles:
     profile_rows.append(dict(case=r['case']['name'],job_id=r['job_id'],**groups,interpolation_eval_cycle_fraction=float(cycles[0]/cycles[1]) if cycles[1] else None,sampled_particle_steps=int(cycles[4]),interpolation_calls=int(cycles[2]),geodesic_evaluations=int(cycles[3])))
 if profile_rows:
     with (ROOT/'results/profile_phases.csv').open('w') as out:w=csv.DictWriter(out,fieldnames=list(profile_rows[0]));w.writeheader();w.writerows(profile_rows)
+# Nsight's kernel percentages sum GPU execution duration, not elapsed wall time.
+kernel_rows=[]
+for r in profiles:
+ folder=ROOT/r['attempt_path']
+ for table in folder.glob('nsys*cuda_gpu_kern_sum*.csv'):
+  with table.open() as f:
+   reader=csv.DictReader(f)
+   for row in reader:
+    if not row.get('Name'):continue
+    kernel_rows.append(dict(case=r['case']['name'],job_id=r['job_id'],kernel=row['Name'],gpu_time_percent=row.get('Time (%)'),total_nanoseconds=row.get('Total Time (ns)'),instances=row.get('Instances'),source_csv=str(table.relative_to(ROOT))))
+if kernel_rows:
+ with (ROOT/'results/gpu_kernels.csv').open('w') as out:w=csv.DictWriter(out,fieldnames=list(kernel_rows[0]));w.writeheader();w.writerows(kernel_rows)
 # 1: count sweep. Independent y scales keep all four comparisons readable.
 count=[r for r in valid if r['case']['test']==1]
 if count:
@@ -191,6 +203,10 @@ if sampling:
   for p in [1,2,4]:
     base=sampling.get(('uniform',p));point=sampling.get(('point',p))
     if base and point:findings.append(f'On {p} GPU(s), the same-site sampling case costs {spm(point)/spm(base):.2f}x the uniform case at the same particle count and initial source.')
+for name in sorted(set(x['case'] for x in kernel_rows)):
+  ranked=[x for x in kernel_rows if x['case']==name and x['gpu_time_percent']]
+  if ranked:
+    top=max(ranked,key=lambda x:float(x['gpu_time_percent']));findings.append(f'Nsight GPU kernel evidence for {name}: the top row contributes {float(top["gpu_time_percent"]):.1f}% of summed traced GPU kernel duration; exact kernel names and NVTX phase labels are in results/gpu_kernels.csv. GPU duration excludes host sorting and MPI waiting.')
 if not findings:findings=['The campaign is active; completed cases are tabulated below. Superseded build-mode attempts are preserved and excluded from promoted measurements. Bottleneck conclusions will be added when the corresponding comparisons finish.']
 report=f'# Paper Session 02 — code efficiency\n\nUpdated {NOW}. **{len(valid)}/60 throughput cases complete**, {len(profiles)} diagnostic profiles complete; {len(through)-len(valid)} failed or incomplete cases.\n\n'+ '\n\n'.join(findings)+'\n\n'
 report+='All throughput measurements are single passes targeting 5M, with a 0.5M warm-up excluded. A solver wall-clock guard finishes cleanly before the Slurm limit; shorter runs are labeled by their actual endpoint and need at least ten measured cycles to supply a rate. Reported particle rates count complete cycle updates; physical-cell rates exclude ghosts. Frozen cell rates are mesh-size normalizations and represent no spacetime evolution. Wall seconds/M uses the measured physical-time interval.\n\n'
@@ -200,9 +216,9 @@ report+='## Exact performance table\n\n| Case | GPUs | N | Particle updates/s | 
 for r in valid:
  c=r['case'];t=r['timings'][0];report+=f'| {c["name"]} | {c["ranks"]} | {c["n"]} | {t["particles_per_second"]:.6g} | {t["cells_per_second"]:.6g} | {spm(r):.6g} | {step(r):.6g} | {t['final_time']:.6g} |\n'
 report+='\n## Interpretation and limits\n\nThese are numerical workload measurements, not ST stability or convergence results. Single passes have no replicate-based confidence intervals. Profiling fences, sampled device clocks, and tracing affect diagnostic timings; throughput runs disable them. The interpolation ratio concerns geodesic-evaluation cycles in the instrumented pusher, not a directly separable production kernel. Mesh-only evolves with the initial source held fixed. Weighted replicas keep initial deposited stress-energy fixed within accumulation roundoff, while exact trajectories and accumulation order can diverge during evolution.\n\n'
-report+=f'Initial source-moment matching: {("PASS" if source_ok else "FAIL/INCOMPLETE") if source_candidates else "not yet measured"}; maximum scaled difference {source_max:.3g}. Cell-by-cell source checks use the common six-direction template; maximum relative error {max(source_cell_errors) if source_cell_errors else 'not yet measured'}. Every promoted case passed initial/final count, ID-checksum, finite-state, ownership, zero-destruction and frozen-geometry checks. Boris fallback/rejection counts are included in the [CSV](../results/throughput.csv).\n\n'
+report+=f'Initial source-moment matching: {("PASS" if source_ok else "FAIL/INCOMPLETE") if source_candidates else "not yet measured"}; maximum scaled difference {source_max:.3g}. Cell-by-cell source checks use the common six-direction template; maximum relative error {max(source_cell_errors) if source_cell_errors else 'not yet measured'}. Every promoted case passed its compiled-mode check and initial/final count, ID-checksum, finite-state, ownership, zero-destruction and frozen-geometry checks. Boris fallback/rejection counts are included in the [CSV](../results/throughput.csv).\n\n'
 if checks:report+='## Failed or incomplete cases\n\n'+'\n'.join('- '+x for x in checks)+'\n\n'
-report+='[Compact summary](../results/SUMMARY.json), [throughput CSV](../results/throughput.csv), [profile phase CSV](../results/profile_phases.csv). Exact inputs, executable hashes, source state, launches, scheduler jobs and sampled resource observations are retained with each receipt under `results/`.\n'
+report+='[Compact summary](../results/SUMMARY.json), [throughput CSV](../results/throughput.csv), [profile phase CSV](../results/profile_phases.csv), [traced GPU kernels](../results/gpu_kernels.csv). Exact inputs, executable hashes, source state, launches, scheduler jobs and sampled resource observations are retained with each receipt under `results/`.\n'
 (ROOT/'reports/REPORT_code_efficiency.md').write_text(report)
 agent=f'''# Implementation and provenance report
 
@@ -218,7 +234,10 @@ Superseded compile-mode attempts are excluded from performance results and prese
 '''
 (ROOT/'reports/REPORT_AGENT.md').write_text(agent)
 with PdfPages(ROOT/'reports/REPORT_code_efficiency.pending.pdf') as pdf:
- fig=plt.figure(figsize=(8.3,11.7));fig.text(.08,.94,'NRPIC code efficiency — Paper Session 02',fontsize=16,va='top',usetex=False);text=f'{len(valid)}/60 throughput cases complete; {len(profiles)} profiles.\nUpdated {NOW}\n\n'+'\n\n'.join(findings)+'\n\nSingle-pass evolution timings exclude initialization and a 0.5M warm-up. Diagnostic profiling timings are measured separately; phase profiles use the release binary, and device-clock samples use a separate instrumented binary. See the Markdown report and CSV tables for exact values, definitions and provenance.';fig.text(.08,.86,'\n'.join(textwrap.fill(line,88) if line else '' for line in text.split('\n')),fontsize=10,va='top',usetex=False);pdf.savefig(fig);plt.close(fig)
+ text=f'{len(valid)}/60 throughput cases complete; {len(profiles)} profiles.\nUpdated {NOW}\n\n'+'\n\n'.join(findings)+'\n\nSingle-pass evolution timings exclude initialization and a 0.5M warm-up. Diagnostic timings are measured separately. Phase profiles use the release binary; device-clock samples use a separate instrumented binary. Exact values, kernel names, definitions and provenance are in the Markdown report and CSV tables.'
+ lines='\n'.join(textwrap.fill(line,88) if line else '' for line in text.split('\n')).splitlines()
+ for page,offset in enumerate(range(0,len(lines),48)):
+  fig=plt.figure(figsize=(8.3,11.7));fig.text(.08,.94,'NRPIC code efficiency — Paper Session 02'+(' (continued)' if page else ''),fontsize=14,va='top',usetex=False);fig.text(.08,.88,'\n'.join(lines[offset:offset+48]),fontsize=10,va='top',linespacing=1.4,usetex=False);pdf.savefig(fig);plt.close(fig)
  for name,caption in FILES:
   fig=plt.figure(figsize=(8.3,11.7));ax=fig.add_axes([.06,.32,.88,.6]);ax.imshow(plt.imread(ROOT/'figures'/f'{name}.png'));ax.axis('off');fig.text(.08,.28,'\n'.join(textwrap.wrap(caption,100)),fontsize=9,va='top',usetex=False);pdf.savefig(fig,dpi=220);plt.close(fig)
 os.replace(ROOT/'reports/REPORT_code_efficiency.pending.pdf',ROOT/'reports/REPORT_code_efficiency.pdf')

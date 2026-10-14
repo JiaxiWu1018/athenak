@@ -57,14 +57,15 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
     finals=[json.loads(p.read_text()) for p in sorted(folder.glob('final.rank*.json'))]
     initials=[json.loads(p.read_text()) for p in sorted(folder.glob('initial.rank*.json'))]
     target_reached=bool(timings and all(abs(x['final_time']-target)<1e-8 for x in timings))
-    valid=process.returncode==0 and len(timings)==c['ranks'] and len(finals)==c['ranks'] and all(x['valid'] for x in finals) and all(x['final_time']<=target+1e-8 and x['cycles']>=10 and x.get('device_timing_compiled')==(kind=='device') for x in timings)
-    rec=dict(case=c,kind=kind,job_id=job,valid=valid,exit_code=process.returncode,wall_seconds=time.time()-start,endpoint=target,timings=timings,initial=initials,final=finals,target_reached=target_reached,stop_reason='time_or_cycle_limit' if target_reached else 'wall_limit_or_incomplete',trace_requested=trace,end_utc=command(['date','-u','+%FT%TZ']).strip())
+    trace_files=list(folder.glob('timeline*.nsys-rep'))
+    valid=(not trace or bool(trace_files)) and process.returncode==0 and len(timings)==c['ranks'] and len(finals)==c['ranks'] and all(x['valid'] for x in finals) and all(x['final_time']<=target+1e-8 and x['cycles']>=10 and x.get('device_timing_compiled')==(kind=='device') for x in timings)
+    rec=dict(case=c,kind=kind,job_id=job,valid=valid,exit_code=process.returncode,wall_seconds=time.time()-start,endpoint=target,timings=timings,initial=initials,final=finals,target_reached=target_reached,stop_reason='time_or_cycle_limit' if target_reached else 'wall_limit_or_incomplete',trace_requested=trace,trace_captured=bool(trace_files),end_utc=command(['date','-u','+%FT%TZ']).strip())
     rec['attempt_path']=str(folder.relative_to(ROOT))
     (folder/'receipt.json').write_text(json.dumps(rec,indent=2)+'\n')
     if folder!=base:(base/'receipt.json').write_text(json.dumps(rec,indent=2)+'\n')
-    if trace and list(folder.glob('timeline.nsys-rep')):
+    if trace and trace_files:
         with (folder/'nsys_stats.log').open('w') as out:
-            subprocess.run(['/usr/local/cuda-12.9/bin/nsys','stats','--report','cuda_gpu_kern_sum,cuda_gpu_mem_time_sum,mpi_event_sum','--format','csv','--output',str(folder/'nsys'),str(folder/'timeline.nsys-rep')],stdout=out,stderr=subprocess.STDOUT,check=False)
+            subprocess.run(['/usr/local/cuda-12.9/bin/nsys','stats','--report','cuda_gpu_kern_sum:nvtx-name,cuda_gpu_mem_time_sum,mpi_event_sum','--format','csv','--output',str(folder/'nsys'),str(trace_files[0])],stdout=out,stderr=subprocess.STDOUT,check=False)
     subprocess.run(['python3',str(ROOT/'scripts/advance.py')],check=False)
     print(c['name'],kind,'PASS' if valid else 'FAIL',f'{rec["wall_seconds"]:.2f}s',flush=True)
     return rec
