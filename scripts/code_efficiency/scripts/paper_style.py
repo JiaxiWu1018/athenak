@@ -47,4 +47,3 @@ def panel_label(ax, label: str, *, x: float = 0.02, y: float = 0.98,
     text = ax.text2D if hasattr(ax, "text2D") else ax.text
     text(x, y, label, transform=ax.transAxes, ha="left", va="top",
          color=color, fontsize=10.0, fontweight="bold")
-

@@ -17,6 +17,7 @@ report_lock=(ROOT/'results/.report.lock').open('a')
 fcntl.flock(report_lock,fcntl.LOCK_EX)
 COLORS={'st':'#0072B2','flat':'#D55E00','mesh':'#595959','push':'#0072B2','energy':'#56B4E9','migration':'#CC79A7','records':'#E69F00','sort':'#D55E00','transfer':'#009E73','atomic':'#F0E442','other':'#999999'}
 PHASE_LABELS={'mesh':'Spacetime','push':'Particle push','energy':'Particle energy','migration':'Communication / ownership','records':'Deposition records','sort':'Deposition host sort','transfer':'Deposition host/device copies','atomic':'Deposition atomic kernel','other':'Other'}
+PHASE_SHORT={'mesh':'Spacetime','push':'Push','energy':'Energy','migration':'Comm./ownership','records':'Records','sort':'Host sort','transfer':'Copies','atomic':'Atomic deposit','other':'Other'}
 FILES=[]
 NOW=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
 def load(kind):
@@ -24,11 +25,11 @@ def load(kind):
 def elapsed(r):return r['timings'][0]['elapsed_max']
 def spm(r):return r['timings'][0]['seconds_per_M']
 def step(r):return 1000*elapsed(r)/r['timings'][0]['cycles']
-def save(fig,name,caption):
+def save(fig,name,caption,bottom=.035):
     if len(valid)<60 or len(profiles)<27 or len(devices)<6:
         fig.text(.99,.012,f'In progress: throughput {len(valid)}/60; phase profiles {len(profiles)}/27; device diagnostics {len(devices)}/6',ha='right',fontsize=7,color='.35',usetex=False)
         caption='Partial campaign; only completed measurements are shown. '+caption
-    fig.tight_layout(pad=1.3,rect=(0,.035,1,1))
+    fig.tight_layout(pad=1.3,rect=(0,bottom,1,1))
     for ext in ['pdf','png']:fig.savefig(ROOT/'figures'/f'{name}.{ext}',dpi=550)
     FILES.append((name,caption));plt.close(fig)
 def phase_groups(r):
@@ -122,19 +123,21 @@ if ranksets:
 dyn=[r for r in valid if r['case']['name'].startswith('dynamic_ppc')]
 pdyn=[r for r in profiles if r['case']['name'].startswith('dynamic_ppc')]
 if dyn:
-    fig,axes=plt.subplots(1,2,figsize=(7.1,3.1))
+    fig,axes=plt.subplots(1,2,figsize=(7.1,3.6))
     d=sorted(dyn,key=lambda r:r['case']['ppc']);axes[0].plot([r['case']['ppc'] for r in d],[step(r) for r in d],'-o',color=COLORS['st'],label='Live spacetime')
     baseline=byname.get('dynamic_mesh_only');frozen=byname.get('dynamic_matched_frozen_ppc24')
     if baseline:axes[0].axhline(step(baseline),color='.4',ls=':',label='Mesh-only control')
     if frozen:axes[0].scatter([24],[step(frozen)],marker='s',facecolors='none',edgecolors=COLORS['sort'],label='Matched frozen')
     axes[0].set_xscale('log',base=2);axes[0].set_xticks([6,24,96,384],[6,24,96,384]);axes[0].set_xlabel('Particles / physical cell');axes[0].set_ylabel('Wall ms / full timestep');axes[0].legend(fontsize=7);axes[0].grid(alpha=.18)
     p=sorted(pdyn,key=lambda r:r['case']['ppc']);bottom=np.zeros(len(p))
-    for key in ['mesh','push','energy','migration','records','sort','transfer','atomic','other']:
-      y=np.array([phase_groups(r)[key] for r in p]);axes[1].bar(range(len(p)),y,bottom=bottom,color=COLORS[key],label=PHASE_LABELS[key]);bottom+=y
-    axes[1].set_xticks(range(len(p)),[r['case']['ppc'] for r in p]);axes[1].set_xlabel('Particles / physical cell');axes[1].set_ylabel('Profiled ms / full timestep');axes[1].legend(fontsize=6,ncol=1,loc='upper left',bbox_to_anchor=(1.01,1));
+    for key in (['mesh','push','energy','migration','records','sort','transfer','atomic','other'] if p else []):
+      y=np.array([phase_groups(r)[key] for r in p]);axes[1].bar(range(len(p)),y,bottom=bottom,color=COLORS[key],label=PHASE_SHORT[key]);bottom+=y
+    axes[1].set_xticks(range(len(p)),[r['case']['ppc'] for r in p]);axes[1].set_xlabel('Particles / physical cell');axes[1].set_ylabel('Profiled ms / full timestep');
+    if p:
+      handles,labels=axes[1].get_legend_handles_labels();fig.legend(handles,labels,loc='lower center',bbox_to_anchor=(.5,.04),ncol=3,fontsize=7,title='Profiled phases',title_fontsize=7)
     if not p:axes[1].text(.5,.5,'Awaiting phase profiles',ha='center',va='center',transform=axes[1].transAxes);axes[1].set_yticks([])
     axes[1].grid(axis='y',alpha=.18)
-    save(fig,'04_dynamic_particle_mesh_cost','ST yc=0.819, global 64^3 grid in +/-12M, eight 32^3 blocks, one GPU, dt=0.05M. Throughput and profiled bars come from separate runs; phase fences affect profiled timings; device-clock instrumentation runs in separate diagnostic cases. Source replicas preserve initial stress-energy; mesh-only holds that initial source fixed.')
+    save(fig,'04_dynamic_particle_mesh_cost','ST yc=0.819, global 64^3 grid in +/-12M, eight 32^3 blocks, one GPU, dt=0.05M. Throughput and profiled bars come from separate runs; phase fences affect profiled timings; device-clock instrumentation runs in separate diagnostic cases. Source replicas preserve initial stress-energy; mesh-only holds that initial source fixed.',bottom=.23)
 # 5: sampling costs and initial rank imbalance.
 sampling={('uniform',1):byname['dynamic_ppc24']} if 'dynamic_ppc24' in byname else {}
 for r in valid:
@@ -163,14 +166,14 @@ if profiles:
       if q:chosen.append(q)
     if not chosen:chosen=profiles[:2]
     fig,axes=plt.subplots(1,2,figsize=(7.1,3.2));r=chosen[-1];groups=phase_groups(r);order=sorted(groups,key=groups.get);total=sum(groups.values())
-    axes[0].barh([PHASE_LABELS[k] for k in order],[100*groups[k]/total for k in order],color=[COLORS[k] for k in order]);axes[0].set_xlabel('Profiled timestep cost (%)',usetex=False);axes[0].grid(axis='x',alpha=.18);axes[0].text(.97,.04,r['case']['name'],ha='right',transform=axes[0].transAxes,fontsize=8,usetex=False)
+    axes[0].barh([PHASE_LABELS[k] for k in order],[100*groups[k]/total for k in order],color=[COLORS[k] for k in order]);axes[0].set_xlabel('Profiled timestep cost (%)',usetex=False);axes[0].grid(axis='x',alpha=.18);c=r['case'];blocks=(c['grid']//c['block'])**3;case_label=(f'{c["ppc"]} particles/cell\n1 GPU, live ST' if c['name'].startswith('dynamic_ppc') else f'{c["metric"].upper()} frozen, deposition '+('on' if c['feedback'] else 'off')+f'\n{blocks} block'+('s' if blocks!=1 else '')+f'; N = {c["n"]:,}');axes[0].text(.97,.04,case_label,ha='right',transform=axes[0].transAxes,fontsize=7.5,usetex=False)
     labels=[];fractions=[]
     for q in chosen:
       device=device_byname.get(q['case']['name']);dc=np.sum([t['device_cycles'] for t in device['timings']],axis=0) if device else np.zeros(5)
-      if dc[1]:labels.append(str(q['case']['ppc']) if q['case']['name'].startswith('dynamic_ppc') else q['case']['metric'].upper()+' frozen');fractions.append(100*dc[0]/dc[1])
+      if dc[1]:labels.append(str(q['case']['ppc']) if q['case']['name'].startswith('dynamic_ppc') else q['case']['metric'].upper()+' frozen\ndeposition '+('on' if q['case']['feedback'] else 'off'));fractions.append(100*dc[0]/dc[1])
     axes[1].bar(labels,fractions,color=COLORS['push']);
     if not fractions:axes[1].text(.5,.5,'Awaiting device-clock samples',ha='center',va='center',transform=axes[1].transAxes)
-    axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell' if all(q['case']['name'].startswith('dynamic_ppc') for q in chosen) else 'Frozen diagnostic');axes[1].set_ylabel('Interpolation / geodesic evaluation cycles (%)',usetex=False);axes[1].grid(axis='y',alpha=.18)
+    axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell' if all(q['case']['name'].startswith('dynamic_ppc') for q in chosen) else 'Frozen diagnostic');axes[1].set_ylabel('Interpolation share of\ngeodesic cycles (%)',usetex=False);axes[1].grid(axis='y',alpha=.18)
     save(fig,'06_kernel_cost_and_interpolation','Cost ranking uses the slowest rank of a diagnostic run, without double-counting nested deposition timers. Interpolation fractions use sampled device clock cycles inside geodesic evaluations; they are estimates in an instrumented kernel, not percentages of total GPU wall time. Hardware performance counters are administrator-restricted.')
 # Evidence checks and readable reports.
 checks=[]
