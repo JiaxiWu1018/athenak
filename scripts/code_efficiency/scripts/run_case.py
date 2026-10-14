@@ -67,6 +67,8 @@ def run(c,kind='throughput',trace=False,gate=False,target_override=None):
     if trace and trace_files:
         with (folder/'nsys_stats.log').open('w') as out:
             subprocess.run(['/usr/local/cuda-12.9/bin/nsys','stats','--report','cuda_gpu_kern_sum:nvtx-name,cuda_gpu_mem_time_sum,mpi_event_sum','--format','csv','--output',str(folder/'nsys'),str(trace_files[0])],stdout=out,stderr=subprocess.STDOUT,check=False)
+    manifest=[dict(path=p.name,bytes=p.stat().st_size,sha256=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()) for p in sorted(folder.iterdir()) if p.is_file() and p.name!='manifest.json']
+    (folder/'manifest.json').write_text(json.dumps(dict(job_id=job,files=manifest),indent=2)+'\n')
     subprocess.run(['python3',str(ROOT/'scripts/advance.py')],check=False)
     print(c['name'],kind,'PASS' if valid else 'FAIL',f'{rec["wall_seconds"]:.2f}s',flush=True)
     return rec
