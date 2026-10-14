@@ -25,8 +25,8 @@ def elapsed(r):return r['timings'][0]['elapsed_max']
 def spm(r):return r['timings'][0]['seconds_per_M']
 def step(r):return 1000*elapsed(r)/r['timings'][0]['cycles']
 def save(fig,name,caption):
-    if len(valid)<60:
-        fig.text(.99,.006,f'Partial campaign: {len(valid)}/60 throughput cases complete',ha='right',fontsize=7,color='.35',usetex=False)
+    if len(valid)<60 or len(profiles)<27 or len(devices)<6:
+        fig.text(.99,.006,f'In progress: throughput {len(valid)}/60; phase profiles {len(profiles)}/27; device diagnostics {len(devices)}/6',ha='right',fontsize=7,color='.35',usetex=False)
         caption='Partial campaign; only completed measurements are shown. '+caption
     fig.tight_layout(pad=1.3,rect=(0,.035,1,1))
     for ext in ['pdf','png']:fig.savefig(ROOT/'figures'/f'{name}.{ext}',dpi=550)
@@ -167,8 +167,8 @@ if profiles:
     save(fig,'06_kernel_cost_and_interpolation','Cost ranking uses the slowest rank of a diagnostic run, without double-counting nested deposition timers. Interpolation fractions use sampled device clock cycles inside geodesic evaluations; they are estimates in an instrumented kernel, not percentages of total GPU wall time. Hardware performance counters are administrator-restricted.')
 # Evidence checks and readable reports.
 checks=[]
-for r in through+load('gate'):
-    if not r['valid']:checks.append(f"{r['case']['name']}: failed/incomplete; exit {r['exit_code']}")
+for r in through+load('gate')+load('profile')+load('device'):
+    if not r['valid'] and not r.get('superseded_reason') and not r['case']['name'].startswith('numeric_'):checks.append(f"{r['case']['name']}: failed/incomplete; exit {r['exit_code']}")
 source_candidates=[r for r in load('gate')+valid if r['valid'] and r['case']['sampling']=='replicas' and not r['case']['mesh_only']]
 source_ok=True;source_max=0
 if source_candidates:

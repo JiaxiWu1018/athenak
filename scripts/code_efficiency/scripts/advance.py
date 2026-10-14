@@ -7,6 +7,26 @@ p=argparse.ArgumentParser();p.add_argument('--close',action='store_true');args=p
 lock=(ROOT/'provenance/.advance.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX)
 state_path=ROOT/'provenance/recovery.json'
 state=json.loads(state_path.read_text()) if state_path.exists() else dict(gate4='13341',recoveries=[],attempts={})
+# Save terminal scheduler evidence while it is still in the controller cache.
+# This site disables sacct; waiting until campaign closure would lose old states.
+ledger_path=ROOT/'provenance/jobs.jsonl'
+ledger_rows=[json.loads(x) for x in ledger_path.read_text().splitlines()] if ledger_path.exists() else []
+known={r['job_id']:r for r in ledger_rows}
+observed_path=ROOT/'provenance/job_states.json'
+observed=json.loads(observed_path.read_text()) if observed_path.exists() else {}
+interrupt_path=ROOT/'provenance/interruptions.json'
+interruptions=json.loads(interrupt_path.read_text()) if interrupt_path.exists() else []
+interrupted_ids={r['job_id'] for r in interruptions}
+bulk=subprocess.run(['scontrol','-o','show','job'],text=True,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+for line in bulk.stdout.splitlines():
+ fields=dict(re.findall(r'(\w+)=(\S+)',line));job=fields.get('JobId')
+ if job not in known:continue
+ observed[job]={k:fields.get(k) for k in ['JobState','ExitCode','Reason','StartTime','EndTime','PreemptTime']}
+ observed[job]['observed_unix']=time.time()
+ if fields.get('JobState') in ['PREEMPTED','TIMEOUT','NODE_FAIL'] and job not in interrupted_ids:
+  row=known[job];interruptions.append(dict(job_id=job,kind=row['kind'],case=row['case'],state=fields['JobState'],observed_unix=time.time()));interrupted_ids.add(job)
+observed_path.write_text(json.dumps(observed,indent=2)+'\n')
+interrupt_path.write_text(json.dumps(interruptions,indent=2)+'\n')
 def job_state(job):
     r=subprocess.run(['scontrol','show','job',str(job)],text=True,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
     m=re.search(r'JobState=(\S+)',r.stdout)
