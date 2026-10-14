@@ -78,7 +78,7 @@ if count:
             x=[r['case']['n'] for r in data]
             axes[row,0].plot(x,[r['timings'][0]['particles_per_second']/1e6 for r in data],'-o',color=COLORS[metric],label=metric.upper(),ms=4)
             axes[row,1].plot(x,[spm(r) for r in data],'-o',color=COLORS[metric],label=metric.upper(),ms=4)
-        axes[row,0].set_ylabel('Million particle updates / s');axes[row,1].set_ylabel('Wall seconds / $M$')
+        axes[row,0].set_ylabel('Million particle updates / s');axes[row,1].set_ylabel('Wall seconds / $M$');axes[row,1].set_yscale('log')
         for ax in axes[row]:ax.set_xscale('log');ax.grid(alpha=.18);ax.text(.04,.94,'Deposition '+('on' if feedback else 'off'),transform=ax.transAxes,va='top');ax.legend(loc='best')
     for ax in axes[1]:ax.set_xlabel('Particles, $N$')
     save(fig,'01_particle_count','Frozen periodic +/-4M box, one rank/GPU, one 32^3 block, four ghost zones, dt=0.05M. Main rates use completed evolution after 0.5M; single passes. Flat and ST use the same random draws and local momentum magnitudes.')
@@ -160,10 +160,10 @@ if profiles:
     labels=[];fractions=[]
     for q in chosen:
       device=device_byname.get(q['case']['name']);dc=np.sum([t['device_cycles'] for t in device['timings']],axis=0) if device else np.zeros(5)
-      if dc[1]:labels.append(str(q['case']['ppc']));fractions.append(100*dc[0]/dc[1])
+      if dc[1]:labels.append(str(q['case']['ppc']) if q['case']['name'].startswith('dynamic_ppc') else q['case']['metric'].upper()+' frozen');fractions.append(100*dc[0]/dc[1])
     axes[1].bar(labels,fractions,color=COLORS['push']);
     if not fractions:axes[1].text(.5,.5,'Awaiting device-clock samples',ha='center',va='center',transform=axes[1].transAxes)
-    axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell');axes[1].set_ylabel('Interpolation / geodesic evaluation cycles (%)',usetex=False);axes[1].grid(axis='y',alpha=.18)
+    axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell' if all(q['case']['name'].startswith('dynamic_ppc') for q in chosen) else 'Frozen diagnostic');axes[1].set_ylabel('Interpolation / geodesic evaluation cycles (%)',usetex=False);axes[1].grid(axis='y',alpha=.18)
     save(fig,'06_kernel_cost_and_interpolation','Cost ranking uses the slowest rank of a diagnostic run, without double-counting nested deposition timers. Interpolation fractions use sampled device clock cycles inside geodesic evaluations; they are estimates in an instrumented kernel, not percentages of total GPU wall time. Hardware performance counters are administrator-restricted.')
 # Evidence checks and readable reports.
 checks=[]
@@ -179,8 +179,10 @@ if source_candidates:
         peak=max(float(np.max(np.abs(ref))),1e-30);scale=np.where(np.abs(ref)>peak*1e-12,np.abs(ref),peak);difference=float(np.max(np.abs(v-ref)/scale));source_max=max(source_max,difference);source_ok &= difference<1e-8
       else:source_ok=False
 source_cell_errors=[x.get('source_reference_max_relative_error') for r in source_candidates for x in r['initial'] if 'source_reference_max_relative_error' in x]
-superseded_count=sum(bool(json.loads(p.read_text()).get('superseded_reason')) for p in (ROOT/'results/throughput').glob('*/previous_receipt_*.json'))+sum(bool(r.get('superseded_reason')) for r in allthrough)
-summary=dict(device_diagnostics=len(devices),planned_profiles=27,planned_device_diagnostics=6,superseded_attempts=superseded_count,source_cell_max_relative_error=max(source_cell_errors) if source_cell_errors else None,updated_utc=NOW,planned=60,completed=len(valid),failed=len(through)-len(valid),profiled=len(profiles),source_moments_match=bool(source_ok) if source_candidates else None,source_moments_max_scaled_difference=source_max,figures=[name for name,caption in FILES],failures=checks)
+superseded_records=[json.loads(p.read_text()) for p in (ROOT/'results/throughput').glob('*/previous_receipt_*.json')]+allthrough
+superseded_count=len({(r['job_id'],r.get('attempt_path','')) for r in superseded_records if r.get('superseded_reason')})
+interruptions=json.loads((ROOT/'provenance/interruptions.json').read_text()) if (ROOT/'provenance/interruptions.json').exists() else []
+summary=dict(interrupted_attempts=len(interruptions),device_diagnostics=len(devices),planned_profiles=27,planned_device_diagnostics=6,superseded_attempts=superseded_count,source_cell_max_relative_error=max(source_cell_errors) if source_cell_errors else None,updated_utc=NOW,planned=60,completed=len(valid),failed=len(through)-len(valid),profiled=len(profiles),source_moments_match=bool(source_ok) if source_candidates else None,source_moments_max_scaled_difference=source_max,figures=[name for name,caption in FILES],failures=checks)
 numerical=json.loads((ROOT/'provenance/numerical_gate.json').read_text()) if (ROOT/'provenance/numerical_gate.json').exists() else {}
 validation=dict(throughput_coverage=len(valid)==60,profile_coverage=len(profiles)==27,device_coverage=len(devices)==6,numerical_gate=numerical.get('passed',False),source_moments_match=bool(source_ok),compiled_modes=all(t.get('device_timing_compiled')==(r['kind']=='device') for r in valid+profiles+devices for t in r['timings']))
 validation['complete']=all(validation.values())
@@ -214,6 +216,7 @@ for name in sorted(set(x['case'] for x in kernel_rows)):
     top=max(ranked,key=lambda x:float(x['gpu_time_percent']));findings.append(f'Nsight GPU kernel evidence for {name}: the leading kernel is in {top['kernel'].split('/',1)[0][:100]} and contributes {float(top["gpu_time_percent"]):.1f}% of summed traced GPU kernel duration; exact kernel names and NVTX phase labels are in results/gpu_kernels.csv. GPU duration excludes host sorting and MPI waiting.')
 if not findings:findings=['The campaign is active; completed cases are tabulated below. Superseded build-mode attempts are preserved and excluded from promoted measurements. Bottleneck conclusions will be added when the corresponding comparisons finish.']
 report=f'# Paper Session 02 — code efficiency\n\nUpdated {NOW}. **{len(valid)}/60 throughput cases complete**, {len(profiles)} diagnostic profiles complete; {len(through)-len(valid)} failed or incomplete cases.\n\n'+ '\n\n'.join(findings)+'\n\n'
+if interruptions:report+=f'{len(interruptions)} scheduler-interrupted attempt(s) are preserved separately and retried; details are in [the interruption record](../provenance/interruptions.json).\n\n'
 report+='All throughput measurements are single passes targeting 5M, with a 0.5M warm-up excluded. A solver wall-clock guard finishes cleanly before the Slurm limit; shorter runs are labeled by their actual endpoint and need at least ten measured cycles to supply a rate. Reported particle rates count complete cycle updates; physical-cell rates exclude ghosts. Frozen cell rates are mesh-size normalizations and represent no spacetime evolution. Wall seconds/M uses the measured physical-time interval.\n\n'
 report+='## Figures\n\n'
 for name,caption in FILES:report+=f'![{name}](../figures/{name}.png)\n\n{caption} [PDF](../figures/{name}.pdf).\n\n'
