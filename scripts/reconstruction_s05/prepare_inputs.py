@@ -4,6 +4,8 @@ from common import ROOT, AMD, N, CASES, atomic
 
 def make(case,radial,method,seed,n=N,end=300,external=True,user=True):
     text=(ROOT/'inputs/s9_reference.athinput').read_text()
+    text=text[text.index('<job>'):]
+    text='<comment>\nproblem = Reconstruction Session5 sampling comparison\nnote = Fixed N and mesh; live Z4c; radial measure and sampler explicit below.\n\n'+text
     text=text.replace('-16384','-128').replace('16384','128')
     start=text.index('<refined_region1>'); stop=text.index('<time>',start)
     refined=''

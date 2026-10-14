@@ -1,0 +1,85 @@
+"""Default regression, sampler ingestion, initial diagnostics and weighted restart gates."""
+import json
+import os
+import re
+from pathlib import Path
+import numpy as np
+import reduce_run as R
+from common import ROOT, CASES, N, atomic, sample, sha, require_job
+from run_case import launch, checkpoint, newest
+
+def compare(pa,pb,tolerance):
+    da=checkpoint(pa); db=checkpoint(pb)
+    def particles(d):
+        p=np.memmap(d['path'],dtype='<f8',mode='r',offset=d['particle_data_offset'],shape=(10,d['particle_count']))
+        return p[:8,np.argsort(p[9])]
+    aa,bb=particles(da),particles(db);pd=float(np.max(np.abs(aa-bb)))
+    if not np.allclose(aa,bb,atol=tolerance,rtol=tolerance):raise ValueError('Particle restart differs')
+    gd=0.;size=da['data_size_per_mb']*da['nmb']
+    if size!=db['data_size_per_mb']*db['nmb']:raise ValueError('Grid layouts differ')
+    with open(pa,'rb') as fa,open(pb,'rb') as fb:
+        fa.seek(da['ascii_bytes']+252+da['nmb']*20+16);fb.seek(db['ascii_bytes']+252+db['nmb']*20+16)
+        remain=size
+        while remain:
+            take=min(remain,8<<20);a=np.frombuffer(fa.read(take),'<f8');b=np.frombuffer(fb.read(take),'<f8')
+            gd=max(gd,float(np.max(np.abs(a-b))))
+            if not np.allclose(a,b,rtol=tolerance,atol=tolerance):raise ValueError('Grid restart differs')
+            remain-=take
+    return {'particle_max_abs':pd,'grid_max_abs':gd,'rtol':tolerance,'atol':tolerance}
+
+def main():
+    require_job()
+    if not (ROOT/'evidence/BUILD_OK').exists() or not (ROOT/'evidence/SAMPLES_OK').exists():raise ValueError('Build/sample gates absent')
+    from reference import ensure
+    ensure(dict(np.load(ROOT/'samples/model.npz')))
+    root=ROOT/'preflight';root.mkdir(exist_ok=True)
+    deck=ROOT/'inputs/default_gate.athinput'
+    baseline,_=launch(root/'baseline',deck,2,executable='athena.baseline')
+    ordinary,_=launch(root/'default',deck,2)
+    # The complete seeded DP initialization must remain byte-identical.
+    if sha(root/'baseline/initial_particles.bin')!=sha(root/'default/initial_particles.bin'):
+        raise ValueError('Historical initialization changed')
+    ta,ca,na,a=R.read_pvtk(str(sorted((baseline/'pvtk').glob('*vtk'))[-1]))
+    tb,cb,nb,b=R.read_pvtk(str(sorted((ordinary/'pvtk').glob('*vtk'))[-1]))
+    if na!=4096 or nb!=4096:raise ValueError('Default gate count')
+    for key in a:
+        if not np.allclose(a[key],b[key],rtol=1e-7,atol=1e-7):raise ValueError('Default evolution changed '+key)
+    records=[]
+    for case,rad,method,seed in CASES:
+        if seed!=1:continue
+        out,wall=launch(root/case,ROOT/'inputs'/(case+'.athinput'),10.)
+        initial=ROOT/'samples'/(case+'.bin')
+        first=min((out/'rst').glob('*.rst'),key=lambda p:checkpoint(p,initial=initial)['time'])
+        d0=checkpoint(first,0.,initial);end=checkpoint(newest(out),10.,initial)
+        _,native=sample(initial)
+        dump=root/case/'initial_particles.bin'
+        with open(dump,'rb') as f:
+            header=f.readline();accepted=np.fromfile(f,'<f8').reshape(N,9)
+        if not header.startswith(b'STMIGP05') or not np.array_equal(accepted[:,2:8],native[:,1:7]) or not np.array_equal(accepted[:,8],native[:,7]):
+            raise ValueError('Pgen did not ingest exact sample')
+        _,_,_,pv=R.read_pvtk(str(sorted((out/'pvtk').glob('*vtk'))[0]))
+        energy=pv['prtcl_energy']; target=json.loads((ROOT/'evidence/model.json').read_text())['alpha_s']
+        if np.max(np.abs(energy-target))>3e-6:raise ValueError('Initial monoenergy mismatch')
+        hist=np.loadtxt(next(out.glob('*.user.hst')))
+        if not np.all(hist[0,[3,4,9,10]]>0):raise ValueError('Placeholder initial constraints')
+        records.append({'case':case,'wall_seconds':wall,'initial':d0,'final':end})
+    case='proper_cell_s1';initial=ROOT/'samples'/(case+'.bin');deck=ROOT/'inputs'/(case+'.athinput')
+    split=checkpoint(newest(root/case/'out'),10.,initial)
+    continued,_=launch(root/'weighted_restart',deck,12.,restart=split['path'])
+    direct,_=launch(root/'weighted_direct',deck,12.)
+    checkpoint(newest(continued),12.,initial);checkpoint(newest(direct),12.,initial)
+    restart=compare(newest(continued),newest(direct),1e-7)
+    # Toggle only derived initial constraint evaluation; the t=0 primary state is exact.
+    disabled,_=launch(root/'diagnostic_disabled',deck,2.,extra=('time/evaluate_initial_constraints=false',))
+    dfirst=min((direct/'rst').glob('*.rst'),key=lambda p:checkpoint(p)['time'])
+    offirst=min((disabled/'rst').glob('*.rst'),key=lambda p:checkpoint(p)['time'])
+    diagnostic=compare(dfirst,offirst,0.)
+    projected=24*max(r['wall_seconds'] for r in records)*30/3600
+    end=300 if projected<=90 else 200
+    if projected*end/300>90:raise ValueError('Fixed suite exceeds simulation budget')
+    atomic(ROOT/'evidence/PREFLIGHT_OK',{'job':os.environ['SLURM_JOB_ID'],'historical_t0_exact':True,
+           'cases':records,'weighted_restart':restart,'diagnostic_primary_state':diagnostic,
+           'projected_solver_node_hours_300':projected,'endpoint_M':end})
+    print('PREFLIGHT_OK',projected,end,flush=True)
+
+if __name__=='__main__':main()
