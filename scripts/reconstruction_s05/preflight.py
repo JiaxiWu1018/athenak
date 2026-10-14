@@ -79,11 +79,16 @@ def main():
            'frame_bytes_estimate':frame_bytes,'full_state_bytes_estimate':state_bytes,
            'raw_bytes':sum(p.stat().st_size for p in (root/case).rglob('*') if p.is_file())})
     case='proper_cell_s1';initial=ROOT/'samples'/(case+'.bin');deck=ROOT/'inputs'/(case+'.athinput')
-    split=checkpoint(newest(root/case/'out'),10.,initial)
+    # Restart from an INTERIOR checkpoint of the uninterrupted reference. A fresh
+    # 0..10M stop clips its last dt and cannot share the 0..12M timestep sequence.
+    direct,_=launch(root/'weighted_direct',deck,12.,extra=('output8/dt=2.0',))
+    states=[checkpoint(p,initial=initial) for p in sorted((direct/'rst').glob('*.rst'))]
+    split=min((s for s in states if 0<s['time']<11.5),key=lambda s:abs(s['time']-10))
     continued,_=launch(root/'weighted_restart',deck,12.,restart=split['path'])
-    direct,_=launch(root/'weighted_direct',deck,12.)
     checkpoint(newest(continued),12.,initial);checkpoint(newest(direct),12.,initial)
     restart=compare(newest(continued),newest(direct),1e-7)
+    restart.update(restart_time_M=split['time'],restart_cycle=split['cycle'],
+                   method='Interior checkpoint of uninterrupted reference; common adaptive timestep sequence')
     # Toggle only derived initial constraint evaluation; the t=0 primary state is exact.
     disabled,_=launch(root/'diagnostic_disabled',deck,2.,extra=('time/evaluate_initial_constraints=false',))
     dfirst=min((direct/'rst').glob('*.rst'),key=lambda p:checkpoint(p)['time'])
