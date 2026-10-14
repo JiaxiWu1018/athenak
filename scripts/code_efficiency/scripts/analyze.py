@@ -179,7 +179,11 @@ if source_candidates:
         peak=max(float(np.max(np.abs(ref))),1e-30);scale=np.where(np.abs(ref)>peak*1e-12,np.abs(ref),peak);difference=float(np.max(np.abs(v-ref)/scale));source_max=max(source_max,difference);source_ok &= difference<1e-8
       else:source_ok=False
 source_cell_errors=[x.get('source_reference_max_relative_error') for r in source_candidates for x in r['initial'] if 'source_reference_max_relative_error' in x]
-summary=dict(superseded_attempts=len(allthrough)-len(through),source_cell_max_relative_error=max(source_cell_errors) if source_cell_errors else None,updated_utc=NOW,planned=60,completed=len(valid),failed=len(through)-len(valid),profiled=len(profiles),source_moments_match=bool(source_ok) if source_candidates else None,source_moments_max_scaled_difference=source_max,figures=[name for name,caption in FILES],failures=checks)
+summary=dict(device_diagnostics=len(devices),planned_profiles=27,planned_device_diagnostics=6,superseded_attempts=len(allthrough)-len(through),source_cell_max_relative_error=max(source_cell_errors) if source_cell_errors else None,updated_utc=NOW,planned=60,completed=len(valid),failed=len(through)-len(valid),profiled=len(profiles),source_moments_match=bool(source_ok) if source_candidates else None,source_moments_max_scaled_difference=source_max,figures=[name for name,caption in FILES],failures=checks)
+numerical=json.loads((ROOT/'provenance/numerical_gate.json').read_text()) if (ROOT/'provenance/numerical_gate.json').exists() else {}
+validation=dict(throughput_coverage=len(valid)==60,profile_coverage=len(profiles)==27,device_coverage=len(devices)==6,numerical_gate=numerical.get('passed',False),source_moments_match=bool(source_ok),compiled_modes=all(t.get('device_timing_compiled')==(r['kind']=='device') for r in valid+profiles+devices for t in r['timings']))
+validation['complete']=all(validation.values())
+(ROOT/'results/VALIDATION.json').write_text(json.dumps(validation,indent=2)+'\n')
 (ROOT/'results/SUMMARY.json').write_text(json.dumps(summary,indent=2)+'\n')
 findings=[]
 if count:

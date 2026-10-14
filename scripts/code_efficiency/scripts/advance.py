@@ -58,6 +58,9 @@ if args.close:
         state['next_closure_job']=subprocess.check_output(command,text=True).strip().split(';')[0]
     else:
         complete=all(receipt('throughput',c['name']).get('valid') for c in matrix) and not failed
+        complete=complete and sum(receipt('profile',c['name']).get('valid',False) for c in matrix)==27 and sum(receipt('device',c['name']).get('valid',False) for c in matrix)==6
+        numerics=ROOT/'provenance/numerical_gate.json'
+        complete=complete and numerics.exists() and json.loads(numerics.read_text()).get('passed',False)
         (ROOT/'CLOSURE.md').write_text('# Campaign closure\n\n'+('COMPLETE' if complete else 'INCOMPLETE — see unresolved cases in provenance/recovery.json')+'\n\nReports and figures were regenerated from retained receipts. Every promoted case passed liveness/source/freeze gates. Source, inputs, launches, executable hashes, timing tables, diagnostics and storage status remain in this session. No scientific snapshots or restarts were generated.\n')
         state['closed_complete']=complete
 state['updated_unix']=time.time();state_path.write_text(json.dumps(state,indent=2)+'\n')
