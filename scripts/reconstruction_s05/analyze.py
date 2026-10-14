@@ -122,7 +122,8 @@ def analyze(case,until=None):
         slot=round(t/2);skew=t-2*slot
         if not (-.03<=skew<=.25):raise ValueError('Particle cadence error')
         row.update(time=t,cycle=cycle,nominal_time=2*slot);shells.append(row);profiles.append(mh)
-        cc=cohort[tags];means=np.bincount(cc,weights=m*r,minlength=10)/cohort_mass
+        cc=cohort[tags];mass_now=np.bincount(cc,weights=m,minlength=10)
+        means=np.bincount(cc,weights=m*r,minlength=10)/mass_now
         cohorts.append(dict(time=t,**{f'cohort{i+1}':float(v) for i,v in enumerate(means)}))
         if slot in (0,50,100,150):
             ss,check=sampling_state(pos,m);sampling.extend([dict(time=t,**v) for v in ss]);sampling_checks.append(dict(time=t,**check))

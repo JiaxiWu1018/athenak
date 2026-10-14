@@ -137,7 +137,10 @@ def main():
                 band(ax[row,col],tt,ys,method)
                 if col<2:
                     key16=key.replace('r10','r16')
-                    ax[row,col].plot(tt,np.mean([h[key16] for h in hs],axis=0),'--',color=COLORS[method],lw=.7)
+                    ys16=[]
+                    for h in hs:
+                        y=h[key16].copy();y[h['constraint_usable']==0]=np.nan;ys16.append(y)
+                    ax[row,col].plot(tt,np.mean(ys16,axis=0),'--',color=COLORS[method],lw=.7)
                     ax[row,col].set_yscale('log')
             ss=[d['shells'] for d in ds];band(ax[row,3],ss[0]['nominal_time'],[s['com_mag'] for s in ss],method)
         for col,title in enumerate(('Hamiltonian RMS','Momentum-constraint RMS','Fixed-origin core lapse','COM displacement')):
