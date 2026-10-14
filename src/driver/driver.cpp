@@ -516,6 +516,15 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
     }
   }
 
+  // Optional derived-state evaluation: initial output must not contain placeholder H/M.
+  if (pin->GetOrAddBoolean("time", "evaluate_initial_constraints", false)) {
+    if (pz4c == nullptr || ppart == nullptr || !ppart->feedback) {
+      std::cerr << "### FATAL ERROR initial constraints require particles and Z4c" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    (void) pz4c->ADMConstraints_(this, nexp_stages);
+  }
+
   //---- Step 3.  Cycle through output Types and load data / write files.
   if (!res_flag) { // only write outputs at the beginning of the run
     for (auto &out : pout->pout_list) {

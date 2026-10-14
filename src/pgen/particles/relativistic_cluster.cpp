@@ -75,6 +75,8 @@
 #include "z4c/z4c_amr.hpp"
 #include "particles/particles.hpp"
 #include "pgen/pgen.hpp"
+#include "pgen/particles/st_sample_input.hpp"
+#include "pgen/particles/st_sampling_history.hpp"
 
 #if MPI_PARALLEL_ENABLED
 #include <mpi.h>
@@ -1492,6 +1494,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   // The hook is inert on uniform/static meshes. Adaptive Session-02 decks use the
   // standard Z4c chi/radius criteria, following the proven OS particle-AMR pattern.
   user_ref_func = STRefinementCondition;
+  if (user_hist) {user_hist_func = STSamplingHistory;}
   auto &indcs = pmy_mesh_->mb_indcs;
 
   if (pmbp->pz4c == nullptr || pmbp->padm == nullptr) {
@@ -1562,6 +1565,21 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
                                               "stratified");
   int bias_seed = pin->GetOrAddInteger("problem", "cluster_bias_seed", 0);
   std::string t0_dump = pin->GetOrAddString("problem", "cluster_t0_dump", "");
+  std::string sampling = pin->GetOrAddString("problem", "cluster_sampling", "random");
+  std::string radial = pin->GetOrAddString("problem", "cluster_radial_measure", "legacy");
+  std::string velocity = pin->GetOrAddString("problem", "cluster_velocity_sampling", "random");
+  std::string sample_path = pin->GetOrAddString("problem", "cluster_sample_file", "");
+  if ((sampling != "random" && sampling != "stratified" && sampling != "cell") ||
+      (radial != "legacy" && radial != "proper") ||
+      (velocity != "random" && velocity != "stratified") ||
+      (sample_path.empty() && (sampling != "random" || radial != "legacy" ||
+                             velocity != "random")) ||
+      (!sample_path.empty() && (lambda_tan != 0.0 || eps_out != 0.0 ||
+         radial_mode_u != 0.0 || scpd_eps != 0.0 || solve_momentum_constraint ||
+         solve_hamiltonian_constraint))) {
+    std::cerr << "### FATAL ERROR incompatible ST sampling configuration" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
   if (npart_total <= 0 || yc <= 0.0 || yc >= 1.0 || total_mass <= 0.0 ||
       profile_dx <= 0.0) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__
@@ -1855,6 +1873,9 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   Real particle_mass = total_mass*profile.rest_mass_over_m/
                        static_cast<Real>(npart_total);
 
+  STSampleInput sample(sample_path, npart_total, seed, total_mass, yc, profile_dx,
+                       sampling, radial, velocity);
+
   // Pass 1 (skipped entirely for eps_out = 0): decide, for every globally unique tag,
   // whether its radial momentum is to be reflected outward.  The decision is a pure
   // function of the tag, so it is identical on every rank and for every decomposition.
@@ -1898,9 +1919,32 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   BiasStats bias;
   std::vector<double> dump;
   bool want_dump = (!t0_dump.empty() && global_variable::my_rank == 0);
-  if (want_dump) { dump.reserve(static_cast<std::size_t>(npart_total)*8); }
+  if (want_dump) { dump.reserve(static_cast<std::size_t>(npart_total)*(sample.Enabled() ? 9 : 8)); }
   for (int tag = 0; tag < npart_total; ++tag) {
     DrawnParticle d = DrawParticle(&generator, &uniform, profile, total_mass, center);
+    Real sampled_mass = particle_mass;
+    if (sample.Enabled()) {
+      auto row = sample.Read(tag);
+      d.px=row[1]; d.py=row[2]; d.pz=row[3];
+      d.ux=row[4]; d.uy=row[5]; d.uz=row[6]; sampled_mass=row[7];
+      Real rx=d.px-center[0], ry=d.py-center[1], rz=d.pz-center[2];
+      d.riso=std::sqrt(rx*rx+ry*ry+rz*rz);
+      if (!(d.riso > 0.0) || d.riso > surface_radius) {
+        std::cerr << "### FATAL ERROR sample radius outside matter support" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      auto it=std::lower_bound(profile.riso_over_m.begin()+1,
+                               profile.riso_over_m.end(), d.riso/total_mass);
+      std::size_t h=static_cast<std::size_t>(it-profile.riso_over_m.begin());
+      Real f=(d.riso/total_mass-profile.riso_over_m[h-1])/
+               (profile.riso_over_m[h]-profile.riso_over_m[h-1]);
+      d.cdf_index=h;
+      d.cdf_u=profile.cdf[h-1]+f*(profile.cdf[h]-profile.cdf[h-1]);
+      d.ylocal=profile.y[h-1]+f*(profile.y[h]-profile.y[h-1]);
+      d.conf_a=profile.conformal_a[h-1]+f*(profile.conformal_a[h]-profile.conformal_a[h-1]);
+      d.umag=std::sqrt(d.ux*d.ux+d.uy*d.uy+d.uz*d.uz);
+      d.nx=rx/d.riso; d.ny=ry/d.riso; d.nz=rz/d.riso;
+    }
 
     // t=0 bookkeeping of the UNPERTURBED sample
     Real udotn_base = RadialMomentum(d);
@@ -2039,7 +2083,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       speed_after = std::sqrt(phat2/(1.0 + phat2));
     }
     bias.sum_vr += mu*speed_after;
-    Real w = particle_mass/d.conf_a;
+    Real w = sampled_mass/d.conf_a;
     bias.sum_pr += w*udotn;
     bias.p_tot[0] += w*d.ux;
     bias.p_tot[1] += w*d.uy;
@@ -2048,9 +2092,9 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
     Real ly = rz*d.ux - rx*d.uz;
     Real lz = rx*d.uy - ry*d.ux;
     bias.sum_abs_l += std::sqrt(lx*lx + ly*ly + lz*lz);
-    bias.j_tot[0] += particle_mass*lx;
-    bias.j_tot[1] += particle_mass*ly;
-    bias.j_tot[2] += particle_mass*lz;
+    bias.j_tot[0] += sampled_mass*lx;
+    bias.j_tot[1] += sampled_mass*ly;
+    bias.j_tot[2] += sampled_mass*lz;
 
     if (want_dump) {
       dump.push_back(static_cast<double>(tag));
@@ -2061,14 +2105,17 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       dump.push_back(d.ux);
       dump.push_back(d.uy);
       dump.push_back(d.uz);
+      if (sample.Enabled()) {dump.push_back(sampled_mass);}
     }
 
     int m = ppart->FindContainingMeshBlock(d.px, d.py, d.pz);
     if (m >= 0) {
-      stage.Add(d.px, d.py, d.pz, d.ux, d.uy, d.uz, particle_mass,
+      stage.Add(d.px, d.py, d.pz, d.ux, d.uy, d.uz, sampled_mass,
                 pmbp->gids + m, tag);
     }
   }
+
+  sample.Finish(total_mass*profile.rest_mass_over_m);
 
   int npart = static_cast<int>(stage.x.size());
   Kokkos::realloc(ppart->prtcl_rdata, ppart->nrdata, npart);
@@ -2277,8 +2324,9 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       std::exit(EXIT_FAILURE);
     }
     fh.precision(17);
-    fh << "STMIGP01 npart=" << npart_total << " nfield=8"
-       << " fields=tag,reflected,x,y,z,ux,uy,uz"
+    fh << (sample.Enabled() ? "STMIGP05 npart=" : "STMIGP01 npart=")
+       << npart_total << " nfield=" << (sample.Enabled() ? 9 : 8)
+       << " fields=tag,reflected,x,y,z,ux,uy,uz" << (sample.Enabled() ? ",m0" : "")
        << " yc=" << yc << " lambda_tan=" << lambda_tan
        << " eps_out=" << eps_out << " bias_mode=" << bias_mode
        << " radial_mode_u=" << radial_mode_u << " radial_mode_radius=areal"
