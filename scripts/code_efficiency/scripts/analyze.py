@@ -140,7 +140,7 @@ if dyn:
       handles,labels=axes[1].get_legend_handles_labels();fig.legend(handles,labels,loc='lower center',bbox_to_anchor=(.5,.055),ncol=3,fontsize=7,title='Profiled phases',title_fontsize=7)
     if not p:axes[1].text(.5,.5,'Awaiting phase profiles',ha='center',va='center',transform=axes[1].transAxes);axes[1].set_yticks([])
     axes[1].grid(axis='y',alpha=.18)
-    save(fig,'04_dynamic_particle_mesh_cost','ST yc=0.819, global 64^3 grid in +/-12M, eight 32^3 blocks, one GPU, dt=0.05M. Absolute cost (logarithmic scale) and phase percentages use separate throughput/profile runs; phase fences affect profiled timings. Device-clock instrumentation runs in separate diagnostic cases. Source replicas preserve initial stress-energy; mesh-only holds that initial source fixed.',bottom=.23)
+    save(fig,'04_dynamic_particle_mesh_cost','Uniform number sampling, ST yc=0.819, global 64^3 grid in +/-12M, eight 32^3 blocks, one GPU, dt=0.05M. Absolute cost (logarithmic scale) and phase percentages use separate throughput/profile runs; phase fences affect profiled timings. Device-clock instrumentation runs in separate diagnostic cases. Source replicas preserve initial stress-energy; mesh-only holds that initial source fixed.',bottom=.23)
 # 5: sampling costs and initial rank imbalance.
 sampling={('uniform',1):byname['dynamic_ppc24']} if 'dynamic_ppc24' in byname else {}
 for r in valid:
@@ -169,7 +169,7 @@ if profiles:
       if q:chosen.append(q)
     if not chosen:chosen=profiles[:2]
     fig,axes=plt.subplots(1,2,figsize=(7.1,3.2));r=chosen[-1];groups=phase_groups(r);order=sorted(groups,key=groups.get);total=sum(groups.values())
-    axes[0].barh([PHASE_LABELS[k] for k in order],[100*groups[k]/total for k in order],color=[COLORS[k] for k in order]);axes[0].set_xlabel('Profiled timestep cost (%)',usetex=False);axes[0].grid(axis='x',alpha=.18);c=r['case'];blocks=(c['grid']//c['block'])**3;case_label=(f'{c["ppc"]} particles/cell\n1 GPU, live ST' if c['name'].startswith('dynamic_ppc') else f'{c["metric"].upper()} frozen, deposition '+('on' if c['feedback'] else 'off')+f'\n{blocks} block'+('s' if blocks!=1 else '')+f'; N = {c["n"]:,}');axes[0].text(.97,.04,case_label,ha='right',transform=axes[0].transAxes,fontsize=7.5,usetex=False)
+    axes[0].barh([PHASE_LABELS[k] for k in order],[100*groups[k]/total for k in order],color=[COLORS[k] for k in order]);axes[0].set_xlabel('Profiled timestep cost (%)',usetex=False);axes[0].grid(axis='x',alpha=.18);c=r['case'];blocks=(c['grid']//c['block'])**3;case_label=(f'Uniform sampling\n{c["ppc"]} particles/cell\n1 GPU, live ST' if c['name'].startswith('dynamic_ppc') else f'{c["metric"].upper()} frozen, deposition '+('on' if c['feedback'] else 'off')+f'\n{blocks} block'+('s' if blocks!=1 else '')+f'; N = {c["n"]:,}');axes[0].text(.97,.04,case_label,ha='right',transform=axes[0].transAxes,fontsize=7.5,usetex=False)
     labels=[];fractions=[]
     for q in chosen:
       device=device_byname.get(q['case']['name']);dc=np.sum([t['device_cycles'] for t in device['timings']],axis=0) if device else np.zeros(5)
@@ -178,6 +178,23 @@ if profiles:
     if not fractions:axes[1].text(.5,.5,'Awaiting device-clock samples',ha='center',va='center',transform=axes[1].transAxes)
     axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell' if all(q['case']['name'].startswith('dynamic_ppc') for q in chosen) else 'Frozen diagnostic');axes[1].set_ylabel('Interpolation share of\ngeodesic cycles (%)',usetex=False);axes[1].grid(axis='y',alpha=.18)
     save(fig,'06_kernel_cost_and_interpolation','Cost ranking uses the slowest rank of a diagnostic run, without double-counting nested deposition timers. Interpolation fractions use sampled device clock cycles inside geodesic evaluations; they are estimates in an instrumented kernel, not percentages of total GPU wall time. Hardware performance counters are administrator-restricted.')
+# 7: separate overloaded-rank work from waits on the other ranks.
+point_profiles={r['case']['ranks']:r for r in profiles if r['case']['distribution']=='point' and r['case']['ranks'] in [2,4]}
+if point_profiles:
+    fig,axes=plt.subplots(1,2,figsize=(7.1,3.6));legend_handles=[];legend_labels=[]
+    for ax,ranks in zip(axes,[2,4]):
+      r=point_profiles.get(ranks);ax.set_title(f'{ranks} GPUs',fontsize=9.5);ax.set_xlabel('MPI rank');ax.set_xticks(range(ranks));ax.set_ylabel('Profiled ms / full timestep');ax.grid(axis='y',alpha=.18)
+      if r is None:
+        ax.text(.5,.5,'Awaiting profile',ha='center',va='center',transform=ax.transAxes);ax.set_yticks([]);continue
+      timings=sorted(r['timings'],key=lambda t:t['rank']);groups=[phase_groups(dict(r,timings=[t])) for t in timings];bottom=np.zeros(ranks)
+      for key in ['mesh','push','energy','migration','records','sort','transfer','atomic','other']:
+        y=np.array([g[key] for g in groups]);label='Other / sync.' if key=='other' else PHASE_SHORT[key];ax.bar(range(ranks),y,bottom=bottom,color=COLORS[key],label=label);bottom+=y
+      peak=max(bottom);ax.set_ylim(0,peak*1.22)
+      for rank,top in enumerate(bottom):
+        initial=next(x for x in r['initial'] if x['rank']==rank);ax.text(rank,top+peak*.035,f'{100*initial["local_count"]/r["case"]["n"]:.1f}\%',ha='center',va='bottom',fontsize=7.5)
+      if not legend_handles:legend_handles,legend_labels=ax.get_legend_handles_labels()
+    fig.legend(legend_handles,legend_labels,loc='lower center',bbox_to_anchor=(.5,.055),ncol=3,fontsize=7,title='Profiled phases',title_fontsize=7)
+    save(fig,'07_rank_phase_work_and_waits','One-site number concentration, N=6,291,456, identical initial physical source. Each bar is one rank averaged over the separate diagnostic interval; numbers above bars give its initial share of particles. Communication/ownership and other/synchronization include waits for other ranks, so a large waiting segment does not identify transport as the underlying bottleneck. Compare the initially most populated rank with the lighter ranks. Full-run initial/final counts and traffic are in the throughput CSV.',bottom=.23)
 # Evidence checks and readable reports.
 checks=[]
 for r in through+load('gate')+load('profile')+load('device'):
@@ -221,7 +238,7 @@ if mesh_control and low_ppc:
   findings.append(f'The live six-particles/cell case costs {step(low_ppc):.3g} ms/step, compared with {step(mesh_control):.3g} ms/step for mesh-only evolution with its initial source held fixed ({step(low_ppc)/step(mesh_control):.1f}x). Separate phase profiles quantify the actual particle/spacetime shares.')
 if pdyn:
   for r in sorted(pdyn,key=lambda r:r['case']['ppc']):
-    g=phase_groups(r);key=max(g,key=g.get);total=sum(g.values());particle=sum(v for k,v in g.items() if k not in ['mesh','other']);findings.append(f'At {r["case"]["ppc"]} particles/cell, particle phases account for {100*particle/total:.1f}% of the diagnostic timestep, spacetime for {100*g["mesh"]/total:.1f}%, and other work for {100*g["other"]/total:.1f}%. The largest individual phase is {PHASE_LABELS[key].lower()} ({100*g[key]/total:.1f}%).')
+    g=phase_groups(r);key=max(g,key=g.get);total=sum(g.values());particle=sum(v for k,v in g.items() if k not in ['mesh','other']);findings.append(f'At {r["case"]["ppc"]} particles/cell with uniform number sampling, particle phases account for {100*particle/total:.1f}% of the diagnostic timestep, spacetime for {100*g["mesh"]/total:.1f}%, and other work for {100*g["other"]/total:.1f}%. The largest individual phase is {PHASE_LABELS[key].lower()} ({100*g[key]/total:.1f}%).')
 for metric in ['st','flat']:
   for feedback in [False,True]:
     layout=[byname.get(f'blocks_{metric}_dep{int(feedback)}_B{b}') for b in [64,32,16]]
@@ -255,7 +272,8 @@ if sampling:
       if profile:
         phases=[phase_groups(dict(profile,timings=[t])) for t in profile['timings']]
         g=phase_groups(profile);total=sum(g.values());initial_imbalance=imbalance(profile['initial'])
-        findings.append(f'For the {p}-GPU one-site profile, initial maximum/mean rank particle count is {initial_imbalance:.2f}; the slowest rank spends {100*g["push"]/total:.1f}% in push, {100*g["atomic"]/total:.1f}% in atomic deposition, and {100*g["migration"]/total:.1f}% in communication/ownership. Across ranks, push spans {min(x["push"] for x in phases):.3g}–{max(x["push"] for x in phases):.3g} ms/step and communication/ownership spans {min(x["migration"] for x in phases):.3g}–{max(x["migration"] for x in phases):.3g} ms/step. Communication timers include waits for other ranks; these ranges do not isolate transport cost.')
+        hot=max(profile['initial'],key=lambda x:x['local_count'])['rank'];hot_timing=next(t for t in profile['timings'] if t['rank']==hot);h=phase_groups(dict(profile,timings=[hot_timing]));htotal=sum(h.values())
+        findings.append(f'For the {p}-GPU one-site profile, initial maximum/mean rank particle count is {initial_imbalance:.2f}; initially most populated rank{hot} spends {100*h["push"]/htotal:.1f}% in push, {100*h["atomic"]/htotal:.1f}% in atomic deposition, and {100*h["migration"]/htotal:.1f}% in communication/ownership. Across ranks, push spans {min(x["push"] for x in phases):.3g}–{max(x["push"] for x in phases):.3g} ms/step and communication/ownership spans {min(x["migration"] for x in phases):.3g}–{max(x["migration"] for x in phases):.3g} ms/step. Communication and other/synchronization timers can include waits for other ranks; these ranges do not isolate transport cost. The separate 5M throughput run changes maximum/mean rank count from {imbalance(point["initial"]):.2f} to {imbalance(point["final"]):.2f}; endpoints do not give a time-averaged imbalance.')
 for name in sorted(set(x['case'] for x in kernel_rows)):
   ranked=[x for x in kernel_rows if x['case']==name and x['gpu_time_percent']]
   if ranked:

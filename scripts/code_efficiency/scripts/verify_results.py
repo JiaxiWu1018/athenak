@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(os.environ.get('EFFICIENCY_SESSION', Path(__file__).resolve().parents[1]))
 FIGURES = ['01_particle_count', '02_meshblock_layout', '03_strong_scaling',
            '04_dynamic_particle_mesh_cost', '05_sampling_and_rank_imbalance',
-           '06_kernel_cost_and_interpolation']
+           '06_kernel_cost_and_interpolation','07_rank_phase_work_and_waits']
 
 
 def main():

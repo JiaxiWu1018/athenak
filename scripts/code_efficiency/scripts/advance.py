@@ -87,7 +87,7 @@ if args.close:
         complete=complete and numerical.get('passed',False) and numerical.get('executables')==current_hashes
         validation_path=ROOT/'results/VALIDATION.json'
         final_validation=json.loads(validation_path.read_text()) if validation_path.exists() else {}
-        figure_names=['01_particle_count','02_meshblock_layout','03_strong_scaling','04_dynamic_particle_mesh_cost','05_sampling_and_rank_imbalance','06_kernel_cost_and_interpolation']
+        figure_names=['01_particle_count','02_meshblock_layout','03_strong_scaling','04_dynamic_particle_mesh_cost','05_sampling_and_rank_imbalance','06_kernel_cost_and_interpolation','07_rank_phase_work_and_waits']
         artifacts_ok=all((ROOT/'figures'/f'{name}.{ext}').exists() for name in figure_names for ext in ['pdf','png']) and (ROOT/'provenance/report_manifest.json').exists() and (ROOT/'reports/REPORT_code_efficiency.pdf').exists()
         state['final_artifacts_valid']=bool(artifacts_ok and final_validation.get('complete',False))
         complete=complete and state['final_artifacts_valid']
