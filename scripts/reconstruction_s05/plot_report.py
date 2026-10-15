@@ -165,7 +165,7 @@ def main():
                 origin=np.mean([100*(v/d[f'r{q}_origin'][0]-1) for v,d in zip(aligned(ds,f'r{q}_origin',grid),ds)],axis=0)
                 ax[row,col].plot(grid,origin,':',color=COLORS[method],lw=.7)
             ax[row,col].set_title(f'{rad}: radius enclosing {q}% rest mass');ax[row,col].set_xlabel('Time / M');ax[row,col].set_ylabel('Change from own start (%)')
-    ax[0,0].legend(fontsize=8);fig.suptitle('Shell response: COM solid, origin dotted; seed ranges are not time-sample confidence intervals')
+    ax[0,0].legend(fontsize=8);fig.suptitle('Shell response: thick COM curves, thin dotted origin companions; shading spans three seeds')
     save(fig,out,'f3_shell_histories')
     fig,ax=plt.subplots(2,3,figsize=(13,7),layout='constrained')
     for row,rad in enumerate(('legacy','proper')):
