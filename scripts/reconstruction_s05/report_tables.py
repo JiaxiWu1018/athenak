@@ -95,6 +95,31 @@ def main():
     case_groups = groups(science['case_rows'], ('radial', 'method'), case_metrics)
     mixing_groups = groups(science['mixing_rows'], ('radial', 'method', 'nominal_time_M'),
                            ('mean_cohort_diagonal_fraction',))
+    weights, resources, extra_inputs = [], [], []
+    for row in science['case_rows']:
+        case = row['case']
+        weight_path = ROOT/'reduced'/case/'weights.json'
+        memory_path = ROOT/'runs'/case/'memory_samples.jsonl'
+        completion = json.loads((ROOT/'runs'/case/'completion.json').read_text())
+        memory = [json.loads(line) for line in memory_path.read_text().splitlines()]
+        recorded = next(r for r in completion['manifest'] if r['path']==str(memory_path.relative_to(ROOT)))
+        assert sha(memory_path) == recorded['sha256'] and memory_path.stat().st_size == recorded['bytes']
+        assert max(r['athena_ranks'] for r in memory) == 4
+        info = {k:row[k] for k in ('case', 'radial', 'method', 'seed')}
+        weight = json.loads(weight_path.read_text())
+        weights.append(dict(info, **{k:weight[k] for k in ('mass_min', 'mass_max', 'global_effective_count')}))
+        resources.append(dict(info, solver_wall_seconds=completion['solver_wall_seconds'],
+                              raw_manifest_bytes=completion['raw_bytes'],
+                              sampled_max_aggregate_host_rss_bytes=max(r['aggregate_host_rss_bytes'] for r in memory),
+                              sampled_max_device_vram_bytes=max((v for r in memory for v in r['vram_used_bytes'].values()), default=0)))
+        extra_inputs.extend({'path':str(p.relative_to(ROOT)), 'bytes':p.stat().st_size, 'sha256':sha(p)}
+                            for p in (weight_path, memory_path))
+    weight_groups = groups(weights, ('radial', 'method'), ('mass_min', 'mass_max', 'global_effective_count'))
+    resource_summary = {name:{'minimum':min(r[name] for r in resources), 'maximum':max(r[name] for r in resources),
+                              'mean':statistics.fmean(r[name] for r in resources)}
+                        for name in ('solver_wall_seconds', 'raw_manifest_bytes',
+                                     'sampled_max_aggregate_host_rss_bytes', 'sampled_max_device_vram_bytes')}
+    resource_summary['total_production_raw_manifest_bytes'] = sum(r['raw_manifest_bytes'] for r in resources)
     old_windows = {(r['method'], r['seed'], r['start_M']):r for r in science['window_rows'] if r['radial']=='legacy'}
     contrasts = []
     for row in science['window_rows']:
@@ -142,7 +167,10 @@ def main():
            'science_input':{'path':str(args.science.resolve()), 'sha256':sha(args.science)},
            'source_files_verified':len(science['source_manifest']), 'window_groups':window_groups,
            'motion_groups':motion_groups, 'field_groups':field_groups, 'case_groups':case_groups,
-           'mixing_groups':mixing_groups, 'radial_measure_contrast':contrast_groups})
+           'mixing_groups':mixing_groups, 'radial_measure_contrast':contrast_groups,
+           'weight_groups':weight_groups, 'resource_rows':resources, 'resource_summary':resource_summary,
+           'extra_input_manifest':extra_inputs,
+           'resource_definition':'Launch-to-exit wall includes in-run output; sampled host RSS sums matching Athena processes. VRAM is the largest sampled whole-device DRM counter, not exact solver-only memory. Global mass-weight effective count differs from per-cell CIC Neff.'})
     atomic(destination/'TABLES.md', '\n'.join(lines)+'\n')
     print('REPORT_TABLES_READY', destination, flush=True)
 
