@@ -173,13 +173,15 @@ if profiles:
     if not chosen:chosen=profiles[:2]
     fig,axes=plt.subplots(1,2,figsize=(7.1,3.2));r=chosen[-1];groups=phase_groups(r);order=sorted(groups,key=groups.get);total=sum(groups.values())
     axes[0].barh([PHASE_LABELS[k] for k in order],[100*groups[k]/total for k in order],color=[COLORS[k] for k in order]);axes[0].set_xlabel('Profiled timestep cost (%)',usetex=False);axes[0].grid(axis='x',alpha=.18);c=r['case'];blocks=(c['grid']//c['block'])**3;case_label=(f'Uniform sampling\n{c["ppc"]} particles/cell\n1 GPU, live ST' if c['name'].startswith('dynamic_ppc') else f'{c["metric"].upper()} frozen, deposition '+('on' if c['feedback'] else 'off')+f'\n{blocks} block'+('s' if blocks!=1 else '')+f'; N = {c["n"]:,}');axes[0].text(.97,.04,case_label,ha='right',transform=axes[0].transAxes,fontsize=7.5,usetex=False)
+    samples=sorted([q for q in devices if q['case']['name'].startswith('dynamic_ppc')],key=lambda q:q['case']['ppc'])
+    if not samples:samples=devices
     labels=[];fractions=[]
-    for q in chosen:
-      device=device_byname.get(q['case']['name']);dc=np.sum([t['device_cycles'] for t in device['timings']],axis=0) if device else np.zeros(5)
+    for device in samples:
+      q=device;dc=np.sum([t['device_cycles'] for t in device['timings']],axis=0)
       if dc[1]:labels.append(str(q['case']['ppc']) if q['case']['name'].startswith('dynamic_ppc') else q['case']['metric'].upper()+' frozen\ndeposition '+('on' if q['case']['feedback'] else 'off'));fractions.append(100*dc[0]/dc[1])
-    axes[1].bar(labels,fractions,color=COLORS['push']);
+    bars=axes[1].bar(labels,fractions,color=COLORS['push']);axes[1].bar_label(bars,labels=[f'{v:.1f}%' for v in fractions],padding=3,fontsize=7,usetex=False)
     if not fractions:axes[1].text(.5,.5,'Awaiting device-clock samples',ha='center',va='center',transform=axes[1].transAxes)
-    axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell' if all(q['case']['name'].startswith('dynamic_ppc') for q in chosen) else 'Frozen diagnostic');axes[1].set_ylabel('Interpolation share of\ngeodesic cycles (%)',usetex=False);axes[1].grid(axis='y',alpha=.18)
+    axes[1].set_ylim(0,100);axes[1].set_xlabel('Particles / physical cell' if all(q['case']['name'].startswith('dynamic_ppc') for q in samples) else 'Frozen diagnostic');axes[1].set_ylabel('Interpolation share of\ngeodesic cycles (%)',usetex=False);axes[1].grid(axis='y',alpha=.18)
     save(fig,'06_kernel_cost_and_interpolation','Cost ranking uses the slowest rank of a diagnostic run, without double-counting nested deposition timers. Interpolation fractions use sampled device clock cycles inside geodesic evaluations; they are estimates in an instrumented kernel, not percentages of total GPU wall time. Hardware performance counters are administrator-restricted.')
 # 7: separate overloaded-rank work from waits on the other ranks.
 point_profiles={r['case']['ranks']:r for r in profiles if r['case']['distribution']=='point' and r['case']['ranks'] in [2,4]}
