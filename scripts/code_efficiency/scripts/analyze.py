@@ -191,7 +191,7 @@ if point_profiles:
         y=np.array([g[key] for g in groups]);label='Other / sync.' if key=='other' else PHASE_SHORT[key];ax.bar(range(ranks),y,bottom=bottom,color=COLORS[key],label=label);bottom+=y
       peak=max(bottom);ax.set_ylim(0,peak*1.22)
       for rank,top in enumerate(bottom):
-        initial=next(x for x in r['initial'] if x['rank']==rank);ax.text(rank,top+peak*.035,f'{100*initial["local_count"]/r["case"]["n"]:.1f}\%',ha='center',va='bottom',fontsize=7.5)
+        initial=next(x for x in r['initial'] if x['rank']==rank);ax.text(rank,top+peak*.035,rf'{100*initial["local_count"]/r["case"]["n"]:.1f}\%',ha='center',va='bottom',fontsize=7.5)
       if not legend_handles:legend_handles,legend_labels=ax.get_legend_handles_labels()
     fig.legend(legend_handles,legend_labels,loc='lower center',bbox_to_anchor=(.5,.055),ncol=3,fontsize=7,title='Profiled phases',title_fontsize=7)
     save(fig,'07_rank_phase_work_and_waits','One-site number concentration, N=6,291,456, identical initial physical source. Each bar is one rank averaged over the separate diagnostic interval; numbers above bars give its initial share of particles. Communication/ownership and other/synchronization include waits for other ranks, so a large waiting segment does not identify transport as the underlying bottleneck. Compare the initially most populated rank with the lighter ranks. Full-run initial/final counts and traffic are in the throughput CSV.',bottom=.23)
@@ -271,9 +271,9 @@ if sampling:
       profile=next((q for q in profiles if q['case']['name']==f'sampling_point_R{p}'),None)
       if profile:
         phases=[phase_groups(dict(profile,timings=[t])) for t in profile['timings']]
-        g=phase_groups(profile);total=sum(g.values());initial_imbalance=imbalance(profile['initial'])
+        initial_imbalance=imbalance(profile['initial'])
         hot=max(profile['initial'],key=lambda x:x['local_count'])['rank'];hot_timing=next(t for t in profile['timings'] if t['rank']==hot);h=phase_groups(dict(profile,timings=[hot_timing]));htotal=sum(h.values())
-        findings.append(f'For the {p}-GPU one-site profile, initial maximum/mean rank particle count is {initial_imbalance:.2f}; initially most populated rank{hot} spends {100*h["push"]/htotal:.1f}% in push, {100*h["atomic"]/htotal:.1f}% in atomic deposition, and {100*h["migration"]/htotal:.1f}% in communication/ownership. Across ranks, push spans {min(x["push"] for x in phases):.3g}–{max(x["push"] for x in phases):.3g} ms/step and communication/ownership spans {min(x["migration"] for x in phases):.3g}–{max(x["migration"] for x in phases):.3g} ms/step. Communication and other/synchronization timers can include waits for other ranks; these ranges do not isolate transport cost. The separate 5M throughput run changes maximum/mean rank count from {imbalance(point["initial"]):.2f} to {imbalance(point["final"]):.2f}; endpoints do not give a time-averaged imbalance.')
+        findings.append(f'For the {p}-GPU one-site profile, initial maximum/mean rank particle count is {initial_imbalance:.2f}; initially most populated rank {hot} spends {100*h["push"]/htotal:.1f}% in push, {100*h["atomic"]/htotal:.1f}% in atomic deposition, and {100*h["migration"]/htotal:.1f}% in communication/ownership. Across ranks, push spans {min(x["push"] for x in phases):.3g}–{max(x["push"] for x in phases):.3g} ms/step and communication/ownership spans {min(x["migration"] for x in phases):.3g}–{max(x["migration"] for x in phases):.3g} ms/step. Communication and other/synchronization timers can include waits for other ranks; these ranges do not isolate transport cost. The separate throughput run (ending at {point["timings"][0]["final_time"]:.3g}M) changes maximum/mean rank count from {imbalance(point["initial"]):.2f} to {imbalance(point["final"]):.2f}; endpoints do not give a time-averaged imbalance.')
 for name in sorted(set(x['case'] for x in kernel_rows)):
   ranked=[x for x in kernel_rows if x['case']==name and x['gpu_time_percent']]
   if ranked:
