@@ -3,6 +3,7 @@
 #SBATCH -p preempt
 #SBATCH -n 1
 #SBATCH -c 2
+#SBATCH --gpus=1
 #SBATCH --mem=4G
 #SBATCH -t 00:15:00
 #SBATCH -o /data/jiaxiwu/NRPIC/reconstruction_ST/05_sampling_shell_response_20261014/logs/pdfreview.%j.log
