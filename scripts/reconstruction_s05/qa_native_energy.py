@@ -51,6 +51,12 @@ def main():
        'sampled_particles':len(indices),'worst_particles':[{'tag':int(d['ptag'][i]),'energy':float(e[i]),'r':float(np.sqrt(sum(d[k][i]**2 for k in 'xyz')))} for i in np.argsort(abs(error))[-10:]],
        'boris_fallbacks':log['boris_fallbacks'],'boris_fallback_cycles':log['boris_fallback_cycles']}
     atomic(dest/'ENERGY_DIAGNOSTIC.json',result);print(json.dumps(result,indent=2),flush=True)
+    from initial_energy import interpolated_energy as cached_energy,validate
+    cached=cached_energy(p,pos,u)
+    if not np.allclose(cached,prediction,rtol=0,atol=1e-12):
+        raise ValueError('Cached-node metric interpolation differs from direct nodal evaluation')
+    result['all_particles_energy_gate']=validate(p,a,d['ptag'],e)
+    atomic(dest/'ENERGY_DIAGNOSTIC.json',result)
     from analyze import analyze
     begin=time.monotonic()
     try:analyze(case,run_root=ROOT/'preflight_attempts/463699',dest_root=dest/'reduced')

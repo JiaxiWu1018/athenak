@@ -81,8 +81,8 @@ def main():
         if not header.startswith(b'STMIGP05') or not np.array_equal(accepted[:,2:8],native[:,1:7]) or not np.array_equal(accepted[:,8],native[:,7]):
             raise ValueError('Pgen did not ingest exact sample')
         _,_,_,pv=R.read_pvtk(str(sorted((out/'pvtk').glob('*vtk'))[0]))
-        energy=pv['prtcl_energy']; target=json.loads((ROOT/'evidence/model.json').read_text())['alpha_s']
-        if np.max(np.abs(energy-target))>3e-6:raise ValueError('Initial monoenergy mismatch')
+        from initial_energy import validate as validate_energy
+        energy_check=validate_energy(dict(np.load(ROOT/'samples/model.npz')),native,pv['ptag'],pv['prtcl_energy'])
         hist=np.loadtxt(out/(case+'.user.hst'))
         if not np.all(hist[0,[3,4,9,10]]>0):raise ValueError('Placeholder initial constraints')
         particles=list((out/'pvtk').glob('*.part.vtk'))
@@ -97,7 +97,7 @@ def main():
         records.append({'case':case,'wall_seconds':wall,'initial':d0,'final':end,
            'sampled_max_host_rss_bytes':max(r['aggregate_host_rss_bytes'] for r in memory),
            'sampled_max_gpu_vram_bytes':max(v for r in memory for v in r['vram_used_bytes'].values()),
-           'initial_energy_max_abs_error':float(np.max(np.abs(energy-target))),
+           'initial_energy':energy_check,
            'frame_bytes_estimate':frame_bytes,'full_state_bytes_estimate':state_bytes,
            'raw_bytes':sum(p.stat().st_size for p in (root/case).rglob('*') if p.is_file())})
     case='proper_cell_s1';initial=ROOT/'samples'/(case+'.bin');deck=ROOT/'inputs'/(case+'.athinput')
