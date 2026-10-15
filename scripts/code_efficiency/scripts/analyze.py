@@ -117,10 +117,10 @@ if ranksets:
         if not baseline:continue
         data=[(1,baseline)]+[(p,byname[f'ranks_{metric}_dep{int(feedback)}_R{p}']) for p in [2,4] if f'ranks_{metric}_dep{int(feedback)}_R{p}' in byname]
         x=[p for p,r in data];s=[spm(baseline)/spm(r) for p,r in data];label=f'{metric.upper()}, dep '+('on' if feedback else 'off');style='-' if feedback else '--'
-        axes[0].plot(x,s,style+'o',color=COLORS[metric],label=label,ms=4);axes[1].plot(x,[100*a/p for a,p in zip(s,x)],style+'o',color=COLORS[metric],label=label,ms=4)
+        axes[0].plot(x,s,style+'o',color=COLORS[metric],label=label,ms=4,markerfacecolor=COLORS[metric] if feedback else 'white');axes[1].plot(x,[100*a/p for a,p in zip(s,x)],style+'o',color=COLORS[metric],label=label,ms=4,markerfacecolor=COLORS[metric] if feedback else 'white')
     axes[0].plot([1,2,4],[1,2,4],':',color='.4',label='Ideal');axes[0].set_ylabel('Speedup over one GPU');axes[1].axhline(100,color='.4',ls=':');axes[1].set_ylabel('Parallel efficiency (%)',usetex=False)
     for ax in axes:ax.set_xticks([1,2,4]);ax.set_xlabel('MPI ranks / A100 GPUs');ax.grid(alpha=.18)
-    axes[0].legend(fontsize=7)
+    axes[0].legend(fontsize=7,handlelength=3.2)
     save(fig,'03_strong_scaling','Strong scaling of N=1 million with eight 32^3 blocks on a fixed global 64^3 grid. One A100 and two allocated CPUs per MPI rank; speedup uses wall seconds/M against the matching one-rank eight-block case. Node sharing is recorded in provenance.')
 # 4: dynamic PPC rates and diagnostic phase decomposition.
 dyn=[r for r in valid if r['case']['name'].startswith('dynamic_ppc')]
@@ -131,8 +131,7 @@ if dyn:
     baseline=byname.get('dynamic_mesh_only');frozen=byname.get('dynamic_matched_frozen_ppc24')
     if baseline:axes[0].axhline(step(baseline),color='.4',ls=':',label='Mesh-only control')
     if frozen:axes[0].scatter([24],[step(frozen)],marker='s',facecolors='none',edgecolors=COLORS['sort'],label='Matched frozen')
-    if baseline:axes[0].set_ylim(bottom=.6*step(baseline))
-    axes[0].set_xscale('log',base=2);axes[0].set_yscale('log');axes[0].set_xticks([6,24,96,384],[6,24,96,384]);axes[0].set_xlabel('Particles / physical cell');axes[0].set_ylabel('Wall ms / full timestep');axes[0].legend(fontsize=7);axes[0].grid(alpha=.18)
+    axes[0].set_xscale('log',base=2);axes[0].set_yscale('log');axes[0].set_xlim(4.8,480);absolute_costs=[step(r) for r in d]+([step(baseline)] if baseline else [])+([step(frozen)] if frozen else []);axes[0].set_ylim(min(absolute_costs)*.6,max(absolute_costs)*1.5);axes[0].set_xticks([6,24,96,384],[6,24,96,384]);axes[0].set_xlabel('Particles / physical cell');axes[0].set_ylabel('Wall ms / full timestep');axes[0].legend(fontsize=7);axes[0].grid(alpha=.18)
     p=sorted(pdyn,key=lambda r:r['case']['ppc']);bottom=np.zeros(len(p))
     for key in (['mesh','push','energy','migration','records','sort','transfer','atomic','other'] if p else []):
       y=np.array([100*phase_groups(r)[key]/sum(phase_groups(r).values()) for r in p]);axes[1].bar(range(len(p)),y,bottom=bottom,color=COLORS[key],label=PHASE_SHORT[key]);bottom+=y
@@ -155,7 +154,7 @@ if sampling:
         r=sampling.get((d,p));y.append(spm(r) if r else np.nan)
         if r:counts=np.array([x['local_count'] for x in r['initial']]);imb[k,j]=counts.max()/counts.mean()
       axes[0].bar(np.arange(5)+(k-1)*.24,y,width=.23,color=palette[k],label=f'{p} GPU'+('s' if p>1 else ''))
-    axes[0].set_xticks(range(5),names,rotation=30,ha='right');axes[0].set_ylabel('Wall seconds / $M$');axes[0].legend();axes[0].grid(axis='y',alpha=.18)
+    axes[0].set_xticks(range(5),names,rotation=30,ha='right');axes[0].set_xlim(-.6,4.6);axes[0].set_ylabel('Wall seconds / $M$');axes[0].legend();axes[0].grid(axis='y',alpha=.18)
     image=axes[1].imshow(np.ma.masked_invalid(imb),vmin=1,vmax=4,cmap='cividis',aspect='auto');axes[1].set_xticks(range(5),names,rotation=30,ha='right');axes[1].set_yticks(range(3),['1 GPU','2 GPUs','4 GPUs']);axes[1].set_ylabel('Initial particle-count imbalance')
     for i in range(3):
       for j in range(5):
@@ -230,6 +229,16 @@ for metric in ['st','flat']:
     baseline=byname.get(f'blocks_{metric}_dep{int(feedback)}_B32')
     multi=byname.get(f'ranks_{metric}_dep{int(feedback)}_R4')
     if baseline and multi:findings.append(f'Four GPUs give {spm(baseline)/spm(multi):.2f}× speedup ({25*spm(baseline)/spm(multi):.1f}% parallel efficiency) for the {metric.upper()} million-particle eight-block case with deposition {"on" if feedback else "off"}.')
+superlinear=[]
+for metric in ['st','flat']:
+  for feedback in [False,True]:
+    baseline=byname.get(f'blocks_{metric}_dep{int(feedback)}_B32')
+    for ranks in [2,4]:
+      multi=byname.get(f'ranks_{metric}_dep{int(feedback)}_R{ranks}')
+      if baseline and multi and spm(baseline)/spm(multi)>ranks*1.05:
+        superlinear.append(f'{metric.upper()}, deposition '+('on' if feedback else 'off')+f', {ranks} GPUs: {spm(baseline)/spm(multi):.2f}x')
+if superlinear:
+  findings.append('Observed speedups exceed linear scaling in these cases: '+'; '.join(superlinear)+'. Global particle/cell counts, timestep, executable mode and initial payloads are checked. Smaller per-rank working sets and increased aggregate cache/CPU resources are possible explanations, not established causes; hardware counters are unavailable and these are single passes.')
 for r in sorted(devices,key=lambda r:r['case']['n']):
   dc=np.sum([t['device_cycles'] for t in r['timings']],axis=0)
   if dc[1]:findings.append(f'For {r["case"]["name"]}, interpolation accounts for {100*dc[0]/dc[1]:.1f}% of sampled geodesic-evaluation cycles ({int(dc[4]):,} sampled particle steps); this is an instrumented device-cycle estimate.')
