@@ -28,9 +28,9 @@ nx3 = 32
 evolution = dynamic
 integrator = rk4
 cfl_number = 0.13333333333333333
-tlim = 5
-nlim = 100
-ndiag = 1000000
+tlim = 1
+nlim = 20
+ndiag = 10
 <z4c>
 frozen_background = false
 use_z4c = true

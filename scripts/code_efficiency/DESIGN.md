@@ -1,6 +1,6 @@
 # Efficiency measurement design
 
-This is a numerical workload campaign on Perseus A100 GPUs. It uses ST initial geometry with `y_c=0.819` and unit gravitational mass, plus a flat-metric control. One MPI rank uses one GPU and two allocated CPUs; host sorting uses one thread. Rank scaling therefore measures the combined GPU/CPU allocation. All MPI ranks share one Perseus node, so communication measurements describe intra-node transfers and waits. Every main case targets 5M and uses a fixed 0.05M timestep; a wall-time guard can stop a large case earlier, with its actual endpoint reported. No scientific snapshots or restarts are requested.
+This is a numerical workload campaign on Perseus A100 GPUs. It uses ST initial geometry with `y_c=0.819` and unit gravitational mass, plus a flat-metric control. One MPI rank uses one GPU and two allocated CPUs; host sorting uses one thread. Rank scaling therefore measures the combined GPU/CPU allocation. All MPI ranks share one Perseus node, so communication measurements describe intra-node transfers and waits. Main cases use a fixed 0.05M timestep and target 5M for N<100 million. Following the user’s explicit choice after repeated largest-case preemptions, the five N>=100-million throughput cases target 1M (ten measured cycles after the same 0.5M warm-up); a wall-time guard can stop a large case earlier, with its actual endpoint reported. No scientific snapshots or restarts are requested.
 
 | Comparison | Mesh | Particles | MPI ranks | Controlled variation |
 |---|---|---:|---|---|

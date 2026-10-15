@@ -7,9 +7,9 @@ def command(args):
     return subprocess.run(args,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,check=False).stdout
 
 def run(c,kind='throughput',trace=False,gate=False,target_override=None,force=False):
-    from generate_matrix import deck
+    from generate_matrix import deck, primary_target
     profile=kind in ['profile','device','validation_release']
-    target=target_override if target_override is not None else (1.5 if profile else (1 if gate else 5))
+    target=target_override if target_override is not None else (1.5 if profile else (1 if gate else primary_target(c)))
     warmup=.5 if profile or not gate else .25
     base=ROOT/'results'/kind/c['name'];base.mkdir(parents=True,exist_ok=True)
     folder=base

@@ -23,7 +23,12 @@ for distribution in ['uniform','central4','central1','block','point']:
   for ranks in [1,2,4]:
     if distribution=='uniform' and ranks==1:continue
     add(f'sampling_{distribution}_R{ranks}',5,ranks=ranks,half=12,ppc=24,sampling='replicas',distribution=distribution,frozen=False)
-def deck(c,profile=False,tlim=5,warmup=.5):
+def primary_target(c):
+    # User-approved shortened endpoint after repeated largest-case preemptions.
+    return 1 if c['n'] >= 100000000 else 5
+
+def deck(c,profile=False,tlim=None,warmup=.5):
+    if tlim is None:tlim=primary_target(c)
     bc='periodic' if c['half']==4 else 'outflow'
     cfl=.05/(2*c['half']/c['grid'])
     mesh=''.join(f'nx{d} = {c["grid"]}\nx{d}min = {-c["half"]}\nx{d}max = {c["half"]}\nix{d}_bc = {bc}\nox{d}_bc = {bc}\n' for d in [1,2,3])

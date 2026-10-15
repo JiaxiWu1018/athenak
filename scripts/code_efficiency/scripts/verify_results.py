@@ -77,6 +77,8 @@ def main():
             if not all(len(r[part]) == ranks for part in ['timings', 'initial', 'final']):
                 continue
             n = c['n']
+            expected_endpoint = (1 if n >= 100000000 else 5) if kind == 'throughput' else 1.5
+            require(near(r['endpoint'], expected_endpoint), label + ': approved target endpoint')
             modulus = (1 << 64) - 1
             expected_sum = n * (n - 1) // 2 & modulus
             expected_square = n * (n - 1) * (2 * n - 1) // 6 & modulus
@@ -93,7 +95,7 @@ def main():
                 require(t['cycles'] >= 10 and duration > 0 and maximum > 0, label + ': nonempty timing window')
                 require(near(t['elapsed_max'], maximum), label + ': maximum elapsed over ranks')
                 require(near(t['dt'], .05) and near(duration, t['cycles'] * .05), label + ': fixed timestep interval')
-                require(near(t['start_time'], .5) and t['final_time'] <= (5 if kind == 'throughput' else 1.5) + 1e-8,
+                require(near(t['start_time'], .5) and t['final_time'] <= expected_endpoint + 1e-8,
                         label + ': physical-time limits')
                 require(t['physical_cells'] == c['grid'] ** 3, label + ': physical-cell denominator')
                 require(t.get('device_timing_compiled') == (kind == 'device'), label + ': compiled mode')

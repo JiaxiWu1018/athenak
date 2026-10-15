@@ -30,7 +30,7 @@ integrator = rk4
 cfl_number = 0.40000000000000002
 tlim = 5
 nlim = 100
-ndiag = 1000000
+ndiag = 10
 <z4c>
 frozen_background = true
 use_z4c = true

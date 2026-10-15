@@ -23,3 +23,5 @@ The small frozen numerical gate retains native-slot payload tables for10,000 par
 Instrumented particle selection uses a32-bit tag hash and a1/1024 probability, avoiding aliases with structured cell/velocity order. The numerical gate compares the actual GPU sampled-step count with an independent host calculation; provenance/sampling_audit.json records direction/column coverage of a6.29M-particle uniform realization. The release executable remains immutable across this diagnostic correction.
 
 Remaining one-rank/four-rank groups may use separate dependency chains to backfill resource waits. Each group is serial; four-rank jobs consume all four enforced per-user debug GPU licenses, so the two groups cannot overlap. Closure depends on both tails. Exact scheduler/license proof is in `provenance/license_serialized_chains.json`; the watcher flags any unexpected overlap.
+
+User-approved largest-case revision: the five throughput cases with N >= 100 million end at 1M after a 0.5M warm-up (ten measured cycles). Smaller cases end at 5M; phase/device diagnostics end at 1.5M. Exact endpoints and duration limits remain explicit in the report and receipts.
