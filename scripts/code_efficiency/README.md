@@ -25,3 +25,5 @@ Instrumented particle selection uses a32-bit tag hash and a1/1024 probability, a
 Remaining one-rank/four-rank groups may use separate dependency chains to backfill resource waits. Each group is serial; four-rank jobs consume all four enforced per-user debug GPU licenses, so the two groups cannot overlap. Closure depends on both tails. Exact scheduler/license proof is in `provenance/license_serialized_chains.json`; the watcher flags any unexpected overlap.
 
 User-approved largest-case revision: the five throughput cases with N >= 100 million end at 1M after a 0.5M warm-up (ten measured cycles). Smaller cases end at 5M; phase/device diagnostics end at 1.5M. Exact endpoints and duration limits remain explicit in the report and receipts.
+
+Active monitoring may invoke `scripts/retry_preempted_tail.py` after a scheduler preemption. It retries only the latest PREEMPTED measurement without a valid receipt, appends to the correct serial group, verifies the four-license pool and joins both tails before closure. Numerical failures require diagnosis. A failed queue transaction leaves closure held with its exact commands recorded for repair.
