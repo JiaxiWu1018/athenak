@@ -219,6 +219,21 @@ for r in valid:
   realization_ok=False;checks.append(c['name']+': initial particle realization differs from its matched control')
  realizations.setdefault(key,value)
 source_cell_errors=[x.get('source_reference_max_relative_error') for r in source_candidates for x in r['initial'] if 'source_reference_max_relative_error' in x]
+scaling_audits=[]
+for metric in ['st','flat']:
+ for feedback in [False,True]:
+  baseline=byname.get(f'blocks_{metric}_dep{int(feedback)}_B32')
+  for ranks in [2,4]:
+   multi=byname.get(f'ranks_{metric}_dep{int(feedback)}_R{ranks}')
+   if not (baseline and multi):continue
+   same_window=all(t['cycles']==baseline['timings'][0]['cycles'] and abs(t['final_time']-baseline['timings'][0]['final_time'])<1e-10 for t in multi['timings'])
+   initial_match=all(x['payload_hash']==baseline['initial'][0]['payload_hash'] for x in multi['initial'])
+   final_match=all(x['payload_hash']==baseline['final'][0]['payload_hash'] for x in multi['final'])
+   audit=dict(metric=metric,deposition=int(feedback),ranks=ranks,baseline_job=baseline['job_id'],parallel_job=multi['job_id'],same_window=same_window,initial_payloads_match=initial_match,final_payloads_match=final_match,speedup=spm(baseline)/spm(multi))
+   scaling_audits.append(audit)
+   if not (same_window and initial_match and final_match):checks.append(multi['case']['name']+': rank decomposition changes matched particle states or timing window')
+scaling_ok=all(a['same_window'] and a['initial_payloads_match'] and a['final_payloads_match'] for a in scaling_audits)
+(ROOT/'provenance/scaling_state_audit.json').write_text(json.dumps(dict(updated_utc=NOW,comparisons=scaling_audits,passed=scaling_ok),indent=2)+'\n')
 superseded_records=[json.loads(p.read_text()) for p in (ROOT/'results/throughput').glob('*/previous_receipt_*.json')]+allthrough
 superseded_count=len({(r['job_id'],r.get('attempt_path','')) for r in superseded_records if r.get('superseded_reason')})
 interruptions=json.loads((ROOT/'provenance/interruptions.json').read_text()) if (ROOT/'provenance/interruptions.json').exists() else []
@@ -226,6 +241,8 @@ summary=dict(initial_realizations_match=bool(realization_ok),interrupted_attempt
 numerical=json.loads((ROOT/'provenance/numerical_gate.json').read_text()) if (ROOT/'provenance/numerical_gate.json').exists() else {}
 validation=dict(initial_realizations_match=bool(realization_ok),throughput_coverage=len(valid)==60,profile_coverage=len(profiles)==27,device_coverage=len(devices)==6,numerical_gate=numerical.get('passed',False),source_moments_match=bool(source_ok),compiled_modes=all(t.get('device_timing_compiled')==(r['kind']=='device') for r in valid+profiles+devices for t in r['timings']))
 validation['complete']=all(validation.values())
+validation['scaling_states_match']=scaling_ok
+validation['complete'] &= scaling_ok
 (ROOT/'results/VALIDATION.json').write_text(json.dumps(validation,indent=2)+'\n')
 (ROOT/'results/SUMMARY.json').write_text(json.dumps(summary,indent=2)+'\n')
 findings=[]
@@ -258,7 +275,7 @@ for metric in ['st','flat']:
       if baseline and multi and spm(baseline)/spm(multi)>ranks*1.05:
         superlinear.append(f'{metric.upper()}, deposition '+('on' if feedback else 'off')+f', {ranks} GPUs: {spm(baseline)/spm(multi):.2f}x')
 if superlinear:
-  findings.append('Observed speedups exceed linear scaling in these cases: '+'; '.join(superlinear)+'. Global particle/cell counts, timestep, executable mode and initial payloads are checked. Smaller per-rank working sets and increased aggregate cache/CPU resources are possible explanations, not established causes; hardware counters are unavailable and these are single passes.')
+  findings.append('Observed speedups exceed linear scaling in these cases: '+'; '.join(superlinear)+'. Global particle/cell counts, timing windows, executable mode and both initial and final particle payload hashes match the one-rank controls. Smaller per-rank working sets and increased aggregate cache/CPU resources are possible explanations, not established causes; hardware counters are unavailable and these are single passes.')
 for r in sorted(devices,key=lambda r:r['case']['n']):
   dc=np.sum([t['device_cycles'] for t in r['timings']],axis=0)
   if dc[1]:findings.append(f'For {r["case"]["name"]}, interpolation accounts for {100*dc[0]/dc[1]:.1f}% of sampled geodesic-evaluation cycles ({int(dc[4]):,} sampled particle steps); this is an instrumented device-cycle estimate.')
@@ -336,7 +353,7 @@ with PdfPages(ROOT/'reports/REPORT_code_efficiency.pending.pdf') as pdf:
   fig=plt.figure(figsize=(8.3,11.7));ax=fig.add_axes([.06,.32,.88,.6]);ax.imshow(plt.imread(ROOT/'figures'/f'{name}.png'));ax.axis('off');fig.text(.08,.28,'\n'.join(textwrap.wrap(caption,100)),fontsize=9,va='top',usetex=False);pdf.savefig(fig,dpi=220);plt.close(fig)
 os.replace(ROOT/'reports/REPORT_code_efficiency.pending.pdf',ROOT/'reports/REPORT_code_efficiency.pdf')
 # Version and checksum record for the current review artifacts.
-artifacts=[ROOT/'reports/REPORT_code_efficiency.md',ROOT/'reports/REPORT_code_efficiency.pdf',ROOT/'reports/REPORT_AGENT.md',ROOT/'results/SUMMARY.json',ROOT/'results/VALIDATION.json']
+artifacts=[ROOT/'reports/REPORT_code_efficiency.md',ROOT/'reports/REPORT_code_efficiency.pdf',ROOT/'reports/REPORT_AGENT.md',ROOT/'results/SUMMARY.json',ROOT/'results/VALIDATION.json',ROOT/'provenance/scaling_state_audit.json']
 artifacts += [ROOT/'figures'/f'{name}.{ext}' for name,caption in FILES for ext in ['pdf','png']]
 artifacts += [ROOT/'results'/name for name in ['throughput.csv','profile_phases.csv','gpu_kernels.csv','rank_phases.csv'] if (ROOT/'results'/name).exists()]
 manifest=dict(updated_utc=NOW,plotting_sources=PLOT_SOURCES,plotting_source_commit=PLOT_HEAD,latex_version=TEX_VERSION,host=socket.gethostname(),slurm_job_id=os.environ.get('SLURM_JOB_ID'),python=sys.version,numpy=np.__version__,matplotlib=matplotlib.__version__,latex_enabled=bool(matplotlib.rcParams['text.usetex']),completed_cases=[dict(case=r['case']['name'],job_id=r['job_id']) for r in valid],files=[dict(path=str(p.relative_to(ROOT)),bytes=p.stat().st_size,sha256=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()) for p in artifacts])

@@ -119,6 +119,21 @@ def main():
                 retained = folder / item['path']
                 require(retained.exists() and retained.stat().st_size == item['bytes']
                         and digest(retained) == item['sha256'], label + ': checksum ' + item['path'])
+    # Compare identical frozen trajectories across rank decompositions independently.
+    for metric in ['st', 'flat']:
+        for deposition in [0, 1]:
+            baseline = primary.get(f'blocks_{metric}_dep{deposition}_B32')
+            for ranks in [2, 4]:
+                parallel = primary.get(f'ranks_{metric}_dep{deposition}_R{ranks}')
+                if baseline is None or parallel is None:
+                    continue
+                label = parallel['case']['name'] + ': matched one-rank control'
+                for t in parallel['timings']:
+                    require(t['cycles'] == baseline['timings'][0]['cycles']
+                            and near(t['final_time'], baseline['timings'][0]['final_time']), label + ' window')
+                for part in ['initial', 'final']:
+                    require(all(x['payload_hash'] == baseline[part][0]['payload_hash']
+                                for x in parallel[part]), label + ' ' + part + ' payload')
     # Reconcile the human-facing numeric table with the original receipts.
     table = list(csv.DictReader((ROOT / 'results/throughput.csv').open()))
     table = {row['name']: row for row in table if row['valid'] == 'True'}
@@ -138,7 +153,7 @@ def main():
     require(numerical.get('passed') and numerical.get('sampling_balanced')
             and numerical.get('executables') == modes, 'Executable-bound numerical/sample gate')
     validation = read(ROOT / 'results/VALIDATION.json')
-    for key in ['initial_realizations_match', 'source_moments_match', 'compiled_modes']:
+    for key in ['initial_realizations_match', 'source_moments_match', 'compiled_modes', 'scaling_states_match']:
         require(validation.get(key), 'Analysis validation: ' + key)
     # Check hashes independently of the report writer, including PDF/PNG/table outputs.
     report_manifest = read(ROOT / 'provenance/report_manifest.json')
