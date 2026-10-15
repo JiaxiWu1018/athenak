@@ -77,7 +77,8 @@ if args.close:
         command=['sbatch','--parsable','--dependency','afterany:'+':'.join(dependencies),str(ROOT/'jobs/close.sbatch')]
         state['next_closure_job']=subprocess.check_output(command,text=True).strip().split(';')[0]
     else:
-        complete=all(receipt('throughput',c['name']).get('valid') for c in matrix) and not failed
+        qa_status=subprocess.run(['python3',str(ROOT/'scripts/verify_results.py')],check=False).returncode
+        complete=qa_status==0 and all(receipt('throughput',c['name']).get('valid') for c in matrix) and not failed
         complete=complete and sum(receipt('profile',c['name']).get('valid',False) for c in matrix)==27 and sum(receipt('device',c['name']).get('valid',False) for c in matrix)==6
         numerics=ROOT/'provenance/numerical_gate.json'
         numerical=json.loads(numerics.read_text()) if numerics.exists() else {}
@@ -90,7 +91,7 @@ if args.close:
         artifacts_ok=all((ROOT/'figures'/f'{name}.{ext}').exists() for name in figure_names for ext in ['pdf','png']) and (ROOT/'provenance/report_manifest.json').exists() and (ROOT/'reports/REPORT_code_efficiency.pdf').exists()
         state['final_artifacts_valid']=bool(artifacts_ok and final_validation.get('complete',False))
         complete=complete and state['final_artifacts_valid']
-        (ROOT/'CLOSURE.md').write_text('# Campaign closure\n\n'+('COMPLETE' if complete else 'INCOMPLETE — see unresolved cases in provenance/recovery.json')+'\n\nReports and figures were regenerated from retained receipts. Every promoted case passed liveness/source/freeze gates. Source, inputs, launches, executable hashes, timing tables, diagnostics and storage status remain in this session. No scientific snapshots or restarts were generated.\n')
+        (ROOT/'CLOSURE.md').write_text('# Campaign closure\n\n'+('COMPLETE' if complete else 'INCOMPLETE — see provenance/recovery.json and results/FINAL_QA.json')+'\n\nReports and figures were regenerated from retained receipts. Every promoted case passed liveness/source/freeze gates. Source, inputs, launches, executable hashes, timing tables, diagnostics and storage status remain in this session. No scientific snapshots or restarts were generated.\n')
         state['closed_complete']=complete
 state['updated_unix']=time.time();state_path.write_text(json.dumps(state,indent=2)+'\n')
 print(json.dumps(dict(gate4=state['gate4'],recoveries=len(state['recoveries']),closed_complete=state.get('closed_complete'))),flush=True)
