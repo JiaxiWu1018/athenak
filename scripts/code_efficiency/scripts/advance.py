@@ -70,7 +70,7 @@ if args.close:
     last=None
     for row in retry:
         c=next(c for c in matrix if c['name']==row['case'])
-        last=submit(row['kind'],[row['case']],dependency=last,partition=state.get('four_rank_partition','debug') if c['ranks']==4 else 'debug',gate=state['gate4'] if c['ranks']==4 else None)
+        last=submit(row['kind'],[row['case']],dependency=last,partition=state.get('four_rank_partition','debug') if c['ranks']==4 else 'debug',gate=state['gate4'] if c['ranks']==4 and not receipt('gate',gate_name).get('valid') else None)
     state['unresolved']=failed
     if pending or retry:
         dependencies=([last] if last else [])+pending
