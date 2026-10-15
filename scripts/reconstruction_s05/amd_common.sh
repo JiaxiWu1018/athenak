@@ -9,6 +9,21 @@ export OMPI_MCA_btl_vader_single_copy_mechanism=none
 mkdir -p "$ROOT/evidence/jobs/$SLURM_JOB_ID"
 { hostname; date -Is; module list 2>&1; hipcc --version; python3 --version; } > "$ROOT/evidence/jobs/$SLURM_JOB_ID/environment.txt"
 
+# Use the versioned scripts directly; reject detached, stale deployment copies.
+python3 - <<'PYCODE'
+import hashlib,json,os,subprocess
+from pathlib import Path
+root=Path(os.environ['ROOT']);repo=root/'src/athenak'
+if (root/'scripts').resolve()!=(repo/'scripts/reconstruction_s05').resolve():
+    raise RuntimeError('AMD scripts must resolve to the versioned source directory')
+subprocess.run(['git','-C',str(repo),'diff','--quiet','HEAD','--','scripts/reconstruction_s05'],check=True)
+paths=subprocess.check_output(['git','-C',str(repo),'ls-files','scripts/reconstruction_s05'],text=True).splitlines()
+manifest=[{'path':s,'sha256':hashlib.sha256((repo/s).read_bytes()).hexdigest()} for s in paths]
+evidence=root/'evidence/jobs'/os.environ['SLURM_JOB_ID']/'scripts.json'
+evidence.write_text(json.dumps({'source_commit':subprocess.check_output(['git','-C',str(repo),'rev-parse','HEAD'],text=True).strip(),
+    'resolved_scripts':str((root/'scripts').resolve()),'manifest':manifest},indent=2)+'\n')
+PYCODE
+
 # Monitor the whole user root; transient du failures preserve the watchdog.
 storage_watchdog() {
   while true; do
