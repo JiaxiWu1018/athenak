@@ -7,6 +7,7 @@ import subprocess
 import time
 from pathlib import Path
 import numpy as np
+import reduce_run as R
 import s8_checkpoint as C
 from common import ROOT, N, BASE, CASES, atomic, sha, sample, require_job
 
@@ -95,8 +96,10 @@ def main():
     files=[]
     for p in sorted(work.rglob('*')):
         if p.is_file():files.append({'path':str(p.relative_to(ROOT)),'bytes':p.stat().st_size,'sha256':sha(p)})
+    pusher_log=R.parse_log(str(work/'solver.log'))
     atomic(work/'completion.json',{'case':case,'job':os.environ['SLURM_JOB_ID'],'endpoint_M':end,
            'solver_wall_seconds':wall,'checkpoints':states,'raw_bytes':sum(f['bytes'] for f in files),
+           'boris_fallbacks':pusher_log['boris_fallbacks'],'boris_fallback_cycles':pusher_log['boris_fallback_cycles'],
            'manifest':files,'input_sample_sha256':expected['sha256']})
     # Allocated analysis immediately reduces this case; failed analysis is a job failure.
     subprocess.run(['python3',str(ROOT/'scripts/analyze.py'),'--case',case],check=True)

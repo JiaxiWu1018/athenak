@@ -66,6 +66,12 @@ def main():
             raise ValueError('Reduction refers to a different initial sample: '+case)
         gate=ROOT/'runs'/case/('INTERIM_100_OK' if args.interim else 'RUN_OK')
         if not gate.exists():raise ValueError('Run validation receipt absent: '+case)
+        if not args.interim:
+            completion=ROOT/'runs'/case/'completion.json'
+            d['completion']=json.loads(completion.read_text())
+            if d['completion']['endpoint_M']!=expected_endpoint or 'boris_fallbacks' not in d['completion']:
+                raise ValueError('Missing complete pusher diagnostic: '+case)
+            receipt.append({'path':str(completion.relative_to(ROOT)),'bytes':completion.stat().st_size,'sha256':sha(completion)})
         states[(rad,method,seed)]=d
         for path in sorted(base.iterdir()):
             if path.is_file():receipt.append({'path':str(path.relative_to(ROOT)),'bytes':path.stat().st_size,'sha256':sha(path)})
@@ -303,6 +309,21 @@ def main():
             '', 'All runs share the same analytic metric, gauge, pusher, CIC deposition and removal settings. No constraint re-solve, frozen arm, larger domain, reweighting, or imposed perturbation was used. Core constraint norms use coordinate volume; native global norms retain their original proper-volume convention.',
             '', 'The ±128M boundary is within causal reach during this interval and was not varied. Consequently these results cannot establish physical instability, numerical convergence, or long-term Plummer stability. A preferred sampler requires improvements that persist after motion and are consistent across seeds; opposing diagnostics remain a tradeoff.',
             '', 'Figures:']
+    if not args.interim:
+        # Full-run fallback counts belong to the final interval, not the100M report.
+        lines.pop()  # Move the Figures label below the pusher diagnostic table.
+        lines+=['The fixed gr_boris pusher can fall back to forward Euler when its fixed-point iteration fails. Counts below are summed from native per-rank/cycle summaries over the full common run. They are diagnostic events, not additional trials. Compare their incidence alongside shell and noise measurements.',
+                '', '| Radial measure | Sampler | Fallback events, mean (range) | Cycles with fallback, mean (range) |',
+                '|---|---|---:|---:|']
+        pusher=[]
+        for rad in ('legacy','proper'):
+            for method in METHODS:
+                rows=[states[(rad,method,seed)]['completion'] for seed in (1,2,3)]
+                counts=np.array([r['boris_fallbacks'] for r in rows]);cycles=np.array([r['boris_fallback_cycles'] for r in rows])
+                lines.append(f'| {rad} | {LABELS[method]} | {counts.mean():.4g} ({counts.min()}–{counts.max()}) | {cycles.mean():.4g} ({cycles.min()}–{cycles.max()}) |')
+                pusher.extend({'case':r['case'],'events':r['boris_fallbacks'],'cycles':r['boris_fallback_cycles'],'endpoint_M':r['endpoint_M']} for r in rows)
+        atomic(out/'pusher_fallbacks.json',pusher)
+        lines+=['','Figures:']
     for name in ('f1_initial_errors','f1_initial_mass_projection','f1_radial_and_angular_errors','f2_occupancy_profiles','f2_effective_count_profiles','f2_empty_cells_and_weights','f3_shell_histories','f3_equilibrium_departures','f3_mass_fraction_heatmaps','f3_initial_cohorts','f3_cohort_mixing','f4_constraints_lapse_com','f4_native_global_constraints','f5_amplitude_ratios','f5_detrended_amplitude_ratios','f5_mean_shell_shifts','f5_drift_ratios'):
         lines.append(f'- [{name} PNG](../plots/{out.name}/{name}.png) / [PDF](../plots/{out.name}/{name}.pdf)')
     lines+=['','Exact source, submodule, toolchain, inputs, initialization samples, executable hashes, launch commands, checkpoints and raw manifests are retained in the campaign. All raw data remain on AMD under `/work1/eliasmost/jiaxiwu/st_reconstruction_s05_20261014`; no deletion or Mac mirror was performed. See the storage receipt for exact retained sizes and allocated job accounting.']
