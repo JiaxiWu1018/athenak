@@ -280,6 +280,12 @@ if sampling:
         if p>1:
           detail+=f' Initial maximum/mean rank particle count is {initial_imbalance:.2f}. Across ranks, push spans {min(x["push"] for x in phases):.3g}–{max(x["push"] for x in phases):.3g} ms/step and communication/ownership spans {min(x["migration"] for x in phases):.3g}–{max(x["migration"] for x in phases):.3g} ms/step. Communication and other/synchronization groups include waits for other ranks. The separate throughput run (ending at {point["timings"][0]["final_time"]:.3g}M) changes maximum/mean rank count from {imbalance(point["initial"]):.2f} to {imbalance(point["final"]):.2f}; endpoints do not give a time-averaged imbalance.'
         findings.append(detail)
+for ranks in [2,4]:
+  central=next((r for r in profiles if r['case']['name']==f'sampling_central1_R{ranks}'),None);uniform=next((r for r in profiles if r['case']['name']==f'sampling_uniform_R{ranks}'),None)
+  if central and uniform:
+    cg=phase_groups(central);ug=phase_groups(uniform);ci=sum(t['source_images'] for t in central['timings'])/central['timings'][0]['cycles'];ui=sum(t['source_images'] for t in uniform['timings'])/uniform['timings'][0]['cycles']
+    if ui>0:
+      findings.append(f'On {ranks} GPUs, the central sigma=1M profile remains approximately count-balanced (initial maximum/mean {imbalance(central["initial"]):.2f}), but exchanges {ci/1e6:.3g} million source-image records/step versus {ui/1e6:.3g} million for uniform sampling ({ci/ui:.2f}x). Communication/ownership takes {100*cg["migration"]/sum(cg.values()):.1f}% versus {100*ug["migration"]/sum(ug.values()):.1f}% in these diagnostic profiles. Count balance and communication volume are separate effects.')
 for name in sorted(set(x['case'] for x in kernel_rows)):
   ranked=[x for x in kernel_rows if x['case']==name and x['gpu_time_percent']]
   if ranked:
@@ -295,7 +301,7 @@ for ranks in [4,2]:
     hot=max(profile['initial'],key=lambda x:x['local_count']);cold=min(profile['initial'],key=lambda x:x['local_count']);hg=phase_groups(dict(profile,timings=[next(t for t in profile['timings'] if t['rank']==hot['rank'])]));cg=phase_groups(dict(profile,timings=[next(t for t in profile['timings'] if t['rank']==cold['rank'])]));share=100*hot['local_count']/profile['case']['n']
     overview.append(f'The {ranks}-GPU one-site profile starts with {share:.1f}% of particles on one rank. The lighter rank spends {100*(cg["migration"]+cg["other"])/sum(cg.values()):.1f}% of its interval in communication/other groups that include waits, while push plus host sorting/validation account for {100*(hg["push"]+hg["sort"])/sum(hg.values()):.1f}% on the initially most populated rank. The per-rank figure separates this imbalance from transport cost.')
     break
-report=f'# Paper Session 02 — code efficiency\n\nUpdated {NOW}. **{len(valid)}/60 throughput cases complete**, {len(profiles)}/27 phase profiles and {len(devices)}/6 device diagnostics complete; {len(through)-len(valid)} failed or incomplete cases.\n\n'+'\n\n'.join(overview)+'\n\n## Detailed measurements\n\n'+ '\n\n'.join(findings)+'\n\n'
+report=f'# Paper Session 02 — code efficiency\n\nUpdated {NOW}. **{len(valid)}/60 throughput cases complete**, {len(profiles)}/27 phase profiles and {len(devices)}/6 device diagnostics complete; {len(through)-len(valid)} unsuccessful measurements.\n\n'+'\n\n'.join(overview)+'\n\n## Detailed measurements\n\n'+ '\n\n'.join(findings)+'\n\n'
 if interruptions:report+=f'{len(interruptions)} scheduler-interrupted attempt(s) are preserved separately and retried; details are in [the interruption record](../provenance/interruptions.json).\n\n'
 report+='All throughput measurements are single passes targeting 5M, with a 0.5M warm-up excluded. A solver wall-clock guard finishes cleanly before the Slurm limit; shorter runs are labeled by their actual endpoint and need at least ten measured cycles to supply a rate. Reported particle rates count complete cycle updates; physical-cell rates exclude ghosts. Frozen cell rates are mesh-size normalizations and represent no spacetime evolution. Wall seconds/M uses the measured physical-time interval.\n\n'
 report+='## Figures\n\n'

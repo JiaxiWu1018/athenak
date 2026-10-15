@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import os
+import subprocess
 from pathlib import Path
 
 ROOT = Path(os.environ.get('EFFICIENCY_SESSION', Path(__file__).resolve().parents[1]))
@@ -141,6 +142,16 @@ def main():
         require(validation.get(key), 'Analysis validation: ' + key)
     # Check hashes independently of the report writer, including PDF/PNG/table outputs.
     report_manifest = read(ROOT / 'provenance/report_manifest.json')
+    plotting_commit = report_manifest.get('plotting_source_commit')
+    plotting_sources = report_manifest.get('plotting_sources', [])
+    require(bool(plotting_commit) and len(plotting_sources) >= 2, 'Recorded rendering source versions')
+    if plotting_commit:
+        for item in plotting_sources:
+            archived = subprocess.run(['git', '-C', str(ROOT / 'src/athenak'), 'show',
+                                       f'{plotting_commit}:scripts/code_efficiency/{item["path"]}'],
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+            require(archived.returncode == 0 and hashlib.sha256(archived.stdout).hexdigest() == item['sha256'],
+                    'Committed rendering source: ' + item['path'])
     for item in report_manifest['files']:
         path = ROOT / item['path']
         require(path.exists() and path.stat().st_size == item['bytes']

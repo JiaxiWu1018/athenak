@@ -32,6 +32,9 @@ ledger = [json.loads(line) for line in (ROOT / 'provenance/jobs.jsonl').read_tex
 by_job = {x['job_id']: x for x in ledger}
 latest = {(x['kind'], x['case']): x for x in ledger}
 observed = read(ROOT / 'provenance/job_states.json', {})
+matrix = {x['name']: x for x in read(ROOT / 'matrix.json', [])}
+pending_four = [line.split('|')[0] for line in queue if '|PD|' in line and matrix.get(by_job.get(line.split('|')[0], {}).get('case'), {}).get('ranks') == 4]
+active_four = any(matrix.get(by_job.get(line.split('|')[0], {}).get('case'), {}).get('ranks') == 4 for line in active)
 progress = []
 for line in active:
     job = line.split('|')[0]
@@ -71,7 +74,8 @@ status = dict(updated_utc=datetime.datetime.now(datetime.timezone.utc).isoformat
               devices=summary.get('device_diagnostics'), failures=sorted(set(failures)),
               interrupted_attempts=len(interruptions), active=active, waiting=waiting,
               progress=progress, cpu_available_after_active=free_after,
-              four_rank_cpu_slot=free_after >= 8, qa_available_measurements_passed=qa.get('available_measurements_passed'),
+              four_rank_cpu_slot=free_after >= 8, pending_four_rank_jobs=pending_four,
+              four_rank_actionable=free_after >= 8 and bool(pending_four) and not active_four, qa_available_measurements_passed=qa.get('available_measurements_passed'),
               complete=qa.get('complete', False) and (ROOT / 'CLOSURE.md').exists()
                        and '\nCOMPLETE\n' in (ROOT / 'CLOSURE.md').read_text())
 (ROOT / 'provenance/monitor_status.json').write_text(json.dumps(status, indent=2) + '\n')
