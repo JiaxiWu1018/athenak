@@ -4,6 +4,7 @@ Three seeds are the realizations. Quantiles, windows and saved times are not
 additional trials. This supplies descriptive tables, not sampler-selection rules.
 """
 import argparse
+import csv
 import datetime
 import itertools
 import json
@@ -95,7 +96,7 @@ def main():
     case_groups = groups(science['case_rows'], ('radial', 'method'), case_metrics)
     mixing_groups = groups(science['mixing_rows'], ('radial', 'method', 'nominal_time_M'),
                            ('mean_cohort_diagonal_fraction',))
-    weights, resources, extra_inputs = [], [], []
+    weights, resources, mass_errors, extra_inputs = [], [], [], []
     for row in science['case_rows']:
         case = row['case']
         weight_path = ROOT/'reduced'/case/'weights.json'
@@ -108,13 +109,19 @@ def main():
         info = {k:row[k] for k in ('case', 'radial', 'method', 'seed')}
         weight = json.loads(weight_path.read_text())
         weights.append(dict(info, **{k:weight[k] for k in ('mass_min', 'mass_max', 'global_effective_count')}))
+        cdf_path = ROOT/'reduced'/case/'initial_mass_errors.csv'
+        with cdf_path.open() as stream:
+            cdf_rows = list(csv.DictReader(stream))
+        cdf_keys = ('point_error_target', 'point_error_equilibrium', 'CIC_error_target', 'CIC_error_equilibrium')
+        mass_errors.append(dict(info, **{k+'_max_abs':max(abs(float(r[k])) for r in cdf_rows) for k in cdf_keys}))
         resources.append(dict(info, solver_wall_seconds=completion['solver_wall_seconds'],
                               raw_manifest_bytes=completion['raw_bytes'],
                               sampled_max_aggregate_host_rss_bytes=max(r['aggregate_host_rss_bytes'] for r in memory),
                               sampled_max_device_vram_bytes=max((v for r in memory for v in r['vram_used_bytes'].values()), default=0)))
         extra_inputs.extend({'path':str(p.relative_to(ROOT)), 'bytes':p.stat().st_size, 'sha256':sha(p)}
-                            for p in (weight_path, memory_path))
+                            for p in (weight_path, memory_path, cdf_path))
     weight_groups = groups(weights, ('radial', 'method'), ('mass_min', 'mass_max', 'global_effective_count'))
+    mass_error_groups = groups(mass_errors, ('radial', 'method'), tuple(k+'_max_abs' for k in cdf_keys))
     resource_summary = {name:{'minimum':min(r[name] for r in resources), 'maximum':max(r[name] for r in resources),
                               'mean':statistics.fmean(r[name] for r in resources)}
                         for name in ('solver_wall_seconds', 'raw_manifest_bytes',
@@ -168,7 +175,8 @@ def main():
            'source_files_verified':len(science['source_manifest']), 'window_groups':window_groups,
            'motion_groups':motion_groups, 'field_groups':field_groups, 'case_groups':case_groups,
            'mixing_groups':mixing_groups, 'radial_measure_contrast':contrast_groups,
-           'weight_groups':weight_groups, 'resource_rows':resources, 'resource_summary':resource_summary,
+           'weight_groups':weight_groups, 'initial_mass_error_groups':mass_error_groups,
+           'resource_rows':resources, 'resource_summary':resource_summary,
            'extra_input_manifest':extra_inputs,
            'resource_definition':'Launch-to-exit wall includes in-run output; sampled host RSS sums matching Athena processes. VRAM is the largest sampled whole-device DRM counter, not exact solver-only memory. Global mass-weight effective count differs from per-cell CIC Neff.'})
     atomic(destination/'TABLES.md', '\n'.join(lines)+'\n')
