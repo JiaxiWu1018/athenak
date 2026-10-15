@@ -10,7 +10,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 ROOT=Path(os.environ.get('EFFICIENCY_SESSION',Path(__file__).resolve().parents[1]))
-sys.path.insert(0,str(ROOT.parents[0]/'scripts'))
+sys.path.insert(0,str(ROOT/'scripts'))
 from paper_style import configure
 configure()
 report_lock=(ROOT/'results/.report.lock').open('a')
@@ -20,6 +20,9 @@ PHASE_LABELS={'mesh':'Spacetime','push':'Particle push','energy':'Particle energ
 PHASE_SHORT={'mesh':'Spacetime','push':'Push','energy':'Energy','migration':'Comm./ownership','records':'Records','sort':'Host sort','transfer':'Copies','atomic':'Atomic deposit','other':'Other'}
 FILES=[]
 NOW=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
+PLOT_SOURCES=[dict(path=str(path.relative_to(ROOT)),sha256=hashlib.file_digest(path.open('rb'),'sha256').hexdigest()) for path in [Path(__file__).resolve(),ROOT/'scripts/paper_style.py']]
+PLOT_HEAD=subprocess.check_output(['git','-C',str(ROOT/'src/athenak'),'rev-parse','HEAD'],text=True).strip()
+TEX_VERSION=subprocess.run(['latex','--version'],text=True,stdout=subprocess.PIPE,check=False).stdout.splitlines()[0] if matplotlib.rcParams['text.usetex'] else None
 def load(kind):
     return [json.loads(p.read_text()) for p in sorted((ROOT/'results'/kind).glob('*/receipt.json'))]
 def imbalance(records,blocks=False):
@@ -154,7 +157,7 @@ if sampling:
         r=sampling.get((d,p));y.append(spm(r) if r else np.nan)
         if r:counts=np.array([x['local_count'] for x in r['initial']]);imb[k,j]=counts.max()/counts.mean()
       axes[0].bar(np.arange(5)+(k-1)*.24,y,width=.23,color=palette[k],label=f'{p} GPU'+('s' if p>1 else ''))
-    axes[0].set_xticks(range(5),names,rotation=30,ha='right');axes[0].set_xlim(-.6,4.6);axes[0].set_ylabel('Wall seconds / $M$');axes[0].legend();axes[0].grid(axis='y',alpha=.18)
+    axes[0].set_xticks(range(5),names,rotation=30,ha='right');axes[0].set_xlim(-.6,4.6);axes[0].set_ylabel('Wall seconds / $M$');axes[0].legend(loc='lower center',bbox_to_anchor=(.5,1.01),ncol=3,fontsize=8);axes[0].grid(axis='y',alpha=.18)
     image=axes[1].imshow(np.ma.masked_invalid(imb),vmin=1,vmax=4,cmap='cividis',aspect='auto');axes[1].set_xticks(range(5),names,rotation=30,ha='right');axes[1].set_yticks(range(3),['1 GPU','2 GPUs','4 GPUs']);axes[1].set_ylabel('Initial particle-count imbalance')
     for i in range(3):
       for j in range(5):
@@ -183,7 +186,7 @@ point_profiles={r['case']['ranks']:r for r in profiles if r['case']['distributio
 if point_profiles:
     fig,axes=plt.subplots(1,2,figsize=(7.1,3.6));legend_handles=[];legend_labels=[]
     for ax,ranks in zip(axes,[2,4]):
-      r=point_profiles.get(ranks);ax.set_title(f'{ranks} GPUs',fontsize=9.5);ax.set_xlabel('MPI rank');ax.set_xticks(range(ranks));ax.set_ylabel('Profiled ms / full timestep');ax.grid(axis='y',alpha=.18)
+      r=point_profiles.get(ranks);ax.set_title(f'One-site sampling: {ranks} GPUs',fontsize=9.5);ax.set_xlabel('MPI rank');ax.set_xticks(range(ranks));ax.set_ylabel('Profiled ms / full timestep');ax.grid(axis='y',alpha=.18)
       if r is None:
         ax.text(.5,.5,'Awaiting profile',ha='center',va='center',transform=ax.transAxes);ax.set_yticks([]);continue
       timings=sorted(r['timings'],key=lambda t:t['rank']);groups=[phase_groups(dict(r,timings=[t])) for t in timings];bottom=np.zeros(ranks)
@@ -193,8 +196,8 @@ if point_profiles:
       for rank,top in enumerate(bottom):
         initial=next(x for x in r['initial'] if x['rank']==rank);ax.text(rank,top+peak*.035,rf'{100*initial["local_count"]/r["case"]["n"]:.1f}\%',ha='center',va='bottom',fontsize=7.5)
       if not legend_handles:legend_handles,legend_labels=ax.get_legend_handles_labels()
-    fig.legend(legend_handles,legend_labels,loc='lower center',bbox_to_anchor=(.5,.055),ncol=3,fontsize=7,title='Profiled phases',title_fontsize=7)
-    save(fig,'07_rank_phase_work_and_waits','One-site number concentration, N=6,291,456, identical initial physical source. Each bar is one rank averaged over the separate diagnostic interval; numbers above bars give its initial share of particles. Communication/ownership and other/synchronization include waits for other ranks, so a large waiting segment does not identify transport as the underlying bottleneck. Compare the initially most populated rank with the lighter ranks. Full-run initial/final counts and traffic are in the throughput CSV.',bottom=.23)
+    fig.legend(legend_handles,legend_labels,loc='lower center',bbox_to_anchor=(.5,.055),ncol=3,fontsize=7,title='Profiled phases; bar labels give initial particle shares',title_fontsize=7)
+    save(fig,'07_rank_phase_work_and_waits','One-site number concentration, N=6,291,456, identical initial physical source. Each bar is one rank averaged over the separate diagnostic interval; numbers above bars give its initial share of particles. Job step time follows the longest rank bar. Communication/ownership and other/synchronization include waits for other ranks, so a large waiting segment does not identify transport as the underlying bottleneck. Compare the initially most populated rank with the lighter ranks. Full-run initial/final counts and traffic are in the throughput CSV.',bottom=.23)
 # Evidence checks and readable reports.
 checks=[]
 for r in through+load('gate')+load('profile')+load('device'):
@@ -273,13 +276,26 @@ if sampling:
         phases=[phase_groups(dict(profile,timings=[t])) for t in profile['timings']]
         initial_imbalance=imbalance(profile['initial'])
         hot=max(profile['initial'],key=lambda x:x['local_count'])['rank'];hot_timing=next(t for t in profile['timings'] if t['rank']==hot);h=phase_groups(dict(profile,timings=[hot_timing]));htotal=sum(h.values())
-        findings.append(f'For the {p}-GPU one-site profile, initial maximum/mean rank particle count is {initial_imbalance:.2f}; initially most populated rank {hot} spends {100*h["push"]/htotal:.1f}% in push, {100*h["atomic"]/htotal:.1f}% in atomic deposition, and {100*h["migration"]/htotal:.1f}% in communication/ownership. Across ranks, push spans {min(x["push"] for x in phases):.3g}–{max(x["push"] for x in phases):.3g} ms/step and communication/ownership spans {min(x["migration"] for x in phases):.3g}–{max(x["migration"] for x in phases):.3g} ms/step. Communication and other/synchronization timers can include waits for other ranks; these ranges do not isolate transport cost. The separate throughput run (ending at {point["timings"][0]["final_time"]:.3g}M) changes maximum/mean rank count from {imbalance(point["initial"]):.2f} to {imbalance(point["final"]):.2f}; endpoints do not give a time-averaged imbalance.')
+        detail=f'In the {p}-GPU one-site profile'+(f' on initially most populated rank {hot}' if p>1 else '')+f', push accounts for {100*h["push"]/htotal:.1f}% of the step, deposition host sorting/validation for {100*h["sort"]/htotal:.1f}%, atomic deposition for {100*h["atomic"]/htotal:.1f}%, and communication/ownership for {100*h["migration"]/htotal:.1f}%.'
+        if p>1:
+          detail+=f' Initial maximum/mean rank particle count is {initial_imbalance:.2f}. Across ranks, push spans {min(x["push"] for x in phases):.3g}–{max(x["push"] for x in phases):.3g} ms/step and communication/ownership spans {min(x["migration"] for x in phases):.3g}–{max(x["migration"] for x in phases):.3g} ms/step. Communication and other/synchronization groups include waits for other ranks. The separate throughput run (ending at {point["timings"][0]["final_time"]:.3g}M) changes maximum/mean rank count from {imbalance(point["initial"]):.2f} to {imbalance(point["final"]):.2f}; endpoints do not give a time-averaged imbalance.'
+        findings.append(detail)
 for name in sorted(set(x['case'] for x in kernel_rows)):
   ranked=[x for x in kernel_rows if x['case']==name and x['gpu_time_percent']]
   if ranked:
     top=max(ranked,key=lambda x:float(x['gpu_time_percent']));findings.append(f'Nsight GPU kernel evidence for {name}: the leading kernel is in {top['kernel'].split('/',1)[0][:100]} and contributes {float(top["gpu_time_percent"]):.1f}% of summed traced GPU kernel duration; exact kernel names and NVTX phase labels are in results/gpu_kernels.csv. GPU duration excludes host sorting and MPI waiting.')
 if not findings:findings=['The campaign is active; completed cases are tabulated below. Superseded build-mode attempts are preserved and excluded from promoted measurements. Bottleneck conclusions will be added when the corresponding comparisons finish.']
-report=f'# Paper Session 02 — code efficiency\n\nUpdated {NOW}. **{len(valid)}/60 throughput cases complete**, {len(profiles)} diagnostic profiles complete; {len(through)-len(valid)} failed or incomplete cases.\n\n'+ '\n\n'.join(findings)+'\n\n'
+overview=[]
+if pdyn:
+  fractions=[100*sum(v for key,v in phase_groups(r).items() if key not in ['mesh','other'])/sum(phase_groups(r).values()) for r in pdyn]
+  overview.append(f'Uniformly sampled dynamical workloads are particle dominated: particle phases account for {min(fractions):.1f}–{max(fractions):.1f}% of the profiled step across the measured particle-per-cell cases. GPU particle push and CPU deposition sorting/validation are the main costs. The interpolation estimates below concern geodesic-evaluation cycles inside the push.')
+for ranks in [4,2]:
+  profile=point_profiles.get(ranks)
+  if profile:
+    hot=max(profile['initial'],key=lambda x:x['local_count']);cold=min(profile['initial'],key=lambda x:x['local_count']);hg=phase_groups(dict(profile,timings=[next(t for t in profile['timings'] if t['rank']==hot['rank'])]));cg=phase_groups(dict(profile,timings=[next(t for t in profile['timings'] if t['rank']==cold['rank'])]));share=100*hot['local_count']/profile['case']['n']
+    overview.append(f'The {ranks}-GPU one-site profile starts with {share:.1f}% of particles on one rank. The lighter rank spends {100*(cg["migration"]+cg["other"])/sum(cg.values()):.1f}% of its interval in communication/other groups that include waits, while push plus host sorting/validation account for {100*(hg["push"]+hg["sort"])/sum(hg.values()):.1f}% on the initially most populated rank. The per-rank figure separates this imbalance from transport cost.')
+    break
+report=f'# Paper Session 02 — code efficiency\n\nUpdated {NOW}. **{len(valid)}/60 throughput cases complete**, {len(profiles)}/27 phase profiles and {len(devices)}/6 device diagnostics complete; {len(through)-len(valid)} failed or incomplete cases.\n\n'+'\n\n'.join(overview)+'\n\n## Detailed measurements\n\n'+ '\n\n'.join(findings)+'\n\n'
 if interruptions:report+=f'{len(interruptions)} scheduler-interrupted attempt(s) are preserved separately and retried; details are in [the interruption record](../provenance/interruptions.json).\n\n'
 report+='All throughput measurements are single passes targeting 5M, with a 0.5M warm-up excluded. A solver wall-clock guard finishes cleanly before the Slurm limit; shorter runs are labeled by their actual endpoint and need at least ten measured cycles to supply a rate. Reported particle rates count complete cycle updates; physical-cell rates exclude ghosts. Frozen cell rates are mesh-size normalizations and represent no spacetime evolution. Wall seconds/M uses the measured physical-time interval.\n\n'
 report+='## Figures\n\n'
@@ -306,7 +322,7 @@ Superseded compile-mode attempts are excluded from performance results and prese
 '''
 (ROOT/'reports/REPORT_AGENT.md').write_text(agent)
 with PdfPages(ROOT/'reports/REPORT_code_efficiency.pending.pdf') as pdf:
- text=f'{len(valid)}/60 throughput cases complete; {len(profiles)} profiles.\nUpdated {NOW}\n\n'+'\n\n'.join(findings)+'\n\nSingle-pass evolution timings exclude initialization and a 0.5M warm-up. Diagnostic timings are measured separately. Phase profiles use the release binary; device-clock samples use a separate instrumented binary. Exact values, kernel names, definitions and provenance are in the Markdown report and CSV tables.'
+ text=f'{len(valid)}/60 throughput cases complete; {len(profiles)}/27 phase profiles; {len(devices)}/6 device diagnostics.\nUpdated {NOW}\n\n'+'\n\n'.join(overview+findings)+'\n\nSingle-pass evolution timings exclude initialization and a 0.5M warm-up. Diagnostic timings are measured separately. Phase profiles use the release binary; device-clock samples use a separate instrumented binary. Exact values, kernel names, definitions and provenance are in the Markdown report and CSV tables.'
  lines='\n'.join(textwrap.fill(line,88) if line else '' for line in text.split('\n')).splitlines()
  for page,offset in enumerate(range(0,len(lines),48)):
   fig=plt.figure(figsize=(8.3,11.7));fig.text(.08,.94,'NRPIC code efficiency — Paper Session 02'+(' (continued)' if page else ''),fontsize=14,va='top',usetex=False);fig.text(.08,.88,'\n'.join(lines[offset:offset+48]),fontsize=10,va='top',linespacing=1.4,usetex=False);pdf.savefig(fig);plt.close(fig)
@@ -317,7 +333,7 @@ os.replace(ROOT/'reports/REPORT_code_efficiency.pending.pdf',ROOT/'reports/REPOR
 artifacts=[ROOT/'reports/REPORT_code_efficiency.md',ROOT/'reports/REPORT_code_efficiency.pdf',ROOT/'reports/REPORT_AGENT.md',ROOT/'results/SUMMARY.json',ROOT/'results/VALIDATION.json']
 artifacts += [ROOT/'figures'/f'{name}.{ext}' for name,caption in FILES for ext in ['pdf','png']]
 artifacts += [ROOT/'results'/name for name in ['throughput.csv','profile_phases.csv','gpu_kernels.csv','rank_phases.csv'] if (ROOT/'results'/name).exists()]
-manifest=dict(updated_utc=NOW,host=socket.gethostname(),slurm_job_id=os.environ.get('SLURM_JOB_ID'),python=sys.version,numpy=np.__version__,matplotlib=matplotlib.__version__,latex_enabled=bool(matplotlib.rcParams['text.usetex']),completed_cases=[dict(case=r['case']['name'],job_id=r['job_id']) for r in valid],files=[dict(path=str(p.relative_to(ROOT)),bytes=p.stat().st_size,sha256=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()) for p in artifacts])
+manifest=dict(updated_utc=NOW,plotting_sources=PLOT_SOURCES,plotting_source_commit=PLOT_HEAD,latex_version=TEX_VERSION,host=socket.gethostname(),slurm_job_id=os.environ.get('SLURM_JOB_ID'),python=sys.version,numpy=np.__version__,matplotlib=matplotlib.__version__,latex_enabled=bool(matplotlib.rcParams['text.usetex']),completed_cases=[dict(case=r['case']['name'],job_id=r['job_id']) for r in valid],files=[dict(path=str(p.relative_to(ROOT)),bytes=p.stat().st_size,sha256=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()) for p in artifacts])
 (ROOT/'provenance/report_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 # Keep live state truthful; no completion based only on reaching the last scheduler job.
 queue=subprocess.run(['squeue','-u','jiaxiwu','-h','-o','%i %j %t %M %R'],text=True,stdout=subprocess.PIPE,check=False).stdout
