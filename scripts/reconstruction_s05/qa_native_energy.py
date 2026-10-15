@@ -20,7 +20,7 @@ def interpolated_energy(p,pos,u):
     nodes=[(low[:,a,None]+offsets+.5)*.5 for a in range(3)]
     rr=np.sqrt(nodes[0][:,:,None,None]**2+nodes[1][:,None,:,None]**2+nodes[2][:,None,None,:]**2)
     a=np.interp(rr,p['riso_over_m'],p['conformal_a'])
-    alpha=p['alpha_s']*np.sqrt(np.interp(rr,p['riso_over_m'],p['y']))
+    alpha=np.interp(rr,p['riso_over_m'],p['lapse'])
     outside=rr>p['Riso_over_M'];q=.5/rr[outside]
     a[outside]=(1+q)**2;alpha[outside]=(1-q)/(1+q)
     w=weights[0][:,:,None,None]*weights[1][:,None,:,None]*weights[2][:,None,None,:]
@@ -29,7 +29,7 @@ def interpolated_energy(p,pos,u):
 
 
 def main():
-    require_job();dest=ROOT/'qa_native_energy_463699';dest.mkdir(exist_ok=True)
+    require_job();dest=ROOT/'qa_native_energy_463699'/os.environ['SLURM_JOB_ID'];dest.mkdir(parents=True,exist_ok=False)
     case='legacy_mc_s1';work=ROOT/'preflight_attempts/463699'/case
     path=sorted((work/'out/pvtk').glob('*.part.vtk'))[0]
     t,cycle,n,d=R.read_pvtk(str(path));assert t==0 and cycle==0 and n==1500000
