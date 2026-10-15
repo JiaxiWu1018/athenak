@@ -24,6 +24,12 @@ def read(path, default=None):
 
 subprocess.run(['python3', str(ROOT / 'scripts/advance.py')], check=True,
                stdout=subprocess.PIPE, text=True)
+previous_status = read(ROOT / 'provenance/monitor_status.json', {})
+new_interruptions = read(ROOT / 'provenance/interruptions.json', [])
+if len(new_interruptions) > previous_status.get('interrupted_attempts', 0):
+    # The helper serializes queue mutations and never retries numerical failures.
+    subprocess.run(['python3', str(ROOT / 'scripts/retry_preempted_tail.py')],
+                   check=True, stdout=subprocess.PIPE, text=True)
 summary = read(ROOT / 'results/SUMMARY.json', {})
 queue = subprocess.check_output(['squeue', '-u', 'jiaxiwu', '-h', '-o', '%i|%j|%t|%M|%R|%C'], text=True).splitlines()
 active = [x for x in queue if '|eff-' in x and '|R|' in x]
@@ -85,6 +91,7 @@ status = dict(updated_utc=datetime.datetime.now(datetime.timezone.utc).isoformat
               four_rank_cpu_slot=free_after >= 8, pending_four_rank_jobs=pending_four,
               four_rank_queued_next=four_next,
               license_serialized=license_serialized,
+              automatic_preemption_recovery=True,
               four_rank_actionable=free_after >= 8 and bool(pending_four) and not active_four and not four_next and not license_serialized, qa_available_measurements_passed=qa.get('available_measurements_passed'),
               complete=qa.get('complete', False) and (ROOT / 'CLOSURE.md').exists()
                        and '\nCOMPLETE\n' in (ROOT / 'CLOSURE.md').read_text())

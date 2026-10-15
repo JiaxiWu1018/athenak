@@ -27,3 +27,5 @@ Remaining one-rank/four-rank groups may use separate dependency chains to backfi
 User-approved largest-case revision: the five throughput cases with N >= 100 million end at 1M after a 0.5M warm-up (ten measured cycles). Smaller cases end at 5M; phase/device diagnostics end at 1.5M. Exact endpoints and duration limits remain explicit in the report and receipts.
 
 Active monitoring may invoke `scripts/retry_preempted_tail.py` after a scheduler preemption. It retries only the latest PREEMPTED measurement without a valid receipt, appends to the correct serial group, verifies the four-license pool and joins both tails before closure. Numerical failures require diagnosis. A failed queue transaction leaves closure held with its exact commands recorded for repair.
+
+The persistent watcher reloads monitor.py every50 seconds. A newly recorded scheduler interruption invokes the queue-tail recovery helper before writing the heartbeat, so retry submission and closure dependencies continue without an interactive agent turn. The helper lock prevents duplicate recovery; numerical failures still stop for inspection.
