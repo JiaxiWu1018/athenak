@@ -121,7 +121,7 @@ if ranksets:
     axes[0].plot([1,2,4],[1,2,4],':',color='.4',label='Ideal');axes[0].set_ylabel('Speedup over one GPU');axes[1].axhline(100,color='.4',ls=':');axes[1].set_ylabel('Parallel efficiency (%)',usetex=False)
     for ax in axes:ax.set_xticks([1,2,4]);ax.set_xlabel('MPI ranks / A100 GPUs');ax.grid(alpha=.18)
     axes[0].legend(fontsize=7)
-    save(fig,'03_strong_scaling','Strong scaling of N=1 million with eight 32^3 blocks on a fixed global 64^3 grid. One A100 per MPI rank; speedup uses wall seconds/M against the matching one-rank eight-block case. Node sharing is recorded in provenance.')
+    save(fig,'03_strong_scaling','Strong scaling of N=1 million with eight 32^3 blocks on a fixed global 64^3 grid. One A100 and two allocated CPUs per MPI rank; speedup uses wall seconds/M against the matching one-rank eight-block case. Node sharing is recorded in provenance.')
 # 4: dynamic PPC rates and diagnostic phase decomposition.
 dyn=[r for r in valid if r['case']['name'].startswith('dynamic_ppc')]
 pdyn=[r for r in profiles if r['case']['name'].startswith('dynamic_ppc')]
@@ -131,6 +131,7 @@ if dyn:
     baseline=byname.get('dynamic_mesh_only');frozen=byname.get('dynamic_matched_frozen_ppc24')
     if baseline:axes[0].axhline(step(baseline),color='.4',ls=':',label='Mesh-only control')
     if frozen:axes[0].scatter([24],[step(frozen)],marker='s',facecolors='none',edgecolors=COLORS['sort'],label='Matched frozen')
+    if baseline:axes[0].set_ylim(bottom=.6*step(baseline))
     axes[0].set_xscale('log',base=2);axes[0].set_yscale('log');axes[0].set_xticks([6,24,96,384],[6,24,96,384]);axes[0].set_xlabel('Particles / physical cell');axes[0].set_ylabel('Wall ms / full timestep');axes[0].legend(fontsize=7);axes[0].grid(alpha=.18)
     p=sorted(pdyn,key=lambda r:r['case']['ppc']);bottom=np.zeros(len(p))
     for key in (['mesh','push','energy','migration','records','sort','transfer','atomic','other'] if p else []):
@@ -160,7 +161,7 @@ if sampling:
       for j in range(5):
         if np.isfinite(imb[i,j]):axes[1].text(j,i,f'{imb[i,j]:.2f}',ha='center',va='center',color='white' if imb[i,j]<2.3 else 'black',fontsize=8)
     fig.colorbar(image,ax=axes[1],label='Maximum / mean rank count',fraction=.05,pad=.03)
-    save(fig,'05_sampling_and_rank_imbalance','All cases have N=6,291,456, the same mesh, timestep and initial physical source. Extra weighted replicas change number distribution. Central widths are Gaussian sigma values. Hotspots concentrate extra replicas in one block or one source site. Heatmap shows initial count imbalance; final counts and profiling evidence are retained separately.')
+    save(fig,'05_sampling_and_rank_imbalance','All cases have N=6,291,456, the same mesh, timestep and initial physical source. Extra weighted replicas change number distribution. Central widths are Gaussian sigma values and keep octant populations approximately balanced. Hotspots concentrate extra replicas in one block or one source site. Heatmap shows initial count imbalance; final counts and profiling evidence are retained separately.')
 # 6: expensive phase ranking and interpolation fraction.
 if profiles:
     chosen=[]
@@ -216,6 +217,9 @@ if count:
 fixed_profile=next((r for r in profiles if r['case']['name']=='count_st_dep1_N1000000'),None)
 if fixed_profile:
   g=phase_groups(fixed_profile);total=sum(g.values());findings.append(f'In the frozen ST million-particle, one-block case with deposition on, the particle push accounts for {100*g["push"]/total:.1f}% of the diagnostic timestep and deposition host sorting for {100*g["sort"]/total:.1f}%.')
+mesh_control=byname.get('dynamic_mesh_only');low_ppc=byname.get('dynamic_ppc6')
+if mesh_control and low_ppc:
+  findings.append(f'The live six-particles/cell case costs {step(low_ppc):.3g} ms/step, compared with {step(mesh_control):.3g} ms/step for mesh-only evolution with its initial source held fixed ({step(low_ppc)/step(mesh_control):.1f}x). Separate phase profiles quantify the actual particle/spacetime shares.')
 if pdyn:
   for r in sorted(pdyn,key=lambda r:r['case']['ppc']):
     g=phase_groups(r);key=max(g,key=g.get);total=sum(g.values());particle=sum(v for k,v in g.items() if k not in ['mesh','other']);findings.append(f'At {r["case"]["ppc"]} particles/cell, particle phases account for {100*particle/total:.1f}% of the diagnostic timestep, spacetime for {100*g["mesh"]/total:.1f}%, and other work for {100*g["other"]/total:.1f}%. The largest individual phase is {PHASE_LABELS[key].lower()} ({100*g[key]/total:.1f}%).')
