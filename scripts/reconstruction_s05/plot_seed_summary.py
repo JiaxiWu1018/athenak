@@ -57,7 +57,6 @@ def main():
     handles += [Line2D([], [], color='gray', marker=m, ls='', label=f'Seed {i+1}')
                 for i, m in enumerate(('o', 's', '^'))]
     fig.legend(handles=handles, loc='outside upper center', ncol=7, fontsize=9)
-    fig.suptitle('Nine-shell RMS: symbols are realizations; bars span their range; connected ticks are means', fontsize=11)
     destination = ROOT/'plots'/f'seed_review_{os.environ["SLURM_JOB_ID"]}'
     destination.mkdir(parents=True, exist_ok=False)
     stem = destination/'f5_seed_summary'
