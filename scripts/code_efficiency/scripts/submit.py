@@ -25,6 +25,9 @@ for c in cases:
         minutes=60
         if a.kind=='throughput':
             minutes=45 if not c['frozen'] else (90 if c['metric']=='st' and c['feedback'] else 60)
+    if c['ranks']==4 and c['n']<100000000:
+        # Completed four-rank controls take minutes; permit shorter backfill gaps.
+        minutes=15 if a.kind=='throughput' else 10
     if a.kind in ['profile','device'] and c['n']<100000000:minutes=min(minutes,120)
     if a.partition=='preempt':minutes=min(minutes,120)
     cmd=['sbatch','--partition',a.partition,'--parsable','--job-name',f'eff-{a.kind[:1]}-{c["name"][:18]}','--ntasks',str(c['ranks']),'--gres',f'gpu:{c["ranks"]}','--mem',f'{max(32*c["ranks"],128 if c["n"]>=100000000 else 32)}G','--time',str(minutes),'--output',str(ROOT/'logs'/f'{a.kind}_{c["name"]}.%j.log'),'--export',f'ALL,CASE={c["name"]},KIND={a.kind},TRACE={int(trace)},EFFICIENCY_WALL_MINUTES={minutes}']
