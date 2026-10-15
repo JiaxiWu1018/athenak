@@ -2,7 +2,7 @@
 #SBATCH -J st_s05_particle_viz
 #SBATCH -p preempt
 #SBATCH -n 1
-#SBATCH -c 4
+#SBATCH -c 2
 #SBATCH --gpus=1
 #SBATCH --mem=8G
 #SBATCH -t 00:15:00
