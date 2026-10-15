@@ -6,6 +6,7 @@ scientific conclusions or replace actual visual inspection of the figures.
 import argparse
 import datetime
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -54,6 +55,11 @@ def main():
             info = subprocess.check_output(['pdfinfo', str(pdf)], text=True)
             pages = re.search(r'^Pages:\s+(\d+)\s*$', info, re.MULTILINE)
             assert pages and int(pages[1]) == 1
+            page_size = re.search(r'^Page size:\s+([\d.]+) x ([\d.]+) pts', info,
+                                  re.MULTILINE)
+            assert page_size
+            page_points = tuple(float(value) for value in page_size.groups())
+            assert all(value > 0 for value in page_points)
             prefix = destination/pdf.parent.name/pdf.stem
             assert str(prefix) not in seen
             seen.add(str(prefix))
@@ -63,10 +69,15 @@ def main():
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             preview = prefix.with_suffix('.png')
             width, height = png_dimensions(preview)
-            assert width>=1000 and height>=600
+            # Validate the raster against its PDF geometry. Figure widths differ;
+            # an 8-inch page correctly produces only 960 pixels at 120 dpi.
+            expected_pixels = tuple(math.ceil(value*120/72) for value in page_points)
+            assert all(abs(actual-expected) <= 1 for actual, expected in
+                       zip((width, height), expected_pixels))
             manifest.append({'source_pdf':row, 'preview':str(preview.relative_to(ROOT)),
                              'bytes':preview.stat().st_size, 'sha256':sha(preview),
                              'width':width, 'height':height,
+                             'pdf_page_size_points':page_points,
                              'source_png_dimensions':png_dimensions(png), 'pdf_pages':1})
             label = pdf.parent.name+'/'+pdf.stem
             index.append(f'- {label}: [PDF preview]({preview.relative_to(destination)}) / [original PNG](../../{png.relative_to(ROOT)})')
