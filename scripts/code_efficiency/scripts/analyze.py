@@ -236,7 +236,17 @@ for r in sorted(devices,key=lambda r:r['case']['n']):
 if sampling:
   for p in [1,2,4]:
     base=sampling.get(('uniform',p));point=sampling.get(('point',p))
-    if base and point:findings.append(f'On {p} GPU(s), the same-site sampling case costs {spm(point)/spm(base):.2f}x the uniform case at the same particle count and initial source.')
+    if base and point:
+      ratios=[]
+      for distribution,label in [('central4','central sigma=4M'),('central1','central sigma=1M'),('block','one block'),('point','one site')]:
+        q=sampling.get((distribution,p))
+        if q:ratios.append(f'{label}: {spm(q)/spm(base):.2f}x')
+      findings.append(f'On {p} GPU(s), sampling costs relative to uniform are '+', '.join(ratios)+'. Particle count, mesh, timestep and initial physical source are held fixed.')
+      profile=next((q for q in profiles if q['case']['name']==f'sampling_point_R{p}'),None)
+      if profile:
+        phases=[phase_groups(dict(profile,timings=[t])) for t in profile['timings']]
+        g=phase_groups(profile);total=sum(g.values());initial_imbalance=imbalance(profile['initial'])
+        findings.append(f'For the {p}-GPU one-site profile, initial maximum/mean rank particle count is {initial_imbalance:.2f}; the slowest rank spends {100*g["push"]/total:.1f}% in push, {100*g["atomic"]/total:.1f}% in atomic deposition, and {100*g["migration"]/total:.1f}% in communication/ownership. Across ranks, push spans {min(x["push"] for x in phases):.3g}–{max(x["push"] for x in phases):.3g} ms/step and communication/ownership spans {min(x["migration"] for x in phases):.3g}–{max(x["migration"] for x in phases):.3g} ms/step. Communication timers include waits for other ranks; these ranges do not isolate transport cost.')
 for name in sorted(set(x['case'] for x in kernel_rows)):
   ranked=[x for x in kernel_rows if x['case']==name and x['gpu_time_percent']]
   if ranked:
