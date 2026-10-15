@@ -36,7 +36,9 @@ matrix = {x['name']: x for x in read(ROOT / 'matrix.json', [])}
 pending_four = [line.split('|')[0] for line in queue if '|PD|' in line and matrix.get(by_job.get(line.split('|')[0], {}).get('case'), {}).get('ranks') == 4]
 active_four = any(matrix.get(by_job.get(line.split('|')[0], {}).get('case'), {}).get('ranks') == 4 for line in active)
 pending_ids = {line.split('|')[0] for line in queue if '|PD|' in line}
-execution_order = read(ROOT / 'provenance/verified_pipeline.json', {}).get('active_execution_order', [])
+pipeline = read(ROOT / 'provenance/verified_pipeline.json', {})
+execution_order = pipeline.get('active_execution_order', [])
+license_serialized = bool(pipeline.get('serialized_resource_chains'))
 next_pending = next((job for job in execution_order if job in pending_ids), None)
 four_next = next_pending in pending_four
 progress = []
@@ -60,6 +62,8 @@ for line in active:
                 progress.append(dict(job=job, case=row['case'], cycle=int(matches[-1][1]),
                                      physical_M=float(matches[-1][2])))
 failures = list(summary.get('failures', []))
+if license_serialized and len(active) > 1:
+    failures.append('Unexpected overlap between campaign allocations: ' + ', '.join(active))
 failures += [line for line in waiting if 'DependencyNeverSatisfied' in line]
 for (kind, case), row in latest.items():
     status = observed.get(row['job_id'], {}).get('JobState')
@@ -80,7 +84,8 @@ status = dict(updated_utc=datetime.datetime.now(datetime.timezone.utc).isoformat
               progress=progress, cpu_available_after_active=free_after,
               four_rank_cpu_slot=free_after >= 8, pending_four_rank_jobs=pending_four,
               four_rank_queued_next=four_next,
-              four_rank_actionable=free_after >= 8 and bool(pending_four) and not active_four and not four_next, qa_available_measurements_passed=qa.get('available_measurements_passed'),
+              license_serialized=license_serialized,
+              four_rank_actionable=free_after >= 8 and bool(pending_four) and not active_four and not four_next and not license_serialized, qa_available_measurements_passed=qa.get('available_measurements_passed'),
               complete=qa.get('complete', False) and (ROOT / 'CLOSURE.md').exists()
                        and '\nCOMPLETE\n' in (ROOT / 'CLOSURE.md').read_text())
 (ROOT / 'provenance/monitor_status.json').write_text(json.dumps(status, indent=2) + '\n')
