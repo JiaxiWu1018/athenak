@@ -13,3 +13,4 @@ source /work1/eliasmost/jiaxiwu/st_reconstruction_s06_20261016/src/athenak/scrip
 python3 "$ROOT/src/athenak/scripts/reconstruction_s06/analyze_extension.py"
 python3 "$ROOT/src/athenak/scripts/reconstruction_s06/verify.py" --final
 python3 "$ROOT/src/athenak/scripts/reconstruction_s06/plot_results.py"
+python3 "$ROOT/src/athenak/scripts/reconstruction_s06/finalize_evidence.py"
