@@ -1,5 +1,18 @@
 # ST reconstruction session 6
 
+Completed result:1000M=5.060064 reference surface periods. Growing coordinate-shell
+oscillations are observed at this fixed numerical setup:raw P-window excursions
+r10/r50/r90 rise1.978/0.910/0.840% (P..2P) to27.842/8.033/11.093% (4P..5P).
+This is a descriptive amplification result,not a physical-instability proof or
+an automatic paper-rerun decision. See the authoritative session reports/REPORT_session6.md.
+
+Actual pipeline:Perseusstage14717,methodsQA14720;AMDsmoke466312 and production466316;
+PerseusCPUanalysis14829 and review14848. AMDanalysis466317 was cancelled before
+allocation due to a long queue;analyze_perseus.sbatch staged the required native
+diagnostics and final checkpoint and ran unchanged scientific reduction/QA/plots.
+All501 compact states passed independent checks;actualPNG/PDFs were inspected.
+CompleteAMDoriginals andPerseusanalysiscopies remain retained;no cleanup occurred.
+
 Continue only `proper_stratified_s1` at 300M to absolute tlim=1000M with the
 protected session-5 HIP executable. Compiled source 5a5db71c; Kokkos 6739bc62.
 No physics, mesh, integrator, gauge, particle or output-cadence changes.
