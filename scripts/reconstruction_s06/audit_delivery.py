@@ -30,6 +30,9 @@ def main():
     remote = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'origin/experiment/ST-reconstruction-s06-long-stability'], text=True).strip()
     if head != remote:
         raise ValueError('Final source commit not pushed')
+    # The controller may still update its live accounting record during closeout.
+    # Bind the delivery to an immutable snapshot instead of that live status file.
+    atomic(ROOT / 'evidence/AMD_ACCOUNTING_FINAL.json', load(ROOT / 'evidence/AMD_ACCOUNTING.json'))
     root_size = int(subprocess.check_output(['du', '-s', '-B1', str(ROOT)], text=True).split()[0])
     atomic(ROOT / 'evidence/CLOSEOUT_STORAGE.json', {'utc': now(), 'root': str(ROOT), 'session_allocated_bytes': root_size,
            'production_raw_logical_bytes': load(ROOT / 'evidence/OUTPUT_MANIFEST.json')['local_production_raw_logical_bytes'],
@@ -38,7 +41,7 @@ def main():
     artifacts += [ROOT / 'evidence' / name for name in
                   ('QA_FINAL_OK.json', 'VISUAL_REVIEW.json', 'SCIENCE_REVIEW.json', 'DESCRIPTIVE_METRICS.json',
                    'PERSEUS_ANALYSIS_STAGE.json', 'PERSEUS_ANALYSIS_COMPLETE.json', 'ANALYSIS_HOST_CHANGE.json',
-                   'SETUP.json', 'SOURCE_PROVENANCE.json', 'AMD_ACCOUNTING.json', 'CLOSEOUT_STORAGE.json', 'STORAGE_FINAL.json')]
+                   'SETUP.json', 'SOURCE_PROVENANCE.json', 'AMD_ACCOUNTING_FINAL.json', 'CLOSEOUT_STORAGE.json', 'STORAGE_FINAL.json')]
     manifest = [{'path': str(p.relative_to(ROOT)), 'bytes': p.stat().st_size, 'sha256': sha(p)} for p in artifacts]
     atomic(ROOT / 'evidence/FINAL_DELIVERY_MANIFEST.json', {'utc': now(), 'job': os.environ['SLURM_JOB_ID'],
            'source': head, 'source_pushed': True, 'protected_physics_source': PHYSICS, 'physics_source_diff': 'empty',
