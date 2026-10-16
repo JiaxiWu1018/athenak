@@ -15,4 +15,8 @@ export ATHENAK_VIS_PYTHON="$ROOT/src/athenak/vis/python"
 mkdir -p "$ROOT/evidence/jobs/$SLURM_JOB_ID"
 { hostname; date -Is; python3 --version; } > "$ROOT/evidence/jobs/$SLURM_JOB_ID/archive_environment.txt"
 git -C "$ROOT/src/athenak" rev-parse HEAD > "$ROOT/evidence/jobs/$SLURM_JOB_ID/archive_source.txt"
-python3 "$ROOT/src/athenak/scripts/reconstruction_s05/archive_closeout.py" "${1:-transfer}"
+if [[ "${1:-transfer}" == audit ]]; then
+  python3 "$ROOT/src/athenak/scripts/reconstruction_s05/archive_delivery_audit.py"
+else
+  python3 "$ROOT/src/athenak/scripts/reconstruction_s05/archive_closeout.py" "${1:-transfer}"
+fi
