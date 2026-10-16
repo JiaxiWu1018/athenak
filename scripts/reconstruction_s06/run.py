@@ -21,6 +21,11 @@ def launch(role, end, walltime):
     exe = ROOT / 'protected/athena'
     if sha(exe) != EXE_SHA:
         raise ValueError('Protected executable changed')
+    storage_bytes = int(subprocess.check_output(['du', '-s', '-B1', '/work1/eliasmost/jiaxiwu'], text=True).split()[0])
+    forecast = 2000000000 if role == 'smoke' else 55000000000
+    if storage_bytes + forecast > 1869169767219:
+        raise ValueError('Projected whole-user storage exceeds 1.7TiB stop threshold')
+    atomic(work / 'storage_launch.json', {'whole_user_bytes': storage_bytes, 'growth_forecast_bytes': forecast, 'utc': now()})
     command = ['prun', str(exe), '--kokkos-map-device-id-by=mpi_rank', '-t', walltime,
                '-r', str(RESTART), '-d', str(out), f'time/tlim={end:g}']
     atomic(work / 'launch.json', {'job': os.environ['SLURM_JOB_ID'], 'host': socket.gethostname(),
