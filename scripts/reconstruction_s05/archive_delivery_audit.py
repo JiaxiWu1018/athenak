@@ -48,18 +48,34 @@ def main():
             links.append({'document':name,'target':target})
     excluded = {'evidence/DELIVERY_MANIFEST.json','evidence/CAMPAIGN_COMPLETE',
                 'evidence/ARCHIVE_DELIVERY_AUDIT_OK.json','evidence/STORAGE_AFTER_ARCHIVE_AUDIT.json'}
+    final_states = {'evidence/state.json','evidence/AMD_CLEANUP_STATE.json'}
     files = []
     for directory,dirs,names in os.walk(SESSION,followlinks=False):
         dirs[:] = sorted(n for n in dirs if n not in ('.git','__pycache__'))
         for name in sorted(names):
             p = Path(directory)/name
             rel = str(p.relative_to(SESSION))
-            if rel in excluded or p.suffix=='.pyc' or rel.startswith('logs/archive_perseus.'):
+            if rel in excluded|final_states or p.suffix=='.pyc' or rel.startswith('logs/archive_perseus.'):
                 continue
             if p.is_symlink():
                 files.append({'path':rel,'kind':'symlink','target':os.readlink(p)})
             else:
                 files.append({'path':rel,'bytes':p.stat().st_size,'sha256':sha(p)})
+    source_commit = subprocess.check_output(['git','-C',str(SESSION/'src/athenak'),'rev-parse','HEAD'],text=True).strip()
+    for rel in sorted(final_states):
+        p = SESSION/rel
+        state = json.loads(p.read_text())
+        state.update({'status':'complete','last_active_utc':now(),
+                      'next':'No remaining Session5 work. Monitoring stopped; future five-surface-period extension belongs in a new session.',
+                      'archive_delivery_audit':{'job':os.environ['SLURM_JOB_ID'],'status':'PASSED',
+                                                'receipt':'evidence/ARCHIVE_DELIVERY_AUDIT_OK.json'}})
+        if rel=='evidence/state.json':
+            state.update({'phase':'closed_archived','local_source_commit':source_commit})
+            state['amd_cleanup']['final_delivery_audit'] = 'PASSED'
+            state['jobs'].append({'role':'archive_delivery_audit','id':int(os.environ['SLURM_JOB_ID']),
+                                  'host':'perseus','status':'COMPLETED'})
+        write(p,state)
+        files.append({'path':rel,'bytes':p.stat().st_size,'sha256':sha(p)})
     write(SESSION/'evidence/DELIVERY_MANIFEST.json',{
         'job':os.environ['SLURM_JOB_ID'],'created_utc':now(),'files':files,
         'scope':'Perseus Session5 final archive; Git administration, bytecode, current audit outputs and mutable Slurm archive logs excluded; retained native source hashes independently checked',
@@ -77,7 +93,7 @@ def main():
         'retained_amd_files_checked':len(retained['files']),'links':links,
         'delivery_manifest_sha256':sha(SESSION/'evidence/DELIVERY_MANIFEST.json'),
         'completion_marker_sha256':sha(marker_path),
-        'source_commit':subprocess.check_output(['git','-C',str(SESSION/'src/athenak'),'rev-parse','HEAD'],text=True).strip()})
+        'source_commit':source_commit})
     write(SESSION/'evidence/STORAGE_AFTER_ARCHIVE_AUDIT.json',{
         'measured_utc':now(),'amd_session_allocated_bytes':0,
         'perseus_session_allocated_bytes':int(subprocess.check_output(['du','-s','-B1',str(SESSION)],text=True).split()[0]),
