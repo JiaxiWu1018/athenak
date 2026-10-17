@@ -106,6 +106,11 @@ source outputs and intermediate checkpoints remain on AMD. A failed partial
 reduction directory is evidence: use a new attempt destination after inspection,
 never delete it to get past the refusal to overwrite.
 
+Also stage the two2M/4M interior preflight particle frames with source hashes.
+Check full per-ID native fields against production using the original Session6
+rtol=atol=1e-7 tolerance. The shortened final20M alignment step is excluded from
+this comparison. Record actual maxima in the case summary.
+
 Once all three reductions pass, `analysis.sbatch compare` writes exact-window
 N differences, descriptive difference ratios, combined amplitude tables and
 COM/origin migration-style shell/health/amplitude PNG/PDFs. The health density

@@ -20,6 +20,24 @@ def frame_times(times):
     assert np.all(np.diff(times)>0) and times[0]==0 and abs(times[-1]-1000)<1e-7
     assert np.all((times-2*slots>=-.03)&(times-2*slots<=.25))
 
+def preflight_replay(case,production):
+    checks=[];preflight=ROOT/'runs'/case['id']/'preflight_validation'
+    staged=load(ROOT/'evidence/transfers'/(case['id']+'.json'))
+    for row in staged['preflight_interior_files']:
+        short=preflight/row['path'];long=production/row['path']
+        ta,ca,na,a=R.read_pvtk(str(short));tb,cb,nb,b=R.read_pvtk(str(long))
+        assert abs(ta-tb)<1e-8 and ca==cb and na==nb==case['n']
+        assert set(a)==set(b)
+        ia=np.argsort(a['ptag']);ib=np.argsort(b['ptag']);maxima={}
+        for key in a:
+            aa,bb=a[key][ia],b[key][ib]
+            assert np.allclose(aa,bb,rtol=1e-7,atol=1e-7),key+' preflight/production replay differs'
+            maxima[key]=float(np.max(np.abs(aa-bb)))
+        checks.append(dict(time_M=ta,cycle=ca,preflight_sha256=row['sha256'],
+            production_sha256=sha(long),max_abs_differences=maxima))
+    assert len(checks)==2
+    return checks
+
 def reduce(case):
     work=ROOT/'runs'/case['id']/'production';out=work/'out'
     assert (work/'RUN_OK').exists()
@@ -128,8 +146,10 @@ def reduce(case):
         full_count=n,complete_partner_pairs=case['paired'],display_seed=2026101505,
         max_abs_xy_M=float(np.abs(clouds[:,:,:2]).max()),color_range_M=[0,8.936231120010849],
         definition='Same fixed IDs at native saved times; all-z x-y projection; initial 3D coordinate radius colours.'))
+    replay=preflight_replay(case,work)
     atomic(dest/'summary.json',dict(case=case,utc=now(),job=os.environ['SLURM_JOB_ID'],source=source(),
         states=501,endpoint_M=float(times[-1]),period_M=P,field_checks=checks,sampling_checks=sampling_checks,
+        preflight_production_interior=replay,
         independent_equal_mass_quantile_brackets=independent,source_particle_outputs=sources,
         max_outside_finest_mass_fraction=max(h['outside_finest_mass_fraction']for h in shells),
         central_energy_definition='Coordinate-area-weighted deposited Eulerian energy at z=0,r<0.75M; not rest-mass density',
