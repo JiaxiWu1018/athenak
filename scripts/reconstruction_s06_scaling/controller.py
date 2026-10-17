@@ -1,5 +1,6 @@
 """Metadata-only OS gate and same-chat resumption; never launches scientific work directly."""
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -72,14 +73,18 @@ def main():
                             event('job_' + row[0] + '_' + row[1].split()[0], 'Inspect terminal state '+signature)
             if not state['events']:
                 event('continuation_test', 'Verify this same-chat continuation and the durable held-stage/OS gate; complete prepared work while OS finishes.')
-            if time.time()-state['heartbeat_at'] >= 7200:
-                event('heartbeat_'+str(int(time.time()/7200)), 'Review OS gate, held/new jobs, whole-user storage and next authorized actions.')
-                state['heartbeat_at'] = time.time()
             state.pop('last_error', None)
         except Exception as error:
             state['last_error'] = repr(error)
             try:
-                event('controller_error', 'Inspect the durable controller error and recover metadata transport or receipts without bypassing the OS gate.')
+                error_key=hashlib.sha256(repr(error).encode()).hexdigest()[:12]
+                event('controller_error_'+error_key, 'Inspect the durable controller error and recover metadata transport or receipts without bypassing the OS gate.')
+            except Exception as delivery_error:
+                state['notification_error'] = repr(delivery_error)
+        if time.time()-state['heartbeat_at'] >= 7200:
+            try:
+                event('heartbeat_'+str(int(time.time()/7200)), 'Review OS gate, held/new jobs, whole-user storage and next authorized actions.')
+                state['heartbeat_at'] = time.time()
             except Exception as delivery_error:
                 state['notification_error'] = repr(delivery_error)
         state['utc'] = now()
