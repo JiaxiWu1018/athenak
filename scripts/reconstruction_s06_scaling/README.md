@@ -82,3 +82,35 @@ then amend Session6 reports while preserving earlier versions/manifests. Retain
 all new raw/checkpoints and record actual paths/sizes/job/source/hashes/accounting.
 No five-case paper rerun, cleanup or Mac mirror is authorized. The follow-up's
 own evidence/COMPLETE closes its controller; old campaign markers remain intact.
+
+## Allocated postproduction commands
+
+Production closes with an allocated SHA256 manifest of every native output.
+For case index0/1/2, submit `analysis.sbatch reduce INDEX` on Perseus. It pulls
+only particle/field/history diagnostics and the final full checkpoint, verifies
+all selected files against that source manifest, then reduces every full-N
+saved state and creates the20000-ID trajectory cache in the same pass. All
+source outputs and intermediate checkpoints remain on AMD. A failed partial
+reduction directory is evidence: use a new attempt destination after inspection,
+never delete it to get past the refusal to overwrite.
+
+Once all three reductions pass, `analysis.sbatch compare` writes exact-window
+N differences, descriptive difference ratios, combined amplitude tables and
+COM/origin migration-style shell/health/amplitude PNG/PDFs. The health density
+proxy is the COM-centred0..0.5M coordinate-rest-mass bin divided by its actual
+initial value. Baseline central-E slices begin at302M and are never treated as
+an initial-density measurement. New central-E histories remain separately saved.
+
+Then `analysis.sbatch movies GROUP` accepts0/1/2 (new individual cases),paired
+(ordinary1.5M and antipodal3M) orscaling(ordinary1.5M/3M/6M). All groups require
+all caches to choose the same unclipped fixed axes (atleast±16M), the same
+0..8.93623112M initial-radius colour range,501frames and15fps. Comparison panels
+match nominal2M output slots and show each case's actual native timestamp;
+trajectories are not interpolated. Each movie is fully decoded and six actual
+encoded frames saved for visual review. Computational receipts deliberately
+leave actual visual review pending for the resumed agent.
+
+These drivers are prepared code until actual allocated execution succeeds;
+syntax checks are not claimed as scientific QA. Review preflight times and
+memory, actual staged storage, independent quantile/window arithmetic, decoded
+movies and PNG/PDFs before amending the main Session6 report and completing.

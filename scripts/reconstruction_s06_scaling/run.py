@@ -51,6 +51,13 @@ def run(case,role,end,walltime,restart=None):
     atomic(work/'completion.json',dict(utc=now(),case=case,role=role,job=os.environ['SLURM_JOB_ID'],
         endpoint_M=end,solver_wall_seconds=elapsed,checkpoints=states,
         boris_fallbacks=parsed['boris_fallbacks'],boris_fallback_cycles=parsed['boris_fallback_cycles']))
+    # Hash on the allocated node, after the solver has closed every output.
+    # This source manifest lets later transfers verify native bytes independently.
+    files=[dict(path=str(p.relative_to(work)),bytes=p.stat().st_size,sha256=sha(p))
+           for p in sorted(out.rglob('*')) if p.is_file()]
+    atomic(work/'OUTPUT_MANIFEST.json',dict(utc=now(),job=os.environ['SLURM_JOB_ID'],
+        case=case['id'],source=source(),endpoint_M=end,files=files,
+        logical_bytes=sum(f['bytes'] for f in files)))
     return work,elapsed,states
 
 def check_particles(case,work):

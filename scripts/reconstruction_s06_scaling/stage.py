@@ -32,6 +32,7 @@ def main():
         (ROOT/folder).mkdir(exist_ok=True,parents=True)
     originals={ROOT/'samples/parent_1p5m.bin':BASE/'samples/proper_stratified_s1.bin',
         ROOT/'samples/model.npz':BASE/'samples/model.npz',
+        ROOT/'evidence/model.json':BASE/'evidence/model.json',
         ROOT/'reference/proper.npz':BASE/'reference/proper.npz',
         ROOT/'protected/athena':S05/'archive/amd_closeout_20261016/protected/athena'}
     for dest,src in originals.items():
@@ -65,6 +66,7 @@ def main():
         subprocess.run(['rsync','-a',str(ROOT/name)+'/',f'hpcfund.amd.com:{AMD}/{name}/'],check=True)
     for name in ['SOURCE_PIN.json','OS_PRIORITY_RELEASE.json']:
         subprocess.run(['rsync','-a',str(ROOT/'evidence'/name),'hpcfund.amd.com:'+str(AMD/'evidence'/name)],check=True)
+    subprocess.run(['rsync','-a',str(ROOT/'evidence/model.json'),'hpcfund.amd.com:'+str(AMD/'evidence/model.json')],check=True)
     files=[dict(path=str(p.relative_to(ROOT)),bytes=p.stat().st_size,sha256=sha(p))
            for name in ['samples','inputs','protected','reference'] for p in sorted((ROOT/name).iterdir()) if p.is_file()]
     remote_verify='import json,hashlib;from pathlib import Path;r=Path('+repr(str(AMD))+');rows=json.loads('+repr(json.dumps(files))+');assert all((r/x["path"]).stat().st_size==x["bytes"] and hashlib.sha256((r/x["path"]).read_bytes()).hexdigest()==x["sha256"]for x in rows);print("REMOTE_STAGE_HASHES_OK")'
