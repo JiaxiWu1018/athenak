@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=32G
-#SBATCH -t 03:00:00
+#SBATCH -t 02:00:00
 #SBATCH --no-requeue
 #SBATCH -o /data/jiaxiwu/NRPIC/reconstruction_ST/06_yc0819_long_stability_20261016/followups/paired_scaling_20261017/logs/%x.%j.log
 set -euo pipefail

@@ -105,6 +105,13 @@ own evidence/COMPLETE closes its controller; old campaign markers remain intact.
 ## Allocated postproduction commands
 
 Production closes with an allocated SHA256 manifest of every native output.
+Perseus preempt has a two-hour maximum (verified17Oct); the launcher uses2h,
+32GB/twoCPUs and the required unusedGPUslot. Existing first reductions15801/2
+were corrected in place from3h to2h before any allocation, not resubmitted.
+Inspect actual throughput; if a later case cannot fit, separate allocated
+staging and reduction without changing diagnostic definitions or discarding
+partial evidence.
+
 For case index0/1/2, submit `analysis.sbatch reduce INDEX` on Perseus. It pulls
 only particle/field/history diagnostics and the final full checkpoint, verifies
 all selected files against that source manifest, then reduces every full-N
