@@ -52,6 +52,18 @@ ST_WALL_HOURS to the job walltime; run.py leaves ten minutes for closure. Initia
 forecasts are8h walltime for3M and16h for6M, updated from actual preflight rates.
 Production uses fresh initial conditions, not the20M smoke checkpoints.
 
+After inspecting actual native receipts, timing and memory, write
+`evidence/PREFLIGHT_REVIEW.json`: all_accepted=true,
+six_million_restart_accepted=true, memory_and_timing_reviewed=true,
+physics_and_mesh_unchanged=true, preflight_sha256:{CASE:SHA256,...} and
+wall_hours:{CASE:INTEGER,...}. The hash map binds the mirrored actual AMD
+evidence/preflight receipts; choose walltime at least their recommendations.
+Then the lightweight metadata-only `submit_production.py` records unique
+submission intents/receipts and submits the two3M cases, with6Mafterok of the
+paired3M case to guarantee max2 concurrent productions. Existing recorded jobs
+are verified rather than resubmitted; unresolved intents require scheduler
+inspection. This is agent scientific review evidence, not a new user approval.
+
 Forecast23 AMD production node-hours;25..30 with preparation/preflights/overhead,
 plus3..5 allocated Perseus job-hours for analysis/movies. New AMD raw footprint
 ~350..400GB plus conservative420GB admission reservation. Entire-user watchdog
