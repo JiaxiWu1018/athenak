@@ -134,6 +134,15 @@ trajectories are not interpolated. Each movie is fully decoded and six actual
 encoded frames saved for visual review. Computational receipts deliberately
 leave actual visual review pending for the resumed agent.
 
+`analysis.sbatch audit`, after reductions and comparison, independently checks
+all612 baseline/new-case amplitude windows and all351 shell differences/117
+N-difference ratios with scalar interpolation and quadrature. It also checks
+all nine COM/origin deciles by partial order-statistic selection in nine full-N
+native frames (0, approximately500,1000M across the three new cases), COM/core
+bin masses, displayed IDs/positions/initial-radius colours and paired defects.
+The audit writes RESULTS_ARITHMETIC_QA.json only after actual checks succeed;
+it does not assert scientific stability or substitute for visual review.
+
 These drivers are prepared code until actual allocated execution succeeds;
 syntax checks are not claimed as scientific QA. Review preflight times and
 memory, actual staged storage, independent quantile/window arithmetic, decoded

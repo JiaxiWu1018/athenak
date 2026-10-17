@@ -29,6 +29,7 @@ case "$1" in
   reduce) python3 "$ROOT/scripts/transfer_case.py" "$2"
           python3 "$ROOT/scripts/analyze_cases.py" "$2" ;;
   compare) python3 "$ROOT/scripts/compare_cases.py" ;;
+  audit) python3 "$ROOT/scripts/audit_results.py" ;;
   movies) python3 "$ROOT/scripts/movies.py" "$2" ;;
   *) exit 2 ;;
 esac
