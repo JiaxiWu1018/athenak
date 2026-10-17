@@ -72,6 +72,10 @@ def main():
             state.pop('last_error', None)
         except Exception as error:
             state['last_error'] = repr(error)
+            try:
+                event('controller_error', 'Inspect the durable controller error and recover metadata transport or receipts without bypassing the OS gate.')
+            except Exception as delivery_error:
+                state['notification_error'] = repr(delivery_error)
         state['utc'] = now()
         atomic(path, state)
         time.sleep(300)
