@@ -52,3 +52,31 @@ All bulk transfers, hashing, validation, reductions and rendering run in Slurm.
 Record exact source/environment/input/command/hash/job/output manifests. Reports,
 figures, compact reductions and final checkpoint are mirrored to Perseus and
 verified there; retain AMD raw and report its exact size/path/status.
+
+## Requested particle movie addendum
+
+After the original science delivery closed, the user requested an x-y particle
+movie coloured by initial radius. `particle_movie.sbatch prepare` launches
+`particle_movie.py extract` and `preview`; `particle_movie.sbatch render` makes
+the full MP4 and decodes it for QA. Both run in allocated Perseus jobs. Exact
+commands are `sbatch scripts/particle_movie.sbatch prepare` then, after preview
+review, `sbatch scripts/particle_movie.sbatch render`. Job15017 prepared the
+verified cache/preview in98s;15019 rendered/encoded/decoded in128s. No evolution
+was rerun and no solver source was changed.
+
+The same20000 originalIDs span501 states from0..1000M:151 states from the retained
+Session5 visualization cache and350 native Session6 snapshots. Colour is the
+exact initial3D coordinate radius, fixed viridis0..8.93623112M. The x-y view
+includes allz, has fixed origin and equal±16M axes, and clips no displayedID.
+The1200x1080 H.264/yuv420p output has501frames at15fps,33.4s. Full decode and
+actual decoded-frame visual review passed. Source hashes, IDs, masses and
+published native times were checked during extraction. Details are in
+reports/MOVIE_session6.md at the archive session root.
+
+Final `particle_movie.sbatch audit` runs `audit_particle_movie.py`, which freezes
+the separate movie addendum manifest, updated report hashes and retained
+frame/cache storage. It preserves the original scientific delivery manifest
+and pre-addendum documents. The scripts refuse to replace existing caches or
+MP4s: reproduce in a new ROOT with the retained trajectory cache and DATA_OK
+receipt, retaining the original inputs/receipts. No source/raw Mac mirror,
+deletion, new simulation, or five-case-suite launch is part of this addendum.

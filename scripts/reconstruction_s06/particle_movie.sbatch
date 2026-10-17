@@ -30,5 +30,8 @@ case "$1" in
   render)
     python3 "$ROOT/scripts/particle_movie.py" render
     ;;
+  audit)
+    python3 "$ROOT/scripts/audit_particle_movie.py"
+    ;;
   *) exit 2 ;;
 esac
