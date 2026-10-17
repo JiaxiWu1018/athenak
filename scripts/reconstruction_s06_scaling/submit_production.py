@@ -15,6 +15,9 @@ def main():
     assert review['all_accepted'] is True and review['six_million_restart_accepted'] is True
     assert review['memory_and_timing_reviewed'] is True
     assert review['physics_and_mesh_unchanged'] is True
+    assert review['short_run_health_reviewed'] is True
+    health=ROOT/'evidence/PREFLIGHT_HEALTH_QA.json'
+    assert sha(health)==review['health_QA_sha256'] and load(health)['passed']
     staged=load(ROOT/'evidence/STAGED_AMD_SOURCE_PIN.json')
     assert staged['head']==load(ROOT/'evidence/STAGE_OK.json')['source']
     for case in CASES:

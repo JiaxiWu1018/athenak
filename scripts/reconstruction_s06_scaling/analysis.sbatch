@@ -24,6 +24,7 @@ mkdir -p "$ROOT/evidence/jobs/$SLURM_JOB_ID"
 { hostname; date -Is; python3 --version; command -v python3; git -C "$ROOT/src/athenak" rev-parse HEAD; } > "$ROOT/evidence/jobs/$SLURM_JOB_ID/environment.txt"
 python3 -c 'from cfg import ROOT;from os_gate import require_release;require_release(ROOT)'
 case "$1" in
+  preflight_health) python3 "$ROOT/scripts/preflight_health.py" ;;
   qa) python3 "$ROOT/scripts/qa_analysis.py" ;;
   reduce) python3 "$ROOT/scripts/transfer_case.py" "$2"
           python3 "$ROOT/scripts/analyze_cases.py" "$2" ;;

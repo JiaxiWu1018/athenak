@@ -52,10 +52,17 @@ ST_WALL_HOURS to the job walltime; run.py leaves ten minutes for closure. Initia
 forecasts are8h walltime for3M and16h for6M, updated from actual preflight rates.
 Production uses fresh initial conditions, not the20M smoke checkpoints.
 
-After inspecting actual native receipts, timing and memory, write
+After all native preflight/restart receipts pass, submit allocated
+`analysis.sbatch preflight_health` (10min wall is ample). It copies only the
+source-hash-verified short-run history files and summarizes the same lapse,
+constraint and core-energy diagnostics versus the preserved baseline. Inspect
+its actual measurements; no new scientific stability threshold is imposed.
+Then after actual native receipts, health, timing and memory review, write
 `evidence/PREFLIGHT_REVIEW.json`: all_accepted=true,
 six_million_restart_accepted=true, memory_and_timing_reviewed=true,
-physics_and_mesh_unchanged=true, preflight_sha256:{CASE:SHA256,...} and
+physics_and_mesh_unchanged=true, short_run_health_reviewed=true,
+health_QA_sha256:SHA256(of evidence/PREFLIGHT_HEALTH_QA.json),
+preflight_sha256:{CASE:SHA256,...} and
 wall_hours:{CASE:INTEGER,...}. The hash map binds the mirrored actual AMD
 evidence/preflight receipts; choose walltime at least their recommendations.
 Then the lightweight metadata-only `submit_production.py` records unique

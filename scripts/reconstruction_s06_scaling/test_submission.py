@@ -16,8 +16,10 @@ class SubmissionTests(unittest.TestCase):
         self.write('evidence/STAGED_AMD_SOURCE_PIN.json',{'head':'fixture_amd_source'})
         self.write('evidence/STAGE_OK.json',{'source':'fixture_amd_source'})
         self.write('evidence/state.json',{'jobs':[]})
+        health=self.write('evidence/PREFLIGHT_HEALTH_QA.json',{'passed':True})
         review=dict(all_accepted=True,six_million_restart_accepted=True,memory_and_timing_reviewed=True,
-                    physics_and_mesh_unchanged=True,preflight_sha256={},wall_hours={})
+                    physics_and_mesh_unchanged=True,short_run_health_reviewed=True,health_QA_sha256=S.sha(health),
+                    preflight_sha256={},wall_hours={})
         for c in S.CASES:
             hours=16 if c['n']==6000000 else 8
             path=self.write('evidence/amd/evidence/preflight/'+c['id']+'.json',dict(case=c,passed=True,
@@ -64,6 +66,11 @@ class SubmissionTests(unittest.TestCase):
 
     def test_unreviewed_memory_blocks_launch(self):
         self.change_review('memory_and_timing_reviewed',False)
+        with self.assertRaises(AssertionError):S.main()
+        self.assertEqual(self.calls,[])
+
+    def test_unreviewed_short_physical_behavior_blocks_launch(self):
+        self.change_review('short_run_health_reviewed',False)
         with self.assertRaises(AssertionError):S.main()
         self.assertEqual(self.calls,[])
 
