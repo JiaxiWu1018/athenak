@@ -29,6 +29,16 @@ is needed. The controller rechecks the gate before releasing only its own stage.
 The allocated stage checks it again. Never fabricate a release from a queue gap
 or unsuccessful terminal jobs.
 
+The OS owner subsequently changed its own final-release criteria (documented in
+its2026-10-17 handoff). Do not demand that explicitly waived OS records become
+strict passes. The additional owner-closeout route requires an actual finished
+OS delivery/closeout, independently inspected by the resumed agent, plus zero
+active/queued OS jobs. Record verified_complete=true, owner_completion_verified=true,
+completion_basis and owner_closeout_evidence:[{path,sha256},...] in the ST release
+receipt, binding at least two distinct actual files under the OS authority root.
+A waiver announcement, partial report, empty queue or scientific-control fixture
+alone does not suffice. ST physics, sampling and preflight criteria are unchanged.
+
 Stage: source/sample/executable checksum-preserving copy, unchanged template with
 only case basename/N/sample path/tlim varied; submit one AMD prepare job then
 an afterok prepare preflight array0-2%1. Prepare constructs all samples in an

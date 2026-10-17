@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import shlex
 from unittest.mock import patch
 import os_gate as G
 
@@ -75,6 +76,39 @@ class GateTests(unittest.TestCase):
         (evidence/'OS_PRIORITY_RELEASE.json').write_text(json.dumps(dict(verified_complete=True,
             os_delivery_sha256=G.digest(self.receipt))))
         self.assertTrue(G.require_release(self.root)['ready'])
+
+    def owner_receipt(self):
+        evidence=self.root/'evidence';evidence.mkdir()
+        state=self.root/'SESSION_STATE.md';state.write_text('Fixture owner final closeout complete, not a mere waiver announcement')
+        report=self.root/'REPORT.md';report.write_text('Fixture final report delivered')
+        d=dict(verified_complete=True,owner_completion_verified=True,completion_basis='Fixture inspected owner final state and delivered report',
+               owner_closeout_evidence=[dict(path=str(p),sha256=G.digest(p))for p in[state,report]])
+        path=evidence/'OS_PRIORITY_RELEASE.json';path.write_text(json.dumps(d))
+        return path,d
+
+    def test_owner_accepted_closeout_does_not_require_relabelling_waivers(self):
+        self.rows[0]['status']='reported_under_user_waiver';self.write_ledger()
+        self.owner_receipt()
+        self.assertTrue(G.require_release(self.root)['ready'])
+
+    def test_owner_closeout_still_blocked_by_active_retry(self):
+        self.owner_receipt();self.queue.return_value=['43|os_retry|RUNNING']
+        with self.assertRaises(AssertionError):G.require_release(self.root)
+
+    def test_owner_closeout_requires_unchanged_final_evidence(self):
+        self.owner_receipt();(self.root/'REPORT.md').write_text('changed')
+        with self.assertRaises(AssertionError):G.require_release(self.root)
+
+    def test_owner_claim_without_final_evidence_refused(self):
+        path,d=self.owner_receipt();d['owner_closeout_evidence']=[];path.write_text(json.dumps(d))
+        with self.assertRaises(AssertionError):G.require_release(self.root)
+
+class TransportTests(unittest.TestCase):
+    def test_remote_format_pipes_are_quoted_not_executed(self):
+        with patch.object(G.subprocess,'check_output',return_value='42|os_retry|PENDING\n')as call:
+            self.assertEqual(G.queue(),['42|os_retry|PENDING'])
+            remote=call.call_args[0][0][-1]
+            self.assertEqual(shlex.split(remote),['squeue','-u','jiaxiwu','-h','-o','%i|%j|%T'])
 
 if __name__=='__main__':
     unittest.main()

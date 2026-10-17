@@ -33,6 +33,11 @@ def main():
             gate = inspect()
             atomic(ROOT / 'evidence/OS_GATE_LATEST.json', dict(utc=now(), **gate))
             state['os_gate'] = gate
+            if not gate['outstanding_os_jobs'] and gate.get('owner_state_sha256'):
+                event('os_queue_clear_'+gate['owner_state_sha256'][:12],
+                      'The OS AMD queue is empty. Inspect its latest owner handoff and actual final closeout/delivery; '
+                      'queue emptiness or a waiver announcement alone is not completion. If final completion is recorded, '
+                      'write the hash-bound owner completion receipt described in os_gate.py, then continue ST. Otherwise keep waiting.')
             if gate['ready']:
                 event('os_completion_candidate', 'Verify the OS owner has completed its final required work; '
                       'only then write OS_PRIORITY_RELEASE.json with verified_complete=true and matching '
@@ -40,7 +45,7 @@ def main():
             startup = load(ROOT / 'evidence/state.json')
             stage = next((j for j in startup.get('jobs', []) if j['role'] == 'stage'), None)
             if stage and (ROOT / 'evidence/OS_PRIORITY_RELEASE.json').exists():
-                require_release(ROOT)
+                gate=require_release(ROOT)
                 if not state.get('stage_released'):
                     info = subprocess.check_output(['scontrol', 'show', 'job', str(stage['id'])], text=True)
                     if f'Command={ROOT}/scripts/stage.sbatch' not in info:
@@ -65,7 +70,8 @@ def main():
                         state['observed'][row[0]] = signature
                         if any(x in row[1] for x in ['COMPLETED','FAILED','TIMEOUT','CANCELLED','OUT_OF_MEMORY','NODE_FAIL']):
                             event('job_' + row[0] + '_' + row[1].split()[0], 'Inspect terminal state '+signature)
-            event('continuation_test', 'Verify this same-chat continuation and the durable held-stage/OS gate; complete prepared work while OS finishes.')
+            if not state['events']:
+                event('continuation_test', 'Verify this same-chat continuation and the durable held-stage/OS gate; complete prepared work while OS finishes.')
             if time.time()-state['heartbeat_at'] >= 7200:
                 event('heartbeat_'+str(int(time.time()/7200)), 'Review OS gate, held/new jobs, whole-user storage and next authorized actions.')
                 state['heartbeat_at'] = time.time()

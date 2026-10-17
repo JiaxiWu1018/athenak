@@ -3,6 +3,7 @@ import csv
 import hashlib
 import json
 from pathlib import Path
+import shlex
 import subprocess
 
 OS_ROOT = Path('/data/jiaxiwu/NRPIC/paper/session_01_os_collapse/convergence')
@@ -24,13 +25,16 @@ def ledger_valid(rows):
 def queue(local=False):
     cmd = ['squeue', '-u', 'jiaxiwu', '-h', '-o', '%i|%j|%T']
     if not local:
-        cmd = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', 'hpcfund.amd.com'] + cmd
+        cmd = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', 'hpcfund.amd.com', shlex.join(cmd)]
     reply = subprocess.check_output(cmd, text=True, timeout=45)
     return [line for line in reply.splitlines() if len(line.split('|')) == 3
             and line.split('|')[1].startswith('os_')]
 
 def inspect():
     state = dict(ready=False, outstanding_os_jobs=queue(), reason='OS tests still active')
+    owner_state=OS_ROOT/'SESSION_STATE.md'
+    if owner_state.exists():
+        state.update(owner_state_sha256=digest(owner_state),owner_header=owner_state.read_text()[:1500])
     ledger = OS_ROOT / 'provenance/run_matrix.csv'
     if not ledger.exists():
         return dict(state, reason='OS canonical ledger unavailable')
@@ -66,6 +70,21 @@ def require_release(root):
     release = json.loads((root / 'evidence/OS_PRIORITY_RELEASE.json').read_text())
     if not release.get('verified_complete'):
         raise RuntimeError('OS completion has not been verified')
+    # OS's owner may explicitly change its own finish criteria. Accept a documented
+    # owner closeout without relabelling waived OS results as strictly qualified.
+    # The resumed agent must inspect actual final delivery/closure, not the waiver
+    # announcement alone, and bind at least two real OS records to its receipt.
+    if release.get('owner_completion_verified') is True:
+        assert not queue(), 'OS jobs are still active'
+        proofs=release.get('owner_closeout_evidence',[])
+        assert len(proofs)>=2 and len({p['path']for p in proofs})==len(proofs)
+        for proof in proofs:
+            path=Path(proof['path']).resolve()
+            assert OS_ROOT.resolve() in path.parents and path.is_file()
+            assert digest(path)==proof['sha256'],'OS closeout evidence changed'
+        assert release.get('completion_basis'), 'Describe the actual OS owner completion'
+        return dict(ready=True,reason='OS owner final closeout independently inspected and hash-bound',
+                    owner_closeout_evidence=proofs,outstanding_os_jobs=[],completion_basis=release['completion_basis'])
     current = inspect()
     if not current['ready'] or current['delivery_sha256'] != release['os_delivery_sha256']:
         raise RuntimeError('OS priority gate is closed or changed')
