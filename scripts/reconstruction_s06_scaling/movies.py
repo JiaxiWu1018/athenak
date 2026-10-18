@@ -24,12 +24,15 @@ def datasets():
         d.update(cache_path=path,receipt_path=cache/'DATA_OK.json');result.append(d)
     return result
 
-def render(group):
+def render(group,attempt=None):
     require_job();all_data=datasets();indices=GROUPS[group]
     limit=max(16.,2*math.ceil((max(float(np.abs(d['positions'][:,:,:2]).max())for d in all_data)+.5)/2))
     # Every individual and comparison uses the same axis range determined from
     # all four displayed samples; this changes visualization only.
-    dest=ROOT/'movie_render'/group;dest.mkdir(parents=True,exist_ok=False)
+    assert attempt in (None,'layout_v2')
+    if attempt:assert len(indices)==1,'Layout repair applies only to individual movies'
+    suffix=('_'+attempt) if attempt else ''
+    dest=ROOT/('movie_render'+suffix)/group;dest.mkdir(parents=True,exist_ok=False)
     frames=dest/'frames';frames.mkdir()
     import matplotlib
     matplotlib.use('Agg')
@@ -37,7 +40,7 @@ def render(group):
     from matplotlib.colors import Normalize
     from PIL import Image
     count=len(indices);fig,axes=plt.subplots(1,count,figsize=(10*count,9),squeeze=False)
-    fig.subplots_adjust(left=.065/count,right=.90,bottom=.13,top=.84,wspace=.16)
+    fig.subplots_adjust(left=.065/count,right=(.86 if count==1 else .90),bottom=.13,top=.84,wspace=.16)
     plt.rcParams.update({'font.size':12})
     dots=[];clocks=[];orders=[]
     for ax,index in zip(axes[0],indices):
@@ -47,7 +50,7 @@ def render(group):
         dots.append(ax.scatter(d['positions'][0,order,0],d['positions'][0,order,1],c=d['initial_radius'][order],
             s=1.6,cmap='viridis',norm=Normalize(*RANGE),linewidths=0,alpha=1,zorder=2))
         clocks.append(ax.set_title('',fontsize=15))
-    cb=fig.colorbar(dots[0],cax=fig.add_axes([.925,.25,.015/count,.5]));cb.set_label('Initial 3D coordinate radius $r_0/M$')
+    cb=fig.colorbar(dots[0],cax=fig.add_axes([(.89 if count==1 else .925),.25,.015/count,.5]));cb.set_label('Initial 3D coordinate radius $r_0/M$')
     cb.set_ticks([0,2,4,6,8,RANGE[1]]);cb.set_ticklabels(['0','2','4','6','8','8.94'])
     fig.text(.5,.965,'ST $y_c=0.819$ · proper profile · fixed mesh · stratified seed 1',ha='center',fontsize=17)
     clock=fig.text(.5,.91,'',ha='center',fontsize=16)
@@ -58,10 +61,14 @@ def render(group):
         for dot,title,index,order in zip(dots,clocks,indices,orders):
             d=all_data[index];dot.set_offsets(d['positions'][k,order,:2])
             title.set_text(f'{LABELS[index]} | actual t = {d["times"][k]:.3f} M')
+        if k==0:
+            fig.canvas.draw()
+            label_bbox=cb.ax.yaxis.label.get_window_extent()
+            assert 0<=label_bbox.x0<label_bbox.x1<=fig.bbox.width,'Colour-bar label cropped'
         fig.savefig(frames/f'frame_{k:04d}.png',dpi=120)
         if k%25==0:print('RENDER',group,k,flush=True)
     plt.close(fig)
-    target=ROOT/'movies'/('s6_'+group+'_xy_initial_radius.mp4');target.parent.mkdir(exist_ok=True)
+    target=ROOT/'movies'/('s6_'+group+'_xy_initial_radius'+suffix+'.mp4');target.parent.mkdir(exist_ok=True)
     assert not target.exists()
     subprocess.run(['ffmpeg','-nostdin','-v','error','-framerate',str(FPS),'-i',str(frames/'frame_%04d.png'),
         '-c:v','libx264','-threads','2','-preset','medium','-crf','18','-pix_fmt','yuv420p',
@@ -84,7 +91,7 @@ def render(group):
         with Image.open(path)as im:sheet.paste(im.convert('RGB').resize((width,panel_height),Image.Resampling.LANCZOS),(0,j*panel_height))
     sheet.save(dest/'contact_sheet.png')
     atomic(dest/'RENDER_OK.json',dict(utc=now(),source=source(),job=os.environ['SLURM_JOB_ID'],
-        group=group,cases=[NAMES[i]for i in indices],movie=entry(target),full_decode_passed=True,ffprobe=probe,
+        group=group,attempt=attempt,colourbar_label_inside_canvas=True,cases=[NAMES[i]for i in indices],movie=entry(target),full_decode_passed=True,ffprobe=probe,
         display_count_per_panel=20000,frames=501,fps=FPS,color_range_M=RANGE,view_limit_M=limit,
         data=[entry(all_data[i]['cache_path'])for i in indices],review_frames=selected,
         contact_sheet=entry(dest/'contact_sheet.png'),actual_encoded_visual_review_pending=True,
@@ -93,4 +100,6 @@ def render(group):
     print('MOVIE_RENDER_OK',group,flush=True)
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('group',choices=list(GROUPS));render(p.parse_args().group)
+    p=argparse.ArgumentParser();p.add_argument('group',choices=list(GROUPS))
+    p.add_argument('--attempt',choices=['layout_v2'])
+    args=p.parse_args();render(args.group,args.attempt)

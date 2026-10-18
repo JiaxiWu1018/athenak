@@ -163,3 +163,9 @@ These drivers are prepared code until actual allocated execution succeeds;
 syntax checks are not claimed as scientific QA. Review preflight times and
 memory, actual staged storage, independent quantile/window arithmetic, decoded
 movies and PNG/PDFs before amending the main Session6 report and completing.
+
+## Actual final delivery and preserved movie layout repair
+
+All3fresh1000Mevolutions/reductions/comparison/independentarithmetic-nativeaudit andactualfourPNG/PDFreviews passed. The original firstmoviechain ran10262307; actualsingle-panelreviewfoundacolourbarlabelcropped. Afterallthosejobsclosed, onlysingle-panelrightmargin/colourbarpositionwasadjusted, withanassertionthatthelabelisinsidecanvas. `analysis.sbatch movies INDEX --attempt layout_v2` writes newmovie_render_layout_v2/INDEX and movies/s6_INDEX_xy_initial_radius_layout_v2.mp4, preservingoldexportsandallframes. Widercomparisonmoviesandallscientificdefinitionsareunchanged. No simulationrestart.
+
+science_readout.py is the identical archived as-run16290reportingscript; its originalsubmissionandhashremainunder evidence/submission_scripts. audit_addendum.sbatch runs thefollowup-specificallocatedfinalintegrityauditoronlyafteractualfinalvisualacceptancesexist. It checkspromotedhashes/originalimmutablemanifests/cleanpushedsource/native-transferprovenance/reportslinks/storage, writesreports/STORAGE.md anda separate PAIRED_SCALING_ADDENDUM.json/FINAL_AUDIT_OK, and leavesCOMPLETEfortheagentafteractualterminalsuccess. ItdoesnotrunoldclosedSession6auditorsorimposescientificstabilitythresholds. ExactPSterminalaccountingbeforedeliveryisfrozeninPERSEUS_ANALYSIS_ACCOUNTING.json;finalintegrityjobterminalaccountingisrecordedseparatelyatcloseout.
