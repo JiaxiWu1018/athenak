@@ -125,7 +125,6 @@ Check full per-ID native fields against production using the original Session6
 rtol=atol=1e-7 tolerance. The shortened final20M alignment step is excluded from
 this comparison. Record actual maxima in the case summary.
 
-Once all three reductions pass, `analysis.sbatch compare` writes exact-window
 Before6M finishes, `analysis.sbatch interim INDEX EXECUTION_COMMIT` can review
 one completed case in a separate interim/CASE directory. It reuses the existing
 independent audit functions for153 baseline and153 new-case windows plus three
