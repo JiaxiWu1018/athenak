@@ -30,6 +30,7 @@ case "$1" in
           python3 "$ROOT/scripts/analyze_cases.py" "$2" ;;
   compare) python3 "$ROOT/scripts/compare_cases.py" ;;
   audit) python3 "$ROOT/scripts/audit_results.py" ;;
+  interim) python3 "$ROOT/scripts/review_ready_case.py" "$2" "$3" ;;
   movies) python3 "$ROOT/scripts/movies.py" "$2" ;;
   *) exit 2 ;;
 esac

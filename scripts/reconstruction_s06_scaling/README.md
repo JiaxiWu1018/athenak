@@ -126,6 +126,16 @@ rtol=atol=1e-7 tolerance. The shortened final20M alignment step is excluded from
 this comparison. Record actual maxima in the case summary.
 
 Once all three reductions pass, `analysis.sbatch compare` writes exact-window
+Before6M finishes, `analysis.sbatch interim INDEX EXECUTION_COMMIT` can review
+one completed case in a separate interim/CASE directory. It reuses the existing
+independent audit functions for153 baseline and153 new-case windows plus three
+full-N native frames, writes measured early/late amplitudes and health context,
+and renders a provisional COM-shell PNG/PDF with an actual PDF preview. Pass
+the submitted execution commit explicitly while an older reduction retains its
+own active source pin. This interim artifact needs actual visual review and
+does not replace the final four-case comparison/audit/movies.
+
+Once all three reductions pass, `analysis.sbatch compare` writes exact-window
 N differences, descriptive difference ratios, combined amplitude tables and
 COM/origin migration-style shell/health/amplitude PNG/PDFs. The health density
 proxy is the COM-centred0..0.5M coordinate-rest-mass bin divided by its actual
