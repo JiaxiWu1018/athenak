@@ -1,0 +1,312 @@
+{
+  "passed": true,
+  "job": "17398",
+  "checked_utc": "2026-10-19T14:33:58.744877+00:00",
+  "movie_sha256": "70220846f958d2067143f313eab637486278460bfaadb9e925b231876fc91556",
+  "movie_bytes": 6300268,
+  "checked_frames": 50,
+  "checked_sphere_markers": 56,
+  "precommon_paired_saved_states": 20,
+  "all_pairs_separated_in_image": true,
+  "all_marker_centers_visible_dark": true,
+  "same_horizon_geometry_and_quality_gaps": true,
+  "same_timing_as_original": true,
+  "no_later_state": true,
+  "final_saved_time": 98,
+  "full_decode": "Passed in17392; unchanged MP4 hash checked here",
+  "marker_layer": "Schematic foreground glyphs, physical centers/radii unchanged",
+  "marker_checks": [
+    {
+      "time": 10.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 10.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 12.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 12.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 16.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 16.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 18.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 18.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 20.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 20.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 22.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 22.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 26.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 26.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 28.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 30.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 30.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 34.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 34.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 36.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 36.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 40.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 40.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 42.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 42.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 44.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 44.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 48.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 48.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 50.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 50.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 52.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 52.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 54.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 54.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 58.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 58.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 60.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 60.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 62.0,
+      "horizon": 0,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 62.0,
+      "horizon": 1,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 66.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 68.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 70.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 72.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 76.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 78.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 80.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 82.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 84.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 88.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 90.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 92.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 94.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 96.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    },
+    {
+      "time": 98.0,
+      "horizon": 2,
+      "central_dark_fraction": 1.0
+    }
+  ],
+  "native_source_unchanged": true,
+  "ah_repair_implemented": false,
+  "scripts": {
+    "code/scripts/particles/session010/movie_zoom_20261019/check_zoom.py": "d4396acbf5df7280bd1939b8c4609e7a4cdc24269b50ad1fab7e16ab1065dc85",
+    "code/scripts/particles/session010/movie_zoom_20261019/render_zoom.py": "0324dc98a652cf92e44db7dc14be6002f44bb9f1bf8985dc7f883a7f989bbbdc"
+  },
+  "storage_snapshot": {
+    "regular_files": 82,
+    "bytes": 24580453,
+    "sequence_links": 393,
+    "retained": true
+  }
+}

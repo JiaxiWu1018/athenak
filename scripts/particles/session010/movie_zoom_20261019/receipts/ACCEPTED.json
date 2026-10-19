@@ -1,0 +1,27 @@
+{
+  "status": "accepted after visual inspection; independent visibility check follows",
+  "checked_utc": "2026-10-19T14:31:22.222235+00:00",
+  "movie": "jeans_session010_particles3d_t0_to98_zoom.mp4",
+  "sha256": "70220846f958d2067143f313eab637486278460bfaadb9e925b231876fc91556",
+  "bytes": 6300268,
+  "render_job": "17392",
+  "view_limit": 4,
+  "linear_zoom": 6,
+  "viewed": [
+    "qa/representative_frames.jpg",
+    "frames/state_0005.png",
+    "qa/decoded_t62.png",
+    "qa/decoded_t98.png"
+  ],
+  "review": [
+    "Both initial black glyphs visible at saved t10",
+    "Both separate markers visible near merger at saved t62",
+    "Every accepted AH fits within fixed cube and projected image bounds",
+    "Common sphere used after strict acceptance, first saved common state66",
+    "Existing accepted-data gaps and source timing preserved, final t98 included"
+  ],
+  "foreground_glyphs": "Black spheres are schematic annotations rendered over particle clouds for visibility; measured centers/radii unchanged",
+  "physics_modified": false,
+  "ah_finder_repaired": false,
+  "original_wide_movie_preserved": true
+}

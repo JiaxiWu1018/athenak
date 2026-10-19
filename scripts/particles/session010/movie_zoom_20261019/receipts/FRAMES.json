@@ -1,0 +1,2997 @@
+[
+  {
+    "index": 0,
+    "time": 0.0,
+    "cycle": 0,
+    "case": 0,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0000.npz",
+    "cache_sha256": "bb806915dd282e3d8e79003114d1df6eb94c843302ad6ff72ecfa10d5d565123",
+    "native_source": {
+      "case": 0,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/prefix_seed/out/pvtk/s10_orbit_gw.prtcl_all.00000.part.vtk",
+      "native_sha256": "013101dcc59cc7d4521e2d7c9a587fa57e8e4cf30a4015a507b19dfe44e28466"
+    },
+    "frame": "frames/state_0000.png",
+    "frame_sha256": "6a3547d72f24a498ac188e53d411842fef9b8e3b346e4a1a7c24ce9a0a5e94bd",
+    "cohort_alive": 90000,
+    "visible_counts": [
+      4607,
+      23147,
+      23105
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 1,
+    "parent_frame_sha256": "f5d9c607236f1ce71425a05d4660fe5fe2e3fd489417741f26260d2d2819daa2",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 1,
+    "time": 0.00625,
+    "cycle": 1,
+    "case": 0,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0001.npz",
+    "cache_sha256": "42ec5e8de4c7cdc73be31398887c13e96e2a27639319f1824ab9d359cd7c0acb",
+    "native_source": {
+      "case": 0,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/prefix_seed/out/pvtk/s10_orbit_gw.prtcl_all.00001.part.vtk",
+      "native_sha256": "9501db572712c3d89e7869d4f45a2ae84e4c54293b63556f8dd758386164d6cc"
+    },
+    "frame": "frames/state_0001.png",
+    "frame_sha256": "b59578c591f95719b2f820a664436bc97cedca40451f452092ee1abe072ce9ca",
+    "cohort_alive": 90000,
+    "visible_counts": [
+      4606,
+      23147,
+      23105
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 0,
+    "parent_frame_sha256": "c1d61ea80101bb10267becc97c372990bf257d2e7368afa55e2a6bbb6b2f370e",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 2,
+    "time": 0.0125,
+    "cycle": 2,
+    "case": 1,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0002.npz",
+    "cache_sha256": "882042aa4e2c3710be1824d3e14a9820570d1d7d32fc35a4e3c71c537092eb46",
+    "native_source": {
+      "case": 1,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/prefix_resumed/out/pvtk/s10_orbit_gw.prtcl_all.00002.part.vtk",
+      "native_sha256": "7d75aa3c439e6321a6b06ce3258169778eda9a1ebb17d3e707c38186ebd7b536"
+    },
+    "frame": "frames/state_0002.png",
+    "frame_sha256": "f1cd1380eb048b6417f1f35178ca47ab98d915e19b34b2df1ac3981a0ba1977d",
+    "cohort_alive": 90000,
+    "visible_counts": [
+      4606,
+      23146,
+      23104
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 23,
+    "parent_frame_sha256": "adb1a838d236331b8d8762babbea3741e2bac997c1aca33a5c3cf24baefa66c0",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 3,
+    "time": 6.0,
+    "cycle": 323,
+    "case": 2,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0003.npz",
+    "cache_sha256": "c17f0d9a98e6477212dd8cfe8620979e83d30f97290a87c407b008b95d07fba8",
+    "native_source": {
+      "case": 2,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00003.part.vtk",
+      "native_sha256": "a7d20b0e8ba904b322b85f17543ba200ea9021ef067a6fac1228deff823e4947"
+    },
+    "frame": "frames/state_0003.png",
+    "frame_sha256": "9ade2642af840e8aeb09962abc646aabe62418ae6edbfb295e29df161b4403de",
+    "cohort_alive": 90000,
+    "visible_counts": [
+      4844,
+      24280,
+      24279
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "9c2e82bd1eb410132427716b32df7d9629752f3e4a8b80656c4b78f792b1fe49",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 4,
+    "time": 8.0,
+    "cycle": 1404,
+    "case": 2,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0004.npz",
+    "cache_sha256": "c390f0fdd8c3437766fe0d61a0b2f3a1194859989e9884c58c93c6bc038035fe",
+    "native_source": {
+      "case": 2,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00004.part.vtk",
+      "native_sha256": "6099a44438548cbbba317614d9985e285788e1b442407e416157995645e23f9a"
+    },
+    "frame": "frames/state_0004.png",
+    "frame_sha256": "25b49cfe85c5b073c36983b5bed95af590557fc3952e632f93cd485da6d54829",
+    "cohort_alive": 78944,
+    "visible_counts": [
+      5005,
+      19148,
+      19140
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "135b3925cb2be6295be2a477f8f1931bf52c047e7687bcccfe82105b639cac24",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 5,
+    "time": 10.0,
+    "cycle": 2684,
+    "case": 2,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0005.npz",
+    "cache_sha256": "b07f95f8fd3330c0ac884de95fe1090160580f51f3cdb463534411d7568e2c73",
+    "native_source": {
+      "case": 2,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00005.part.vtk",
+      "native_sha256": "f1385feef4d08af67795f41e15fbda9960ce665a3224b6e9ca27f9697eab4802"
+    },
+    "frame": "frames/state_0005.png",
+    "frame_sha256": "38e6731bad676f79aad125347a3fc8894202c93e9fd74f2faaed20309a936075",
+    "cohort_alive": 59618,
+    "visible_counts": [
+      5149,
+      8085,
+      8017
+    ],
+    "buried": 3307,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 2,
+        "cycle": 2684,
+        "time": 10.000000000000776,
+        "center": [
+          -2.869140625,
+          -1.005859375,
+          -0.001953125
+        ],
+        "mean_coordinate_radius": 0.05716798529725461
+      },
+      {
+        "horizon": 1,
+        "case": 2,
+        "cycle": 2684,
+        "time": 10.000000000000776,
+        "center": [
+          2.861328125,
+          1.005859375,
+          0.001953125
+        ],
+        "mean_coordinate_radius": 0.05687873205189005
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "73b3648678650888a1ccc479d51f1ef74e9b6b8d7d397ec62ead92e42426c150",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          733.5040554889247,
+          569.8291024423314,
+          742.606714192081,
+          578.9454773611076
+        ],
+        "diameter_pixels": [
+          9.102658703156294,
+          9.11637491877616
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1209.2350810052221,
+          530.0589956315503,
+          1218.4349591828113,
+          539.2537808636501
+        ],
+        "diameter_pixels": [
+          9.199878177589198,
+          9.194785232099889
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 6,
+    "time": 12.0,
+    "cycle": 3964,
+    "case": 2,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0006.npz",
+    "cache_sha256": "ef0b9f2cbe2e125155714059c4f49d3ea5374e75062c5fba0e280960c56c126b",
+    "native_source": {
+      "case": 2,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00006.part.vtk",
+      "native_sha256": "445045be5c14a26e9a54419e346faa7e3dc8d9cc0d4239a95078cb05af56a0e1"
+    },
+    "frame": "frames/state_0006.png",
+    "frame_sha256": "bca42627017e2db01d9a92a705f93cf678b91a27bb5f002d33380e720f727333",
+    "cohort_alive": 48890,
+    "visible_counts": [
+      5324,
+      3508,
+      3520
+    ],
+    "buried": 1927,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 2,
+        "cycle": 3964,
+        "time": 12.000000000001231,
+        "center": [
+          -2.802734375,
+          -1.189453125,
+          -0.005859375
+        ],
+        "mean_coordinate_radius": 0.07867771657693182
+      },
+      {
+        "horizon": 1,
+        "case": 2,
+        "cycle": 3964,
+        "time": 12.000000000001231,
+        "center": [
+          2.802734375,
+          1.185546875,
+          -0.001953125
+        ],
+        "mean_coordinate_radius": 0.07780514879875886
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 6,
+    "parent_frame_sha256": "637c6e072c667a0d0a0b48639730d0d8c6c57c953764011b70cd21d07a02b6cb",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          728.0508155084383,
+          562.1372924812252,
+          740.6028308613971,
+          574.7079469694514
+        ],
+        "diameter_pixels": [
+          12.552015352958847,
+          12.570654488226182
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1210.7743339011913,
+          533.6692596192186,
+          1223.3352762725292,
+          546.2229917903346
+        ],
+        "diameter_pixels": [
+          12.560942371337887,
+          12.553732171116053
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 7,
+    "time": 13.3422,
+    "cycle": 4823,
+    "case": 2,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0007.npz",
+    "cache_sha256": "99cdc729cd632018ecda8dcc2ab88204fdbd86eb3839c09d3bee3dc36ec40ed3",
+    "native_source": {
+      "case": 2,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00007.part.vtk",
+      "native_sha256": "1b9d718f0dda9ed6615883f41f7715f1bc878a05c2434e107d9897acd6340f39"
+    },
+    "frame": "frames/state_0007.png",
+    "frame_sha256": "c48c236ae03df39b1cc2131753d5dc551bd750fb8c2aadf2fb06c2dcfc985bcb",
+    "cohort_alive": 45015,
+    "visible_counts": [
+      5454,
+      2613,
+      2569
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 10,
+    "parent_frame_sha256": "addfbfa66af01ad344bbf82b2a9ee6fa4a079dbbff2362dff848e60f3fa9bc8c",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 8,
+    "time": 16.0,
+    "cycle": 6524,
+    "case": 3,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0008.npz",
+    "cache_sha256": "6062e963dd8ec33f8fa85a74e0b08dd04d4f5200961b7382fecfbc55fb881dde",
+    "native_source": {
+      "case": 3,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00008.part.vtk",
+      "native_sha256": "1c05f79761cc6fb1b2a4b4bbf4ae4ee61e972b80f819314aab4db9272fe0feef"
+    },
+    "frame": "frames/state_0008.png",
+    "frame_sha256": "d75904576c40efab59ebe6be70df8465cd506f42fd7a85872b7f1a0fbf9ab4ed",
+    "cohort_alive": 41339,
+    "visible_counts": [
+      5730,
+      598,
+      644
+    ],
+    "buried": 510,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 3,
+        "cycle": 6524,
+        "time": 16.00000000000214,
+        "center": [
+          -2.634765625,
+          -1.537109375,
+          -0.009765625
+        ],
+        "mean_coordinate_radius": 0.09759387969702014
+      },
+      {
+        "horizon": 1,
+        "case": 3,
+        "cycle": 6524,
+        "time": 16.00000000000214,
+        "center": [
+          2.638671875,
+          1.529296875,
+          -0.001953125
+        ],
+        "mean_coordinate_radius": 0.09472785488787057
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "232bc8a0e0ff9be73ff67c102b69fd50230ebcf6be5c49d3b3bceb636bc4c5a9",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          722.223471684863,
+          548.82577009555,
+          737.8544331671288,
+          564.4796969020442
+        ],
+        "diameter_pixels": [
+          15.630961482265889,
+          15.653926806494269
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1211.9589453776346,
+          543.7846536543395,
+          1227.1929736396853,
+          559.0095638412898
+        ],
+        "diameter_pixels": [
+          15.234028262050742,
+          15.224910186950297
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 9,
+    "time": 18.0,
+    "cycle": 7804,
+    "case": 3,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0009.npz",
+    "cache_sha256": "b1ad94b76575c6347437bf0597d61cd0c731ec783be78c9fffe6c2fc88bd9fb5",
+    "native_source": {
+      "case": 3,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00009.part.vtk",
+      "native_sha256": "c956a736978195083d435be810bde1b332e87263c1ceb19f236f2717d79d7584"
+    },
+    "frame": "frames/state_0009.png",
+    "frame_sha256": "d037e7ca5e2162be51ecbdc46b6b62d50df5fb09a8002d52e02ad3721de344b9",
+    "cohort_alive": 40167,
+    "visible_counts": [
+      5954,
+      233,
+      259
+    ],
+    "buried": 259,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 3,
+        "cycle": 7804,
+        "time": 18.00000000000032,
+        "center": [
+          -2.533203125,
+          -1.693359375,
+          -0.009765625
+        ],
+        "mean_coordinate_radius": 0.09915243912161023
+      },
+      {
+        "horizon": 1,
+        "case": 3,
+        "cycle": 7804,
+        "time": 18.00000000000032,
+        "center": [
+          2.541015625,
+          1.685546875,
+          -0.005859375
+        ],
+        "mean_coordinate_radius": 0.09753499336575294
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "08d84bd1d342ee100d92f3a2a22b5eace053b4ac1d117c00cdd13ae426679f50",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          721.885842861369,
+          543.0802680349132,
+          737.7966724919139,
+          559.0145475886296
+        ],
+        "diameter_pixels": [
+          15.910829630544868,
+          15.934279553716465
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1211.2826962688962,
+          548.8265083949605,
+          1226.9384228338006,
+          564.4728009014044
+        ],
+        "diameter_pixels": [
+          15.655726564904398,
+          15.646292506443956
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 10,
+    "time": 20.0,
+    "cycle": 9084,
+    "case": 3,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0010.npz",
+    "cache_sha256": "bbe1168d5df76a46f3f059fd5aacb40777af75ccd94292687beb4ea46b859644",
+    "native_source": {
+      "case": 3,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00010.part.vtk",
+      "native_sha256": "702fa5fd31675c4351320a1bb86019be3d793a6e197fec8c0091c26366be6270"
+    },
+    "frame": "frames/state_0010.png",
+    "frame_sha256": "7bc3b9a659673735da3d9553a99d2813fe2832540c49070223d4e56332d3b717",
+    "cohort_alive": 39599,
+    "visible_counts": [
+      6183,
+      102,
+      104
+    ],
+    "buried": 148,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 3,
+        "cycle": 9084,
+        "time": 19.9999999999985,
+        "center": [
+          -2.416015625,
+          -1.837890625,
+          -0.013671875
+        ],
+        "mean_coordinate_radius": 0.09166886002639245
+      },
+      {
+        "horizon": 1,
+        "case": 3,
+        "cycle": 9084,
+        "time": 19.9999999999985,
+        "center": [
+          2.427734375,
+          1.830078125,
+          -0.005859375
+        ],
+        "mean_coordinate_radius": 0.09889164447979802
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "8edcc06ac214b996155102281b058ea8165819d9a241d25c015b815b2e18c330",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          723.8492459441395,
+          537.7997737306763,
+          738.5865988631106,
+          552.559098919659
+        ],
+        "diameter_pixels": [
+          14.737352918971055,
+          14.759325188982757
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1209.1747989459027,
+          554.2056709058538,
+          1225.0186575759142,
+          570.0400223577857
+        ],
+        "diameter_pixels": [
+          15.843858630011482,
+          15.834351451931866
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 11,
+    "time": 22.0,
+    "cycle": 10364,
+    "case": 3,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0011.npz",
+    "cache_sha256": "f337db10998a5a87a15bafcbdd7bf843f07ba4717c42bdb0491e393010a0ef2a",
+    "native_source": {
+      "case": 3,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00011.part.vtk",
+      "native_sha256": "6dd791cb913e77cfded9b29e315fe6609d1ce85567d80ff16a92be98d6b1dbce"
+    },
+    "frame": "frames/state_0011.png",
+    "frame_sha256": "bb13ffa2c9565b45845be65a955680a98612ab042b24450ede0db48d27ba3f91",
+    "cohort_alive": 39249,
+    "visible_counts": [
+      6441,
+      38,
+      42
+    ],
+    "buried": 81,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 3,
+        "cycle": 10364,
+        "time": 21.99999999999668,
+        "center": [
+          -2.291015625,
+          -1.970703125,
+          -0.013671875
+        ],
+        "mean_coordinate_radius": 0.09275967830438137
+      },
+      {
+        "horizon": 1,
+        "case": 3,
+        "cycle": 10364,
+        "time": 21.99999999999668,
+        "center": [
+          2.306640625,
+          1.958984375,
+          -0.009765625
+        ],
+        "mean_coordinate_radius": 0.101925256659439
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 1,
+    "parent_frame_sha256": "c018232a8839cc9728cf2c03de70a8d11164fc9b6f3f4a3bb11a9f172b339412",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          726.1755604952523,
+          532.2762082445224,
+          741.1154908820673,
+          547.2386358059297
+        ],
+        "diameter_pixels": [
+          14.939930386815035,
+          14.962427561407253
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1205.7671114951634,
+          558.8689711583867,
+          1222.0677358951832,
+          575.1599509096415
+        ],
+        "diameter_pixels": [
+          16.300624400019842,
+          16.29097975125478
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 12,
+    "time": 22.2422,
+    "cycle": 10519,
+    "case": 3,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0012.npz",
+    "cache_sha256": "979819b621fca9ba6f3547e3be8b72efcad47b4d2c85d40d8e88811afd411d69",
+    "native_source": {
+      "case": 3,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00012.part.vtk",
+      "native_sha256": "53b8549b47db6528a8e592dd7aa4262faf62e255750e4735dae5e58a90961c4a"
+    },
+    "frame": "frames/state_0012.png",
+    "frame_sha256": "774b23da1a61f43bf0f3458eba9a62b07f34fc7fcc9497ffb7e5527347be0414",
+    "cohort_alive": 39220,
+    "visible_counts": [
+      6528,
+      48,
+      53
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 15,
+    "parent_frame_sha256": "f239942f24987c29e1b37ad8d396632b5f3f903f91bc382f1448256ac3d911d6",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 13,
+    "time": 26.0,
+    "cycle": 12924,
+    "case": 4,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0013.npz",
+    "cache_sha256": "86b7f063d65b3bd045c5df71c3ecf519044c3bb6ce2fa1f8846ccd1f907824dd",
+    "native_source": {
+      "case": 4,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_003/out/pvtk/s10_orbit_gw.prtcl_all.00013.part.vtk",
+      "native_sha256": "1c08f57789f9576cac489d0a2737c72cffb18134df643a7a4a393d5932d3c288"
+    },
+    "frame": "frames/state_0013.png",
+    "frame_sha256": "b0ff6751a32f8162a69b32251f82982b2b2996974dda72632877d625f693d464",
+    "cohort_alive": 38865,
+    "visible_counts": [
+      6967,
+      4,
+      3
+    ],
+    "buried": 74,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 4,
+        "cycle": 12924,
+        "time": 25.999999999993044,
+        "center": [
+          -2.009765625,
+          -2.185546875,
+          -0.017578125
+        ],
+        "mean_coordinate_radius": 0.1039498970541361
+      },
+      {
+        "horizon": 1,
+        "case": 4,
+        "cycle": 12924,
+        "time": 25.999999999993044,
+        "center": [
+          2.029296875,
+          2.173828125,
+          -0.013671875
+        ],
+        "mean_coordinate_radius": 0.09387667822712889
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "58ab903d9ceb9d6baf6d01982961531f1c2d3eb7e950ba5f20173df52a07ea14",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          734.5194827767425,
+          520.9591706995268,
+          751.3180525151774,
+          537.7836610371122
+        ],
+        "diameter_pixels": [
+          16.798569738434935,
+          16.824490337585416
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1195.9681605414357,
+          569.030037134776,
+          1210.9306442968075,
+          583.9841962438566
+        ],
+        "diameter_pixels": [
+          14.96248375537175,
+          14.954159109080592
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 14,
+    "time": 28.0,
+    "cycle": 14204,
+    "case": 4,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0014.npz",
+    "cache_sha256": "8166738addbffb3ef692406fb4805fdf4d9ed85e656ec2be63e87a576793afe4",
+    "native_source": {
+      "case": 4,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_003/out/pvtk/s10_orbit_gw.prtcl_all.00014.part.vtk",
+      "native_sha256": "23bba672f42c35880c3c0d2c9489fbe98cb1ac48c61b59a55b444f7d5bf23161"
+    },
+    "frame": "frames/state_0014.png",
+    "frame_sha256": "05020258f0f1fd735b63b6327b0bde6bd0414af7c93498d0cb7f58bc5be4426f",
+    "cohort_alive": 38706,
+    "visible_counts": [
+      7299,
+      0,
+      1
+    ],
+    "buried": 29,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 4,
+        "cycle": 14204,
+        "time": 27.999999999991225,
+        "center": [
+          -1.853515625,
+          -2.267578125,
+          -0.017578125
+        ],
+        "mean_coordinate_radius": 0.1055514044434554
+      }
+    ],
+    "missing_surfaces": [
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "ceadcf04840f92f0dee49e0d117115c55f0b35b0077fb849c36721aa89ea0847",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          741.2303299337706,
+          516.149792076011,
+          758.3149954262808,
+          533.2603918691526
+        ],
+        "diameter_pixels": [
+          17.084665492510226,
+          17.11059979314166
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 15,
+    "time": 30.0,
+    "cycle": 15484,
+    "case": 4,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0015.npz",
+    "cache_sha256": "92b9d817b1cc1b8c8b78dae39f65a0150fc649b4dcd1da3d8c540233acd4de32",
+    "native_source": {
+      "case": 4,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_003/out/pvtk/s10_orbit_gw.prtcl_all.00015.part.vtk",
+      "native_sha256": "c7a594c69ceb2b95e33edcc293f66b1d7f7dedb937d8165137214a3725a3ea65"
+    },
+    "frame": "frames/state_0015.png",
+    "frame_sha256": "b8b4b2a1aba46c71c4cf9549f357ec2c1c18e18b1b61b1585ac2b13980505ca9",
+    "cohort_alive": 38551,
+    "visible_counts": [
+      7565,
+      0,
+      0
+    ],
+    "buried": 60,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 4,
+        "cycle": 15484,
+        "time": 29.999999999989406,
+        "center": [
+          -1.689453125,
+          -2.330078125,
+          -0.017578125
+        ],
+        "mean_coordinate_radius": 0.1057127254295512
+      },
+      {
+        "horizon": 1,
+        "case": 4,
+        "cycle": 15484,
+        "time": 29.999999999989406,
+        "center": [
+          1.712890625,
+          2.314453125,
+          -0.017578125
+        ],
+        "mean_coordinate_radius": 0.1055736266412934
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 7,
+    "parent_frame_sha256": "2992ef6868dd8144ef279cfea66593c6cb99e5c4f69972f6c02f42433f73d9bf",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          749.4859906058741,
+          511.82553877017403,
+          766.6220959241862,
+          528.9871113020546
+        ],
+        "diameter_pixels": [
+          17.136105318312048,
+          17.16157253188055
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1179.0010672954174,
+          576.3087545373623,
+          1195.777675786297,
+          593.0770626317435
+        ],
+        "diameter_pixels": [
+          16.776608490879653,
+          16.768308094381155
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 16,
+    "time": 31.5219,
+    "cycle": 16458,
+    "case": 4,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0016.npz",
+    "cache_sha256": "eda0434fbb640a76ce32e0830b92bece1b5b47fda125faf5f39a61092cb370fa",
+    "native_source": {
+      "case": 4,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_003/out/pvtk/s10_orbit_gw.prtcl_all.00016.part.vtk",
+      "native_sha256": "f047f64193955ea6747e07b6f3b0757baf3b4621646cdea9527a1b5f59a5fd2a"
+    },
+    "frame": "frames/state_0016.png",
+    "frame_sha256": "cba26cce5e888a52a6e526f817637850c8756d3ccf088894ede45adc8b5ff4f4",
+    "cohort_alive": 38428,
+    "visible_counts": [
+      7843,
+      0,
+      0
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 9,
+    "parent_frame_sha256": "b50d65244d2a41310e1af47d39feef63f7ea2ec8a9dc12fc0cf90daa6e26d1e9",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 17,
+    "time": 34.0,
+    "cycle": 18044,
+    "case": 5,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0017.npz",
+    "cache_sha256": "75a71f2a18df7e5dcb23cfe3462a6918b63e685f258245e5d722b0f8547e779d",
+    "native_source": {
+      "case": 5,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_004/out/pvtk/s10_orbit_gw.prtcl_all.00017.part.vtk",
+      "native_sha256": "812d414a24ee4b9be67a296cf04721aaa99ed867c2361ae9bad2820101936c47"
+    },
+    "frame": "frames/state_0017.png",
+    "frame_sha256": "399aeffc19a227b3827f08a44c5d46a0f2ffe460aaa7d0049ad785aeee23d8f4",
+    "cohort_alive": 38215,
+    "visible_counts": [
+      8129,
+      0,
+      0
+    ],
+    "buried": 65,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 5,
+        "cycle": 18044,
+        "time": 33.99999999998577,
+        "center": [
+          -1.341796875,
+          -2.396484375,
+          -0.021484375
+        ],
+        "mean_coordinate_radius": 0.1073274783120565
+      },
+      {
+        "horizon": 1,
+        "case": 5,
+        "cycle": 18044,
+        "time": 33.99999999998577,
+        "center": [
+          1.369140625,
+          2.380859375,
+          -0.021484375
+        ],
+        "mean_coordinate_radius": 0.1084796889528442
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "d36cd4db3d5b5b273185983e7114c5b89afab9ffa23a8879e90701afce434c2e",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          769.9267968859461,
+          503.9606557352904,
+          787.3692378863623,
+          521.4275787692466
+        ],
+        "diameter_pixels": [
+          17.442441000416125,
+          17.466923033956164
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1157.9672342443441,
+          582.8176418477566,
+          1175.1623937704117,
+          600.0057458552179
+        ],
+        "diameter_pixels": [
+          17.195159526067528,
+          17.188104007461334
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 18,
+    "time": 36.0,
+    "cycle": 19324,
+    "case": 5,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0018.npz",
+    "cache_sha256": "e96ccad561112b9f7ba5aa3b45088bb142c9f341e060f11417e866c500782386",
+    "native_source": {
+      "case": 5,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_004/out/pvtk/s10_orbit_gw.prtcl_all.00018.part.vtk",
+      "native_sha256": "a29033d7cc71f03b0adaaabad90ffaa2afc6d485b0db5ddeb5b087340cf5c334"
+    },
+    "frame": "frames/state_0018.png",
+    "frame_sha256": "d1450e10b33daaae3be3aefecb64ae9f49a6edcd1be04c92b7e02b974544f451",
+    "cohort_alive": 38021,
+    "visible_counts": [
+      8402,
+      0,
+      0
+    ],
+    "buried": 62,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 5,
+        "cycle": 19324,
+        "time": 35.99999999998395,
+        "center": [
+          -1.158203125,
+          -2.396484375,
+          -0.021484375
+        ],
+        "mean_coordinate_radius": 0.1084309975436601
+      },
+      {
+        "horizon": 1,
+        "case": 5,
+        "cycle": 19324,
+        "time": 35.99999999998395,
+        "center": [
+          1.185546875,
+          2.376953125,
+          -0.025390625
+        ],
+        "mean_coordinate_radius": 0.1094135591891611
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 3,
+    "parent_frame_sha256": "f0e083f5dacf207069ffd5a66fff3de8fb0879d76ac33e4c00c970f926c1d789",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          782.3135250625332,
+          500.8508957106311,
+          799.954028379803,
+          518.515241657687
+        ],
+        "diameter_pixels": [
+          17.640503317269804,
+          17.66434594705595
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1145.2287839420349,
+          585.2167069264891,
+          1162.5543297923887,
+          602.5360670255311
+        ],
+        "diameter_pixels": [
+          17.32554585035382,
+          17.319360099042
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 19,
+    "time": 36.55,
+    "cycle": 19676,
+    "case": 5,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0019.npz",
+    "cache_sha256": "a8a63c9305a215e9eb7084346756749085497bf1d2f87465b3a28023b5f43c4a",
+    "native_source": {
+      "case": 5,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/chunk_004/out/pvtk/s10_orbit_gw.prtcl_all.00019.part.vtk",
+      "native_sha256": "fa97eee9d066db341b92ac8748114e1470c8f5dbc1eb6e43871aa137beb93d89"
+    },
+    "frame": "frames/state_0019.png",
+    "frame_sha256": "8018c4895be666f24073bcb78c82e22da5b81f0005d60883e64b48a610d80896",
+    "cohort_alive": 37977,
+    "visible_counts": [
+      8560,
+      0,
+      0
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 13,
+    "parent_frame_sha256": "5c7e00b46ab716b750e25b17f0b916d75f1e272af1860c839b08e6bc830da4be",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 20,
+    "time": 40.0,
+    "cycle": 21884,
+    "case": 6,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0020.npz",
+    "cache_sha256": "dae429d124eefb15b360bc1b11c3ae231e00d88dcc38dd74c788d0216bae9b9d",
+    "native_source": {
+      "case": 6,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_002/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00020.part.vtk",
+      "native_sha256": "f738d8d6d1942cb6a0ecc4117d1e8b29e00b04f077273f5d2cfa15e518c1d098"
+    },
+    "frame": "frames/state_0020.png",
+    "frame_sha256": "a5754d84ac64d2951726731e2fa123c3efa79da6444ade4c77fab262639f3250",
+    "cohort_alive": 37657,
+    "visible_counts": [
+      8971,
+      0,
+      0
+    ],
+    "buried": 94,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 6,
+        "cycle": 21884,
+        "time": 39.99999999998031,
+        "center": [
+          -0.779296875,
+          -2.330078125,
+          -0.025390625
+        ],
+        "mean_coordinate_radius": 0.1101787621760534
+      },
+      {
+        "horizon": 1,
+        "case": 6,
+        "cycle": 21884,
+        "time": 39.99999999998031,
+        "center": [
+          0.810546875,
+          2.310546875,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.1094715047393689
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "ca3856daec81661312bd864f048b1ef2c8c9252471f855611a7c6ef3fbe1588c",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          810.9704881249334,
+          495.9179580759223,
+          828.9241801240147,
+          513.8937161882767
+        ],
+        "diameter_pixels": [
+          17.953691999081343,
+          17.975758112354413
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1117.0590688570796,
+          589.0983126011253,
+          1134.3665606312218,
+          606.4017085955137
+        ],
+        "diameter_pixels": [
+          17.307491774142136,
+          17.30339599438844
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 21,
+    "time": 42.0,
+    "cycle": 23164,
+    "case": 6,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0021.npz",
+    "cache_sha256": "60389bf186ec3c44ca186f02379c839a19dc46bd5a7d46bd410d082820f37cb5",
+    "native_source": {
+      "case": 6,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_002/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00021.part.vtk",
+      "native_sha256": "4947d21098b1f721f29879b7c2cb34f64863180afab158ae0d4a81c1500fe02e"
+    },
+    "frame": "frames/state_0021.png",
+    "frame_sha256": "6e361fda60e74b136c33c4ffb308aef7a92f09e7bd965894c3eb34f8446b5b04",
+    "cohort_alive": 37446,
+    "visible_counts": [
+      9220,
+      0,
+      0
+    ],
+    "buried": 96,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 6,
+        "cycle": 23164,
+        "time": 41.99999999997849,
+        "center": [
+          -0.587890625,
+          -2.259765625,
+          -0.025390625
+        ],
+        "mean_coordinate_radius": 0.1129965923121586
+      },
+      {
+        "horizon": 1,
+        "case": 6,
+        "cycle": 23164,
+        "time": 41.99999999997849,
+        "center": [
+          0.619140625,
+          2.236328125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.1117199087044117
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "22876c5f1f56d1f697c3cde1e41a93281493a653d37bbba6958910cc872b16f4",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          826.958346180787,
+          494.38450013119456,
+          845.3805136595572,
+          512.8280090410937
+        ],
+        "diameter_pixels": [
+          18.422167478770234,
+          18.443508909899094
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1100.893514980485,
+          590.0466103089656,
+          1118.548403299976,
+          607.6985491901058
+        ],
+        "diameter_pixels": [
+          17.654888319490965,
+          17.651938881140268
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 22,
+    "time": 44.0,
+    "cycle": 24444,
+    "case": 6,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0022.npz",
+    "cache_sha256": "3b767d43301e1fe3894c2375f55c4d68ce107ce4d35466462f20dc1a2760a641",
+    "native_source": {
+      "case": 6,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_002/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00022.part.vtk",
+      "native_sha256": "8292e278342146aa256b0ba72c652372304948e383afbd785454f10a3c7eb930"
+    },
+    "frame": "frames/state_0022.png",
+    "frame_sha256": "fc729d7af062c7f6eaa497c0e50519a3f0f70487e9c131c46b68bf46f019271c",
+    "cohort_alive": 37239,
+    "visible_counts": [
+      9521,
+      0,
+      0
+    ],
+    "buried": 110,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 6,
+        "cycle": 24444,
+        "time": 43.99999999997667,
+        "center": [
+          -0.396484375,
+          -2.162109375,
+          -0.025390625
+        ],
+        "mean_coordinate_radius": 0.1133602235575923
+      },
+      {
+        "horizon": 1,
+        "case": 6,
+        "cycle": 24444,
+        "time": 43.99999999997667,
+        "center": [
+          0.431640625,
+          2.142578125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.1115121442930443
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "37a857bfa85af58b805f828aa6ed50dbea15e48017fe2e72c6f09bc5287773f1",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          844.3745890783658,
+          493.77401417632234,
+          862.8610402569064,
+          512.2804601395304
+        ],
+        "diameter_pixels": [
+          18.48645117854062,
+          18.50644596320808
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1084.3991599797491,
+          590.6435524834636,
+          1102.0164135185391,
+          608.2591408766497
+        ],
+        "diameter_pixels": [
+          17.61725353879001,
+          17.615588393186044
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 23,
+    "time": 45.8906,
+    "cycle": 25654,
+    "case": 6,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0023.npz",
+    "cache_sha256": "4d2d44d0eeb9ac1da20887fc41e87053d601694a32c8c2894d20f4483ef384ea",
+    "native_source": {
+      "case": 6,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_002/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00023.part.vtk",
+      "native_sha256": "6412186f3089b15713310268f84745e658f840c7be6dbd6e363592e81463446f"
+    },
+    "frame": "frames/state_0023.png",
+    "frame_sha256": "c1cc7d5bbeb548ba33fe3c9917f238176500624c3badda66bdb9343d4b2dbc74",
+    "cohort_alive": 37040,
+    "visible_counts": [
+      9955,
+      0,
+      0
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "5250031920c4018c5615f587d58f89955fcba0c71488423607c47410a82d001c",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 24,
+    "time": 48.0,
+    "cycle": 27004,
+    "case": 7,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0024.npz",
+    "cache_sha256": "7a9d16878bd0b4cd2f9d7b3f682bc0de21f96346ec6946da2d76813e29fd6af0",
+    "native_source": {
+      "case": 7,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_002/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00024.part.vtk",
+      "native_sha256": "7ce2a724f4b9729d6a25bdc4b7af8396e450f7c19de9a9162897e15be9a6cb5a"
+    },
+    "frame": "frames/state_0024.png",
+    "frame_sha256": "847558b33ec41fd345725ca7acdc68c17b2119aafd8d215a9fcbf5d613ccd103",
+    "cohort_alive": 36795,
+    "visible_counts": [
+      10162,
+      0,
+      0
+    ],
+    "buried": 122,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 7,
+        "cycle": 27004,
+        "time": 47.999999999973035,
+        "center": [
+          -0.025390625,
+          -1.880859375,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.1131680667997412
+      },
+      {
+        "horizon": 1,
+        "case": 7,
+        "cycle": 27004,
+        "time": 47.999999999973035,
+        "center": [
+          0.060546875,
+          1.861328125,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.1153712646535969
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "2a4a0678d7d286d8a9df62de7f348beec59f74209148bed3c6db14e15c0d652f",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          882.2867603942808,
+          494.80118742563826,
+          900.7366666136281,
+          513.2679206406108
+        ],
+        "diameter_pixels": [
+          18.449906219347326,
+          18.46673321497252
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1047.4898464033781,
+          588.8275399505902,
+          1065.721196920254,
+          607.0601588189156
+        ],
+        "diameter_pixels": [
+          18.231350516875864,
+          18.232618868325403
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 25,
+    "time": 50.0,
+    "cycle": 28284,
+    "case": 7,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0025.npz",
+    "cache_sha256": "eb3fd6cbc291e826891dad6f9867994938763773522a8367f929926e1769fb87",
+    "native_source": {
+      "case": 7,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_002/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00025.part.vtk",
+      "native_sha256": "73615d7eded404e6c9e479b2c78d292f786cb32a1f3d61545e19dece055e9c9a"
+    },
+    "frame": "frames/state_0025.png",
+    "frame_sha256": "7add479dcd48decfb06471638e47536a072fd12da61da68530399aa536799c6c",
+    "cohort_alive": 36566,
+    "visible_counts": [
+      10549,
+      0,
+      0
+    ],
+    "buried": 99,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 7,
+        "cycle": 28284,
+        "time": 49.999999999971216,
+        "center": [
+          0.142578125,
+          -1.697265625,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.1135857308210026
+      },
+      {
+        "horizon": 1,
+        "case": 7,
+        "cycle": 28284,
+        "time": 49.999999999971216,
+        "center": [
+          -0.111328125,
+          1.673828125,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.1153404868125583
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "47f3b9de398f52fa736bf5491165f65ed38d20babeebcd118a97540092f9d7a7",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          901.8634754715024,
+          496.845404501109,
+          920.3702903816155,
+          515.3674417630305
+        ],
+        "diameter_pixels": [
+          18.50681491011312,
+          18.52203726192147
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1028.1576491403994,
+          586.8408662989276,
+          1046.3950134315746,
+          605.0811053174099
+        ],
+        "diameter_pixels": [
+          18.237364291175254,
+          18.24023901848227
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 26,
+    "time": 52.0,
+    "cycle": 29564,
+    "case": 7,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0026.npz",
+    "cache_sha256": "15bb4c6dbce85acf67dc5138816d5e7d539e850eaecfeadf1722d1b4c9d330c4",
+    "native_source": {
+      "case": 7,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_002/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00026.part.vtk",
+      "native_sha256": "3a880d3c4afa524cfa0e45be8a840ed090f07fd8e430f1726659138728eb7f0b"
+    },
+    "frame": "frames/state_0026.png",
+    "frame_sha256": "e4a09514d03711ce6b9d2e19f24ddd6920474a8fc0f72fd292b3ee3f5579b4cb",
+    "cohort_alive": 36352,
+    "visible_counts": [
+      10937,
+      0,
+      0
+    ],
+    "buried": 117,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 7,
+        "cycle": 29564,
+        "time": 51.9999999999694,
+        "center": [
+          0.302734375,
+          -1.478515625,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.1142538495108401
+      },
+      {
+        "horizon": 1,
+        "case": 7,
+        "cycle": 29564,
+        "time": 51.9999999999694,
+        "center": [
+          -0.267578125,
+          1.455078125,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.1169661941397479
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "2c3e4cf91585eff37375add8ffd3f9b76450b7a35e0ac68286c439b9c4ca89df",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          922.3892408920788,
+          499.92203777513674,
+          940.9872223715979,
+          518.5335495928612
+        ],
+        "diameter_pixels": [
+          18.59798147951915,
+          18.61151181772442
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          1008.4179663403564,
+          583.6994415597582,
+          1026.9298812843058,
+          602.2159494035905
+        ],
+        "diameter_pixels": [
+          18.511914943949364,
+          18.5165078438323
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 27,
+    "time": 54.0,
+    "cycle": 30844,
+    "case": 7,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0027.npz",
+    "cache_sha256": "083c791712828f70c646720fea6f896ee1083970dbf8d5fc049bb5117f36292c",
+    "native_source": {
+      "case": 7,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_002/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00027.part.vtk",
+      "native_sha256": "52ca2be729b667a7ddb435a36004ee34671ba2bc820cc1918970d4c33189b55f"
+    },
+    "frame": "frames/state_0027.png",
+    "frame_sha256": "72f35df293fded00d8572fd613b80ddc23b91a67ef6d186662d1c372cbfaeb8f",
+    "cohort_alive": 36104,
+    "visible_counts": [
+      11287,
+      0,
+      0
+    ],
+    "buried": 128,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 7,
+        "cycle": 30844,
+        "time": 53.99999999996758,
+        "center": [
+          0.435546875,
+          -1.224609375,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.1137238947724439
+      },
+      {
+        "horizon": 1,
+        "case": 7,
+        "cycle": 30844,
+        "time": 53.99999999996758,
+        "center": [
+          -0.400390625,
+          1.201171875,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.1161980206351832
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 5,
+    "parent_frame_sha256": "ab4559ef71c5b9da824f64133e203960d3c1254ae883779a1c6c396ea731b882",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          942.6134078363204,
+          504.4631825665011,
+          961.099051104476,
+          522.9605221470187
+        ],
+        "diameter_pixels": [
+          18.485643268155513,
+          18.497339580517576
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          988.9319265940302,
+          579.4979715486755,
+          1007.3475206265023,
+          597.919822242686
+        ],
+        "diameter_pixels": [
+          18.415594032472086,
+          18.42185069401046
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 28,
+    "time": 55.0062,
+    "cycle": 31488,
+    "case": 7,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0028.npz",
+    "cache_sha256": "91c64505372b19306a4297fe6455b8020378c11ee511b95944f0a9f7b433951a",
+    "native_source": {
+      "case": 7,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261014_gh_retry_01/segments/segment_002/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00028.part.vtk",
+      "native_sha256": "bd0251c9401827c36226cbda34bba9ca2047222f613d4da1d4db8a3f933fc396"
+    },
+    "frame": "frames/state_0028.png",
+    "frame_sha256": "8026cf4d8515d6ca370e5be2db1a88258039194cb27f7e4ad407c5e323d68cf5",
+    "cohort_alive": 35977,
+    "visible_counts": [
+      11592,
+      0,
+      0
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 11,
+    "parent_frame_sha256": "16663653a3bd7c9a3699c10e4d975f694de8c96faf42edae970438d15643c9ed",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 29,
+    "time": 58.0,
+    "cycle": 33404,
+    "case": 8,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0029.npz",
+    "cache_sha256": "f021ff462f718c07ac0e75c11de5e4f727be275fead1c4cf3abb627fa9bf21a0",
+    "native_source": {
+      "case": 8,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00029.part.vtk",
+      "native_sha256": "74eb77d94042d7a3d4179066707c271448e592a9cf2216501d1d7a9261a36e69"
+    },
+    "frame": "frames/state_0029.png",
+    "frame_sha256": "03483aa2e09bf20997a00140ba164bea49afa6985b2d33dd64318ccf33350351",
+    "cohort_alive": 35582,
+    "visible_counts": [
+      11931,
+      0,
+      0
+    ],
+    "buried": 142,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 8,
+        "cycle": 33404,
+        "time": 57.99999999996394,
+        "center": [
+          0.572265625,
+          -0.611328125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.1128277186354495
+      },
+      {
+        "horizon": 1,
+        "case": 8,
+        "cycle": 33404,
+        "time": 57.99999999996394,
+        "center": [
+          -0.541015625,
+          0.587890625,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.1148052186593798
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "f48135431d10fef15c45ec4778bf7da6ffbb7191ddb3569ccab0b0bde60e9fd8",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          978.5285827422133,
+          518.3424453104238,
+          996.7870059767031,
+          536.6092258086003
+        ],
+        "diameter_pixels": [
+          18.258423234489783,
+          18.266780498176445
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          953.729185436485,
+          566.4280076471247,
+          972.0032168928909,
+          584.7113890279064
+        ],
+        "diameter_pixels": [
+          18.274031456405964,
+          18.283381380781748
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 30,
+    "time": 60.0,
+    "cycle": 34684,
+    "case": 8,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0030.npz",
+    "cache_sha256": "d774817a62fd016c815822ed1b1edd6d473a24cad0d2e29c071a2304e78177cb",
+    "native_source": {
+      "case": 8,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00030.part.vtk",
+      "native_sha256": "c3023f82602df1ef7b4376672dca82797d17b5129e505b26f88266827f595ebc"
+    },
+    "frame": "frames/state_0030.png",
+    "frame_sha256": "bd09568f2528a4a54ed61812837812867edbb5b958fc2a649f79eec7debc182b",
+    "cohort_alive": 35321,
+    "visible_counts": [
+      12262,
+      0,
+      0
+    ],
+    "buried": 172,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 8,
+        "cycle": 34684,
+        "time": 59.99999999996212,
+        "center": [
+          0.525390625,
+          -0.275390625,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.1079482047115488
+      },
+      {
+        "horizon": 1,
+        "case": 8,
+        "cycle": 34684,
+        "time": 59.99999999996212,
+        "center": [
+          -0.494140625,
+          0.251953125,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.1095657109066567
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "3b68443542fae73523493d16f3525b1e7b8161e8a9bb4f51f6c5c4e5b3fc7858",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          990.0671752378471,
+          527.9230176396813,
+          1007.4810660000667,
+          545.3438338275549
+        ],
+        "diameter_pixels": [
+          17.41389076221958,
+          17.420816187873584
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          943.0360792599319,
+          557.614208078266,
+          960.5300871757726,
+          575.1182155289331
+        ],
+        "diameter_pixels": [
+          17.49400791584071,
+          17.50400745066713
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 31,
+    "time": 62.0,
+    "cycle": 35964,
+    "case": 8,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0031.npz",
+    "cache_sha256": "15cb80115f576d4f6287d6ef9cefe47bcf37921e4231ab7b73d9c6c5ef63927a",
+    "native_source": {
+      "case": 8,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00031.part.vtk",
+      "native_sha256": "f94f0f9042dfce1e948cea11c68e1f37299722088c463fd349a6d46db2439951"
+    },
+    "frame": "frames/state_0031.png",
+    "frame_sha256": "40499a85d7ab8d40bb7c5e1d75804aea4765646944c1b317edd881d7d5c5e6ee",
+    "cohort_alive": 35002,
+    "visible_counts": [
+      12551,
+      0,
+      0
+    ],
+    "buried": 198,
+    "horizons": [
+      {
+        "horizon": 0,
+        "case": 8,
+        "cycle": 35964,
+        "time": 61.9999999999603,
+        "center": [
+          0.353515625,
+          0.009765625,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.09806147172704853
+      },
+      {
+        "horizon": 1,
+        "case": 8,
+        "cycle": 35964,
+        "time": 61.9999999999603,
+        "center": [
+          -0.322265625,
+          -0.033203125,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.09716986655036752
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 7,
+    "parent_frame_sha256": "56949b656b9aa0bddd016e66c42bb082e10f9755a037e60cc7e8cf914551a2cb",
+    "projected_horizons": [
+      {
+        "horizon": 0,
+        "pixel_bbox": [
+          991.2395987639683,
+          538.83855916971,
+          1007.0048011266806,
+          554.6098213054375
+        ],
+        "diameter_pixels": [
+          15.76520236271233,
+          15.771262135727511
+        ]
+      },
+      {
+        "horizon": 1,
+        "pixel_bbox": [
+          943.4929938302778,
+          548.6211125048974,
+          959.0603677814173,
+          564.1976006315512
+        ],
+        "diameter_pixels": [
+          15.56737395113953,
+          15.576488126653771
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 32,
+    "time": 63.6312,
+    "cycle": 37008,
+    "case": 8,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0032.npz",
+    "cache_sha256": "adcdc10b12fbb3b7ba3437ce0a6463d3da0879de3b5852bef2023a6e24197221",
+    "native_source": {
+      "case": 8,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_001/out/pvtk/s10_orbit_gw.prtcl_all.00032.part.vtk",
+      "native_sha256": "afaba020032b6db9164188c98599c582e83a14a6a75308f22316428fbe80129e"
+    },
+    "frame": "frames/state_0032.png",
+    "frame_sha256": "80f0e1b3f4624592c5b31a7e692d8e292a0cb29681bd493cc8414d887026ed7e",
+    "cohort_alive": 34719,
+    "visible_counts": [
+      13002,
+      0,
+      0
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 0,
+        "reason": "No accepted same-case/cycle surface"
+      },
+      {
+        "horizon": 1,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 9,
+    "parent_frame_sha256": "a3758db03b18c9ed5c79d0eca6bfebee59566448369d31a19f6363eeba6e4276",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 33,
+    "time": 66.0,
+    "cycle": 38524,
+    "case": 9,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0033.npz",
+    "cache_sha256": "19323e6c1d878351f326a32d437ed285c716db73fac380722247613bafbd2a8b",
+    "native_source": {
+      "case": 9,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00033.part.vtk",
+      "native_sha256": "09dc8fa25ad83f4b7d6142f10b29443193dbe62e4c985f04de69029ed58dd37a"
+    },
+    "frame": "frames/state_0033.png",
+    "frame_sha256": "4289150ededaee8a19ee81a7064ee19aacb98bb1ae8458a9bb36037c8ba5dc06",
+    "cohort_alive": 34151,
+    "visible_counts": [
+      12321,
+      0,
+      0
+    ],
+    "buried": 832,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 9,
+        "cycle": 38524,
+        "time": 65.99999999996575,
+        "center": [
+          0.015625,
+          -0.01171875,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.2291028306383199
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "23b7864cf4b7faf875266608c65f4b1b0954920fa6749ab63cd948631f8fb5c0",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          956.7773200722182,
+          533.1813838340687,
+          993.545509700341,
+          569.9674086340068
+        ],
+        "diameter_pixels": [
+          36.76818962812274,
+          36.786024799938104
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 34,
+    "time": 68.0,
+    "cycle": 39804,
+    "case": 9,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0034.npz",
+    "cache_sha256": "b4fd65b43a0b6bb5cff8deeab6bdfe902a103ae34476f85182bdc0455ffe94d4",
+    "native_source": {
+      "case": 9,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00034.part.vtk",
+      "native_sha256": "0db4803fcc9fda6cfd5e7bd69786d15cb09b3ef8ca914e1922ffd215aaad6cc0"
+    },
+    "frame": "frames/state_0034.png",
+    "frame_sha256": "e50218bb1b58f5f2397a67787eaee50e8663f936dfce10d9e0b8626c03c530e6",
+    "cohort_alive": 33361,
+    "visible_counts": [
+      11977,
+      0,
+      0
+    ],
+    "buried": 1025,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 9,
+        "cycle": 39804,
+        "time": 67.99999999997303,
+        "center": [
+          0.017578125,
+          -0.01171875,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.2519561810201343
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "51361a1b6aec578a0c578bef6ee3a34e81daff5d302c95dfcab4db636e4b34d2",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          955.0765672612836,
+          531.3151932963625,
+          995.5128897376936,
+          571.7711077927613
+        ],
+        "diameter_pixels": [
+          40.436322476410055,
+          40.455914496398805
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 35,
+    "time": 70.0,
+    "cycle": 41084,
+    "case": 9,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0035.npz",
+    "cache_sha256": "99d5c352e4e81021f50d3f614cb854bf1696e49d5d94c568d7b501d95ed8f4fc",
+    "native_source": {
+      "case": 9,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00035.part.vtk",
+      "native_sha256": "2877ff0df0fddf01bb8e3532e7072bd78f4cb30e34e1b23630d70517a2be2869"
+    },
+    "frame": "frames/state_0035.png",
+    "frame_sha256": "429228e31345d3b4a5b6cbe212215ebded85c59299d91d4629a6ae1da74203c6",
+    "cohort_alive": 32441,
+    "visible_counts": [
+      11653,
+      0,
+      0
+    ],
+    "buried": 1035,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 9,
+        "cycle": 41084,
+        "time": 69.9999999999803,
+        "center": [
+          0.017578125,
+          -0.013671875,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.2904320922914856
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "f6bfa7a34223dbb2479208eb94e4894a2247134bef43574a57cd9e4e8468455e",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          951.9061951570959,
+          528.1757824744235,
+          998.518268130011,
+          574.810459504663
+        ],
+        "diameter_pixels": [
+          46.61207297291514,
+          46.63467703023946
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 36,
+    "time": 72.0,
+    "cycle": 42364,
+    "case": 9,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0036.npz",
+    "cache_sha256": "d6f6ef56b6bcd5f4d06ddb543bdb3af76b7ee854d0dad0b7a0b01ec0b4e4b729",
+    "native_source": {
+      "case": 9,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00036.part.vtk",
+      "native_sha256": "572e089c652934d9fcc695f6263214542783fec672e99a5fb3169fea2b9f5af9"
+    },
+    "frame": "frames/state_0036.png",
+    "frame_sha256": "f2eb4da55ad7358929c563b213f892bff90d7541800e753bc457993335b94d13",
+    "cohort_alive": 31558,
+    "visible_counts": [
+      11387,
+      0,
+      0
+    ],
+    "buried": 1062,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 9,
+        "cycle": 42364,
+        "time": 71.99999999998758,
+        "center": [
+          0.017578125,
+          -0.013671875,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.3114315718681295
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 7,
+    "parent_frame_sha256": "09dd4df0deb26024befd8e646ae463882cf8f5780eef750ca6538ced2de0dafc",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          950.2214303408131,
+          526.4897443793459,
+          1000.2037551683209,
+          576.4963075594351
+        ],
+        "diameter_pixels": [
+          49.982324827507796,
+          50.00656318008919
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 37,
+    "time": 73.6047,
+    "cycle": 43391,
+    "case": 9,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0037.npz",
+    "cache_sha256": "151c6986896db19fbc2e81311bb48d64d5a07c8dc0e2dd47d0289c8d013f9881",
+    "native_source": {
+      "case": 9,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_002/out/pvtk/s10_orbit_gw.prtcl_all.00037.part.vtk",
+      "native_sha256": "53d6520f579c8a875f939b1551d7bcab44897f2cce36bd9fe47ecf3b2632aebf"
+    },
+    "frame": "frames/state_0037.png",
+    "frame_sha256": "697a002408ee1c5430a1bc77b8061e9288450d619d0bba058ebeac8e2b56a9c3",
+    "cohort_alive": 30839,
+    "visible_counts": [
+      12205,
+      0,
+      0
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 2,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 9,
+    "parent_frame_sha256": "bd3fa5368709eace0f2fa516cd8b8e80713f4aa5bca7aed6a2d1666f82bb1f4c",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 38,
+    "time": 76.0,
+    "cycle": 44924,
+    "case": 10,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0038.npz",
+    "cache_sha256": "be27a577a2c5a0fb3befe1d90b836673c3a21fae8aea2998831a14a160d793a3",
+    "native_source": {
+      "case": 10,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_003/out/pvtk/s10_orbit_gw.prtcl_all.00038.part.vtk",
+      "native_sha256": "bfd69bd281fee92b51f17d475dccc3fcf88ca3584a36be801c8f7d42f59862d4"
+    },
+    "frame": "frames/state_0038.png",
+    "frame_sha256": "c7882280538958f231791401c49da45661da0646145b562eab18d0a1aba1f5c0",
+    "cohort_alive": 29827,
+    "visible_counts": [
+      10786,
+      0,
+      0
+    ],
+    "buried": 1172,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 10,
+        "cycle": 44924,
+        "time": 76.00000000000213,
+        "center": [
+          0.017578125,
+          -0.013671875,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.3578194551852351
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "be85f9b1da26475119416fbd099097e2c66f6d45df1d2adc9260ad769b240a13",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          946.4998715025068,
+          522.7652600797782,
+          1003.9270880232217,
+          580.2203250570482
+        ],
+        "diameter_pixels": [
+          57.427216520714865,
+          57.45506497727001
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 39,
+    "time": 78.0,
+    "cycle": 46204,
+    "case": 10,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0039.npz",
+    "cache_sha256": "93f7fe870320269fa4faf98cf34490fac038e7cf02b16fbcc1fa785ad35e9e29",
+    "native_source": {
+      "case": 10,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_003/out/pvtk/s10_orbit_gw.prtcl_all.00039.part.vtk",
+      "native_sha256": "25c48f307bc7a3dbc52ca85256d93fbbced3fea2ac964bd637854194618b5915"
+    },
+    "frame": "frames/state_0039.png",
+    "frame_sha256": "2e8453957d9cfcc08aa275d2f70e0d521d407ec943f6caa7ef852b7d73f9f517",
+    "cohort_alive": 28965,
+    "visible_counts": [
+      10485,
+      0,
+      0
+    ],
+    "buried": 1216,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 10,
+        "cycle": 46204,
+        "time": 78.00000000000941,
+        "center": [
+          0.017578125,
+          -0.013671875,
+          -0.033203125
+        ],
+        "mean_coordinate_radius": 0.3673361137728141
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "c37a81e93e04591e6fd62221d01fd13b4dac862cfd2ca31e93ef14c6f0167ab9",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          945.7363941141513,
+          522.0011633260468,
+          1004.6909597596779,
+          580.9843180448598
+        ],
+        "diameter_pixels": [
+          58.9545656455266,
+          58.98315471881301
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 40,
+    "time": 80.0,
+    "cycle": 47484,
+    "case": 10,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0040.npz",
+    "cache_sha256": "7ba60ac26175f809e4b36d9bc791c4e8dc6326a189283c1617774c4f2819d45c",
+    "native_source": {
+      "case": 10,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_003/out/pvtk/s10_orbit_gw.prtcl_all.00040.part.vtk",
+      "native_sha256": "fcc3356419a85e39a32dc00c40a22af13e52e76ea641ca884155ee401a47474b"
+    },
+    "frame": "frames/state_0040.png",
+    "frame_sha256": "4a9f056c3ed439e2113829ad6265893fc1210c6f27e429c368ad8569bf10370b",
+    "cohort_alive": 28086,
+    "visible_counts": [
+      10202,
+      0,
+      0
+    ],
+    "buried": 1264,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 10,
+        "cycle": 47484,
+        "time": 80.00000000001668,
+        "center": [
+          0.017578125,
+          -0.017578125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.3906424221007621
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "58022cb4af69987eb74b88d2cf61373c5f8b23a898f23fca723bf30c7ccd0b34",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          943.6989306763755,
+          520.3193507645605,
+          1006.397058451271,
+          583.0479151400978
+        ],
+        "diameter_pixels": [
+          62.69812777489551,
+          62.7285643755373
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 41,
+    "time": 82.0,
+    "cycle": 48764,
+    "case": 10,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0041.npz",
+    "cache_sha256": "3288eb1b7cd96c0f868a2fffa7bf8dc4fc9051508b0a610eb26d52a357335b05",
+    "native_source": {
+      "case": 10,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_003/out/pvtk/s10_orbit_gw.prtcl_all.00041.part.vtk",
+      "native_sha256": "14cda382a8733dbbc35cf28166d77f34f381b076cfa4a3dc11edeb679295f15d"
+    },
+    "frame": "frames/state_0041.png",
+    "frame_sha256": "18e14a24721c1bddefabe4c77717d579adacb5bde17f7e6f1d308b7b2cc98284",
+    "cohort_alive": 27225,
+    "visible_counts": [
+      9906,
+      0,
+      0
+    ],
+    "buried": 1336,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 10,
+        "cycle": 48764,
+        "time": 82.00000000002396,
+        "center": [
+          0.017578125,
+          -0.017578125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.4086899963731054
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "bd935bb3489c621cf0da9c5de47dc1ac659250ecac092a06eed8957bc633ca9e",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          942.2510245560977,
+          518.8702209369188,
+          1007.8457890007519,
+          584.4968280332653
+        ],
+        "diameter_pixels": [
+          65.59476444465417,
+          65.62660709634645
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 42,
+    "time": 84.0,
+    "cycle": 50044,
+    "case": 10,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0042.npz",
+    "cache_sha256": "0549f8874131ba95c10075252f1ee6f5104a20775d3bb4e99e19aa97da0bda7e",
+    "native_source": {
+      "case": 10,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_003/out/pvtk/s10_orbit_gw.prtcl_all.00042.part.vtk",
+      "native_sha256": "3baac66ec519287df4a8f78090e1a862d4fa8fd6d49bd5bf59d5bbadeb08f373"
+    },
+    "frame": "frames/state_0042.png",
+    "frame_sha256": "e69f6068e22e70ddad130298ee0711ce4ddeed5be662b3fa0e908e3607033b95",
+    "cohort_alive": 26332,
+    "visible_counts": [
+      9685,
+      0,
+      0
+    ],
+    "buried": 1306,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 10,
+        "cycle": 50044,
+        "time": 84.00000000003124,
+        "center": [
+          0.013671875,
+          -0.017578125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.4105702277389276
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 5,
+    "parent_frame_sha256": "97adac6e62512a4e7fc23604bcb486e162853fb163ada9aec3254ae84a5d072e",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          941.8349058086613,
+          518.7822727018541,
+          1007.7299780491961,
+          584.7094063844324
+        ],
+        "diameter_pixels": [
+          65.89507224053477,
+          65.9271336825783
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 43,
+    "time": 85.1734,
+    "cycle": 50795,
+    "case": 10,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0043.npz",
+    "cache_sha256": "fa1185499ed4a9af326394c2464c3746bf6d659d8f1671ff50ce2278796dd343",
+    "native_source": {
+      "case": 10,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_003/out/pvtk/s10_orbit_gw.prtcl_all.00043.part.vtk",
+      "native_sha256": "6165b2fef6f8849f84ef84803833c96e0564de8127747085781c59a42cc384d8"
+    },
+    "frame": "frames/state_0043.png",
+    "frame_sha256": "825456c39c2dc9fa01faebae31ec1b135de6b29940b60adf2077054b3f1a557d",
+    "cohort_alive": 25791,
+    "visible_counts": [
+      10784,
+      0,
+      0
+    ],
+    "buried": 0,
+    "horizons": [],
+    "missing_surfaces": [
+      {
+        "horizon": 2,
+        "reason": "No accepted same-case/cycle surface"
+      }
+    ],
+    "encoded_frames": 11,
+    "parent_frame_sha256": "a318416f2fb16d20d8f903f6f004bf2358a319981d43e7b67fe4f3f036662c2e",
+    "projected_horizons": [],
+    "view_limit": 4.0
+  },
+  {
+    "index": 44,
+    "time": 88.0,
+    "cycle": 52604,
+    "case": 11,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0044.npz",
+    "cache_sha256": "a539ea95d758ad4f1981c6c8caa5513f10938ffb2bdfa57dd22818427a64d62b",
+    "native_source": {
+      "case": 11,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_004/out/pvtk/s10_orbit_gw.prtcl_all.00044.part.vtk",
+      "native_sha256": "50c9b3dc676d1b4e4e5dab932eba4fac0fa9664a0e8cacc02d669c1d860fc5df"
+    },
+    "frame": "frames/state_0044.png",
+    "frame_sha256": "9991e8784e410d594d60ecaf7fa6266ba94baa2561f4857f7a2cca503da1949b",
+    "cohort_alive": 24568,
+    "visible_counts": [
+      9013,
+      0,
+      0
+    ],
+    "buried": 1409,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 11,
+        "cycle": 52604,
+        "time": 88.00000000004579,
+        "center": [
+          0.013671875,
+          -0.017578125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.4695549087319784
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "7e8ddc0546eff27bc42ce8b1cb157f6975b0ce39b95dbc28dd8590fa77c93366",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          937.1029723629522,
+          514.0461627679471,
+          1012.4648781831396,
+          589.4447356841051
+        ],
+        "diameter_pixels": [
+          75.36190582018742,
+          75.39857291615806
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 45,
+    "time": 90.0,
+    "cycle": 53884,
+    "case": 11,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0045.npz",
+    "cache_sha256": "c483ea2c0085e2180a8f48b369c54b2b0e063a964a0aac3ec1f3c55655635715",
+    "native_source": {
+      "case": 11,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_004/out/pvtk/s10_orbit_gw.prtcl_all.00045.part.vtk",
+      "native_sha256": "49d2d1e69a5bcb1f968a5e662197b792a826f863d8be7b89974f712b44fc9551"
+    },
+    "frame": "frames/state_0045.png",
+    "frame_sha256": "585ccf6b773682c50da2e8a268c668e61acdb4246a90799dd04d065b43d620aa",
+    "cohort_alive": 23683,
+    "visible_counts": [
+      8692,
+      0,
+      0
+    ],
+    "buried": 1482,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 11,
+        "cycle": 53884,
+        "time": 90.00000000005306,
+        "center": [
+          0.013671875,
+          -0.017578125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.4946268474423737
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "8025a2db972c8a8a6ea023165b255d875abd740ef7894e3a5b30f09244888ab9",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          935.0916841233409,
+          512.0330232421353,
+          1014.4775478724653,
+          591.4575117046055
+        ],
+        "diameter_pixels": [
+          79.38586374912438,
+          79.42448846247021
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 46,
+    "time": 92.0,
+    "cycle": 55164,
+    "case": 11,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0046.npz",
+    "cache_sha256": "a45fdd53410154ebd49874642a75ba7c53ce093f7ccd3926c0e3e1e69ab3039f",
+    "native_source": {
+      "case": 11,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_004/out/pvtk/s10_orbit_gw.prtcl_all.00046.part.vtk",
+      "native_sha256": "599c3a6e069f0dbe23ebdf95a6a737ab6918b250a416261459514a66fc0cd8b9"
+    },
+    "frame": "frames/state_0046.png",
+    "frame_sha256": "0fc423cec9fc8b614a544ddd9f4a04fb3f39226941b8c486b1e438819cd3e1e0",
+    "cohort_alive": 22781,
+    "visible_counts": [
+      8356,
+      0,
+      0
+    ],
+    "buried": 1485,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 11,
+        "cycle": 55164,
+        "time": 92.00000000006034,
+        "center": [
+          0.013671875,
+          -0.017578125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.5048311080536692
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "4c1a08b33764789a06625c8526891aa5c51e8c0006d719b2bc6d980548167896",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          934.2731015694272,
+          511.21367422926375,
+          1015.296713246218,
+          592.2767073582169
+        ],
+        "diameter_pixels": [
+          81.02361167679078,
+          81.06303312895312
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 47,
+    "time": 94.0,
+    "cycle": 56444,
+    "case": 11,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0047.npz",
+    "cache_sha256": "b22d34c94dfb8134afa0f2b1d51ee8509cf605cd85ae3a218743d3f7b8c63cbe",
+    "native_source": {
+      "case": 11,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_004/out/pvtk/s10_orbit_gw.prtcl_all.00047.part.vtk",
+      "native_sha256": "13430606a46721655d3657fd716bd71a948dd742afbc91b9e38627e84187fa26"
+    },
+    "frame": "frames/state_0047.png",
+    "frame_sha256": "d369ee28e5f8ba14ea3ee16aaa29316336e2eb13ff96b3271e60b86ffcc4b231",
+    "cohort_alive": 21918,
+    "visible_counts": [
+      8046,
+      0,
+      0
+    ],
+    "buried": 1472,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 11,
+        "cycle": 56444,
+        "time": 94.00000000006762,
+        "center": [
+          0.013671875,
+          -0.017578125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.5083807668144918
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "51b59c5eaad9b483015c4eeb24285507991a8174226d48b438bd95a3495bf464",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          933.988350462274,
+          510.92865473998467,
+          1015.5816698833289,
+          592.5616727657367
+        ],
+        "diameter_pixels": [
+          81.59331942105496,
+          81.63301802575205
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 48,
+    "time": 96.0,
+    "cycle": 57724,
+    "case": 11,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0048.npz",
+    "cache_sha256": "3ae6a6d85f076f599a6f0fb56934a0e4f3813a92a7b62a8ecf68ece09d144f89",
+    "native_source": {
+      "case": 11,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_004/out/pvtk/s10_orbit_gw.prtcl_all.00048.part.vtk",
+      "native_sha256": "69695ade000b916e7d9c52029bcec8bec23bc2403cade6b5ffff177d68c2904b"
+    },
+    "frame": "frames/state_0048.png",
+    "frame_sha256": "40fc93ed17d5f3b0e6bbc2ab2af298ca67eb7123c902f67837458a43849d538a",
+    "cohort_alive": 21045,
+    "visible_counts": [
+      7697,
+      0,
+      0
+    ],
+    "buried": 1498,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 11,
+        "cycle": 57724,
+        "time": 96.00000000007489,
+        "center": [
+          0.013671875,
+          -0.017578125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.5416984670110186
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 8,
+    "parent_frame_sha256": "f620e2c60b743368ec18ca850751eb55edcdfdbfe5dc1495b7e066c9d40757b4",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          931.3156632708931,
+          508.2534041537281,
+          1018.2563564086777,
+          595.2363972608142
+        ],
+        "diameter_pixels": [
+          86.94069313778459,
+          86.98299310708609
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  },
+  {
+    "index": 49,
+    "time": 98.0,
+    "cycle": 59004,
+    "case": 11,
+    "cache": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cache/particles/0049.npz",
+    "cache_sha256": "ba8ab7d1074f8b9b5739e415e275f311057891c788ac5dc8f3043275e2e4c518",
+    "native_source": {
+      "case": 11,
+      "source": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/runs/20261016_gh_resume_01/segments/segment_002/chunk_004/out/pvtk/s10_orbit_gw.prtcl_all.00049.part.vtk",
+      "native_sha256": "a4001761e8e60697964dbdceab75429c77d7e7247bbd80bed9f11accc6cb3bf5"
+    },
+    "frame": "frames/state_0049.png",
+    "frame_sha256": "3460059ea48145f377808b1ce8c3317a570e2ef769cc1eaeee9babf174ee192c",
+    "cohort_alive": 20186,
+    "visible_counts": [
+      7446,
+      0,
+      0
+    ],
+    "buried": 1473,
+    "horizons": [
+      {
+        "horizon": 2,
+        "case": 11,
+        "cycle": 59004,
+        "time": 98.00000000008217,
+        "center": [
+          0.013671875,
+          -0.017578125,
+          -0.029296875
+        ],
+        "mean_coordinate_radius": 0.5439000955121047
+      }
+    ],
+    "missing_surfaces": [],
+    "encoded_frames": 1,
+    "parent_frame_sha256": "bb3c74de960c17bb94f08245a5fe37f767cb5111e8855cee631d9664c9deb9c4",
+    "projected_horizons": [
+      {
+        "horizon": 2,
+        "pixel_bbox": [
+          931.1390547458014,
+          508.076623418693,
+          1018.433101518314,
+          595.4131420559188
+        ],
+        "diameter_pixels": [
+          87.2940467725125,
+          87.33651863722582
+        ]
+      }
+    ],
+    "view_limit": 4.0
+  }
+]

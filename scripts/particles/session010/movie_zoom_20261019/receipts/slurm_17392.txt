@@ -1,0 +1,39 @@
+Mon Oct 19 14:28:38 UTC 2026
+perseus
+JobId=17392 JobName=jeans10-zoom
+   UserId=jiaxiwu(1011) GroupId=jiaxiwu(1011) MCS_label=N/A
+   Priority=1 Nice=0 Account=(null) QOS=(null)
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:01 TimeLimit=00:30:00 TimeMin=N/A
+   SubmitTime=2026-10-19T14:28:38 EligibleTime=2026-10-19T14:28:38
+   AccrueTime=2026-10-19T14:28:38
+   StartTime=2026-10-19T14:28:38 EndTime=2026-10-19T14:58:38 Deadline=N/A
+   PreemptEligibleTime=2026-10-19T14:28:38 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-19T14:28:38 Scheduler=Backfill
+   Partition=debug AllocNode:Sid=perseus:1031093
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=perseus
+   BatchHost=perseus
+   NumNodes=1 NumCPUs=2 NumTasks=1 CPUs/Task=2 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=2,mem=10G,node=1,billing=2
+   AllocTRES=cpu=2,mem=10G,node=1,billing=2
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=2 MinMemoryNode=10G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=debug_gpu_jiaxiwu:1 Network=(null)
+   Command=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/scripts/perseus_movie_zoom_20261019_v2.sbatch
+   WorkDir=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013
+   StdErr=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/movies/particles3d_to98_zoom_20261019_v2/evidence/render.17392.log
+   StdIn=/dev/null
+   StdOut=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/movies/particles3d_to98_zoom_20261019_v2/evidence/render.17392.log
+   Power=
+   TresPerJob=gres/gpu:1
+   TresPerNode=gres/gpu:1
+   TresPerTask=cpu:2
+   MailUser=jiaxiwu@caltech.edu MailType=BEGIN,END,FAIL
+   
+
+Python 3.13.9
+Filesystem             Size  Used Avail Use% Mounted on
+/dev/mapper/data-data  110T   91T   14T  87% /data
