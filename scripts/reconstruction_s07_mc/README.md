@@ -8,8 +8,10 @@ equal fixed massesM0/N. No recentering, boost or pairing.
 
 All raw particle/field/checkpoint data, generation intermediates and movie caches/frames
 stay on AMD. All substantial generation/reduction/plotting/rendering runs in Slurm.
-Only compact tables/reductions, reports, PNG/PDF, final movies, review frames and
-reproduction records may be mirrored to Perseus. No deletion is authorized.
+Only compact tables/reductions, reports, PNG/PDF, final movies, PDF figure previews and
+reproduction records may be mirrored to Perseus. Movie caches and all rendered/decoded
+movie frame files stay AMD-only; inspect them by streaming without saving frame files
+on Perseus. No deletion is authorized.
 
 `stage.sbatch` stages exact source/inputs/executable and submits allocated AMD preparation.
 `advance.py preflight` uniquely submits sequential full-count0..20M runs,8M20..22M restart
