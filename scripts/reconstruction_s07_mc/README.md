@@ -35,3 +35,12 @@ error-to-exact-solution claim, statistical independence, or fitted convergenceor
 
 Actual PNG/PDF and encoded-movie review, scientific interpretation and final integrity
 remain required after automated report generation. COMPLETE is written only afterward.
+
+`final_integrity.py` and `final_integrity.sbatch` are staged in a separate immutable
+AMD postprocessing directory, with their own source/hash pin. They do not replace
+files in the frozen native runtime. One success-dependent job after report generation
+rehashes retained files, checks output/checkpoint/reduction/movie receipt bindings,
+and inventories sidecars outside out/. It preserves per-job manifests/accounting and
+reports exact retained storage. Its NATIVE_INTEGRITY_QA receipt is a closed-file
+snapshot; actual scientific/visual review and the audit job's own terminal accounting
+remain necessary before COMPLETE. All raw and movie caches/frames remain on AMD.
