@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "job": "17094",
+  "checked_utc": "2026-10-19T07:28:19.931616+00:00",
+  "movie_sha256": "724d73b0508efa8c81fdd025203770d150fd1ed2ff91ad888da181b305f8ae22",
+  "checked_source_files": 79,
+  "checked_native_matched_surfaces": 56,
+  "checked_saved_frames": 50,
+  "checked_encoded_time_rows": 393,
+  "no_source_state_after98": true,
+  "final_t98_included": true,
+  "horizons_exact_case_cycle_meanradius_centers": true,
+  "full_decode": "Passed in17088; unchanged MP4 hash verified here",
+  "visual_acceptance": "evidence/ACCEPTED.json",
+  "native_source_unchanged": true,
+  "ah_repair_implemented": false,
+  "simulation_restarted": false,
+  "scripts": {
+    "code/scripts/particles/session010/movie_to98_20261019/render.py": "f9b503e32d1a5b3e83ed48eaa91fbf01ea9445c92435d188cd941150f8f5302f",
+    "code/scripts/particles/session010/movie_to98_20261019/orbit_estimate.py": "599d63369d4379f1859da263e002dc932583eba4a963c663893a9aeb186d304a",
+    "code/scripts/particles/session010/movie_to98_20261019/final_checks.py": "87c1f08bf723d881026f009a6571b76d7bf0f286b4fcaddabd850b86e88d8e99",
+    "code/scripts/particles/session010/movie_to98_20261019/probe.py": "14f7e6ac4766c8930be47c33e753bf67f794bd0c5e833d5652e22752533b0010",
+    "scripts/perseus_movie_to98_20261019_v1.sbatch": "3c6d5528e4d639bf55448a9f738b46ff565c570d943f7dabb834664a83f1331f",
+    "scripts/perseus_orbit_estimate_20261019.sbatch": "58777982ea1216631a542dadf8aa4b4395279e1796546a2a623ccbb8c0dc1200",
+    "scripts/perseus_movie_to98_checks_20261019.sbatch": "16e56fad6bcabf24a935ced4ebd869a5824ec8f8463ead5cf8940560a4451ec1"
+  },
+  "storage_snapshot": {
+    "path": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/movies/particles3d_to98_20261019_v1",
+    "regular_files": 85,
+    "bytes": 38424469,
+    "sequence_links": 393,
+    "retention": "All retained on Perseus; no native raw generated or deletion"
+  },
+  "scientific_estimates": {
+    "job": "17091",
+    "json_sha256": "602630a487e48e5ad698f8b01d5cb8a3dcbb49e211330bbbb6c70c19b46828fd",
+    "png_sha256": "92f7d1c985b81e97182d3cebf677c8de255d7442dac29ac00fe586591c6f9e7c",
+    "pdf_sha256": "7dbd620917e331c57f111168bdda8b57cf26c86bcf91af2c19d2fe58f7110753"
+  }
+}

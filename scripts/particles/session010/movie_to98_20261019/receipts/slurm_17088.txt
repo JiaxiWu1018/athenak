@@ -1,0 +1,50 @@
+Mon Oct 19 07:20:29 UTC 2026
+perseus
+JobId=17088 JobName=jeans10-3d-to98
+   UserId=jiaxiwu(1011) GroupId=jiaxiwu(1011) MCS_label=N/A
+   Priority=1 Nice=0 Account=(null) QOS=(null)
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:01 TimeLimit=01:00:00 TimeMin=N/A
+   SubmitTime=2026-10-19T07:20:28 EligibleTime=2026-10-19T07:20:28
+   AccrueTime=2026-10-19T07:20:28
+   StartTime=2026-10-19T07:20:28 EndTime=2026-10-19T08:20:28 Deadline=N/A
+   PreemptEligibleTime=2026-10-19T07:20:28 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-19T07:20:28 Scheduler=Main
+   Partition=debug AllocNode:Sid=perseus:3484138
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=perseus
+   BatchHost=perseus
+   NumNodes=1 NumCPUs=2 NumTasks=1 CPUs/Task=2 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=2,mem=12G,node=1,billing=2
+   AllocTRES=cpu=2,mem=12G,node=1,billing=2
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=2 MinMemoryNode=12G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=debug_gpu_jiaxiwu:1 Network=(null)
+   Command=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/scripts/perseus_movie_to98_20261019_v1.sbatch
+   WorkDir=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013
+   StdErr=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/movies/particles3d_to98_20261019_v1/evidence/render.17088.log
+   StdIn=/dev/null
+   StdOut=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/movies/particles3d_to98_20261019_v1/evidence/render.17088.log
+   Power=
+   TresPerJob=gres/gpu:1
+   TresPerNode=gres/gpu:1
+   TresPerTask=cpu:2
+   MailUser=jiaxiwu@caltech.edu MailType=BEGIN,END,FAIL
+   
+
+Python 3.13.9
+ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers
+built with gcc 13 (Ubuntu 13.2.0-23ubuntu3)
+configuration: --prefix=/usr --extra-version=3ubuntu5 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --disable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+libavutil      58. 29.100 / 58. 29.100
+libavcodec     60. 31.102 / 60. 31.102
+libavformat    60. 16.100 / 60. 16.100
+libavdevice    60.  3.100 / 60.  3.100
+libavfilter     9. 12.100 /  9. 12.100
+libswscale      7.  5.100 /  7.  5.100
+libswresample   4. 12.100 /  4. 12.100
+libpostproc    57.  3.100 / 57.  3.100
+Filesystem             Size  Used Avail Use% Mounted on
+/dev/mapper/data-data  110T   90T   15T  87% /data

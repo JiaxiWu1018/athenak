@@ -1,0 +1,34 @@
+{
+  "status": "accepted",
+  "reviewed_utc": "2026-10-19T07:26:41.800905+00:00",
+  "reviewer": "Codex visual inspection plus Slurm machine checks",
+  "movie": "jeans_session010_particles3d_t0_to98.mp4",
+  "sha256": "724d73b0508efa8c81fdd025203770d150fd1ed2ff91ad888da181b305f8ae22",
+  "bytes": 5005907,
+  "render_job": "17088",
+  "viewed": [
+    "qa/representative_frames.jpg",
+    "qa/reference_comparison.jpg",
+    "qa/decoded_t10.png",
+    "qa/decoded_t66.png",
+    "qa/decoded_t98.png"
+  ],
+  "checks": [
+    "Session007 standalone camera, marker size/alpha, navy/purple/orange/cyan appearance matched",
+    "True xyz, fixed equal +/-24 cube, hidden axes and text, no tracker panel",
+    "Individual spheres present only where accepted same-cycle/case surfaces exist; common first at saved t66 after strict t64.36875 enclosure",
+    "Final decoded frame is saved t98; no t98.2 or later particle state loaded/used",
+    "393 decoded frames, 1920x1080, H264 yuv420p, 12fps, 32.75s",
+    "Full decode exit0; actual saved states held; fixed tag identities and monotone surviving cohort checked"
+  ],
+  "limitations": [
+    "Coordinate mean-radius spheres are schematic, not horizon-shape reconstructions",
+    "Opacity/marker ordering follows the original matplotlib 3D renderer",
+    "Exact matching preserves missing accepted-surface gaps; absence is not black-hole disappearance",
+    "Initial t0.00625 state falls between CFR sample instants and receives zero encoded frames"
+  ],
+  "physics_modified": false,
+  "ah_repair_implemented": false,
+  "simulation_restarted": false,
+  "local_mirror_pull_performed": false
+}

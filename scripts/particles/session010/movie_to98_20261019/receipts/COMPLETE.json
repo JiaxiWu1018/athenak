@@ -1,0 +1,116 @@
+{
+  "status": "machine checks passed; visual review pending",
+  "job": "17088",
+  "host": "perseus",
+  "created_utc": "2026-10-19T07:21:29.902053+00:00",
+  "source_commit": "386870f88f60e25e1a8fac76fe04a071b87a01cf",
+  "analysis_parent_commit": "bcf9db580b7acbd5166b2beb92212d2b97ccea71",
+  "movie": "jeans_session010_particles3d_t0_to98.mp4",
+  "sha256": "724d73b0508efa8c81fdd025203770d150fd1ed2ff91ad888da181b305f8ae22",
+  "bytes": 5005907,
+  "native_simulation_modified": false,
+  "ah_repair_implemented": false,
+  "data_time_range": [
+    0,
+    98
+  ],
+  "saved_states": 50,
+  "encoded_frames": 393,
+  "fps": 12,
+  "duration_seconds": 32.75,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "pacing": "3 Mref/playback second; CFR 0.25-Mref grid, hold most recent actual saved state. Final t=98 included for one frame. No interpolation.",
+  "zero_encoded_duration_states": [
+    0.00625
+  ],
+  "geometry": "Actual xyz, equal fixed +/-24 cube, standalone, axes/text hidden",
+  "camera": {
+    "elev": 22.0,
+    "azim": -58.0,
+    "roll": 0.0,
+    "focal_length": 1.25
+  },
+  "background": "#071A2B",
+  "group_colors": {
+    "0": "#8E5AB5",
+    "1": "#FF9F1C",
+    "2": "#31B7E5"
+  },
+  "group_styles": {
+    "0": {
+      "size": 1.45,
+      "alpha": 0.34
+    },
+    "1": {
+      "size": 2.1,
+      "alpha": 0.82
+    },
+    "2": {
+      "size": 2.1,
+      "alpha": 0.82
+    }
+  },
+  "particles": "Existing fixed 90k-tag cohort only; nested surviving tag sets checked; no replacement/resampling",
+  "ah_selection": "Strict accepted consumer-matched CSV row with exact native cycle/case and printed-time tolerance; measured coordinate center and meanradius. Individuals before first strict common enclosure, common only after it; missing/rejected surfaces omitted without interpolation/extrapolation.",
+  "common_enclosure_time": 64.36874999995982,
+  "first_rendered_common_time": 66.0,
+  "sphere": "Opaque black sphere schematic, not reconstructed AH shape; 0.2% interior suppression buffer matches Session007 renderer",
+  "cache_case_recovery": "Persistent native VTK output file number, deduplicated later-case winner, validated 112-cache count and per-frame native checkpoint cycle bounds; cycle from matching mesh.npy row",
+  "references": [
+    {
+      "path": "reference/slide27_jeans_particles_3d.json",
+      "sha256": "46642d729128f4882cc57d7ee7319e9214b5f546198d21088545daa6ae5e9732",
+      "bytes": 165877
+    },
+    {
+      "path": "reference/cca_render_gi_3d_movie.py",
+      "sha256": "beb0f53af0a5d96fd55ffdddf7833a21a29b4b0653204533166012a1a6e06842",
+      "bytes": 10706
+    },
+    {
+      "path": "reference/slide27_jeans_particles_3d.mp4",
+      "sha256": "619977745cffa24aec897036879d3824ed04d08cc3fda46e576b1bc037e790c9",
+      "bytes": 11568635
+    }
+  ],
+  "software": {
+    "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:16:10) [GCC 11.2.0]",
+    "numpy": "2.3.5",
+    "matplotlib": "3.10.8",
+    "ffmpeg": "/usr/bin/ffmpeg",
+    "ffmpeg_sha256": "ed16af623947494a72e284b6eb8ff225f2da22b38b5d5069c2fd4b4ba3384e41"
+  },
+  "encode_command": [
+    "/usr/bin/ffmpeg",
+    "-n",
+    "-v",
+    "error",
+    "-framerate",
+    "12",
+    "-i",
+    "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/movies/particles3d_to98_20261019_v1/sequence/frame_%05d.png",
+    "-frames:v",
+    "393",
+    "-c:v",
+    "libx264",
+    "-threads",
+    "2",
+    "-preset",
+    "slow",
+    "-crf",
+    "17",
+    "-pix_fmt",
+    "yuv420p",
+    "-movflags",
+    "+faststart",
+    "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/movies/particles3d_to98_20261019_v1/jeans_session010_particles3d_t0_to98.mp4"
+  ],
+  "last_frame_source_time": 98.0,
+  "decoded_last_frame_mean_absolute_RGB_error": 0.8555682548868313,
+  "full_decode_passed": true,
+  "no_later_cache_loaded": true,
+  "source_sha256_manifest": "3008dfd54c8a6da27907453433ecebbe599434dd7a5336bdb67f76a51fac9921"
+}

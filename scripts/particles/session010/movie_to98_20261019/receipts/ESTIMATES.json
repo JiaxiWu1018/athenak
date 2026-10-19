@@ -1,0 +1,195 @@
+{
+  "job": "17091",
+  "checked_utc": "2026-10-19T07:23:15.602658+00:00",
+  "source_commit": "386870f88f60e25e1a8fac76fe04a071b87a01cf",
+  "observed_turns": 0.6704238477656899,
+  "observed_post_individual_turns": 0.6259206743506687,
+  "initial_coordinate_period_from_actual_boost": 226.76628819891596,
+  "source_mass_binary": 0.24,
+  "source_mass_envelope": 0.76,
+  "reference_eta": 0.25,
+  "formulae": {
+    "T": "2*pi*sqrt(a^3/Mbin)",
+    "da_dt": "-(64/5)*eta*Mbin^3/a^3",
+    "N": "[(a0/Mbin)^(5/2)-(af/Mbin)^(5/2)]/(64*pi*eta)",
+    "vlocal_static": "sqrt(R*dln(alpha)/dR/[1+2*R*dln(psi)/dR])"
+  },
+  "vacuum_baselines": [
+    {
+      "binary_mass": 0.24,
+      "separation_over_binary_mass": 25.0,
+      "kepler_period": 188.49555921538757,
+      "vacuum_time_to_formal_zero": 7324.218750000001,
+      "vacuum_turns_to_6Mbin": 60.41558184249585
+    },
+    {
+      "binary_mass": 0.28,
+      "separation_over_binary_mass": 21.428571428571427,
+      "kepler_period": 174.51297743947302,
+      "vacuum_time_to_formal_zero": 4612.336005830903,
+      "vacuum_turns_to_6Mbin": 40.53329723656414
+    },
+    {
+      "binary_mass": 0.36,
+      "separation_over_binary_mass": 16.666666666666668,
+      "kepler_period": 153.90597961942368,
+      "vacuum_time_to_formal_zero": 2170.138888888889,
+      "vacuum_turns_to_6Mbin": 20.80635352921718
+    }
+  ],
+  "separation_trials": [
+    {
+      "separation": 6.0,
+      "center_radius": 3.0,
+      "envelope_conformal_source_inside_radius": 0.02282663398569006,
+      "local_instantaneous_static_metric_circular_speed": 0.12779480979090535,
+      "coordinate_speed": 0.07974119153128509,
+      "coordinate_period": 236.3841768547371,
+      "newtonian_monopole_speed": 0.13269844759917132,
+      "vacuum_kepler_period_Mbin024": 188.49555921538757,
+      "vacuum_reference_turns_to_6Mbin": 60.41558184249585,
+      "unvalidated_empirical_turns": 0.6704238477656899
+    },
+    {
+      "separation": 8.0,
+      "center_radius": 4.0,
+      "envelope_conformal_source_inside_radius": 0.05033817722431131,
+      "local_instantaneous_static_metric_circular_speed": 0.13757552230786418,
+      "coordinate_speed": 0.08706721245579081,
+      "coordinate_period": 288.6590775084218,
+      "newtonian_monopole_speed": 0.14171995027545636,
+      "vacuum_kepler_period_Mbin024": 290.2078982774749,
+      "vacuum_reference_turns_to_6Mbin": 125.86811169300945,
+      "unvalidated_empirical_turns": 1.3762467163685892
+    },
+    {
+      "separation": 10.0,
+      "center_radius": 5.0,
+      "envelope_conformal_source_inside_radius": 0.08993874603322155,
+      "local_instantaneous_static_metric_circular_speed": 0.15121825765247304,
+      "coordinate_speed": 0.0968166593864557,
+      "coordinate_period": 324.48885073071324,
+      "newtonian_monopole_speed": 0.15487978953576967,
+      "vacuum_kepler_period_Mbin024": 405.5778675973612,
+      "vacuum_reference_turns_to_6Mbin": 221.19289142085702,
+      "unvalidated_empirical_turns": 2.4042040715711237
+    },
+    {
+      "separation": 12.0,
+      "center_radius": 6.0,
+      "envelope_conformal_source_inside_radius": 0.14011734039956925,
+      "local_instantaneous_static_metric_circular_speed": 0.1650847607396944,
+      "coordinate_speed": 0.1068106398378435,
+      "coordinate_period": 352.9527760559351,
+      "newtonian_monopole_speed": 0.1683831644393075,
+      "vacuum_kepler_period_Mbin024": 533.145952579004,
+      "vacuum_reference_turns_to_6Mbin": 349.93174319609386,
+      "unvalidated_empirical_turns": 3.7924899921943753
+    },
+    {
+      "separation": 14.0,
+      "center_radius": 7.0,
+      "envelope_conformal_source_inside_radius": 0.19817379584243047,
+      "local_instantaneous_static_metric_circular_speed": 0.17755027548594993,
+      "coordinate_speed": 0.11601902071196002,
+      "coordinate_period": 379.0955731254773,
+      "newtonian_monopole_speed": 0.18054433402607414,
+      "vacuum_kepler_period_Mbin024": 671.8406864303123,
+      "vacuum_reference_turns_to_6Mbin": 515.2832852542986,
+      "unvalidated_empirical_turns": 5.575597536088942
+    },
+    {
+      "separation": 16.0,
+      "center_radius": 8.0,
+      "envelope_conformal_source_inside_radius": 0.2608850536682775,
+      "local_instantaneous_static_metric_circular_speed": 0.18794896515320053,
+      "coordinate_speed": 0.12397846131211117,
+      "coordinate_period": 405.4372180898036,
+      "newtonian_monopole_speed": 0.19068463941422942,
+      "vacuum_kepler_period_Mbin024": 820.831891303593,
+      "vacuum_reference_turns_to_6Mbin": 720.1871648209985,
+      "unvalidated_empirical_turns": 7.785227085839588
+    }
+  ],
+  "measured_samples": [
+    {
+      "target_time": 10,
+      "tracker_time": 9.993750000000775,
+      "separation": 6.073326903980814,
+      "turns": 0.052026530462600896,
+      "individual_masses": [
+        {
+          "time": 10.000000000000776,
+          "mass": 0.08805169761463612
+        },
+        {
+          "time": 10.000000000000776,
+          "mass": 0.08775042549849268
+        }
+      ]
+    },
+    {
+      "target_time": 20,
+      "tracker_time": 19.993749999998506,
+      "separation": 6.075851368214401,
+      "turns": 0.10144642078297002,
+      "individual_masses": [
+        {
+          "time": 19.9999999999985,
+          "mass": 0.1295421903834798
+        },
+        {
+          "time": 19.9999999999985,
+          "mass": 0.1330197033707281
+        }
+      ]
+    },
+    {
+      "target_time": 40,
+      "tracker_time": 39.99374999998032,
+      "separation": 4.90540709817525,
+      "turns": 0.19494396512030485,
+      "individual_masses": [
+        {
+          "time": 39.99999999998031,
+          "mass": 0.1499367598833066
+        },
+        {
+          "time": 39.99999999998031,
+          "mass": 0.1495595460983789
+        }
+      ]
+    },
+    {
+      "target_time": 60,
+      "tracker_time": 59.99374999996213,
+      "separation": 1.1478394488736763,
+      "turns": 0.4206444261522497,
+      "individual_masses": [
+        {
+          "time": 59.99999999996212,
+          "mass": 0.1742775997581067
+        },
+        {
+          "time": 59.99999999996212,
+          "mass": 0.1752550696621717
+        }
+      ]
+    }
+  ],
+  "empirical_unvalidated_solutions": {
+    "2": 9.29016584496172,
+    "3": 10.92596916603469
+  },
+  "empirical_if_literal_half_turn": {
+    "2": 10.44660675955349,
+    "3": 12.286035066475316
+  },
+  "caveat": "Vacuum constant-mass circular quadrupole and static inherited-metric test-particle estimates only. No new constraint solve or dynamical friction/accretion/eccentricity/gauge model. Not predictions or input approvals.",
+  "sources": {
+    "session010_summary_20261019/workspace/runtime_s10/runs/20261014_gh_retry_01/segments/segment_001/prefix_seed/out/gi_profile_M076_two_clump_s10.txt": "1e1a24980c16cd8b4f1be5345d3b202af6a42b925c72494e5f614a8d2483e03c",
+    "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/orbit.csv": "43d6f6306f87c0e86e76cda92b4c1507525c7dc9ec9cd5b955ba57bdbbd3816f",
+    "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/accepted_horizon_0.csv": "ae81cbb5078946d72d639962975c1d574942e17a949ff8d26bc2889ab483f032",
+    "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/accepted_horizon_1.csv": "9d57954e3548d11da79a53b5897372d8a1e4cd0b4e49451c56ec00f6d0acda2a"
+  }
+}
