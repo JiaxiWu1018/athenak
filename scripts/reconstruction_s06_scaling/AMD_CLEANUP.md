@@ -12,6 +12,9 @@ trees, conditional on retaining reproduction materials on Perseus.
    existing Perseus production diagnostics/final restarts against AMD, validates
    actual initial particle states and complete final/300M checkpoint payloads,
    and checks reports, source and reproduction instructions.
+   Per-file SHA256 verification progress survives scheduler preemption. A cached
+   check is reused only when inode, device, size, mtime, ctime and expected source
+   digest remain identical; changing any of them requires a new checksum.
 3. `delete` requires the hash-bound successful verification receipt, no active
    Session 6 writer jobs, and unchanged complete source inventories. It removes
    only the two fixed campaign roots, retaining an external cleanup receipt.

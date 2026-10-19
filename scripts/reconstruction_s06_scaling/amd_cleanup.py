@@ -160,6 +160,32 @@ def prepare():
 
 def transfer_verify():
     require_job()
+    # Slurm may preempt even debug allocations here. Keep independently verified
+    # per-file progress; a changed inode, size, mtime, ctime or source digest
+    # invalidates the cached result. No digest is inferred from metadata alone.
+    ledger = ARCHIVE/'HASH_PROGRESS.jsonl'
+    progress = {}
+    if ledger.exists():
+        for line in ledger.read_text().splitlines():
+            try:
+                entry = json.loads(line)
+                progress[entry['path']] = entry
+            except (ValueError, KeyError):
+                pass  # A partial last line after interruption has no authority.
+    def verify_hash(path, expected):
+        stat = path.stat()
+        signature = [stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_dev, stat.st_ino]
+        old = progress.get(str(path), {})
+        if old.get('signature') == signature and old.get('sha256') == expected:
+            return
+        assert sha(path) == expected, path
+        entry = dict(path=str(path), signature=signature, sha256=expected,
+                     job=os.environ['SLURM_JOB_ID'], verified_utc=now())
+        with ledger.open('a') as stream:
+            stream.write(json.dumps(entry)+'\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        progress[str(path)] = entry
     results = []
     for spec in SPECS:
         dest = ARCHIVE/spec['name']; records = dest/'records'
@@ -180,7 +206,7 @@ def transfer_verify():
                 assert path.is_symlink() and os.readlink(path)==row['target'], path
             else:
                 assert path.is_file() and path.stat().st_size==row['bytes'], path
-                assert sha(path)==row['sha256'], path
+                verify_hash(path, row['sha256'])
             checked.append(dict(source=row['path'], destination=str(path), bytes=row['bytes'],
                                 sha256=row.get('sha256'), kind=row['kind']))
             if i % 500 == 0:
@@ -233,7 +259,9 @@ def transfer_verify():
     receipt=dict(status='VERIFIED',utc=now(),host=socket.gethostname(),job=os.environ['SLURM_JOB_ID'],
                  authorization=AUTHORIZATION,roots=results,checkpoints=payloads,
                  reports_and_reproduction_inputs=[dict(path=str(p),sha256=sha(p)) for p in docs],
-                 script_sha256=sha(__file__),scope='Retained files freshly SHA256 verified at source and destination; full initial/final payload checks. No simulation rerun.')
+                 script_sha256=sha(__file__),hash_progress_sha256=sha(ledger),
+                 hash_progress='Each retained destination freshly hashed at least once across allocations; reuse requires identical inode/size/mtime/ctime and expected source SHA256.',
+                 scope='Retained files freshly SHA256 verified at source and destination; full initial/final payload checks. No simulation rerun.')
     write(ARCHIVE/'VERIFIED.json', receipt)
     print('BOTH_ARCHIVES_VERIFIED',flush=True)
 
