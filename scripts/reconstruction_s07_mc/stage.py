@@ -17,13 +17,14 @@ def main():
     files={ROOT/'samples/model.npz':PREVIOUS/'samples/model.npz',
         ROOT/'evidence/model.json':PREVIOUS/'evidence/model.json',
         ROOT/'reference/proper.npz':PREVIOUS/'reference/proper.npz',
-        ROOT/'reference/proper.json':PREVIOUS/'reference/proper.json',
+        ROOT/'reference/proper.json':S05/'reference/proper.json',
         ROOT/'protected/athena':PREVIOUS/'followups/paired_scaling_20261017/protected/athena',
         ROOT/'evidence/ORIGINAL_SOURCE_PROVENANCE.json':PREVIOUS/'evidence/SOURCE_PROVENANCE.json'}
     for dest,src in files.items():
         if not dest.exists():shutil.copy2(src,dest)
         assert sha(dest)==sha(src)
     assert sha(ROOT/'protected/athena')==EXE_SHA
+    assert sha(ROOT/'reference/proper.npz')==load(ROOT/'reference/proper.json')['sha256']
     template=(S05/'inputs/proper_mc_s1.athinput').read_text()
     for case in CASES:
         text=template.replace('basename = proper_mc_s1','basename = '+case['id'])
