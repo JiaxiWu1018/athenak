@@ -1,0 +1,85 @@
+{
+  "passed": true,
+  "job": "17032",
+  "host": "perseus",
+  "checked_utc": "2026-10-19T05:51:32.901620+00:00",
+  "promoted_files_rehashed": 163,
+  "promoted_bytes": 451070796,
+  "canonical_docs_checked": 14,
+  "canonical_links_checked": 125,
+  "syntax_checks_passed": true,
+  "native_source_unchanged": true,
+  "independent_replot_metrics_identical": true,
+  "independent_replot_png_identical": true,
+  "plots": [
+    {
+      "png": "plots/through_segment002_20261018/00_scientific_summary.png",
+      "width": 2070,
+      "height": 1440,
+      "png_sha256": "10c0a6e4c82c7a29bf8cee403fa8d201123968c202df670d541792cc2bb54e86",
+      "pdf_sha256": "df0b6a96e28ee20e897b977e26a9af4a34d323d9376330ba4e61f0447bd74852",
+      "pdf_pages": 1
+    },
+    {
+      "png": "plots/through_segment002_20261018/01_orbit.png",
+      "width": 1967,
+      "height": 587,
+      "png_sha256": "90277d26fd9d156aba9b8f37c40c0a25b6cb0371afe64e250154a6b9786bd6ee",
+      "pdf_sha256": "1e7163f868a8c36e42e83c565ee7728360c7625ba8b4d6622ce11354d38edc23",
+      "pdf_pages": 1
+    },
+    {
+      "png": "plots/through_segment002_20261018/02_horizons.png",
+      "width": 1967,
+      "height": 587,
+      "png_sha256": "48bb5ec29f33b42975f9b6a0efedf8b3d1a0acf7c82320d2bf7be9247655bf00",
+      "pdf_sha256": "c7316f08a164a71fdaa31e4cd72ff0284c558c4ae990a4ea600317e4bc494dc3",
+      "pdf_pages": 1
+    },
+    {
+      "png": "plots/through_segment002_20261018/03_matter_accounting.png",
+      "width": 1967,
+      "height": 587,
+      "png_sha256": "57aca044438d0a95b2e0ccdc0a5f34d4a374e20c0a3f1ef18d45b200295942d5",
+      "pdf_sha256": "7d4909a6f9cea2b905592606393ae9bfe9fa6d9b260adbfb8fa1e57605968892",
+      "pdf_pages": 1
+    },
+    {
+      "png": "plots/through_segment002_20261018/04_matter_angular_momentum.png",
+      "width": 1517,
+      "height": 587,
+      "png_sha256": "c150097ef0e2855bbb449e8aca1ab3dce4c2dec57fc2f12ba723dadfc0bded89",
+      "pdf_sha256": "6502e61053be4dcfd446f4591a05fe9edb6e4a47d0c25e6a22a53d5a548b2b15",
+      "pdf_pages": 1
+    },
+    {
+      "png": "plots/through_segment002_20261018/05_collapse_snapshots.png",
+      "width": 2268,
+      "height": 1120,
+      "png_sha256": "15eaa4c2bc4bdeb83fe67d479a7a14b5a7a55142767de74cc7a591e0a01b40c4",
+      "pdf_sha256": "ff590baa7de4fb3450630f57fe306da4b943938e176d04ef67f888cd8370ae23",
+      "pdf_pages": 1
+    },
+    {
+      "png": "plots/through_segment002_20261018/06_health_amr.png",
+      "width": 1967,
+      "height": 587,
+      "png_sha256": "7903deb345d95f541c2e2f3799460c3c9133cf7cf5cdcb258bb86012d0844eba",
+      "pdf_sha256": "3d0c2efbb41113735d421d028be5171bbed56843a7a11fe10f138538cd717f62",
+      "pdf_pages": 1
+    },
+    {
+      "png": "plots/through_segment002_20261018/07_raw_gw.png",
+      "width": 1517,
+      "height": 1217,
+      "png_sha256": "c4f4f922af01c996e784c26217b640ce163e1c01cb709487f34cb3801a32e23c",
+      "pdf_sha256": "148a56a51e9e63d9f617202f840074b399d347c4f24d9c79e11f2acfe4d9c25f",
+      "pdf_pages": 1
+    }
+  ],
+  "movie_full_decodes": "All six passed in Slurm 17024",
+  "original_summary": "Already fully verified in 17024; unchanged",
+  "production_launched": false,
+  "raw_transferred": false,
+  "data_deleted": false
+}

@@ -1,0 +1,39 @@
+Mon Oct 19 05:42:58 UTC 2026
+perseus
+JobId=17024 JobName=jeans10-reconcile
+   UserId=jiaxiwu(1011) GroupId=jiaxiwu(1011) MCS_label=N/A
+   Priority=1 Nice=0 Account=(null) QOS=(null)
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:00:01 TimeLimit=00:25:00 TimeMin=N/A
+   SubmitTime=2026-10-19T05:42:14 EligibleTime=2026-10-19T05:42:14
+   AccrueTime=2026-10-19T05:42:14
+   StartTime=2026-10-19T05:42:57 EndTime=2026-10-19T06:07:57 Deadline=N/A
+   PreemptEligibleTime=2026-10-19T05:42:57 PreemptTime=None
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-19T05:42:57 Scheduler=Main
+   Partition=debug AllocNode:Sid=perseus:3051424
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=perseus
+   BatchHost=perseus
+   NumNodes=1 NumCPUs=2 NumTasks=1 CPUs/Task=2 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=2,mem=8G,node=1,billing=2
+   AllocTRES=cpu=2,mem=8G,node=1,billing=2
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=2 MinMemoryNode=8G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=debug_gpu_jiaxiwu:1 Network=(null)
+   Command=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/scripts/perseus_reconcile_vista_20261019.sbatch
+   WorkDir=/data/jiaxiwu/NRPIC
+   StdErr=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/vista_reconcile.17024.log
+   StdIn=/dev/null
+   StdOut=/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/evidence/vista_reconcile.17024.log
+   Power=
+   TresPerJob=gres/gpu:1
+   TresPerNode=gres/gpu:1
+   TresPerTask=cpu:2
+   MailUser=jiaxiwu@caltech.edu MailType=BEGIN,END,FAIL
+   
+
+Python 3.13.9
+Filesystem             Size  Used Avail Use% Mounted on
+/dev/mapper/data-data  110T   90T   15T  87% /data

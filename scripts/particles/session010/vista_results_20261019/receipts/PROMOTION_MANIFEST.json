@@ -1,0 +1,980 @@
+[
+  {
+    "source": "README.md",
+    "destination": "history/perseus_preparation_20261013/README.md",
+    "bytes": 1382,
+    "sha256": "e72032c6abf6f07b0d267e3dcddecf35723bd7400aaa12e22bab8ba9ef8fcf68"
+  },
+  {
+    "source": "REPORT_AGENT.md",
+    "destination": "history/perseus_preparation_20261013/REPORT_AGENT.md",
+    "bytes": 8320,
+    "sha256": "e08922acd4e32a1b3627ab6f24906f40e2e8b876e8c03d21f88d4112de8c9eaa"
+  },
+  {
+    "source": "REPORT_Jeans10.md",
+    "destination": "history/perseus_preparation_20261013/REPORT_Jeans10.md",
+    "bytes": 2084,
+    "sha256": "ccce17c7cfcf973eb8aa24f3f1382c98c03fe6da82aed16345253b49ac2d73c3"
+  },
+  {
+    "source": "CLOSEOUT.md",
+    "destination": "history/perseus_preparation_20261013/CLOSEOUT.md",
+    "bytes": 3054,
+    "sha256": "4910ea43895e322e373dc5b845b872104bfe74eaad19fd739ecb0380a2656007"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/mesh.npy",
+    "destination": "reduced_data/vista_20261018/mesh.npy",
+    "bytes": 213152,
+    "sha256": "25c45b514ea5447a1f00694636c172e4bc5488aa05b29eb5ead9a23c0ab7a3e6"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/RESTART_HEALTH.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/RESTART_HEALTH.json",
+    "bytes": 993,
+    "sha256": "95415c23a732bae9217324a74d8eca7e27f7c4c4977443866f1fa7e1f842d8ca"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/02_horizons.png",
+    "destination": "plots/through_segment002_20261018/02_horizons.png",
+    "bytes": 172946,
+    "sha256": "48bb5ec29f33b42975f9b6a0efedf8b3d1a0acf7c82320d2bf7be9247655bf00"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/accepted_horizon_2.csv",
+    "destination": "reduced_data/vista_20261018/accepted_horizon_2.csv",
+    "bytes": 12535079,
+    "sha256": "3bb0e802ab2011bdae3df4ff87af3e83953a031cb4b562b8c85fe6ee2dd2793b"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/matter.npy",
+    "destination": "reduced_data/vista_20261018/matter.npy",
+    "bytes": 29696,
+    "sha256": "576fded2b838ba58afd73bbc0055da90cc4e6c3822503d1d64af67d47b0da2f6"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/ARTIFACTS.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/ARTIFACTS.json",
+    "bytes": 15145,
+    "sha256": "bec772167dfcb16b8d57762402ac5430bfa33a475199ebe5024b1c7af362b923"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/cohort_tags.npy",
+    "destination": "reduced_data/vista_20261018/cohort_tags.npy",
+    "bytes": 720128,
+    "sha256": "818f93cd9007fb3b3e35df2a68405f81bcde7883479480916d4177da52262463"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/PROGRESS.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/PROGRESS.json",
+    "bytes": 78,
+    "sha256": "651881c5e1915590d247f2018e82d1dd176505af868412548b6df4f9f44180f5"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/RESULTS.md",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/RESULTS.md",
+    "bytes": 3015,
+    "sha256": "26ce46bfc0d4faad0a4d3802a947c8ab486e08be721fb67db51fb6009822c7f1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/FIELDS.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/FIELDS.json",
+    "bytes": 196396,
+    "sha256": "651111b7a774fe958c4aa72306a61b400d2474a52cafdc4a5dbb86b34b2fa141"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/orbit.csv",
+    "destination": "reduced_data/vista_20261018/orbit.csv",
+    "bytes": 613942,
+    "sha256": "43d6f6306f87c0e86e76cda92b4c1507525c7dc9ec9cd5b955ba57bdbbd3816f"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/07_raw_gw.png",
+    "destination": "plots/through_segment002_20261018/07_raw_gw.png",
+    "bytes": 268197,
+    "sha256": "c4f4f922af01c996e784c26217b640ce163e1c01cb709487f34cb3801a32e23c"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/MOVIES.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/MOVIES.json",
+    "bytes": 25167,
+    "sha256": "ddb838eabbc2b525458eebf630e8b3f7cc6e1b90d46279126fb23c412c20b27d"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/INDEX.md",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/INDEX.md",
+    "bytes": 3520,
+    "sha256": "36cb10a32b920d10f490e03fe9ece3bb6b4893cecd4bc9867c78e8cfb5812d56"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/TESTS.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/TESTS.json",
+    "bytes": 1509,
+    "sha256": "56bdbda531a7603781ae1c1370a8a076ba0d6fe55cdc4f9b1dcdb6700a24d4d1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/04_matter_angular_momentum.pdf",
+    "destination": "plots/through_segment002_20261018/04_matter_angular_momentum.pdf",
+    "bytes": 31582,
+    "sha256": "6502e61053be4dcfd446f4591a05fe9edb6e4a47d0c25e6a22a53d5a548b2b15"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/horizon_1.npy",
+    "destination": "reduced_data/vista_20261018/horizon_1.npy",
+    "bytes": 6744648,
+    "sha256": "0acf4061c5ee5fbda6656e4440650a572c5d6ca8b7a3cfe3dda1def8128a6ad3"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/track_1.npy",
+    "destination": "reduced_data/vista_20261018/track_1.npy",
+    "bytes": 996320,
+    "sha256": "f17016f4b9ba3777b9d7561d1da94eaf2408685316cc08b87757929c809e2dd9"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/02_horizons.pdf",
+    "destination": "plots/through_segment002_20261018/02_horizons.pdf",
+    "bytes": 1613428,
+    "sha256": "c7316f08a164a71fdaa31e4cd72ff0284c558c4ae990a4ea600317e4bc494dc3"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/matter_evolution.mp4",
+    "destination": "movies/through_segment002_20261018/matter_evolution.mp4",
+    "bytes": 30908914,
+    "sha256": "7c421a712082ff5dea6d819e3d29f56e6277ab21afa127dda2930754abfd9377"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/tracker_0.csv",
+    "destination": "reduced_data/vista_20261018/tracker_0.csv",
+    "bytes": 3147220,
+    "sha256": "c01c58197600a32075a96e4a69195b678b8fbf251ece2b190c046d5fbe6a0ace"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/raw_wave.npy",
+    "destination": "reduced_data/vista_20261018/raw_wave.npy",
+    "bytes": 10900160,
+    "sha256": "821bcae99f1b97902a25c661bd4f4c4120b432263c44610106498847c8cc2ed5"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/INPUTS.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/INPUTS.json",
+    "bytes": 7579,
+    "sha256": "10061d07d5b580673fefafb7e1c6573aaadfb7ad95895e77933a5cc368f1d1a3"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/history.npy",
+    "destination": "reduced_data/vista_20261018/history.npy",
+    "bytes": 781216,
+    "sha256": "faf60b5cb4253da1325d9bfb6be70e9c38884111ed6252683aa039eb9beb7cfe"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/accepted_horizon_0.csv",
+    "destination": "reduced_data/vista_20261018/accepted_horizon_0.csv",
+    "bytes": 21342730,
+    "sha256": "ae81cbb5078946d72d639962975c1d574942e17a949ff8d26bc2889ab483f032"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/collapse_amr_health.mp4",
+    "destination": "movies/through_segment002_20261018/collapse_amr_health.mp4",
+    "bytes": 31845337,
+    "sha256": "2c073743fdd42537c5a508aa12fc7c120ccac6164607436de048d44336a6d20f"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/01_orbit.png",
+    "destination": "plots/through_segment002_20261018/01_orbit.png",
+    "bytes": 142153,
+    "sha256": "90277d26fd9d156aba9b8f37c40c0a25b6cb0371afe64e250154a6b9786bd6ee"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/amr_history.csv",
+    "destination": "reduced_data/vista_20261018/amr_history.csv",
+    "bytes": 665723,
+    "sha256": "bd63eb7065720723aa7e0c9a4509eeff26f90d1b79d3e9aadc8820354fbaebdc"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/horizon_0.npy",
+    "destination": "reduced_data/vista_20261018/horizon_0.npy",
+    "bytes": 6767280,
+    "sha256": "35f52b43f54efab7e4ba8fa670689512eeaf0939e7805175b25f921beda93a3f"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/05_collapse_snapshots.pdf",
+    "destination": "plots/through_segment002_20261018/05_collapse_snapshots.pdf",
+    "bytes": 216238,
+    "sha256": "ff590baa7de4fb3450630f57fe306da4b943938e176d04ef67f888cd8370ae23"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/tracker_1.csv",
+    "destination": "reduced_data/vista_20261018/tracker_1.csv",
+    "bytes": 3145562,
+    "sha256": "7e1f854848fe22ee2089f1fa4aace69b0415036ec7dbec5fc6aa71b1f4c9683b"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/orbit.npz",
+    "destination": "reduced_data/vista_20261018/orbit.npz",
+    "bytes": 173940,
+    "sha256": "bf1b44787fa8ff05056e3bc88052e0162ef430e913180272fe07b83fdb6fd871"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/05_collapse_snapshots.png",
+    "destination": "plots/through_segment002_20261018/05_collapse_snapshots.png",
+    "bytes": 518701,
+    "sha256": "15eaa4c2bc4bdeb83fe67d479a7a14b5a7a55142767de74cc7a591e0a01b40c4"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/REDUCTIONS.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/REDUCTIONS.json",
+    "bytes": 3533,
+    "sha256": "0711c72409dfb22b0e3f0354f4230944809f2e3170259bfec5fd377a40218f63"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/HEALTH_AND_CONTINUATION.md",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/HEALTH_AND_CONTINUATION.md",
+    "bytes": 7189,
+    "sha256": "2f99be203981f9dacaa07d1dc232fd8fe5df72eada54bb2070d37c54a22a03a2"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/03_matter_accounting.png",
+    "destination": "plots/through_segment002_20261018/03_matter_accounting.png",
+    "bytes": 173832,
+    "sha256": "57aca044438d0a95b2e0ccdc0a5f34d4a374e20c0a3f1ef18d45b200295942d5"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/raw_quadrupole.csv",
+    "destination": "reduced_data/vista_20261018/raw_quadrupole.csv",
+    "bytes": 1554885,
+    "sha256": "c552b5e9dffefb3e2050580e5cb7e6eeaa15b90acb6f9e2cf754b816e3e57877"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/AMR_HEALTH.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/AMR_HEALTH.json",
+    "bytes": 1077,
+    "sha256": "35dbfb7637df734a6076d5cd2f0d8c4ea9c903734a6a2790deff2091a77ca663"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/VERIFICATION.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/VERIFICATION.json",
+    "bytes": 2027,
+    "sha256": "3fd30881d9fc47ba017c1d001ed6a5c0fec37461740a4f8768e996737f1931cf"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/04_matter_angular_momentum.png",
+    "destination": "plots/through_segment002_20261018/04_matter_angular_momentum.png",
+    "bytes": 143367,
+    "sha256": "c150097ef0e2855bbb449e8aca1ab3dce4c2dec57fc2f12ba723dadfc0bded89"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/SEALED.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/SEALED.json",
+    "bytes": 4502855,
+    "sha256": "ccb332e9a44572894b3005b3176bc14703e01434e80cbdc916d258b25f80e0c8"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/06_health_amr.pdf",
+    "destination": "plots/through_segment002_20261018/06_health_amr.pdf",
+    "bytes": 81027,
+    "sha256": "3d0c2efbb41113735d421d028be5171bbed56843a7a11fe10f138538cd717f62"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/06_health_amr.png",
+    "destination": "plots/through_segment002_20261018/06_health_amr.png",
+    "bytes": 176129,
+    "sha256": "7903deb345d95f541c2e2f3799460c3c9133cf7cf5cdcb258bb86012d0844eba"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/matter_near_r40.csv",
+    "destination": "reduced_data/vista_20261018/matter_near_r40.csv",
+    "bytes": 11259,
+    "sha256": "8066bb6d5d382a7e12ff7b371f3f59d20a9eda73ed115c3fafdd67aae77f3bda"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/03_matter_accounting.pdf",
+    "destination": "plots/through_segment002_20261018/03_matter_accounting.pdf",
+    "bytes": 37940,
+    "sha256": "7d4909a6f9cea2b905592606393ae9bfe9fa6d9b260adbfb8fa1e57605968892"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/removals.npy",
+    "destination": "reduced_data/vista_20261018/removals.npy",
+    "bytes": 239180624,
+    "sha256": "0901559df728b205759a178bd6a935f96363fd4a1afb76de434fb02f5f88716d"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/VISUAL_REVIEW.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/VISUAL_REVIEW.json",
+    "bytes": 839,
+    "sha256": "f4b9a8d18f3bc733f2b2664d46b8f769f966de352605282f9cc6de495fac8fab"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/horizon_2.npy",
+    "destination": "reduced_data/vista_20261018/horizon_2.npy",
+    "bytes": 3978024,
+    "sha256": "76571ca6e81d63321d1c0058763f2f90849edfd0d7d7ee5732f7734add0abe78"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/SCHEDULER_STATUS.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/SCHEDULER_STATUS.json",
+    "bytes": 2825,
+    "sha256": "9bf82fc4f74555c84b8f7192cf31f5cb7ae1c4b8d9c534bf1899426716f7fe18"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/07_raw_gw.pdf",
+    "destination": "plots/through_segment002_20261018/07_raw_gw.pdf",
+    "bytes": 84029,
+    "sha256": "148a56a51e9e63d9f617202f840074b399d347c4f24d9c79e11f2acfe4d9c25f"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/ATTEMPT.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/ATTEMPT.json",
+    "bytes": 499,
+    "sha256": "5ecb204db32ad81f8fea386c2d1cb7a493e93c404088dd5777c59e0006486645"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/horizon_joins.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/horizon_joins.json",
+    "bytes": 5727,
+    "sha256": "77a9bae484c61615d15903e064f989f915e84d12d43005dde4ef14ccdaacf3f4"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/track_0.npy",
+    "destination": "reduced_data/vista_20261018/track_0.npy",
+    "bytes": 996320,
+    "sha256": "3ca827680e6f9fab68d4c4b872915fcb6db6349dc94591043a044d40528b4e20"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/CONTINUATION_GATE.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/CONTINUATION_GATE.json",
+    "bytes": 379,
+    "sha256": "d65c3009c54fd4cf9f7c7861c14abb59946edc99b15675cf91e44dd00e4b0af6"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/matter_components.csv",
+    "destination": "reduced_data/vista_20261018/matter_components.csv",
+    "bytes": 82755,
+    "sha256": "b029102ee731efb7b10ed603f9078ded05d7f9f739a15f073ec7cc38abf4a524"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/accepted_horizon_1.csv",
+    "destination": "reduced_data/vista_20261018/accepted_horizon_1.csv",
+    "bytes": 21253528,
+    "sha256": "9d57954e3548d11da79a53b5897372d8a1e4cd0b4e49451c56ec00f6d0acda2a"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/PROVENANCE.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/PROVENANCE.json",
+    "bytes": 2803,
+    "sha256": "bdb3626297186806f5a4473664d2df89ec5f2c0e11021b8e4502abb8ace0170a"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/numerical_health.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/numerical_health.json",
+    "bytes": 7838,
+    "sha256": "01abe5876bca80dcfaf6263df5e9c00a3cb3767df4d1f24e1eecfc4bd9d884c6"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/particles_3d.mp4",
+    "destination": "movies/through_segment002_20261018/particles_3d.mp4",
+    "bytes": 4321641,
+    "sha256": "0dc1b53824d53d77f56b931456e2efffa9f27ebbba47cf34e41503d5b03f5d6e"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/common_enclosure.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/common_enclosure.json",
+    "bytes": 264098,
+    "sha256": "88b0aff915e33f862b22876cd97ec053df22aea21c82d9d93ec94a5e9d871413"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/SIMULATION_HEALTH.json",
+    "destination": "evidence/vista_reconciliation_20261019/vista_analysis/SIMULATION_HEALTH.json",
+    "bytes": 20844,
+    "sha256": "4b7217c5aaf90727c8f651ddcc0de76324f623209170bece9002ed24c01d8473"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/01_orbit.pdf",
+    "destination": "plots/through_segment002_20261018/01_orbit.pdf",
+    "bytes": 41129,
+    "sha256": "1e7163f868a8c36e42e83c565ee7728360c7625ba8b4d6622ce11354d38edc23"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/collapse_amr_health_1332_decoded.png",
+    "destination": "evidence/vista_reconciliation_20261019/movie_qa/collapse_amr_health_1332_decoded.png",
+    "bytes": 411375,
+    "sha256": "21f97be0a83b3d1abda476aebd45d58a400946d5422fca22c1cbee56c0e077f6"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/particles_3d_0000_decoded.png",
+    "destination": "evidence/vista_reconciliation_20261019/movie_qa/particles_3d_0000_decoded.png",
+    "bytes": 390855,
+    "sha256": "4945698458bd0d2168fe1503f490aba582ad7a7cfc5398aa7f3e25f02e0197d1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/collapse_amr_health_0666_decoded.png",
+    "destination": "evidence/vista_reconciliation_20261019/movie_qa/collapse_amr_health_0666_decoded.png",
+    "bytes": 602278,
+    "sha256": "cac55f58ff0a7b4bce6e01ab2856923b1048f267051911341dbb1f9ce11a559b"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/particles_3d_0666_decoded.png",
+    "destination": "evidence/vista_reconciliation_20261019/movie_qa/particles_3d_0666_decoded.png",
+    "bytes": 330360,
+    "sha256": "e301b70ad87a1af5d5b5d36c5eb65cb3d27f7e1110cdb540ed7a43515033f283"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/all_movies_decoded.png",
+    "destination": "evidence/vista_reconciliation_20261019/movie_qa/all_movies_decoded.png",
+    "bytes": 1149897,
+    "sha256": "a05a37d14b741494b67dd2a17c036094e465b6bb62ea73865edb15b602651dd5"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/matter_evolution_0000_decoded.png",
+    "destination": "evidence/vista_reconciliation_20261019/movie_qa/matter_evolution_0000_decoded.png",
+    "bytes": 529292,
+    "sha256": "6c41d52d18fecb68470e861c3a2f3d3f747cdde4e6b0b9a1de89cf52b85bc2df"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/particles_3d_1332_decoded.png",
+    "destination": "evidence/vista_reconciliation_20261019/movie_qa/particles_3d_1332_decoded.png",
+    "bytes": 235408,
+    "sha256": "6c8717c08f61f80060af145a506800ea340c66e5a89f6339b46798ae9fb4c64e"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/matter_evolution_0666_decoded.png",
+    "destination": "evidence/vista_reconciliation_20261019/movie_qa/matter_evolution_0666_decoded.png",
+    "bytes": 515794,
+    "sha256": "d33e6767df372f61fa3ecb3b1422e9bde0a7f82c47e1718c3654a714fda27387"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/matter_evolution_1332_decoded.png",
+    "destination": "evidence/vista_reconciliation_20261019/movie_qa/matter_evolution_1332_decoded.png",
+    "bytes": 180078,
+    "sha256": "cdbc3be141f36cc05e4b27398257c09fd4311763f98098e37474722699534bad"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/collapse_amr_health_0000_decoded.png",
+    "destination": "evidence/vista_reconciliation_20261019/movie_qa/collapse_amr_health_0000_decoded.png",
+    "bytes": 378998,
+    "sha256": "a282d9a76d2a0a30f5d26a3835af2cdeae84c8ec0c9ebb5f8fe19f54f160572b"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/02_horizons.png",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/02_horizons.png",
+    "bytes": 198320,
+    "sha256": "3f0f9245dc7161d622ef509817dabc9309f357eee181693f538fd1e08a1d6ac6"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/07_raw_gw.png",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/07_raw_gw.png",
+    "bytes": 257155,
+    "sha256": "a0be40bb8c95191186451208d085119dff4eabd3c6537ece33056b7f8308a9cc"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/04_matter_angular_momentum.pdf",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/04_matter_angular_momentum.pdf",
+    "bytes": 25101,
+    "sha256": "c6d3eb81d44dabeabe25105e27ff5e0213529e5903ced08b25fb9931fff38323"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/02_horizons.pdf",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/02_horizons.pdf",
+    "bytes": 710173,
+    "sha256": "12af0f6776df66e76c632fef8b7a75603fed0a3d3499ab44179fd7a986d39c3d"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/matter_evolution.mp4",
+    "destination": "archive/vista_first_production_20261015/movies/first_production_20261015/matter_evolution.mp4",
+    "bytes": 6785209,
+    "sha256": "5daeac235ed501234bb76659f034b16bab4f91e49300cf6e7030336d27668e01"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/collapse_amr_health.mp4",
+    "destination": "archive/vista_first_production_20261015/movies/first_production_20261015/collapse_amr_health.mp4",
+    "bytes": 6650858,
+    "sha256": "71513a481e43c2743ab258bbb4dfa9ce0ff10af1b1c9bbf0323211255441cd61"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/01_orbit.png",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/01_orbit.png",
+    "bytes": 129921,
+    "sha256": "4096f147cd242645d29f790f517f5785a827b2c5c84bc5a76170fce003c6f639"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/05_collapse_snapshots.pdf",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/05_collapse_snapshots.pdf",
+    "bytes": 263767,
+    "sha256": "0d9e5bf7931807102c40fd60c19bccaa3e80b76809cbc6b7fc4c8d595234b63b"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/05_collapse_snapshots.png",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/05_collapse_snapshots.png",
+    "bytes": 602770,
+    "sha256": "d04ca4d23c15ec41349ea125f171784f6d445cc21ad44320b31a63cc1660d3bb"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/03_matter_accounting.png",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/03_matter_accounting.png",
+    "bytes": 135949,
+    "sha256": "bd8e84c2da0bb9235984b8f9daa524492f808aa476c008c10e4fe5abb4ede25e"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/04_matter_angular_momentum.png",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/04_matter_angular_momentum.png",
+    "bytes": 135127,
+    "sha256": "4f9b5a0bc1067bb021f5828c9207877abb1917393ebdad9a815391f7f9260734"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/06_health_amr.pdf",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/06_health_amr.pdf",
+    "bytes": 36150,
+    "sha256": "8ba9307a053264d6a5d9d1e0337bca5e28255fbe6e34e81ed2c303ebad979fa1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/06_health_amr.png",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/06_health_amr.png",
+    "bytes": 147556,
+    "sha256": "53160786c68e220771f36b876e010deb5bbd03f8aeb01205b07bb5baa5cd980c"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/03_matter_accounting.pdf",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/03_matter_accounting.pdf",
+    "bytes": 27796,
+    "sha256": "ad155edcb4b4a8eb949c8d1965b073e149d26fd1c4a6c2830d22f5c97c66a6e6"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/07_raw_gw.pdf",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/07_raw_gw.pdf",
+    "bytes": 51533,
+    "sha256": "081b52db760683bab409a1d786114afb607a28d3833c61427bc8e852a7ecd89a"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/particles_3d.mp4",
+    "destination": "archive/vista_first_production_20261015/movies/first_production_20261015/particles_3d.mp4",
+    "bytes": 996729,
+    "sha256": "a8d986ec28b94d4bf78b09b5f59a363317cd52ff9471d52ea43c887efae92990"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/analysis/first_production_20261015/01_orbit.pdf",
+    "destination": "archive/vista_first_production_20261015/plots/first_production_20261015/01_orbit.pdf",
+    "bytes": 41388,
+    "sha256": "5a1db0cb3d3059893bd8dea5a04cd90a4508e23ee04238f24db3cb47344f08a4"
+  },
+  {
+    "source": "session010_summary_20261019/reports/RAW_DATA_PATHS.md",
+    "destination": "reports/vista_original_20261019/RAW_DATA_PATHS.md",
+    "bytes": 8248,
+    "sha256": "2955ee01d25c84c1f3941e37589f450d2288bb75379488194ad99cb8650370ef"
+  },
+  {
+    "source": "session010_summary_20261019/reports/SESSION_HISTORY.md",
+    "destination": "reports/vista_original_20261019/SESSION_HISTORY.md",
+    "bytes": 10083,
+    "sha256": "5c818dba47b875c8ff6b773f77d2e3e3965673a6a50d24070499023a50f80da2"
+  },
+  {
+    "source": "session010_summary_20261019/reports/REDUCED_DATA_GUIDE.md",
+    "destination": "reports/vista_original_20261019/REDUCED_DATA_GUIDE.md",
+    "bytes": 7418,
+    "sha256": "09b4e47d8d3152616400b991bd70e2591dcf7a1dc29481a3b29fbdc9737ea29d"
+  },
+  {
+    "source": "session010_summary_20261019/inventory/RELOCATION_MAP.json",
+    "destination": "evidence/vista_reconciliation_20261019/source_inventory/RELOCATION_MAP.json",
+    "bytes": 309988,
+    "sha256": "5c3611e6a147aba60aa702f5c1b30c688ee6cc98010465407f11c09279fa171c"
+  },
+  {
+    "source": "session010_summary_20261019/inventory/BUILD_VERIFICATION.json",
+    "destination": "evidence/vista_reconciliation_20261019/source_inventory/BUILD_VERIFICATION.json",
+    "bytes": 746,
+    "sha256": "88f4ae54cb2e8ede7c44ea580b763edcbef1218673e2f0401051c4def7fea8ce"
+  },
+  {
+    "source": "session010_summary_20261019/inventory/RAW_DIRECTORIES.json",
+    "destination": "evidence/vista_reconciliation_20261019/source_inventory/RAW_DIRECTORIES.json",
+    "bytes": 9961,
+    "sha256": "44459493c0d5fadc07e30b02447325e348c35fbd152a5540d10df8bcb36eeca4"
+  },
+  {
+    "source": "session010_summary_20261019/inventory/CONTENTS.json",
+    "destination": "evidence/vista_reconciliation_20261019/source_inventory/CONTENTS.json",
+    "bytes": 733,
+    "sha256": "e60cff6afbb6b07b6d3b38ce5e36e2efcd7d64986c168ef88f8c1f1805ad4b32"
+  },
+  {
+    "source": "session010_summary_20261019/inventory/COPY_MANIFEST.json",
+    "destination": "evidence/vista_reconciliation_20261019/source_inventory/COPY_MANIFEST.json",
+    "bytes": 2077992,
+    "sha256": "54d1757b4d70bbc8e2e682bce9754f2b2a776a0a635f6552cbdb13ac4a298868"
+  },
+  {
+    "source": "session010_summary_20261019/inventory/FINAL_AUDIT.json",
+    "destination": "evidence/vista_reconciliation_20261019/source_inventory/FINAL_AUDIT.json",
+    "bytes": 762,
+    "sha256": "3785624da52d12a1e9506331718601f983e589e770ffc82298f12f853f7949cf"
+  },
+  {
+    "source": "session010_summary_20261019/inventory/SCHEDULER_SNAPSHOT.json",
+    "destination": "evidence/vista_reconciliation_20261019/source_inventory/SCHEDULER_SNAPSHOT.json",
+    "bytes": 4633,
+    "sha256": "224dd88323f768fefe47a48c922e62a8c37e44f2cafc7cd8bd08ca290d522bc5"
+  },
+  {
+    "source": "session010_summary_20261019/inventory/RAW_INVENTORY_SUMMARY.json",
+    "destination": "evidence/vista_reconciliation_20261019/source_inventory/RAW_INVENTORY_SUMMARY.json",
+    "bytes": 520,
+    "sha256": "1b8c1cb7777372d035bbf14acbb3222f90c257a4bd4767a96016d6116c9e1f3a"
+  },
+  {
+    "source": "session010_summary_20261019/inventory/RAW_DATA_INVENTORY.jsonl",
+    "destination": "evidence/vista_reconciliation_20261019/source_inventory/RAW_DATA_INVENTORY.jsonl",
+    "bytes": 14662173,
+    "sha256": "672830e305bb4c633cef33ac0d85f7e3b963216cfb5ed600c6914879b3abdf7f"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/build/BUILD_VERIFIED.json",
+    "destination": "evidence/vista_reconciliation_20261019/BUILD_VERIFIED.json",
+    "bytes": 1783,
+    "sha256": "08e405b0f1525aff65808da9ebd66ff3fed8f51b618caefc0831315e0d0b7fd1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/SESSION_LOG.md",
+    "destination": "evidence/vista_reconciliation_20261019/VISTA_SESSION_LOG.md",
+    "bytes": 3507,
+    "sha256": "8f2d60032968e0eefafde7b790e9303cd3d81a0756593c913f1d51e4de972d07"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10/finalize.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10/finalize.py",
+    "bytes": 6800,
+    "sha256": "5bc3cddf724a02b6c5c2f3542838872f143d040fe5209ba73ed8e6bdf2c2f4f8"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10/qa.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10/qa.py",
+    "bytes": 2883,
+    "sha256": "a4984f0f0793eba93574d08bb2533e3e95fed014425ba130f2dc0cc765ba4c71"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10/README.md",
+    "destination": "scripts/vista_original_20261019/analysis_s10/README.md",
+    "bytes": 2576,
+    "sha256": "49f55b70aee46b4d062795dd70e1270daf49f8819c2e2b271374b730328c13f6"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10/run.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10/run.py",
+    "bytes": 7998,
+    "sha256": "b58a94cef92b9e8fd4e47d3489de428906e510e93d4cdde6093f37596f0e36e1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10/test_analysis.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10/test_analysis.py",
+    "bytes": 3772,
+    "sha256": "cabee9ae5443542772b3e3e3e4841fb377a627785c2048b75a29ecfb50bae43f"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10/check.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10/check.py",
+    "bytes": 1872,
+    "sha256": "3a55e2e572b336bc08ec052c1641aa1d7ee645b700f1f05ee6be23bb0d07429c"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10/science.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10/science.py",
+    "bytes": 39185,
+    "sha256": "0250da173850e8b65f09c491440959aa93fb2d497f4d9dc449c3e9d3e6f17f5c"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10/run.sh",
+    "destination": "scripts/vista_original_20261019/analysis_s10/run.sh",
+    "bytes": 358,
+    "sha256": "061a91bb553d20a1706dbd739d1c2b5aff1f865e304638b958a4d895bc6206de"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10/requirements.txt",
+    "destination": "scripts/vista_original_20261019/analysis_s10/requirements.txt",
+    "bytes": 226,
+    "sha256": "8eca237a87d805462849ae77e41cc9a53bd866824d2b43dd1547b45125bbf487"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/finalize.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/finalize.py",
+    "bytes": 7472,
+    "sha256": "9dea92f97806d5ad314bb0f6e3cf748a758fb835f08859e282aa89cc7c157817"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/render_after_seal.sh",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/render_after_seal.sh",
+    "bytes": 969,
+    "sha256": "70133a56d969fe2e5baa76d0e93c895e8004e21e307b04f9f1fce73d0ccc65ea"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/amr_audit.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/amr_audit.py",
+    "bytes": 1972,
+    "sha256": "12a098b80966c6d59e35bf2e64fddbffc9c5e14df25803a3a232cbb867547408"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/qa.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/qa.py",
+    "bytes": 2883,
+    "sha256": "a4984f0f0793eba93574d08bb2533e3e95fed014425ba130f2dc0cc765ba4c71"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/status.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/status.py",
+    "bytes": 1051,
+    "sha256": "8fe13a4354cbf73d919af6baafd673159bd1d764cea877accdd7e9b919010ccb"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/README.md",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/README.md",
+    "bytes": 2700,
+    "sha256": "ef6f1b54d764a6cdbc7dfbf7a3ad13c0f8134bc87a56877f36235a7546f9820c"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/run.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/run.py",
+    "bytes": 8062,
+    "sha256": "deddfd78f98fe711151dfbef775ae6981139f5d37a2a86fe72fa2a11058f5ccd"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/health.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/health.py",
+    "bytes": 3513,
+    "sha256": "f4e009dcfc411efe13aba3c10c6f25cca8fe1b3710ed4d510159859f6c7cd219"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/test_analysis.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/test_analysis.py",
+    "bytes": 5776,
+    "sha256": "f212386991792c571d9b64f890e042eb24ec747471a1ec3f3ce964caa5a073d8"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/check.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/check.py",
+    "bytes": 2118,
+    "sha256": "a980d20c326c024b516196bf26de6145110b91d3b4fe3de81af4cceba873f1b1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/science.py",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/science.py",
+    "bytes": 46339,
+    "sha256": "3f032cf10007b1c35a309fc6dccb55f7e296d7cf8905994d1dff24ffa0bf5a2b"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/run.sh",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/run.sh",
+    "bytes": 358,
+    "sha256": "061a91bb553d20a1706dbd739d1c2b5aff1f865e304638b958a4d895bc6206de"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/analysis_s10_update_20261018/requirements.txt",
+    "destination": "scripts/vista_original_20261019/analysis_s10_update_20261018/requirements.txt",
+    "bytes": 226,
+    "sha256": "8eca237a87d805462849ae77e41cc9a53bd866824d2b43dd1547b45125bbf487"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/production.athinput",
+    "destination": "scripts/vista_original_20261019/launch_s10/production.athinput",
+    "bytes": 7838,
+    "sha256": "aa712954cd7d0594395082670893378530bf8f7efc047ee3f51224a19c389ffe"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/parser_check.py",
+    "destination": "scripts/vista_original_20261019/launch_s10/parser_check.py",
+    "bytes": 2773,
+    "sha256": "08d056aa43eaaff07ed327d262fc3b060573320bd2adf87e9191f4a165044478"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/config.json",
+    "destination": "scripts/vista_original_20261019/launch_s10/config.json",
+    "bytes": 810,
+    "sha256": "52ef2db1612e2541ae01692f5fc584c1bc6904f38226acc942504f066f2d79ca"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/usage_snapshot.py",
+    "destination": "scripts/vista_original_20261019/launch_s10/usage_snapshot.py",
+    "bytes": 3169,
+    "sha256": "edb3f4b44c73c8c2f79e4382279b3fd22a67356972792bd20a38af529fe1e035"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/build_parser_check.sh",
+    "destination": "scripts/vista_original_20261019/launch_s10/build_parser_check.sh",
+    "bytes": 1011,
+    "sha256": "4fabf0b701b0ec9247e5a9a1190f0e2762cd6f580df2e8620644894e83112dc1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/VALIDATION.before_recovery.json",
+    "destination": "scripts/vista_original_20261019/launch_s10/VALIDATION.before_recovery.json",
+    "bytes": 1714,
+    "sha256": "7d4b08f7fb40560268e41b4adbe829f32ab7bd27a2f9f7b43a84e36b71e4a770"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/GH_REPAIR.md",
+    "destination": "scripts/vista_original_20261019/launch_s10/GH_REPAIR.md",
+    "bytes": 3525,
+    "sha256": "705610f644dbf75fc0ba82b5bf0d493a2747d5687a73582f30621a2ce7e0eed5"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/VALIDATION.json",
+    "destination": "scripts/vista_original_20261019/launch_s10/VALIDATION.json",
+    "bytes": 1818,
+    "sha256": "184d3411f707b8c2f9700e92bd975acea4a5c0f0e11f739a57074153bcb48b58"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/README.md",
+    "destination": "scripts/vista_original_20261019/launch_s10/README.md",
+    "bytes": 7478,
+    "sha256": "9db511d2ba9e84ac61cc99a7d8f6d4567a170e70b46706a944bf870b804b6516"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/submit.sh",
+    "destination": "scripts/vista_original_20261019/launch_s10/submit.sh",
+    "bytes": 185,
+    "sha256": "fc17fc7ec4b0bd2d168683a4d2dfb84bd87d5f571e85f48fc6ae4281165cc08a"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/compact.athinput",
+    "destination": "scripts/vista_original_20261019/launch_s10/compact.athinput",
+    "bytes": 7095,
+    "sha256": "fc00fca8dddcb8b7a808b344440d4a816688eec076d563a6b6f0f44b3a8e2c5a"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/submit_gh.sh",
+    "destination": "scripts/vista_original_20261019/launch_s10/submit_gh.sh",
+    "bytes": 189,
+    "sha256": "e03cc794c89f019a9ee635c7e334d4e5f944f6512854bc173037acf12c97be5b"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/VALIDATION_GH_REPAIR.json",
+    "destination": "scripts/vista_original_20261019/launch_s10/VALIDATION_GH_REPAIR.json",
+    "bytes": 1900,
+    "sha256": "10c3f47dae18d4e2f99d91357e9fdfba6a64592eb98f6c61d1587e2248b896ab"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/s10.py",
+    "destination": "scripts/vista_original_20261019/launch_s10/s10.py",
+    "bytes": 54150,
+    "sha256": "cc9626bf1740ab9c09f496b327e229aac59194748d4cd364e31013e4b2ed9450"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/build.sh",
+    "destination": "scripts/vista_original_20261019/launch_s10/build.sh",
+    "bytes": 2843,
+    "sha256": "f72f20089a8f7d3b343b0a159d38cdeb84d9c803d7b30e010546c05c3997bd57"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/test_launch.py",
+    "destination": "scripts/vista_original_20261019/launch_s10/test_launch.py",
+    "bytes": 18122,
+    "sha256": "e56bf5880063286dd8a7573a545d05f59435141db8a476398f21740457184537"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10/job.sbatch",
+    "destination": "scripts/vista_original_20261019/launch_s10/job.sbatch",
+    "bytes": 1044,
+    "sha256": "2940c288769a05cf8f888e1b85c318813c64e225eb32d866501cae915bf6e8a3"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10_recovery/telemetry_reader.py",
+    "destination": "scripts/vista_original_20261019/launch_s10_recovery/telemetry_reader.py",
+    "bytes": 3478,
+    "sha256": "248867a14311b29d2f8ae96f628d3edc6ab3c3c8da4d4873666a278d5897bc27"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10_recovery/test_recovery.py",
+    "destination": "scripts/vista_original_20261019/launch_s10_recovery/test_recovery.py",
+    "bytes": 7480,
+    "sha256": "1ec2a3eeb00a85e2674ba66206af993ef261686784acda08f2579ce020d9dd37"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10_recovery/README.md",
+    "destination": "scripts/vista_original_20261019/launch_s10_recovery/README.md",
+    "bytes": 2979,
+    "sha256": "0d02537eec45bdedaab9780751dbbf4f750bb2808aceb67264e25375cf19b3e4"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10_recovery/submit.sh",
+    "destination": "scripts/vista_original_20261019/launch_s10_recovery/submit.sh",
+    "bytes": 151,
+    "sha256": "72e440c954d7713584757e17866e96824b6cc57608e5c9454d15f9ce689c7df5"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10_recovery/check.py",
+    "destination": "scripts/vista_original_20261019/launch_s10_recovery/check.py",
+    "bytes": 2577,
+    "sha256": "9e0b8880e957cf6665a778cd03eca85197115e9e2b2b89d702e167371fe4d97d"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10_recovery/recover.py",
+    "destination": "scripts/vista_original_20261019/launch_s10_recovery/recover.py",
+    "bytes": 13456,
+    "sha256": "d2aa53d47b499a75baa3e0c3abd3c57be66ae2449660ec63fc9ff70f89dec5cd"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/launch_s10_recovery/job.sbatch",
+    "destination": "scripts/vista_original_20261019/launch_s10_recovery/job.sbatch",
+    "bytes": 815,
+    "sha256": "322f1658866eb9e69c399aa7a817e4f6c2bc63e9a9298ed8ac1589ead0eddbc6"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/runs/20261013T200009Z/config.json",
+    "destination": "config/vista_original_20261019/20261013T200009Z/config.json",
+    "bytes": 840,
+    "sha256": "33a87222f7a6954184625b418229dd3ed65b33b1a1e9ac63e5fff91c171a93a1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/runs/20261013T200009Z/production.athinput",
+    "destination": "config/vista_original_20261019/20261013T200009Z/production.athinput",
+    "bytes": 7828,
+    "sha256": "0f33f7fd60eb98afd8e0da3ec42bfe18f54ee6c12b391124eb7c70a005f4ddd1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/runs/20261013T200009Z/compact.athinput",
+    "destination": "config/vista_original_20261019/20261013T200009Z/compact.athinput",
+    "bytes": 7095,
+    "sha256": "fc00fca8dddcb8b7a808b344440d4a816688eec076d563a6b6f0f44b3a8e2c5a"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/runs/20261014_gh_retry_01/config.json",
+    "destination": "config/vista_original_20261019/20261014_gh_retry_01/config.json",
+    "bytes": 840,
+    "sha256": "33a87222f7a6954184625b418229dd3ed65b33b1a1e9ac63e5fff91c171a93a1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/runs/20261014_gh_retry_01/production.athinput",
+    "destination": "config/vista_original_20261019/20261014_gh_retry_01/production.athinput",
+    "bytes": 7838,
+    "sha256": "aa712954cd7d0594395082670893378530bf8f7efc047ee3f51224a19c389ffe"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/runs/20261014_gh_retry_01/compact.athinput",
+    "destination": "config/vista_original_20261019/20261014_gh_retry_01/compact.athinput",
+    "bytes": 7095,
+    "sha256": "fc00fca8dddcb8b7a808b344440d4a816688eec076d563a6b6f0f44b3a8e2c5a"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/runs/20261016_gh_resume_01/config.json",
+    "destination": "config/vista_original_20261019/20261016_gh_resume_01/config.json",
+    "bytes": 840,
+    "sha256": "33a87222f7a6954184625b418229dd3ed65b33b1a1e9ac63e5fff91c171a93a1"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/runs/20261016_gh_resume_01/production.athinput",
+    "destination": "config/vista_original_20261019/20261016_gh_resume_01/production.athinput",
+    "bytes": 7838,
+    "sha256": "aa712954cd7d0594395082670893378530bf8f7efc047ee3f51224a19c389ffe"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/runs/20261016_gh_resume_01/compact.athinput",
+    "destination": "config/vista_original_20261019/20261016_gh_resume_01/compact.athinput",
+    "bytes": 7095,
+    "sha256": "fc00fca8dddcb8b7a808b344440d4a816688eec076d563a6b6f0f44b3a8e2c5a"
+  },
+  {
+    "source": "session010_summary_20261019/workspace/runtime_s10/runs/20261016_gh_resume_01/production.athinput",
+    "destination": "inputs/vista_production/production.athinput",
+    "bytes": 7838,
+    "sha256": "aa712954cd7d0594395082670893378530bf8f7efc047ee3f51224a19c389ffe"
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "source_commit": "386870f88f60e25e1a8fac76fe04a071b87a01cf",
+  "kokkos_commit": "6739bc623081648af9e752b616d9671527922cbf",
+  "host": "i614-112.vista.tacc.utexas.edu",
+  "architecture": "aarch64",
+  "job_id": "1069850",
+  "created_epoch": 1791919887.4461977,
+  "executable": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/build/build_cuda_gi/src/athena",
+  "executable_sha256": "a6221fb3ac3ae9f3e17208bd2fb1d7811ab1c4040adcf5272cab40a7c68218e7",
+  "files": [
+    {
+      "path": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/build/build_cuda_gi/src/athena",
+      "sha256": "a6221fb3ac3ae9f3e17208bd2fb1d7811ab1c4040adcf5272cab40a7c68218e7"
+    },
+    {
+      "path": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/build/evidence/native_build_provenance.txt",
+      "sha256": "c42682c2858d77f2d47a392f85080104030c2a9c165d7e535b2f1b16e06a8c8a"
+    },
+    {
+      "path": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/build/evidence/configure.log",
+      "sha256": "e466c662dfa9559e601c895a5eccbaa9b62996446d8d4f3100d1b0752e6fc7a5"
+    },
+    {
+      "path": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/build/evidence/build.log",
+      "sha256": "0b35ddea999e4b723c1e0a04fecdc6a6aad59f41df9b4df088c76d5849d3ece3"
+    },
+    {
+      "path": "/scratch/10222/jiaxiwu1018/jeans_s10_transfer.HpgyzK/session010_vista_handoff/runtime_s10/build/build_cuda_gi/CMakeCache.txt",
+      "sha256": "565f463924ce9a670e5d657d3b5376f940ff50b066f4c0d14dc3d062d323189a"
+    }
+  ],
+  "build_script_sha256": "f72f20089a8f7d3b343b0a159d38cdeb84d9c803d7b30e010546c05c3997bd57"
+}

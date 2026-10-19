@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "job": "17024",
+  "host": "perseus",
+  "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:16:10) [GCC 11.2.0]",
+  "source_summary": "/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/session010_summary_20261019",
+  "source_sha_manifest": "3008dfd54c8a6da27907453433ecebbe599434dd7a5336bdb67f76a51fac9921",
+  "verified_summary_stdout": "PASS: 4044 files, 8.681 GiB; all SHA256 hashes match; no symlinks/hardlinks.",
+  "copied_files": 163,
+  "copied_bytes": 451070796,
+  "all_promoted_hashes_match": true,
+  "decoded_movies": [
+    "movies/through_segment002_20261018/matter_evolution.mp4",
+    "movies/through_segment002_20261018/collapse_amr_health.mp4",
+    "movies/through_segment002_20261018/particles_3d.mp4",
+    "archive/vista_first_production_20261015/movies/first_production_20261015/matter_evolution.mp4",
+    "archive/vista_first_production_20261015/movies/first_production_20261015/collapse_amr_health.mp4",
+    "archive/vista_first_production_20261015/movies/first_production_20261015/particles_3d.mp4"
+  ],
+  "original_summary_modified": false,
+  "production_launched": false,
+  "raw_transfer_performed": false,
+  "finished_utc": "2026-10-19T05:43:25.234015+00:00",
+  "finished_local": "2026-10-18T22:43:25.234645-07:00"
+}

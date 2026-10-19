@@ -1,0 +1,132 @@
+{
+  "captured_utc": "2026-10-19T05:27:04.961259+00:00",
+  "command": [
+    "sacct",
+    "-X",
+    "-j",
+    "1069961,1069970,1069971,1069972,1071751,1071752,1071753,1075832,1075833",
+    "-n",
+    "-P",
+    "-o",
+    "JobID,JobName%60,Partition,State,ExitCode,ElapsedRaw,AllocNodes,Start,End"
+  ],
+  "returncode": 0,
+  "stdout": "1069961|s10-20261013T200009Z-debug-0|gh-dev|COMPLETED|0:0|444|4|2026-10-13T17:00:27|2026-10-13T17:07:51\n1069970|s10-20261013T200009Z-production-1|gh|FAILED|42:0|42|16|2026-10-14T07:23:53|2026-10-14T07:24:35\n1069971|s10-20261013T200009Z-production-2|gh|CANCELLED|0:0|0|0|None|2026-10-14T07:27:21\n1069972|s10-20261013T200009Z-production-3|gh|CANCELLED|0:0|0|0|None|2026-10-14T07:27:21\n1071751|s10-20261014_gh_retry_01-production-1|gh|COMPLETED|0:0|26526|16|2026-10-15T02:39:22|2026-10-15T10:01:28\n1071752|s10-20261014_gh_retry_01-production-2|gh|FAILED|42:0|14683|16|2026-10-16T04:13:29|2026-10-16T08:18:12\n1071753|s10-20261014_gh_retry_01-production-3|gh|CANCELLED|0:0|0|0|None|2026-10-16T08:20:56\n1075832|s10-20261016_gh_resume_01-production-2|gh|COMPLETED|0:0|84075|16|2026-10-17T05:34:12|2026-10-18T04:55:27\n1075833|s10-20261016_gh_resume_01-production-3|gh|CANCELLED by 896508|0:0|0|0|None|2026-10-18T19:28:02\n",
+  "stderr": "",
+  "cluster_timezone": "America/Chicago",
+  "jobs": [
+    {
+      "job_id": "1069961",
+      "job_name": "s10-20261013T200009Z-debug-0",
+      "partition": "gh-dev",
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed_seconds": "444",
+      "allocated_nodes": "4",
+      "start": "2026-10-13T17:00:27",
+      "end": "2026-10-13T17:07:51",
+      "node_hours": 0.49333333333333335
+    },
+    {
+      "job_id": "1069970",
+      "job_name": "s10-20261013T200009Z-production-1",
+      "partition": "gh",
+      "state": "FAILED",
+      "exit_code": "42:0",
+      "elapsed_seconds": "42",
+      "allocated_nodes": "16",
+      "start": "2026-10-14T07:23:53",
+      "end": "2026-10-14T07:24:35",
+      "node_hours": 0.18666666666666668
+    },
+    {
+      "job_id": "1069971",
+      "job_name": "s10-20261013T200009Z-production-2",
+      "partition": "gh",
+      "state": "CANCELLED",
+      "exit_code": "0:0",
+      "elapsed_seconds": "0",
+      "allocated_nodes": "0",
+      "start": "None",
+      "end": "2026-10-14T07:27:21",
+      "node_hours": 0.0
+    },
+    {
+      "job_id": "1069972",
+      "job_name": "s10-20261013T200009Z-production-3",
+      "partition": "gh",
+      "state": "CANCELLED",
+      "exit_code": "0:0",
+      "elapsed_seconds": "0",
+      "allocated_nodes": "0",
+      "start": "None",
+      "end": "2026-10-14T07:27:21",
+      "node_hours": 0.0
+    },
+    {
+      "job_id": "1071751",
+      "job_name": "s10-20261014_gh_retry_01-production-1",
+      "partition": "gh",
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed_seconds": "26526",
+      "allocated_nodes": "16",
+      "start": "2026-10-15T02:39:22",
+      "end": "2026-10-15T10:01:28",
+      "node_hours": 117.89333333333333
+    },
+    {
+      "job_id": "1071752",
+      "job_name": "s10-20261014_gh_retry_01-production-2",
+      "partition": "gh",
+      "state": "FAILED",
+      "exit_code": "42:0",
+      "elapsed_seconds": "14683",
+      "allocated_nodes": "16",
+      "start": "2026-10-16T04:13:29",
+      "end": "2026-10-16T08:18:12",
+      "node_hours": 65.25777777777778
+    },
+    {
+      "job_id": "1071753",
+      "job_name": "s10-20261014_gh_retry_01-production-3",
+      "partition": "gh",
+      "state": "CANCELLED",
+      "exit_code": "0:0",
+      "elapsed_seconds": "0",
+      "allocated_nodes": "0",
+      "start": "None",
+      "end": "2026-10-16T08:20:56",
+      "node_hours": 0.0
+    },
+    {
+      "job_id": "1075832",
+      "job_name": "s10-20261016_gh_resume_01-production-2",
+      "partition": "gh",
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed_seconds": "84075",
+      "allocated_nodes": "16",
+      "start": "2026-10-17T05:34:12",
+      "end": "2026-10-18T04:55:27",
+      "node_hours": 373.6666666666667
+    },
+    {
+      "job_id": "1075833",
+      "job_name": "s10-20261016_gh_resume_01-production-3",
+      "partition": "gh",
+      "state": "CANCELLED by 896508",
+      "exit_code": "0:0",
+      "elapsed_seconds": "0",
+      "allocated_nodes": "0",
+      "start": "None",
+      "end": "2026-10-18T19:28:02",
+      "node_hours": 0.0
+    }
+  ],
+  "gh_node_hours": 557.0044444444444,
+  "gh_dev_node_hours": 0.49333333333333335,
+  "scope": "Known debug/production chain only; excludes GG preparation/build/analysis; not an SU invoice.",
+  "production_submitted": false,
+  "production_modified": false
+}

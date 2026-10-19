@@ -1,0 +1,40 @@
+{
+  "status": "implemented_not_submitted",
+  "native_build": {
+    "job_id": "1069850",
+    "architecture": "aarch64",
+    "source_commit": "386870f88f60e25e1a8fac76fe04a071b87a01cf",
+    "kokkos_commit": "6739bc623081648af9e752b616d9671527922cbf",
+    "executable_sha256": "a6221fb3ac3ae9f3e17208bd2fb1d7811ab1c4040adcf5272cab40a7c68218e7",
+    "receipt": "runtime_s10/build/BUILD_VERIFIED.json"
+  },
+  "verification": {
+    "new_tests_passed": 26,
+    "original_tests_passed": 28,
+    "original_tests_skipped": 1,
+    "shell_syntax": "passed",
+    "handoff_package_checksums": "passed",
+    "original_source_tracked_changes": 0,
+    "scheduler_calls_in_tests": "mocked"
+  },
+  "queued_jobs": [],
+  "production_nodes": 16,
+  "production_wall_hours": [
+    8,
+    24,
+    24
+  ],
+  "full_size_gates": "pending user-submitted GH jobs",
+  "analysis_and_archive_jobs": false,
+  "scientific_completion": false,
+  "files": {
+    "launch_s10/config.json": "52ef2db1612e2541ae01692f5fc584c1bc6904f38226acc942504f066f2d79ca",
+    "launch_s10/build.sh": "f72f20089a8f7d3b343b0a159d38cdeb84d9c803d7b30e010546c05c3997bd57",
+    "launch_s10/job.sbatch": "2940c288769a05cf8f888e1b85c318813c64e225eb32d866501cae915bf6e8a3",
+    "launch_s10/submit.sh": "fc17fc7ec4b0bd2d168683a4d2dfb84bd87d5f571e85f48fc6ae4281165cc08a",
+    "launch_s10/s10.py": "601c5219123254f32392b50776a20100aa8338798d9415647018355c293f8b73",
+    "launch_s10/production.athinput": "0f33f7fd60eb98afd8e0da3ec42bfe18f54ee6c12b391124eb7c70a005f4ddd1",
+    "launch_s10/compact.athinput": "fc00fca8dddcb8b7a808b344440d4a816688eec076d563a6b6f0f44b3a8e2c5a",
+    "launch_s10/test_launch.py": "79be5d25fa981d9f72fe581743b6c652b7f9e8bf231c5670686a040881ff5cc9"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "reviewer": "Codex visual inspection",
+  "checked_utc": "2026-10-19T05:53:02.512691+00:00",
+  "viewed": [
+    "plots/through_segment002_20261018/00_scientific_summary.png",
+    "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/all_pdf_figures.png",
+    "session010_summary_20261019/workspace/runtime_s10/analysis/through_segment002_20261018/qa/all_movies_decoded.png"
+  ],
+  "findings": [
+    "Legible labels, units and four-panel layout",
+    "Binary curves stop at common enclosure; no post-common coincident-track orbit",
+    "Late horizon-quality gap visible; no fabricated remnant values",
+    "Raw wave label and ringdown/convergence limitations explicit",
+    "Current AMR display uses corrected relative levels 0..10",
+    "Particle views represent surviving fixed cohort and actual saved times"
+  ],
+  "full_video_decodes": "Six passed in job 17024; contact sheets are visual sampling, not watching every frame",
+  "issues_requiring_repair": []
+}

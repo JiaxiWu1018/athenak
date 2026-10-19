@@ -1,0 +1,74 @@
+{
+  "native_time": 221.9531250005331,
+  "cycle": 138334,
+  "source_commit": "386870f88f60e25e1a8fac76fe04a071b87a01cf",
+  "first_individual_horizons": [
+    8.43437500000042,
+    8.485937500000432
+  ],
+  "first_raw_accepted_common": 64.3093749999596,
+  "first_strict_common_enclosure": 64.36874999995982,
+  "strict_simultaneous_enclosure_samples": 1081,
+  "last_binary_time": 64.3374999999597,
+  "initial_coordinate_separation": 5.968770451535643,
+  "last_binary_coordinate_separation": 0.23583529450193094,
+  "observed_rotation_degrees_excluding_gaps": 241.35258519564835,
+  "observed_turns": 0.6704238477656899,
+  "post_individual_horizon_observed_turns": 0.6259206743506687,
+  "valid_orbit_intervals": 10,
+  "last_accepted_common": {
+    "time": 98.19843750008289,
+    "mass": 0.636964506384263,
+    "coordinate_spin": 0.1746263436349119
+  },
+  "final_candidate_hrel": 0.514631703056301,
+  "configured_hrel_limit": 0.2,
+  "particles_alive": 17073,
+  "low_lapse_removals": 4982927,
+  "removed_fraction": 0.9965854,
+  "final_components": [
+    {
+      "component": 0,
+      "time": 221.953,
+      "alive": 17073,
+      "removed": 2982927,
+      "alive_rest_mass": 0.004451339770639606
+    },
+    {
+      "component": 1,
+      "time": 221.953,
+      "alive": 0,
+      "removed": 1000000,
+      "alive_rest_mass": 0.0
+    },
+    {
+      "component": 2,
+      "time": 221.953,
+      "alive": 0,
+      "removed": 1000000,
+      "alive_rest_mass": 0.0
+    }
+  ],
+  "wave_samples": 8734,
+  "wave_end": 221.94062500053306,
+  "max_wave_spacing": 0.05000000000000071,
+  "raw_22_peak_time": 114.93906250014379,
+  "raw_22_peak_amplitude": 0.04134652424555745,
+  "post_peak_coverage": 107.00156250038927,
+  "leaf_blocks": 3984,
+  "finest_dx": 0.00390625,
+  "wave_floor_preserved": true,
+  "gpu_peak_fraction": 0.6758692564702516,
+  "host_peak_fraction": 0.47781309413458717,
+  "H_RMS": 3.22845667535906e-06,
+  "M_RMS": 1.7285658783889823e-06,
+  "constraint_mask": "proper-volume chi>=0.0625; not AH-exterior",
+  "local_rechecks": [
+    "common enclosure on exact case/cycle/time",
+    "orbit arc with original gap/case rules",
+    "raw mode (2,2) peak",
+    "all removal tags unique and finite",
+    "component census/rest mass closure"
+  ],
+  "native_checkpoint_audit": "Preserved October 18 Vista audit; bulk checkpoint absent locally"
+}
