@@ -44,3 +44,12 @@ and inventories sidecars outside out/. It preserves per-job manifests/accounting
 reports exact retained storage. Its NATIVE_INTEGRITY_QA receipt is a closed-file
 snapshot; actual scientific/visual review and the audit job's own terminal accounting
 remain necessary before COMPLETE. All raw and movie caches/frames remain on AMD.
+
+`interim_shells.py`/`interim_shells.sbatch` make the requested single COM-shell
+preview through400M for the available4M/8M productions. All201native outputs and
+all particles are used; equal-mass cumulative-CDF ranks plus partition reproduce
+the original reducer exactly (checked by full reference sorting at0/200/400M).
+Stage these tools and INTERIM_SOURCE_PIN.json in a separate versioned AMD source
+directory. Results live under interim/com_shells_to400M_SOURCE/, outside canonical
+production reductions/plots. Only final PNG/PDF/figure preview, compact CSVs and
+source/QA metadata may be copied to Perseus. No simulation/runtime changes.
