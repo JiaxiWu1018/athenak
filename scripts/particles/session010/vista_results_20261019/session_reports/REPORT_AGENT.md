@@ -133,10 +133,20 @@ R46 floor retained; relative-level counts
 `448,448,376,904,1464,56,56,56,56,56,64` sum to 3,984. This is not convergence.
 
 Accepted late common surfaces end at t=98.198437500083, mass 0.6369645064 and
-coordinate-prescription spin 0.1746263436. Later candidates fail hrel<=0.2;
-final hrel=0.5146317031. The timing near a restart motivates investigation,
-but this evidence does not establish a cause. No final mass/spin or validated
-ringdown can be reported. Binary curves end at strict common enclosure.
+coordinate-prescription spin 0.1746263436. The October 19 source/native-log
+investigation identifies a restart/seed-handling defect: the first post-restart
+candidate passes instantaneous quality (hrel=0.0022120913), but the persistence
+streak resets to one; the strict publication path clears last_a0. The common
+branch skips serialized full-shape reuse and falls back from radius about 0.544M
+to initial_radius_2=0.40. Its next candidate has hrel=0.2809919004, is rejected,
+and repeats the bad-seed path; final hrel=0.5146317031. The flow's mass-stagnation
+stop does not itself enforce the publication residual. This is a concrete code
+path matching the observed boundary, not a replay-validated repair. The
+[detailed evidence and mandatory future fix/tests](/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/notes/AH_RESTART_DIAGNOSIS_20261019.md)
+include exact consumer rows, source locations and as-run hashes. No source fix,
+rebuild, native restart or production was performed. Do not relax quality gates
+or treat rejected late values as measured remnant properties. Binary curves
+still end at strict common enclosure.
 
 ## Traditional session layout and reproducibility
 
@@ -217,9 +227,9 @@ operation should check destination capacity/retention, archive by checksum and
 retain originals until verified; no transfer or deletion is authorized by this
 reconciliation. The original AMD caps do not apply to Vista SCRATCH.
 
-Scientific follow-up should first investigate the late common-finder/restart
-quality failure and establish any ringdown interpretation from appropriate
-validated diagnostics. Longer production solely to wait for the main R40 burst
+Scientific follow-up should first fix and replay-validate the documented
+common-finder restart/seed defect, retaining the quality and persistence gates,
+and establish any ringdown interpretation from appropriate validated diagnostics. Longer production solely to wait for the main R40 burst
 is not indicated by the saved coverage. A wider-start, low-eccentricity inspiral
 would be a separate initial-data experiment with momenta/constraints reviewed;
 simply separating these collapsing clumps is not a validated prescription.

@@ -60,3 +60,22 @@ in reports/RAW_DATA_PATHS.md and inventory/RAW_DATA_INVENTORY.jsonl inside the
 summary; current scratch retention and destination space require checking for
 a separate archive task. New copied review/reduced products remain on Perseus;
 no cleanup, Mac mirror or unrestricted sync. Session009 stays closed.
+
+
+## October 19, 2026 — AH restart diagnosis and t<=98 3D movie request
+
+Read-only compiled-source/native-consumer inspection identifies a Session010 AH
+restart/seed defect at recovered segment_002 chunk_004->005, t=98.2Mref. A good
+0.544M candidate (hrel0.002212, quality streak1) loses its seed while publication
+waits for three successes; the common branch skips saved-shape reuse and resets
+to0.40M. The next candidate hrel0.280992 fails0.2 and the reset repeats. This
+is distinct from the earlier telemetry failure; repair/replay remains pending.
+Fix search/publication-state separation and common-shape warm starts and validate
+an uninterrupted/restarted comparison before future restarted production. No
+native code, executable, gates, input, job or checkpoint was changed.
+
+Details: notes/AH_RESTART_DIAGNOSIS_20261019.md; raw excerpt/source hashes and prior
+report preservation: evidence/ah_restart_diagnosis_20261019/RECEIPT.json. Requested
+future movie specification: notes/MOVIE_3D_TO98_REQUEST_20261019.md, standalone
+Session007-style true3D particles plus accepted black AH spheres, **t=0..98 only**.
+Movie generation is left for the separately requested Perseus chat.

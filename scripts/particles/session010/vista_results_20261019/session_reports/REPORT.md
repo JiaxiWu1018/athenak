@@ -61,11 +61,31 @@ support collapse, two black holes, short prograde inward motion/plunge and a
 common-horizon merger interpretation within this numerical model. They do not
 establish a long, quasi-circular or radiation-driven inspiral.
 
-After the restart near t=98.2, no later common candidate passes the unchanged
-normalized expansion-residual gate hrel<=0.2. The final candidate has hrel=0.514632.
-The last accepted mass/spin above are intermediate measurements, not final
-remnant values. The missing accepted late surface needs a separate finder and
-restart investigation; it does not show that the black hole disappeared.
+After the restart near t=98.2, common candidates stop being published under the
+unchanged hrel<=0.2 quality/persistence gates. The final candidate has
+hrel=0.514632. The last accepted mass/spin above are intermediate measurements,
+not final remnant values. Rejection does not show that the black hole disappeared.
+
+### AH restart defect: fix and validate before the next restarted production run
+
+The October 19 read-only investigation identified a concrete finder-state defect
+in the compiled Session010 AthenaK/NRPIC branch. The first post-restart candidate
+at t=98.200M is good (hrel=0.002212, radius about 0.544M), but its three-hit
+publication streak has reset to one. The strict gate then clears the search
+seed while waiting for persistence. The common-horizon branch skips saved-shape
+reuse and returns to its 0.400M input guess. The next candidate has hrel=0.280992,
+fails quality, and repeats the same reset path. A mass-stagnation stopping test
+can declare a finder candidate without satisfying the publication residual.
+
+This explains the observed restart failure sequence and is distinct from the
+earlier broken-segment telemetry/recovery episode. The [detailed diagnosis and
+required repair/validation](/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/notes/AH_RESTART_DIAGNOSIS_20261019.md) bind raw
+consumer rows to the unchanged compiled finder source. **The defect is identified,
+but no fix or controlled replay has been performed.** Preserve the quality gates,
+separate search warm-start state from publication state, support common-horizon
+shape reuse, and validate an uninterrupted/restarted comparison across this
+boundary before another restarted production campaign. Late remnant properties
+remain unvalidated.
 
 There are 8,734 paired finite raw wave samples, containing 77 complex modes
 l=2..8 at R40. The largest time interval is 0.05, twice the nominal 0.025 cadence.
@@ -121,6 +141,11 @@ actual saved states, preserve fixed scales and identities, and never replace
 removed tags. A vanishing clump sample is not a vanishing black hole. White energy
 pixels represent nonpositive sampled E, not absent geometry.
 
+A separately requested standalone 3D particle/AH movie must stop at **t=98Mref**.
+The [copyable rendering request](/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/notes/MOVIE_3D_TO98_REQUEST_20261019.md) matches
+the earlier Session007 dark-background movie and excludes t=98.2 and later data.
+This documentation update has not generated that movie.
+
 The first analysis through t=36.55 is [historical](/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/archive/vista_first_production_20261015/README.md).
 Its AMR display had an extra root-level subtraction. The October 18 renderer
 corrects displayed relative levels to 0..10; the native mesh and evolution were
@@ -145,4 +170,5 @@ the summary; there is no proof of an independent Anta archive in the supplied
 evidence. The [exact raw paths and checkpoint receipt](/data/jiaxiwu/NRPIC/GI_in_cluster/session_010_vista_preparation_20261013/session010_summary_20261019/reports/RAW_DATA_PATHS.md)
 must be used for a separately authorized archive operation with current storage
 and purge checks. No raw transfer or deletion occurred here. Preserving those
-data and investigating the late horizon finder are the main remaining tasks.
+data and repairing/replay-validating the documented AH restart defect are the
+main remaining tasks.
