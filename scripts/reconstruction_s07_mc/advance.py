@@ -10,14 +10,16 @@ def remote(args):
 def submit(key,role,index=None,hours=2,dependency=None):
     receipt=ROOT/'evidence'/(key+'_SUBMITTED.json');intent=ROOT/'evidence'/(key+'_SUBMIT_INTENT.json')
     command=['sbatch','--parsable','--job-name=st_s07_'+key.lower(),'--time='+f'{hours:02d}:00:00']
-    if dependency:command+=['--dependency=afterok:'+','.join(dependency)]
+    if dependency:command+=['--dependency=afterok:'+':'.join(dependency)]
     command+=[str(AMD/'src/athenak/scripts/reconstruction_s07_mc/amd.sbatch'),role]
     if index is not None:command.append(str(index))
     if receipt.exists():
-        old=load(receipt);assert old['command']==command
+        old=load(receipt);assert old.get('current_equivalent_command',old['command'])==command
         print('EXISTING',key,old['id'],flush=True);return old['id']
     assert not intent.exists(),'Ambiguous prior sbatch: inspect scheduler before recording a recovered receipt'
-    atomic(intent,dict(utc=now(),command=command,source=source()))
+    submission_pin=ROOT/'evidence/SUBMISSION_SOURCE_PIN.json'
+    version=load(submission_pin)['head']if submission_pin.exists()else source()
+    atomic(intent,dict(utc=now(),command=command,source=version))
     reply=remote(command);ids=re.findall(r'^(\d+)(?:;[^\n]*)?$',reply,re.M);assert len(ids)==1,reply
     job=dict(id=ids[0],host='amd',role=role,index=index,key=key,command=command,utc=now(),reply=reply)
     atomic(receipt,job);state=load(ROOT/'evidence/state.json');state['jobs'].append(job);state.update(phase=key.lower()+'_submitted',updated_utc=now());atomic(ROOT/'evidence/state.json',state)
