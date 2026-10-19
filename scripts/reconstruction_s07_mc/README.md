@@ -53,3 +53,15 @@ Stage these tools and INTERIM_SOURCE_PIN.json in a separate versioned AMD source
 directory. Results live under interim/com_shells_to400M_SOURCE/, outside canonical
 production reductions/plots. Only final PNG/PDF/figure preview, compact CSVs and
 source/QA metadata may be copied to Perseus. No simulation/runtime changes.
+
+The user clarified that the interim figure must contain all four production runs
+through400M and chose to wait for real1M/2M production data. `watch_all4_400.py`
+performs only lightweight remote file checks on Perseus, every60s. Once all four
+402M files exist (so the400M files are closed), it uniquely submits the already
+staged `interim_all4_400.py` AMD Slurm job and resumes this chat. Submission intents
+and receipts prevent duplicate jobs. The plot reuses validated4M/8M compact CSVs,
+reduces all201native1M/2M production frames with the preserved exact reducer, and
+checks12full-sort reference frames across the four cases. No preflight traces,
+extrapolation, simulation restart or concurrency change. Actual PNG/PDF review and
+thin delivery remain required after rendering. Frozen native runtime9e8a0614 and
+the independent integrity-audit version are not overwritten.
