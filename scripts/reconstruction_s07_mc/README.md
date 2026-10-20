@@ -65,3 +65,15 @@ checks12full-sort reference frames across the four cases. No preflight traces,
 extrapolation, simulation restart or concurrency change. Actual PNG/PDF review and
 thin delivery remain required after rendering. Frozen native runtime9e8a0614 and
 the independent integrity-audit version are not overwritten.
+# CPU postprocessing queue admission
+
+`postprocess_cpu_gate.sbatch` checks AMD `mi2101x` as a CPU postprocessing host.
+It imports the frozen analysis/movie/report modules and exact dependency stack,
+checks the native runtime pin, ffmpeg availability, at least32GiB effective RAM
+and the whole-user storage reserve. It reads no native data and runs no GPU kernel.
+Stage it separately with `GATE_SOURCE_PIN.json`; never replace frozen native files.
+After its actual receipt passes, existing pending CPU-only reduction/comparison/
+movie/report/integrity jobs may move to this partition in place, preserving job
+IDs, code, paths, limits and success prerequisites. Preserve before/after scheduler
+receipts and the gate's actual environment. This does not admit production runs on
+a different GPU layout and does not authorize duplicate analysis submissions.
