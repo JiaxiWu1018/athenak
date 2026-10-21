@@ -110,6 +110,7 @@ def run(c,initialize=False,target=300,wall_seconds=12600):
         return state
     log=work/f'{job()}.log';assert not log.exists()
     launch=['prun',str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-d',str(work)]
+    start_time=0.0
     if initialize:
         assert not state['segments'] and not list((work/'rst').glob('*.rst'))
         launch+=['-i',str(ROOT/'inputs'/f"{c['id']}.athinput"),'time/nlim=0',
@@ -117,6 +118,7 @@ def run(c,initialize=False,target=300,wall_seconds=12600):
     else:
         assert (work/'INITIAL_OK.json').exists()
         latest=promote(work);assert latest['time']<target
+        start_time=latest['time']
         if (work/'REQUEST_STOP').exists():
             reason=(work/'REQUEST_STOP').read_text().strip()
             assert reason.startswith('amr_capacity') and int(os.environ['SLURM_NNODES'])==2,reason
@@ -134,8 +136,16 @@ def run(c,initialize=False,target=300,wall_seconds=12600):
     txt=log.read_text();assert '### FATAL' not in txt and not re.search(r'search_fail=[1-9]',txt)
     latest=promote(work)
     if initialize:initial_check(work,c)
+    history=np.atleast_2d(np.loadtxt(work/f"{c['id']}.user.hst"))
+    assert history.shape[1]==19 and np.isfinite(history).all(),'Nonfinite native user history'
+    native_mass=np.atleast_1d(np.genfromtxt(work/f"{c['id']}.mass.csv",delimiter=',',names=True))
+    assert np.isfinite(native_mass['closure']).all() and np.max(abs(native_mass['closure']))<1e-10
     final=latest['time']>=300-1e-8 or (latest['ah_onset']>=0 and latest['time']>=latest['ah_onset']+20-1e-8)
-    record.update(checkpoint=latest,complete=final)
+    stop=re.findall(r'^CLEAN_STOP: (.*)$',txt,re.M)
+    advanced=latest['time']-start_time
+    record.update(checkpoint=latest,complete=final,stop_reason=stop[-1] if stop else None,
+                  simulation_advanced=advanced,
+                  native_node_hours_per_M=record['elapsed']*int(os.environ['SLURM_NNODES'])/3600/advanced if advanced>0 else None)
     state['segments'].append(record);state.update(latest=latest,complete=final)
     atomic(statefile,state)
     if final:
