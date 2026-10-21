@@ -2,6 +2,8 @@
 #define Z4C_FROZEN_AH_CHECKS_HPP_
 
 #include <cmath>
+#include <iomanip>
+#include <iostream>
 #include <stdexcept>
 #include "fastflow.hpp"
 #include "mesh/mesh.hpp"
@@ -20,7 +22,7 @@ inline void FrozenAhChecks(Mesh *mesh, ParameterInput *pin, int repetitions) {
   mesh->dt = 0.0;  // event timestamps are the unchanged saved-state time
   const bool require_accept = pin->GetOrAddBoolean("diagnostic_checks", "require_accept", true);
   for (size_t h=0; h<pack->pz4c->pfastflow.size(); ++h) {
-    auto *finder = pack->pz4c->pfastflow[h];
+    auto *finder = pack->pz4c->pfastflow[h].get();
     switch (mesh->mb_indcs.ng) {
       case 2: finder->MetricDerivatives<2>(mesh->time); break;
       case 3: finder->MetricDerivatives<3>(mesh->time); break;
