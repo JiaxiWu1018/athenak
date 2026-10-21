@@ -36,6 +36,8 @@
 //========================================================================================
 
 #include <algorithm>
+#include <iomanip>
+#include <limits>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -631,7 +633,7 @@ Real ParameterInput::GetOrAddReal(std::string block, std::string name, Real def_
     ret = static_cast<Real>(atof(val.c_str()));
   } else {
     pb = FindOrAddBlock(block);
-    ss_value << def_value;
+    ss_value << std::setprecision(std::numeric_limits<Real>::max_digits10) << def_value;
     AddParameter(pb, name, ss_value.str(), "# Default value added at run time", true);
     ret = def_value;
   }
@@ -726,7 +728,9 @@ Real ParameterInput::SetReal(std::string block, std::string name, Real value) {
 
   Lock();
   pb = FindOrAddBlock(block);
-  ss_value << value;
+  // Real-valued runtime state (mass ledgers, AH warm shapes, output clocks)
+  // must survive parameter reads and checkpoint serialization without rounding.
+  ss_value << std::setprecision(std::numeric_limits<Real>::max_digits10) << value;
   AddParameter(pb, name, ss_value.str(), "# Updated during run time", true);
   Unlock();
   return value;
