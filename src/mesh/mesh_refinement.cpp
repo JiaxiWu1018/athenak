@@ -156,6 +156,19 @@ void MeshRefinement::AdaptiveMeshRefinement(Driver *pdriver, ParameterInput *pin
   int nnew = 0, ndel = 0;
   UpdateMeshBlockTree(nnew, ndel);
 
+  // The candidate tree includes 2:1 balancing. Evolved arrays and lloc_eachmb still
+  // describe the old mesh, which restart output serializes (not ptree). Exit before
+  // redistribution; the driver must finalize and never advance this candidate tree.
+  const Real reserve = pin->GetOrAddReal("mesh_refinement", "capacity_stop_fraction", 1.0);
+  if (!(reserve > 0.0 && reserve <= 1.0)) {Kokkos::abort("Invalid AMR capacity fraction");}
+  const int predicted = pmy_mesh->nmb_total + nnew - ndel;
+  const int per_rank = (predicted + global_variable::nranks - 1)/global_variable::nranks;
+  if (per_rank > reserve*pmy_mesh->nmb_maxperrank) {
+    pdriver->stop_requested = true;
+    pdriver->stop_reason = "amr_capacity predicted=" + std::to_string(predicted);
+    return;
+  }
+
   // Refine/derefine mesh and evolved data, set boundary conditions/timestep on new mesh
   if (nnew != 0 || ndel != 0) { // at least one (de)refinement flagged
     RedistAndRefineMeshBlocks(pin, nnew, ndel);

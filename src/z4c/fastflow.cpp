@@ -82,6 +82,13 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   }
 
   // Convergence parameters
+  production_quality = pin->GetOrAddBoolean("fastflow", "production_quality_" + n_str, false);
+  production_dt = pin->GetOrAddReal("fastflow", "search_dt_" + n_str, 0.0);
+  production_hrel = pin->GetOrAddReal("fastflow", "quality_hrel_" + n_str, 0.05);
+  production_cells = pin->GetOrAddReal("fastflow", "quality_cells_" + n_str, 4.0);
+  if (production_dt < 0 || production_hrel <= 0 || production_cells <= 0) {
+    Kokkos::abort("Invalid production AH settings");
+  }
   hmean_tol = pin->GetOrAddReal("fastflow", "hmean_tol_" + n_str, 100.);
   mass_tol = pin->GetOrAddReal("fastflow", "mass_tol_" + n_str, 1e-2);
 
@@ -441,8 +448,10 @@ void FastFlow::Find(int iter, Real time) {
     fprintf(pofile_verbose, "time=%.4f, cycle=%d\n", time, iter);
   }
 
+  production_last = time;
   InitialGuess();
   FastFlowLoop();
+  if (production_quality) {ProductionQuality(time);}
 
   if (ah_found) {
     SnapshotSurface();
@@ -464,6 +473,22 @@ void FastFlow::Find(int iter, Real time) {
 //! \fn void FastFlow::InitialGuess()
 //! \brief Initial guess for spectral coefs of horizon n
 void FastFlow::InitialGuess() {
+  if (production_quality && use_puncture < 0) {
+    const std::string id = std::to_string(nh);
+    if (pin->GetOrAddBoolean("fastflow", "warm_valid_" + id, false)) {
+      for (int l=0; l<lmax1; ++l) {
+        a0.h_view(l) = pin->GetReal("fastflow", "warm_a0_"+id+"_"+std::to_string(l));
+      }
+      for (int l=0; l<lmpoints; ++l) {
+        ac.h_view(l) = pin->GetReal("fastflow", "warm_ac_"+id+"_"+std::to_string(l));
+        as.h_view(l) = pin->GetReal("fastflow", "warm_as_"+id+"_"+std::to_string(l));
+      }
+      a0.template modify<HostMemSpace>(); a0.template sync<DevExeSpace>();
+      ac.template modify<HostMemSpace>(); ac.template sync<DevExeSpace>();
+      as.template modify<HostMemSpace>(); as.template sync<DevExeSpace>();
+      return;
+    }
+  }
   // Reset Coefficients to Zero
   Kokkos::deep_copy(a0.h_view, 0.0);
   Kokkos::deep_copy(ac.h_view, 0.0);
@@ -683,6 +708,7 @@ template void FastFlow::MetricInterp<4>();
 //! \brief Fast Flow loop for horizon n.
 void FastFlow::FastFlowLoop() {
   ah_found = false;
+  if (production_quality) {for (auto &v : ah_prop) {v = NAN;}}
 
   Real meanradius = a0.h_view(0) / Kokkos::sqrt(4.0*M_PI);
   Real mass = 0;
@@ -794,7 +820,9 @@ void FastFlow::FastFlowLoop() {
     }
 
     // End flow when mass difference is small
-    if (Kokkos::fabs(mass_prev-mass) < mass_tol) {
+    if (Kokkos::fabs(mass_prev-mass) < mass_tol &&
+        (!production_quality || (area > 0 && std::isfinite(hrms) && hrms >= 0 &&
+         std::sqrt(area/(4*M_PI)*hrms) <= production_hrel))) {
       ah_found = true;
       break;
     }
@@ -1674,4 +1702,72 @@ bool FastFlow::PuncAreClose() {
   Real const mass = PuncSumMasses();
   Real const maxdist = PuncMaxDistance();
   return (maxdist < merger_distance * mass);
+}
+
+
+bool FastFlow::ProductionSearchDue(Real time) const {
+  return time >= start_time && time <= stop_time &&
+      (production_dt <= 0 || production_last < 0 ||
+       std::floor((time+1e-10)/production_dt) >
+       std::floor((production_last+1e-10)/production_dt));
+}
+
+void FastFlow::ProductionQuality(Real time) {
+  const bool converged = ah_found;
+  const Real area = ah_prop[harea];
+  const Real hrel = std::sqrt(area/(4*M_PI)*ah_prop[hhrms]);
+  auto radii = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), rr);
+  Kokkos::deep_copy(havepoint.h_view, havepoint.d_view);
+  std::vector<int> present(nangles);
+  Real dx = 0.0, minr = std::numeric_limits<Real>::infinity();
+  bool positive = true;
+  for (int q=0; q<nangles; ++q) {
+    present[q] = havepoint.h_view(q);
+    minr = std::min(minr, radii(q));
+    positive = positive && std::isfinite(radii(q)) && radii(q)>0;
+    Real th=gl_grid->polar_pos.h_view(q,0), ph=gl_grid->polar_pos.h_view(q,1);
+    Real x=center[0]+radii(q)*std::sin(th)*std::cos(ph);
+    Real y=center[1]+radii(q)*std::sin(th)*std::sin(ph);
+    Real z=center[2]+radii(q)*std::cos(th);
+    for (int m=0; m<pmbp->nmb_thispack; ++m) {
+      const auto &sz=pmbp->pmb->mb_size.h_view(m);
+      if (x>=sz.x1min && x<sz.x1max && y>=sz.x2min && y<sz.x2max &&
+          z>=sz.x3min && z<sz.x3max) {
+        dx=std::max(dx, std::max(sz.dx1,std::max(sz.dx2,sz.dx3)));
+      }
+    }
+  }
+#if MPI_PARALLEL_ENABLED
+  MPI_Allreduce(MPI_IN_PLACE, present.data(), nangles, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &dx, 1, MPI_ATHENA_REAL, MPI_MAX, MPI_COMM_WORLD);
+#endif
+  const int missing=std::count(present.begin(),present.end(),0);
+  const bool good=converged && positive && missing==0 && std::isfinite(area) && area>0 &&
+      std::isfinite(hrel) && hrel<=production_hrel && dx>0 && minr/dx>=production_cells;
+  production_streak = good ? production_streak+1 : 0;
+  ah_found = good && production_streak>=3;
+  ah_surf_valid = false;  // production diagnostics never publish a stale surface
+  const std::string id=std::to_string(nh);
+  if (good) {
+    pin->SetBoolean("fastflow", "warm_valid_"+id, true);
+    for (int l=0; l<lmax1; ++l) {
+      pin->SetReal("fastflow", "warm_a0_"+id+"_"+std::to_string(l), a0.h_view(l));
+    }
+    for (int l=0; l<lmpoints; ++l) {
+      pin->SetReal("fastflow", "warm_ac_"+id+"_"+std::to_string(l), ac.h_view(l));
+      pin->SetReal("fastflow", "warm_as_"+id+"_"+std::to_string(l), as.h_view(l));
+    }
+  }
+  if (ioproc) {
+    const std::string name=pin->GetString("job","basename")+".ah_quality_"+id+".csv";
+    FILE *out=std::fopen(name.c_str(),"a");
+    if (!out) {Kokkos::abort("Cannot write AH quality history");}
+    if (std::ftell(out)==0) {
+      std::fprintf(out,"time,cycle,converged,accepted,streak,missing,area,mirr,mass,hrel,rmin,dx\n");
+    }
+    std::fprintf(out,"%.17g,%d,%d,%d,%d,%d,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g\n",
+      time,pmbp->pmesh->ncycle+1,converged,ah_found,production_streak,missing,
+      area,std::sqrt(area/(16*M_PI)),ah_prop[hmass],hrel,minr,dx);
+    std::fclose(out);
+  }
 }

@@ -44,8 +44,10 @@ void ParticleVTKOutput::LoadOutputData(Mesh *pm) {
   particles::Particles *pp = pm->pmb_pack->ppart;
   npout_thisrank = pm->nprtcl_thisrank;
   npout_total = pm->nprtcl_total;
-  Kokkos::realloc(outpart_rdata, pp->nrdata, npout_thisrank);
-  Kokkos::realloc(outpart_idata, pp->nidata, npout_thisrank);
+  // Particle storage retains capacity; copy matching full views, while writers
+  // below consume only npout_thisrank. Never mirror a strided active-column subview.
+  Kokkos::realloc(outpart_rdata, pp->nrdata, pp->prtcl_rdata.extent_int(1));
+  Kokkos::realloc(outpart_idata, pp->nidata, pp->prtcl_idata.extent_int(1));
 
   // Create mirror view on device of host view of output particle real/int data
   auto d_outpart_rdata = Kokkos::create_mirror_view(Kokkos::DefaultHostExecutionSpace(),

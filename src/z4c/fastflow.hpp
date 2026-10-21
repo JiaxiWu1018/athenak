@@ -45,6 +45,13 @@ class FastFlow {
   ~FastFlow();
 
   void Find(int iter, Real time); // main functionality for finding AH
+  bool ProductionSearchDue(Real time) const;
+  void ProductionQuality(Real time);
+  bool production_quality = false;
+  Real production_dt = 0.0, production_last = -1.0;
+  Real production_hrel = 0.05, production_cells = 4.0;
+  int production_streak = 0;
+  Real GetIrreducibleMass() const {return Kokkos::sqrt(ah_prop[harea]/(16*M_PI));}
   void Write(int iter, Real time); // function for result writing
   template <int NGHOST>
   void MetricDerivatives(Real time); // compute the metric derivatives

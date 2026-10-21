@@ -27,6 +27,7 @@
 #include "ion-neutral/ion-neutral.hpp"
 #include "radiation/radiation.hpp"
 #include "driver.hpp"
+#include <fstream>
 #include "gravity/gravity.hpp"
 #include "utils/utils.hpp"
 
@@ -525,6 +526,10 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
     (void) pz4c->ADMConstraints_(this, nexp_stages);
   }
 
+  if (pmesh->pgen->user_step_func != nullptr) {
+    pmesh->pgen->user_step_func(pin, pmesh, false);
+  }
+
   //---- Step 3.  Cycle through output Types and load data / write files.
   if (!res_flag) { // only write outputs at the beginning of the run
     for (auto &out : pout->pout_list) {
@@ -590,6 +595,21 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
     }
     while ((pmesh->time < tlim) && (pmesh->ncycle < nlim || nlim < 0) &&
            (elapsed_time < wall_time)) {
+      if (stop_requested) {break;}
+      const std::string stopfile = pin->GetOrAddString("time", "stop_file", "");
+      const int stop_every = pin->GetOrAddInteger("time", "stop_check_every", 16);
+      if (stop_every < 1) {Kokkos::abort("stop_check_every must be positive");}
+      if (!stopfile.empty() && pmesh->ncycle % stop_every == 0) {
+        int flag = 0;
+        if (global_variable::my_rank == 0) {
+          std::ifstream check(stopfile); flag = check.good();
+          if (flag) {std::getline(check, stop_reason);}
+        }
+#if MPI_PARALLEL_ENABLED
+        MPI_Bcast(&flag, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
+        if (flag) {stop_requested = true; break;}
+      }
       if (global_variable::my_rank == 0) {OutputCycleDiagnostics(pmesh);}
       if (wdflag) {WatchDog(0);}
 
@@ -654,6 +674,12 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
             static_cast<float>(pmesh->nmb_total);
       }
 
+      if (pmesh->pgen->user_step_func != nullptr) {
+        pmesh->pgen->user_step_func(pin, pmesh, false);
+      }
+      const bool force_checkpoint = pin->GetOrAddBoolean("time", "checkpoint_requested", false);
+      if (force_checkpoint) {pin->SetBoolean("time", "checkpoint_requested", false);}
+
       // Test for/make outputs
       for (auto &out : pout->pout_list) {
         // compare at floating point (32-bit) precision to reduce effect of round off
@@ -662,7 +688,8 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
         float tlim_32 = static_cast<float>(tlim);
         int &dcycle_ = out->out_params.dcycle;
 
-        if (((out->out_params.dt > 0.0) && ((time_32 >= next_32) && (time_32<tlim_32))) ||
+        if ((force_checkpoint && out->out_params.file_type == "rst") ||
+            ((out->out_params.dt > 0.0) && ((time_32 >= next_32) && (time_32<tlim_32))) ||
             ((dcycle_ > 0) && ((pmesh->ncycle)%(dcycle_) == 0)) ) {
           out->LoadOutputData(pmesh);
           out->WriteOutputFile(pmesh, pin);
@@ -671,6 +698,7 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
 
       // AMR
       if (pmesh->adaptive) {pmesh->pmr->AdaptiveMeshRefinement(this, pin);}
+      if (stop_requested) {break;}
       // compute new timestep AFTER all Meshblocks refined/derefined
       pmesh->NewTimeStep(tlim);
       RefreshSTSCycleState(pmesh);
@@ -690,6 +718,12 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
 //!  and printing diagnostic messages
 
 void Driver::Finalize(Mesh *pmesh, ParameterInput *pin, Outputs *pout) {
+  if (pmesh->pgen->user_step_func != nullptr) {
+    pmesh->pgen->user_step_func(pin, pmesh, true);
+  }
+  if (stop_requested && global_variable::my_rank == 0) {
+    std::cout << "CLEAN_STOP: " << stop_reason << std::endl;
+  }
   // cycle through output Types and load data / write files
   //  This design allows for asynchronous outputs to implemented in the future.
   for (auto &out : pout->pout_list) {

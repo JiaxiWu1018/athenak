@@ -73,6 +73,7 @@
 #include "coordinates/cell_locations.hpp"
 #include "z4c/z4c.hpp"
 #include "z4c/z4c_amr.hpp"
+#include "st_production.hpp"
 #include "particles/particles.hpp"
 #include "pgen/pgen.hpp"
 #include "pgen/particles/st_sample_input.hpp"
@@ -1494,6 +1495,9 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   // The hook is inert on uniform/static meshes. Adaptive Session-02 decks use the
   // standard Z4c chi/radius criteria, following the proven OS particle-AMR pattern.
   user_ref_func = STRefinementCondition;
+  if (pin->GetOrAddBoolean("problem", "production_diagnostics", false)) {
+    user_step_func = STProductionStep;
+  }
   if (user_hist) {user_hist_func = STSamplingHistory;}
   auto &indcs = pmy_mesh_->mb_indcs;
 

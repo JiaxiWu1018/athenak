@@ -1,0 +1,157 @@
+<comment>
+problem = Reconstruction Session5 sampling comparison
+note = Fixed N and mesh; live Z4c; radial measure and sampler explicit below.
+
+<job>
+basename = proper_stratified_s1
+
+<mesh>
+nghost = 4
+nx1 = 128
+x1min = -128
+x1max = 128
+ix1_bc = outflow
+ox1_bc = outflow
+nx2 = 128
+x2min = -128
+x2max = 128
+ix2_bc = outflow
+ox2_bc = outflow
+nx3 = 128
+x3min = -128
+x3max = 128
+ix3_bc = outflow
+ox3_bc = outflow
+
+<meshblock>
+nx1 = 32
+nx2 = 32
+nx3 = 32
+
+<mesh_refinement>
+refinement = static
+
+<refined_region1>
+level = 1
+x1min = -64
+x1max = 64
+x2min = -64
+x2max = 64
+x3min = -64
+x3max = 64
+
+<refined_region2>
+level = 2
+x1min = -32
+x1max = 32
+x2min = -32
+x2max = 32
+x3min = -32
+x3max = 32
+
+<time>
+evaluate_initial_constraints = true
+evolution = dynamic
+integrator = rk4
+cfl_number = 0.4
+nlim = 100000000
+tlim = 300
+ndiag = 10
+
+<z4c>
+use_z4c = true
+lapse_harmonic = 0.0
+lapse_oplog = 2.0
+shift_driver = legacy
+shift_Gamma = 1.0
+shift_H = 0.0
+shift_alpha2Gamma = 0.0
+shift_eta = 2.0
+diss = 0.1
+chi_div_floor = 0.00001
+damp_kappa1 = 0.02
+damp_kappa2 = 0.0
+
+<particles>
+particle_type = dust
+pusher = gr_boris
+init = pgen
+feedback = true
+mass = 1.0
+debug = 1
+destroy_log = true
+excise_radius = 0.0
+excise_lapse = 0.0
+excise_ah = false
+cross_level_deposit = conservative
+
+<fastflow>
+num_horizons = 0
+
+<problem>
+cluster_n = 1500000
+cluster_yc = 0.819
+cluster_mass = 1.0
+cluster_seed = 1
+cluster_profile_dx = 0.0001
+cluster_lambda_tan = 0.0
+cluster_eps_out = 0.0
+cluster_radial_mode_u = 0.0
+cluster_scpd_eps = 0.0
+cluster_scpd_target_yc = 0.0
+cluster_solve_momentum_constraint = false
+cluster_solve_hamiltonian_constraint = false
+cluster_t0_dump = initial_particles.bin
+
+cluster_sampling = stratified
+cluster_radial_measure = proper
+cluster_velocity_sampling = stratified
+cluster_sample_file = /work1/eliasmost/jiaxiwu/st_reconstruction_s05_20261014/samples/proper_stratified_s1.bin
+user_hist = true
+
+<output1>
+file_type = hst
+dt = 2.0
+data_format = %23.15e
+
+<output2>
+file_type = pvtk
+dt = 2.0
+variable = prtcl_all
+
+<output3>
+file_type = bin
+dt = 2.0
+variable = z4c
+slice_x3 = 0.0
+id = z4c2d
+
+<output4>
+file_type = bin
+dt = 2.0
+variable = tmunu
+slice_x3 = 0.0
+id = tme2d
+
+<output5>
+file_type = bin
+dt = 2.0
+variable = con
+slice_x3 = 0.0
+id = con2d
+
+<output6>
+file_type = bin
+dt = 100.0
+variable = tmunu
+id = tme3d
+
+<output7>
+file_type = bin
+dt = 100.0
+variable = con
+id = con3d
+
+<output8>
+file_type = rst
+dt = 100.0
