@@ -30,7 +30,7 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 # Native source is frozen; workflow-only commits may be added separately.
 test -z "$(git -C "$repo" diff 12633257d601d53c8af7a35d77519d681c900f75 -- src CMakeLists.txt kokkos)"
 cmake -S "$repo" -B "$ROOT/build" -DKokkos_ENABLE_CUDA=On -DKokkos_ARCH_AMPERE80=On  -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER="$repo/kokkos/bin/nvcc_wrapper"  -DAthena_ENABLE_MPI=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-O3 -DCMAKE_C_FLAGS=-O3  -DPROBLEM=particles/relativistic_cluster > "$record/configure.log" 2>&1
-cmake --build "$ROOT/build" -j2 > "$record/build.log" 2>&1
+cmake --build "$ROOT/build" -j"${SLURM_CPUS_PER_TASK:-2}" > "$record/build.log" 2>&1
 cp -p "$ROOT/build/src/athena" "$ROOT/protected/athena"
 cp "$ROOT/build/CMakeCache.txt" "$record/CMakeCache.txt"
 sha256sum "$ROOT/protected/athena" > "$record/executable.sha256"
