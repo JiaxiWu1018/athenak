@@ -50,6 +50,15 @@ class ProductChecks(unittest.TestCase):
                 subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(),'-v','error','-i',str(path),'-f','null','-'],check=True)
             for row in json.loads((out/'manifest.json').read_text()):
                 self.assertEqual(products.sha256(out/row['path']),row['sha256'])
+    def test_empty_component_is_zero_but_missing_AH_is_unknown(self):
+        import pandas as pd
+        status=pd.DataFrame(dict(cycle=[1],time=[2.],valid_bits=[0],ever_bits=[1],strict_common=[0]))
+        sparse=pd.DataFrame([dict(cycle=1,time=2.,component=0,mask=0,rest_mass=1.,
+                                  En_trilinear=0.,Ecoord_trilinear=0.,invalid_metric_mass=1.)])
+        ledger=products.complete_ledgers(sparse,status).set_index(['component','mask'])
+        self.assertEqual(ledger.loc[(1,0),'rest_mass'],0.)
+        self.assertTrue(np.isnan(ledger.loc[(1,1),'rest_mass']))
+        self.assertTrue(np.isnan(ledger.loc[(0,0),'En_trilinear']))
     def test_native_harmonic_convention(self):
         theta=np.linspace(0,np.pi,41);phi=np.linspace(-np.pi,np.pi,41)
         np.testing.assert_allclose(products.harmonic(0,0,theta,phi),1/np.sqrt(4*np.pi),atol=1e-14)

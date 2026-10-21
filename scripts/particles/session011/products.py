@@ -123,6 +123,25 @@ def savefig(fig,path):
     fig.savefig(path.with_suffix('.png'),dpi=200,bbox_inches='tight')
     fig.savefig(path.with_suffix('.pdf'),bbox_inches='tight');plt.close(fig)
 
+def complete_ledgers(sums,status):
+    # Native sparse histograms omit empty bins. A vanished component is zero,
+    # while an unavailable horizon mask remains unknown.
+    index=pd.MultiIndex.from_product([status.cycle,range(3),range(5)],names=['cycle','component','mask'])
+    sums=sums.set_index(['cycle','component','mask']).reindex(index).reset_index()
+    missing=sums.time.isna();lookup=status.set_index('cycle')
+    sums['time']=sums.cycle.map(lookup.time)
+    valid=sums.cycle.map(lookup.valid_bits).to_numpy(dtype=int)
+    ever=sums.cycle.map(lookup.ever_bits).to_numpy(dtype=int)
+    common=sums.cycle.map(lookup.strict_common).to_numpy(dtype=bool)
+    mask=sums['mask'].to_numpy(dtype=int);required=np.where(common,4,7)
+    known=(mask==0)|((mask==1)&((ever&required&~valid)==0))
+    known|=(mask>=2)&((valid&(1<<np.maximum(mask-2,0)))!=0)
+    columns=[c for c in sums if c not in ('cycle','time','component','mask')]
+    sums.loc[missing&known,columns]=0.
+    if 'invalid_metric_mass' in sums:
+        sums.loc[sums.invalid_metric_mass>0,['En_trilinear','Ecoord_trilinear']]=np.nan
+    return sums
+
 def reduce(root,out):
     runs=sorted(p for p in (root/'runs').glob('segment_*') if (p/'checkpoint_manifest.json').exists())
     if not runs:raise RuntimeError('no verified production segment')
@@ -190,6 +209,7 @@ def reduce(root,out):
     axs[0].set_ylabel('Separation / Mref');axs[1].plot(orbit.time,orbit.Omega);axs[1].set_ylabel('Omega Mref')
     axs[2].plot(orbit.time,orbit.radial_over_tangential);axs[2].set_ylabel('|d_dot| / |d Omega|');axs[2].set_xlabel('State time / Mref');savefig(fig,out/'orbit_diagnostics')
     sums=particles.groupby(['cycle','time','component','mask'],dropna=False).sum(numeric_only=True,min_count=1).reset_index()
+    sums=complete_ledgers(sums,status)
     sums.to_csv(out/'component_ledgers.csv',index=False)
     norms=grid[grid['mask']==1].groupby(['cycle','time']).sum(numeric_only=True,min_count=1).reset_index()
     norms['H_RMS']=np.sqrt(norms.H2_volume/norms.proper_volume);norms['M_RMS']=np.sqrt(norms.M2_volume/norms.proper_volume)
