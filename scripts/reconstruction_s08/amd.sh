@@ -51,5 +51,19 @@ PYCODE
   shift
   python3 "$ROOT/scripts/run_segment.py" "$@"
  ;;
+ postprocess)
+  if [ ! -f "$ROOT/evidence/PLOTTING_RUNTIME.json" ]; then
+    python3 -m pip install --target "$ROOT/dependencies/site" numpy==1.26.4 matplotlib==3.9.4 imageio-ffmpeg==0.6.0 pypdfium2==4.30.0 > "$record/pip.log" 2>&1
+    python3 - <<'PYCODE'
+from common import *
+import numpy,matplotlib,imageio_ffmpeg,pypdfium2
+atomic(ROOT/'evidence/PLOTTING_RUNTIME.json',dict(job=job(),utc=now(),numpy=numpy.__version__,matplotlib=matplotlib.__version__,imageio_ffmpeg=imageio_ffmpeg.__version__,ffmpeg=imageio_ffmpeg.get_ffmpeg_exe()))
+cmd(['python3','-m','pip','freeze','--path',ROOT/'dependencies/site'],stdout=(ROOT/'evidence/plotting_requirements.txt').open('w'))
+PYCODE
+  fi
+  for run_case in yc0283 yc0500 yc0605 yc0819 yc0900; do python3 "$ROOT/scripts/reduce.py" "$run_case"; done
+  python3 "$ROOT/scripts/plots.py"
+  python3 "$ROOT/scripts/movies.py"
+ ;;
  *) echo "Unimplemented job action $1" >&2; exit 2 ;;
 esac

@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -J st_s08_stage
-#SBATCH -p preempt
+#SBATCH -p debug
 #SBATCH -N 1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=2

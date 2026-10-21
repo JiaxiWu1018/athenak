@@ -12,7 +12,9 @@ def main():
     assert not subprocess.check_output(['git','-C',str(repo),'status','--porcelain'],text=True)
     for name,source,commit in [('source',repo,pin['head']),('kokkos',repo/'kokkos',pin['kokkos'])]:
         cmd(['git','-C',source,'archive','--format=tar','--output',LOCAL/f'{name}.tar',commit])
-    code='from pathlib import Path;r=Path('+repr(str(AMD))+');assert not r.exists();r.mkdir();[(r/n).mkdir(parents=True) for n in ["src/athenak/kokkos","logs","evidence/jobs","inputs","samples"]]'
+    # A preempted staging allocation can leave complete archives but no submitted job.
+    assert not (LOCAL/'evidence/BUILD_SUBMITTED.json').exists()
+    code='from pathlib import Path;r=Path('+repr(str(AMD))+');assert not (r/"bootstrap.sbatch").exists();r.mkdir(exist_ok=True);[(r/n).mkdir(parents=True,exist_ok=True) for n in ["src/athenak/kokkos","logs","evidence/jobs","inputs","samples"]]'
     remote(['python3','-c',code])
     cmd(['rsync','-a',LOCAL/'source.tar',LOCAL/'kokkos.tar','hpcfund.amd.com:'+str(AMD)+'/'])
     cmd(['rsync','-a',LOCAL/'evidence/SOURCE_PIN.json','hpcfund.amd.com:'+str(AMD/'evidence')+'/'])
