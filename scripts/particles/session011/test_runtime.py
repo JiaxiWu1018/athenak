@@ -25,6 +25,27 @@ class RuntimeSafety(unittest.TestCase):
         data+=bytes(25*2**3*8)+struct.pack('<4d',count,0,0,0)+bytes(count*80)
         path.write_bytes(data[:-1] if truncated else data)
         return path
+    def test_endpoint_jobs_are_idempotent_and_analysis_only(self):
+        from endpoint import submit_endpoint
+        self.state('ENDPOINT_75.json',dict(time=75))
+        self.state('submission.json',dict(nodes=6,capacity=256))
+        with patch('endpoint.subprocess.check_output',side_effect=['100\n','101\n']) as call:
+            submit_endpoint(self.root);submit_endpoint(self.root)
+            self.assertEqual(call.call_count,2)
+            self.assertIn('--nodes=6',call.call_args_list[0].args[0])
+            self.assertIn('--dependency=afterany:100',call.call_args_list[1].args[0])
+            self.assertTrue(call.call_args_list[0].args[0][-1].endswith('amd_saved_ah.sbatch'))
+            self.assertTrue(call.call_args_list[1].args[0][-1].endswith('amd_products.sbatch'))
+    def test_endpoint_rejects_early_or_ambiguous_submission(self):
+        from endpoint import submit_endpoint
+        self.state('ENDPOINT_75.json',dict(time=74))
+        with self.assertRaises(RuntimeError):submit_endpoint(self.root)
+        self.state('ENDPOINT_75.json',dict(time=75))
+        self.state('submission.json',dict(nodes=6,capacity=256))
+        self.state('endpoint_ah_submission.json',dict(status='prepared'))
+        with patch('endpoint.subprocess.check_output') as call:
+            with self.assertRaises(RuntimeError):submit_endpoint(self.root)
+            call.assert_not_called()
     def test_checkpoint_schema(self):
         r=runtime.checkpoint(self.fixture(),False,5,1,2)
         self.assertEqual(r['particles'],5);self.assertEqual(r['cycle'],200)

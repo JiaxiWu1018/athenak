@@ -178,6 +178,7 @@ def reduce(root,out):
     fig,axs=plt.subplots(2,1,figsize=(8,6),sharex=True)
     for h,label in ((0,'BH 1'),(1,'BH 2'),(2,'Common')):
         a=accepted[accepted.horizon==h]
+        if h==2:a=a[a.state_time>=common] if common is not None else a.iloc[:0]
         color=COLORS[h+1] if h<2 else 'black'
         # Scatter does not conceal rejected-search gaps with connecting lines.
         axs[0].plot(a.state_time,a.mass,'.',ms=1,color=color,label=label)
@@ -192,6 +193,11 @@ def reduce(root,out):
     sums.to_csv(out/'component_ledgers.csv',index=False)
     norms=grid[grid['mask']==1].groupby(['cycle','time']).sum(numeric_only=True,min_count=1).reset_index()
     norms['H_RMS']=np.sqrt(norms.H2_volume/norms.proper_volume);norms['M_RMS']=np.sqrt(norms.M2_volume/norms.proper_volume)
+    for cut,last_shell in ((8,64),(32,88)):
+        inner=grid[(grid['mask']==1)&(grid.shell<last_shell)].groupby(['cycle','time']).sum(numeric_only=True,min_count=1).reset_index()
+        inner[f'H_RMS_R{cut}']=np.sqrt(inner.H2_volume/inner.proper_volume)
+        inner[f'M_RMS_R{cut}']=np.sqrt(inner.M2_volume/inner.proper_volume)
+        norms=norms.merge(inner[['cycle',f'H_RMS_R{cut}',f'M_RMS_R{cut}']],on='cycle',how='left')
     norms.to_csv(out/'exterior_constraints.csv',index=False)
     fig,axs=plt.subplots(2,1,figsize=(8,6),sharex=True)
     for c,label in enumerate(('Envelope','Clump 1','Clump 2')):
@@ -269,7 +275,7 @@ def render(runs,events,out,common,make_movies):
             manifest.append(dict(cycle=item['cycle'],source=item['path'],hold_seconds=duration,**details))
         concat.append(f"file '{path.resolve()}'")
         listing=directory/'concat.txt';listing.write_text('\n'.join(concat)+'\n')
-        subprocess.run([ffmpeg,'-nostdin','-v','error','-f','concat','-safe','0','-i',str(listing),'-vf','fps=24','-c:v','libx264','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',str(out/f'{name}_1080p.mp4')],check=True)
+        subprocess.run([ffmpeg,'-nostdin','-v','error','-f','concat','-safe','0','-i',str(listing),'-vf','fps=24','-c:v','libx264','-threads','8','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',str(out/f'{name}_1080p.mp4')],check=True)
         (out/f'{name}_movie_manifest.json').write_text(json.dumps(dict(physical_Mref_per_second=1,camera=dict(elev=22,azim=-58,roll=0),frames=manifest),indent=2)+'\n')
 
 def ffi(time,psi,f0,taper=True):
@@ -357,9 +363,13 @@ def report(root,out,metrics,wave):
               frozen_env_omega2_proxy=float(initial[within].sum()/radius0**3),measured_omega2=row.Omega**2))
     pd.DataFrame(model).to_csv(out/'envelope_support_proxy.csv',index=False)
     # Record actual allocations; scheduler elapsed time includes build/check/final I/O.
-    jobs=[]
+    jobs=[];node_hours=None
     for path in sorted((root/'evidence').glob('*/RESULT.json')):
         jobs.append(json.loads(path.read_text()).get('job_id'))
+    for path in (root/'evidence').glob('*.slurm.log'):
+        match=re.search(r'_(\d+)\.slurm\.log$',path.name)
+        if match:jobs.append(match[1])
+    jobs=[j for j in jobs if j]
     for run in sorted((root/'runs').glob('segment_*')):
         text=(run/'provenance.txt').read_text() if (run/'provenance.txt').exists() else ''
         match=re.search(r'JobId=(\d+)',text)
@@ -368,12 +378,46 @@ def report(root,out,metrics,wave):
         scheduler=subprocess.run(['sacct','-X','-P','-n','-j',','.join(sorted(set(jobs))),
                                   '--format=JobID,State,ElapsedRaw,AllocNodes,AllocCPUS,MaxRSS'],text=True,capture_output=True)
         (out/'scheduler_usage.txt').write_text(scheduler.stdout+scheduler.stderr)
+        if scheduler.returncode==0:
+            node_hours=0.
+            for line in scheduler.stdout.splitlines():
+                fields=line.split('|')
+                if len(fields)>=4 and fields[0].isdigit():node_hours+=float(fields[2])*int(fields[3])/3600
+    segment_rates=[];previous_time=0.;peak_gpu=0.;max_storage=0
+    for run in sorted((root/'runs').glob('segment_*')):
+        if (run/'checkpoint_manifest.json').exists():
+            end=max(r['time'] for r in json.loads((run/'checkpoint_manifest.json').read_text()))
+            if all((run/f).exists() for f in ('START_EPOCH','END_EPOCH','provenance.txt')):
+                elapsed=float((run/'END_EPOCH').read_text())-float((run/'START_EPOCH').read_text())
+                match=re.search(r'NumNodes=(\d+)',(run/'provenance.txt').read_text())
+                if match and end>previous_time:
+                    segment_rates.append(dict(segment=run.name,delta_time=end-previous_time,
+                        node_hours=elapsed*int(match[1])/3600,node_hours_per_Mref=elapsed*int(match[1])/3600/(end-previous_time)))
+            previous_time=end
+        for path in run.glob('telemetry_*.jsonl'):
+            for line in path.open():
+                row=json.loads(line)
+                peak_gpu=max([peak_gpu]+[d['used']/d['total'] for d in row['devices']])
+        if (run/'storage.jsonl').exists():
+            for line in (run/'storage.jsonl').open():max_storage=max(max_storage,json.loads(line)['bytes'])
+    recent=[r['node_hours_per_Mref'] for r in segment_rates[-3:]]
+    forecast=dict(central_node_hours_75_to_150=75*float(np.median(recent)) if recent else None,
+                  sensitivity_range=[75*.5*min(recent),75*2*max(recent)] if recent else None,
+                  method='last three application segments, half to twice measured rates; excludes unknown post75 AMR/physics and queue time')
+    resource=dict(allocation_node_hours=node_hours,application_segments=segment_rates,
+                  peak_gpu_fraction=peak_gpu,whole_user_peak_bytes=max_storage,forecast=forecast,
+                  cost_limit='No independent overhead benchmark; application time includes diagnostics and native output. Scheduler rows include allocation finalization.')
+    (out/'resource_summary.json').write_text(json.dumps(resource,indent=2)+'\n')
+    saved_check=root/'control/SAVED_AH_CHECKS.json'
+    ah_resolution=json.loads(saved_check.read_text()) if saved_check.exists() else dict(status='unavailable; inspect endpoint AH job log')
+    (out/'saved_AH_resolution_checks.json').write_text(json.dumps(ah_resolution,indent=2)+'\n')
     inventory=[dict(path=str(p),bytes=p.stat().st_size) for p in sorted((root/'runs').rglob('*')) if p.is_file()]
     raw_bytes=sum(r['bytes'] for r in inventory)
     (out/'raw_inventory.json').write_text(json.dumps(inventory,indent=2)+'\n')
     latest_audit=sorted((root/'runs').glob('segment_*/population_audit.json'))[-1]
     audit=json.loads(latest_audit.read_text())
     accepted=pd.read_csv(out/'accepted_horizons.csv')
+    quantitative=diagnose(root,out,metrics,accepted,orbit)
     last=[]
     for h in range(3):
         a=accepted[accepted.horizon==h]
@@ -386,6 +430,12 @@ First individual acceptance: {metrics['first_individual_times']}.
 Strict common enclosure: {metrics['strict_common_time']}.
 Observed turns after both individual horizons, excluding gaps: {metrics['post_individual_turns']}.
 Observed valid orbit intervals: {len(metrics['valid_orbit_intervals'])}.
+Median pre-common |d_dot|/|d Omega|: {quantitative['median_radial_ratio']}.
+Median post-formation mass-growth / orbital-period ratios: {quantitative['mass_growth_to_orbit']}.
+Accepted-search coverage during each horizon's relevant interval: {quantitative['coverage']}.
+Actual AMD node-hours from available allocation accounting: {node_hours}.
+Peak measured GPU fraction: {peak_gpu:.4f}; whole-user peak: {max_storage/1024**3:.3f} GiB.
+Provisional additional75Mref application cost: {forecast['central_node_hours_75_to_150']} node-hours; sensitivity range {forecast['sensitivity_range']}.
 
 {chr(10).join(last)}
 
@@ -422,6 +472,13 @@ particle partition/rest-weight closure, restart checks and all finder reasons
 are retained. This supports diagnostics and failure detection, not a convergence
 claim or an isolation of the numerical contribution to the short orbit.
 
+The binned timescales are in `timescales.csv`; entering rest mass/energy/origin-J
+and surface-sweep contributions are in `crossing_fluxes.csv`. A ratio near or
+above one in |d_dot|/|d Omega| indicates substantial radial motion during the
+observed orbit. Mass-growth times shorter than an orbital period indicate that a
+fixed-mass binary approximation is changing rapidly. These observations identify
+relevant processes; one trajectory cannot assign unique causal percentages to A–E.
+
 ## Resources, storage and continuation
 
 Actual scheduler rows are in `scheduler_usage.txt`; include failed checks and all
@@ -433,7 +490,16 @@ states remain on AMD. Only explicitly authorized redundant recoveries are rotate
 
 The endpoint particle audit reports exact alive/removed ID partition and per-tag
 rest-weight closure: {audit['exact_partition']}. No raw cleanup is requested by
-this report. Review artifacts are checksum-exported separately to Perseus.
+this report. The product manifest supports the one-way checksum-verified transfer to Perseus;
+transfer completion is recorded separately.
+
+Saved-state angular checks at ntheta10 and14 (same lmax6) are recorded in
+`saved_AH_resolution_checks.json`, including failures and non-mutation verdicts.
+They test finder quadrature sensitivity on the same geometry; they do not test
+evolution-grid convergence. `resource_summary.json` records per-segment rates and
+the 75-to150 extrapolation; merger and AMR changes can invalidate that estimate.
+Diagnostic and I/O overhead are included in application timing, not isolated by
+an additional trajectory.
 
 The t75 endpoint is a stop for scientific/resource review. Extension to150 is not
 submitted. The historical R40 burst near115 lies beyond this endpoint; any strain
@@ -442,6 +508,94 @@ or validated ringdown result. Cutoffs, taper, gaps and differentiation checks ar
 recorded in `wave_method.json`.
 '''
     (out/'REPORT.md').write_text(text)
+
+def diagnose(root,out,metrics,accepted,orbit):
+    """Binned rates and transfer evidence, preserving unknown/missing intervals."""
+    def median(values):
+        values=np.asarray(values,dtype=float);values=values[np.isfinite(values)]
+        return float(np.median(values)) if len(values) else None
+    orbital=orbit.copy();orbital['bin']=np.floor(orbital.time/.25).astype(int)
+    scales=orbital.groupby('bin').mean(numeric_only=True).reset_index()
+    scales['orbital_period']=2*np.pi/np.abs(scales.Omega)
+    if len(scales)>2:
+        rate=np.gradient(scales.separation,scales.time)
+        scales['d_over_inward_ddot']=np.where(rate<0,scales.separation/-rate,np.nan)
+    ratios={};coverage={}
+    common=metrics['strict_common_time']
+    common_cycle=int(accepted[(accepted.horizon==2)&(accepted.state_time>=common)].state_cycle.min()) if common is not None else metrics['cycle']+1
+    for h in range(3):
+        a=accepted[accepted.horizon==h].copy()
+        if a.empty:
+            coverage[str(h)]=None;ratios[str(h)]=None;continue
+        begin=int(a.state_cycle.min()) if h<2 else common_cycle
+        end=common_cycle-1 if h<2 else metrics['cycle']
+        coverage[str(h)]=float(a.state_cycle.between(begin,end).sum()/(end-begin+1)) if end>=begin else None
+        a['bin']=np.floor(a.state_time/.25).astype(int)
+        b=a.groupby('bin').agg(time=('state_time','mean'),mass=('mass','mean')).reset_index()
+        if len(b)>2:
+            rate=np.gradient(b.mass,b.time)
+            gap=np.r_[True,np.diff(b['bin'])==1]&np.r_[np.diff(b['bin'])==1,True]
+            tau=np.where((rate>0)&gap,b.mass/rate,np.nan)
+            b[f'tau_M_H{h}']=tau
+            scales=scales.merge(b[['bin',f'tau_M_H{h}']],on='bin',how='left')
+            use=np.isfinite(scales.Omega)
+            ratios[str(h)]=median((scales[f'tau_M_H{h}']/scales.orbital_period)[use])
+        else:ratios[str(h)]=None
+    # Coordinate orbital-angular-momentum proxy from measured AH centers and P.
+    left=accepted[accepted.horizon==0];right=accepted[accepted.horizon==1]
+    pair=left.merge(right,on='state_cycle',suffixes=('_0','_1'))
+    if len(pair):
+        pair=pair[pair.state_time_0<common] if common is not None else pair
+        pair['Lz_center_P']=pair.x_0*pair.Py_0-pair.y_0*pair.Px_0+pair.x_1*pair.Py_1-pair.y_1*pair.Px_1
+        pair['bin']=np.floor(pair.state_time_0/.25).astype(int)
+        b=pair.groupby('bin').agg(time=('state_time_0','mean'),Lz_center_P=('Lz_center_P','mean')).reset_index()
+        if len(b)>2:
+            rate=np.gradient(b.Lz_center_P,b.time)
+            gap=np.r_[True,np.diff(b['bin'])==1]&np.r_[np.diff(b['bin'])==1,True]
+            b['tau_L_center_P']=np.where((abs(rate)>1e-15)&gap,abs(b.Lz_center_P/rate),np.nan)
+            scales=scales.merge(b[['bin','Lz_center_P','tau_L_center_P']],on='bin',how='left')
+    scales.to_csv(out/'timescales.csv',index=False)
+    accum=[]
+    for path in sorted((root/'runs').glob('segment_*/*.gi_crossings.rank*.csv')):
+        for data in pd.read_csv(path,chunksize=200_000):
+            data['bin']=np.floor(data.time/.25).astype(int)
+            regular=data.kind==1
+            adv=np.where(regular,data.advected_inside-data.old_inside,0)
+            sweep=np.where(regular,data.new_inside-data.advected_inside,0)
+            data['advected_rest_mass']=adv*data.mass
+            data['swept_rest_mass']=sweep*data.mass
+            data['advected_Jz']=adv*data.old_Jz_origin
+            data['swept_Jz']=sweep*data.old_Jz_origin
+            data['enclosure_mass']=np.where(~regular,data.mass,0)
+            data['advected_En']=adv*data.En_trilinear
+            data['advected_Ecoord']=adv*data.Ecoord_trilinear
+            data['invalid_metric_mass']=np.where(data.metric_valid==0,data.mass,0)
+            fields=['advected_rest_mass','swept_rest_mass','advected_Jz','swept_Jz','enclosure_mass','advected_En','advected_Ecoord','invalid_metric_mass']
+            accum.append(data.groupby(['bin','horizon','component','kind'])[fields].sum().reset_index())
+    if accum:
+        flux=pd.concat(accum).groupby(['bin','horizon','component','kind']).sum().reset_index()
+        flux.loc[flux.invalid_metric_mass>0,['advected_En','advected_Ecoord']]=np.nan
+        flux['time_bin_center']=(flux['bin']+.5)*.25
+        flux.to_csv(out/'crossing_fluxes.csv',index=False)
+    else:pd.DataFrame(columns=['bin','horizon','component','kind']).to_csv(out/'crossing_fluxes.csv',index=False)
+    # Exact deletion state, independent of AH availability or movie membership.
+    removed=[]
+    for path in sorted((root/'runs').glob('segment_*/*.prtcl_destroy.csv')):
+        for d in pd.read_csv(path,chunksize=200_000):
+            d['bin']=np.floor(d.time/.25).astype(int)
+            d['Jz']=d.mass*(d.x1*d.u2_cov-d.x2*d.u1_cov)
+            d['invalid_metric_mass']=np.where(d.metric_valid==0,d.mass,0)
+            d['count']=1
+            removed.append(d.groupby(['bin','component','reason'])[['count','mass','Jz','En_trilinear','Ecoord_trilinear','invalid_metric_mass']].sum().reset_index())
+    if removed:
+        d=pd.concat(removed).groupby(['bin','component','reason']).sum().reset_index()
+        d.loc[d.invalid_metric_mass>0,['En_trilinear','Ecoord_trilinear']]=np.nan
+        d.to_csv(out/'removal_ledgers.csv',index=False)
+    else:pd.DataFrame(columns=['bin','component','reason','count','mass','Jz','En_trilinear','Ecoord_trilinear','invalid_metric_mass']).to_csv(out/'removal_ledgers.csv',index=False)
+    result=dict(median_radial_ratio=median(orbit.radial_over_tangential),mass_growth_to_orbit=ratios,coverage=coverage,
+                rate_bin_width=.25,angular_momentum_proxy='sum (AH_center cross measured_AH_P)_z; coordinate dependent')
+    (out/'quantitative_evidence.json').write_text(json.dumps(result,indent=2)+'\n')
+    return result
 
 def main():
     require_compute()

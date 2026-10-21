@@ -25,6 +25,8 @@ gate=json.loads((root/'control/VALIDATION_PASS.json').read_text())
 exe=Path(gate['executable'])
 assert hashlib.sha256(exe.read_bytes()).hexdigest()==gate['executable_sha256']
 assert hashlib.sha256((run/'canonical.athinput').read_bytes()).hexdigest()==gate['input_sha256']
+for relative,expected in gate['runtime_scripts'].items():
+    assert hashlib.sha256((root/relative).read_bytes()).hexdigest()==expected,relative
 (run/'executable_path').write_text(str(exe)+'\n')
 (run/'validation_gate.json').write_text(json.dumps(gate,indent=2)+'\n')
 PY

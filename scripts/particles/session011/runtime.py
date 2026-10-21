@@ -133,9 +133,11 @@ def request_stop(run, reason, kind):
 def watch(root, run, nodes):
     require_compute()
     started=time.time(); last_du=0; usage=None; usage_time=0
-    previous_gpu={}; reserve=2400; horizon_gaps={}
+    previous_gpu={}; reserve=2400; horizon_gaps={}; active_started=None
     while True:
         now=time.time()
+        status=last_csv(run/'s11_amd.gi_status.csv')
+        if status and int(status['cycle'])>0 and active_started is None:active_started=now
         telemetry_files=list(run.glob('telemetry_*.json'))
         healthy=0
         for path in telemetry_files:
@@ -157,7 +159,8 @@ def watch(root, run, nodes):
                     if fraction>=.80:
                         with (run/'warnings.jsonl').open('a') as f:
                             f.write(json.dumps(dict(epoch=now,gpu_fraction=fraction,device=key))+'\n')
-                    if fraction>=.83 or fraction+growth*reserve>=.85:
+                    project_growth=active_started is not None and now-active_started>60 and fraction>=.78
+                    if fraction>=.83 or (project_growth and fraction+growth*reserve>=.85):
                         request_stop(run,'GPU memory pressure before 85%','capacity')
                     previous_gpu[key]=(now,fraction)
             except (OSError,ValueError,KeyError):
@@ -252,6 +255,8 @@ def finish(root,run,rc):
     atomic(history_path,history)
     if latest['time']>=END-1e-10:
         atomic(root/'control/ENDPOINT_75.json',latest)
+        from endpoint import submit_endpoint
+        submit_endpoint(root)
         return False
     stop=run/'STOP_REASON.json'
     if stop.exists():
@@ -270,6 +275,7 @@ def audit_population(root,run,candidates,latest):
     require_compute()
     import numpy as np
     def table(row):
+        if row['particles']==0:return np.empty((10,0))
         return np.memmap(row['path'],dtype='<f8',mode='r',offset=row['particle_offset'],
                          shape=(10,row['particles']))
     def identities(row):

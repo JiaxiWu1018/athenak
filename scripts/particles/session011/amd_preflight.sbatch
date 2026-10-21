@@ -23,7 +23,7 @@ PY
 du -sb /work1/eliasmost/jiaxiwu > "$OUT/whole_user_bytes.txt"
 df -B1 /work1 > "$OUT/filesystem.txt"
 python3 - "$ROOT" "$OUT" <<'PY'
-import hashlib,json,sys
+import hashlib,json,sys,os,subprocess
 from pathlib import Path
 root,out=map(Path,sys.argv[1:])
 used=int((out/'whole_user_bytes.txt').read_text().split()[0])
@@ -36,6 +36,11 @@ assert float(p['time']['tlim'])==75 and p['time']['integrator']=='rk4'
 assert float(p['time']['cfl_number'])==.4 and p['mesh_refinement']['max_nmb_per_rank']=='256'
 assert p['particles']['excise_ah']=='false' and float(p['particles']['excise_lapse'])==.05
 assert p['problem']['gi_seed']=='4001'
-result=dict(status='pass',whole_user_bytes=used,input_sha256=hashlib.sha256(inputs.read_bytes()).hexdigest())
+source=subprocess.check_output(['git','-C',str(root/'code'),'rev-parse','HEAD'],text=True).strip()
+scripts={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((root/'scripts').iterdir()) if p.is_file()}
+result=dict(status='pass',job_id=os.environ['SLURM_JOB_ID'],source=source,runtime_scripts=scripts,whole_user_bytes=used,input_sha256=hashlib.sha256(inputs.read_bytes()).hexdigest())
 (out/'RESULT.json').write_text(json.dumps(result,indent=2)+'\n')
 PY
+if [[ -n ${FINAL_CHECK:-} ]]; then
+  python3 "$ROOT/scripts/release_gate.py" --root "$ROOT" --final "$FINAL_CHECK" --preflight "$OUT" > "$OUT/validation_gate.json"
+fi

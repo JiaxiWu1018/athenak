@@ -11,6 +11,27 @@ from PIL import Image
 import products
 
 class ProductChecks(unittest.TestCase):
+    def test_missing_metric_energy_is_unknown_and_removal_J_is_exact(self):
+        import pandas as pd
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);run=root/'runs/segment_0000';run.mkdir(parents=True)
+            out=root/'out';out.mkdir()
+            pd.DataFrame([dict(time=.1,kind=1,component=0,horizon=0,old_inside=0,
+                              advected_inside=1,new_inside=1,mass=2.,old_Jz_origin=3.,
+                              En_trilinear=0.,Ecoord_trilinear=0.,metric_valid=0)]).to_csv(run/'x.gi_crossings.rank0.csv',index=False)
+            pd.DataFrame([dict(time=.1,component=0,reason='lapse',mass=2.,x1=3.,x2=4.,
+                              u1_cov=5.,u2_cov=6.,En_trilinear=7.,Ecoord_trilinear=8.,
+                              metric_valid=1)]).to_csv(run/'x.prtcl_destroy.csv',index=False)
+            accepted=pd.DataFrame(columns=['horizon','state_time','state_cycle','x','y','Px','Py','mass'])
+            orbit=pd.DataFrame(dict(time=[0.,.25,.5],cycle=[0,1,2],separation=[6.,5.,4.],
+                                   Omega=[np.nan]*3,radial_over_tangential=[np.nan]*3))
+            result=products.diagnose(root,out,dict(strict_common_time=None,cycle=2),accepted,orbit)
+            self.assertIsNone(result['median_radial_ratio'])
+            flux=pd.read_csv(out/'crossing_fluxes.csv');removed=pd.read_csv(out/'removal_ledgers.csv')
+            self.assertTrue(np.isnan(flux.advected_En.iloc[0]))
+            self.assertEqual(flux.advected_rest_mass.iloc[0],2.)
+            self.assertEqual(removed.Jz.iloc[0],-4.)
+            self.assertEqual(removed.Ecoord_trilinear.iloc[0],8.)
     def test_native_harmonic_convention(self):
         theta=np.linspace(0,np.pi,41);phi=np.linspace(-np.pi,np.pi,41)
         np.testing.assert_allclose(products.harmonic(0,0,theta,phi),1/np.sqrt(4*np.pi),atol=1e-14)
@@ -43,7 +64,8 @@ class ProductChecks(unittest.TestCase):
         result=products.draw_state(ax,loaded,[row],2,time)
         fig.savefig(path/'geometry_qa_1080p.png',facecolor=products.BG);plt.close(fig)
         self.assertEqual(result['visible'],[0,1,1])
-        self.assertEqual(Image.open(path/'geometry_qa_1080p.png').size,(1920,1080))
+        with Image.open(path/'geometry_qa_1080p.png') as image:
+            self.assertEqual(image.size,(1920,1080))
         (path/'geometry_qa.json').write_text(json.dumps(result,indent=2)+'\n')
 
 if __name__=='__main__':
