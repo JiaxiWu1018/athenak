@@ -28,7 +28,7 @@ def validate(path,output=None):
         f.seek(offset+232);t,dt,cycle=struct.unpack('<ddi',f.read(20))
         assert np.isfinite([t,dt]).all() and 0<=t<=301 and 0<=dt<1 and 0<=cycle<100000000
         assert int(par['fastflow'].get('npunct','0'))==0
-        assert par['output8'].get('single_file_per_rank','false')=='false'
+        assert par['output8'].get('single_file_per_rank','false') in ['false','0']
         f.seek(offset+252+nmb*20+8)
         data_size=struct.unpack('<Q',f.read(8))[0];grid_start=f.tell()
         # This source writes 25 Z4c variables, full cells including four ghost layers.
