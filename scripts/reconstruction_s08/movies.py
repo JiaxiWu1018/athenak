@@ -8,7 +8,7 @@ from matplotlib.colors import Normalize
 from common import *
 from run_segment import cohort
 from reduce import csv_rows
-from plots import style,array
+from plots import style,array,shell_limits
 
 def equator_basis(phi,lmax=6):
     # Exact real-harmonic convention in utils/spherical_harm.hpp and FastFlow.
@@ -83,7 +83,8 @@ def panel(fig,axes,d):
     text=xy.text(.03,.97,'',transform=xy.transAxes,va='top',fontsize=9)
     ended=xy.text(.5,.5,'',transform=xy.transAxes,ha='center',va='center',fontsize=11)
     for q in range(10,100,10):shell.plot(array(d['shell'],'time'),array(d['shell'],f'r{q}'),color=plt.get_cmap('cividis')((q-10)/80),lw=.8)
-    shell.set(yscale='log',ylim=(.05,30),xlim=(0,300),ylabel=r'$r_q/M$')
+    if 'shell_limits' not in d:d['shell_limits']=shell_limits(d['shell'])
+    shell.set(yscale='log',ylim=d['shell_limits'],xlim=(0,300),ylabel=r'$r_q/M$')
     lap.plot(array(d['history'],'time'),array(d['history'],'core_lapse'),color='#275d7f',lw=1)
     lap.set(ylim=(0,1),xlim=(0,300),xlabel=r'$t/M$',ylabel=r'$\langle\alpha\rangle_c$')
     lines=[ax.axvline(0,color='#b35c26',lw=1) for ax in [shell,lap]]
@@ -153,11 +154,14 @@ def encode(name,fig,states,times,sync=False):
     return dict(**receipt(path),frames=decoded,duration=duration,full_decode=True,
                 decoded_previews=decoded_previews,frames_directory=str(frames),verification_decoder_threads=1,
                 spatial_windows={d['case']['id']:d['spatial_window'] for d,_ in states},
+                shell_radius_limits_M={d['case']['id']:d['shell_limits'] for d,_ in states},
                 visual_review='pending')
 
 def main():
     job();style();(ROOT/'movies').mkdir(exist_ok=True);(ROOT/'plots').mkdir(exist_ok=True)
     ds=[load_case(c) for c in CASES[::-1]];products=[]
+    radius_limits=shell_limits(*(d['shell'] for d in ds))
+    for d in ds:d['shell_limits']=radius_limits
     for d in ds:
         fig=plt.figure(figsize=(10,6),layout='constrained');grid=fig.add_gridspec(2,2,width_ratios=[1.1,1])
         axes=[fig.add_subplot(grid[:,0]),fig.add_subplot(grid[0,1]),fig.add_subplot(grid[1,1])]
@@ -174,7 +178,7 @@ def main():
     atomic(ROOT/'evidence/MOVIES_RENDERED.json',dict(utc=now(),job=job(),products=products))
     (ROOT/'reports/MOVIES.md').write_text('''# Session 8 movies
 
-Five individual movies and one synchronized comparison, 15 fps. Each uses the same 20,000 initial particle IDs (tags divisible by100), with immutable initial-radius colors. Only the slice |z|<0.05 R_iso(0) is shown. The spatial window and slice thickness remain fixed per model. The window encloses the central-slice cohort over all plotted times with a 5% margin and is at least 1.15 times the initial surface radius; it does not zoom during playback. Spatial scales differ between models and axes carry M units. The dotted circle is the initial isotropic surface radius. Black contours are accepted AH equatorial cross-sections reconstructed with the native real spherical-harmonic convention. Rejected searches and stale surfaces are not drawn. Shell curves stop at first removal. Synchronized panels use the latest completed cohort sample and print its actual time; completed runs are explicitly marked and cleared. No frames imply evolution beyond a run endpoint.
+Five individual movies and one synchronized comparison, 15 fps. Each uses the same 20,000 initial particle IDs (tags divisible by100), with immutable initial-radius colors. Only the slice |z|<0.05 R_iso(0) is shown. The spatial window and slice thickness remain fixed per model. The window encloses the central-slice cohort over all plotted times with a 5% margin and is at least 1.15 times the initial surface radius; it does not zoom during playback. Spatial scales differ between models and axes carry M units. The dotted circle is the initial isotropic surface radius. Black contours are accepted AH equatorial cross-sections reconstructed with the native real spherical-harmonic convention. Rejected searches and stale surfaces are not drawn. Shell curves stop at first removal. All final movie shell panels share a fixed radius range containing every audited shell radius across the five models. Synchronized panels use the latest completed cohort sample and print its actual time; completed runs are explicitly marked and cleared. No frames imply evolution beyond a run endpoint.
 
 All encoded frames were decoded for integrity. Final human-readable visual-review status is recorded separately in the session report.
 ''')

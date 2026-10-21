@@ -20,6 +20,14 @@ def save(fig,name):
 
 def array(rows,key):return np.array([r[key] for r in rows])
 
+def shell_limits(*datasets):
+    values=np.array([row[f'r{q}'] for rows in datasets for row in rows
+                     for q in range(10,100,10)])
+    assert values.size and np.isfinite(values).all() and (values>0).all()
+    # Keep the historical reference range, expanding it to include every curve.
+    return (min(.05,float(values.min())/1.08),max(30.,float(values.max())*1.08))
+
+
 def main():
     job();style();(ROOT/'plots').mkdir(exist_ok=True);(ROOT/'reports').mkdir(exist_ok=True)
     cases=CASES[::-1];data={}
@@ -28,12 +36,13 @@ def main():
         assert (d/'REDUCTION_OK.json').exists()
         data[c['id']]=dict(summary=s,shell=csv_rows(d/'shells.csv'),mass=csv_rows(d/'mass.csv'),history=csv_rows(d/'history.csv'))
         if c['unstable']:data[c['id']]['ah']=csv_rows(d/'ah.csv')
+    radius_limits=shell_limits(*(d['shell'] for d in data.values()))
     fig,axs=plt.subplots(2,5,figsize=(15,5.8),sharex=True,sharey='row',layout='constrained')
     cm=plt.get_cmap('cividis');norm=Normalize(.1,.9)
     for j,c in enumerate(cases):
         d=data[c['id']];s=d['summary'];rows=d['shell'];h=d['history']
         for q in range(10,100,10):axs[0,j].plot(array(rows,'time'),array(rows,f'r{q}'),color=cm(norm(q/100)),lw=1)
-        axs[0,j].set(yscale='log',ylim=(.05,30),title=rf'$y_c={c["yc"]:.3f}$')
+        axs[0,j].set(yscale='log',ylim=radius_limits,title=rf'$y_c={c["yc"]:.3f}$')
         axs[1,j].plot(array(h,'time'),array(h,'core_lapse'),color='#275d7f',lw=1.2)
         axs[1,j].set(ylim=(0,1),xlabel=r'$t/M$')
         for ax in axs[:,j]:
@@ -85,7 +94,7 @@ def main():
 
 All times and radii use the initial gravitational mass M=1. Each run has 2,000,000 equal-rest-mass particles, proper-profile stratified sampling, and seed 1. Shell radii are coordinate radii about the instantaneous rest-mass COM, not areal radii or tracked particle surfaces.
 
-**s08_shells_lapse.** Top: radii enclosing 10–90% of the rest mass, truncated strictly before the first removal. Bottom: coordinate-volume average of lapse within origin-centered r<0.75M. Dotted lines mark first removal; dashed lines mark first accepted AH. Grey areas lie beyond the actual run endpoint. All columns share the same axes.
+**s08_shells_lapse.** Top: radii enclosing 10–90% of the rest mass, truncated strictly before the first removal. Bottom: coordinate-volume average of lapse within origin-centered r<0.75M. Dotted lines mark first removal; dashed lines mark first accepted AH. Grey areas lie beyond the actual run endpoint. All columns share the same axes. The common radius range includes every audited shell radius with an 8% margin beyond data outside the reference range.
 
 **s08_mass_conservation.** Alive particle rest mass plus cumulative removed and escaped rest mass, normalized by the initial rest mass. Removed particles include lapse, sphere, and AH removal categories (production uses lapse removal only). Lower panels show the double-precision ledger residual. This is rest-mass bookkeeping, not ADM-energy conservation; AH gravitational mass is not added to this ledger.
 
@@ -94,5 +103,5 @@ All times and radii use the initial gravitational mass M=1. Each run has 2,000,0
 Session 7 supplies particle-number sensitivity evidence. This session contains no new convergence study and does not establish convergence of the adaptive production mesh.
 '''
     (ROOT/'reports/FIGURES.md').write_text(captions)
-    atomic(ROOT/'evidence/PLOTS_RENDERED.json',dict(utc=now(),job=job(),files=[receipt(p) for p in sorted((ROOT/'plots').glob('*'))],visual_review='pending'))
+    atomic(ROOT/'evidence/PLOTS_RENDERED.json',dict(utc=now(),job=job(),files=[receipt(p) for p in sorted((ROOT/'plots').glob('*'))],shell_radius_limits_M=radius_limits,visual_review='pending'))
 if __name__=='__main__':main()
