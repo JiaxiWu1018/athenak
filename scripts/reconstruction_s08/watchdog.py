@@ -12,7 +12,7 @@ def stop(reason):
 
 def main():
     jid=job();out=ROOT/'evidence/jobs'/jid;out.mkdir(parents=True,exist_ok=True)
-    last_storage=time.monotonic();next_storage=0;last_memory=time.monotonic()
+    last_storage=time.monotonic();next_storage=0;last_memory=time.monotonic();last_accounting=time.monotonic()
     while True:
         sample=dict(utc=now(),job=jid)
         if time.monotonic()>=next_storage:
@@ -27,8 +27,17 @@ def main():
             next_storage=time.monotonic()+300
         if time.monotonic()-last_storage>900:stop('storage_telemetry_stale')
         try:
-            result=subprocess.check_output(['rocm-smi','--showmeminfo','vram','--json'],text=True,timeout=30)
-            gpu=json.loads(result);sample['gpu_memory']=gpu
+            nodes=int(os.environ.get('SLURM_NNODES','1'))
+            if nodes==1:
+                result=subprocess.check_output(['rocm-smi','--showmeminfo','vram','--json'],text=True,timeout=30)
+                gpu=json.loads(result)
+            else:
+                probe="import json,socket,subprocess;d=json.loads(subprocess.check_output(['rocm-smi','--showmeminfo','vram','--json']));print(json.dumps({socket.gethostname()+':'+k:v for k,v in d.items()}))"
+                result=subprocess.check_output(['srun','--overlap','-N',str(nodes),'-n',str(nodes),'--ntasks-per-node=1','python3','-c',probe],text=True,timeout=45)
+                gpu={}
+                for line in result.splitlines():gpu.update(json.loads(line))
+                assert len(gpu)==4*nodes
+            sample['gpu_memory']=gpu
             ratios=[]
             for card,fields in gpu.items():
                 if isinstance(fields,dict):
@@ -46,12 +55,15 @@ def main():
             ids=set(str(x['id']) for x in jobs);ids.add(jid)
             result=subprocess.check_output(['sacct','-X','-j',','.join(sorted(ids)),'-n','-P','--format=JobIDRaw,State,ElapsedRaw,AllocNodes'],text=True,timeout=30)
             rows=[x.split('|') for x in result.splitlines() if x.strip()]
+            assert jid in {r[0] for r in rows},'Active allocation missing from accounting'
             hours=sum(int(x[2] or 0)*int(x[3] or 0) for x in rows)/3600
+            last_accounting=time.monotonic()
             sample['node_hours']=hours
             if hours>=60:sample['cost_review_due']=True
-            # Finalization reserve: stop with at least half a node-hour left.
-            if hours>=99.5:stop('node_hour_cap_reserve')
+            # One node-hour for finalization even with the two-node fallback.
+            if hours>=99:stop('node_hour_cap_reserve')
         except Exception as e:sample['accounting_error']=repr(e)
+        if time.monotonic()-last_accounting>300:stop('accounting_telemetry_stale')
         with (out/'telemetry.jsonl').open('a') as f:f.write(json.dumps(sample)+'\n')
         atomic(out/'LATEST.json',sample)
         time.sleep(30)

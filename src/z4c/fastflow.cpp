@@ -637,6 +637,7 @@ void FastFlow::MetricInterp() {
   auto &dgi_ = dg_interp;
   auto &havepoint_ = havepoint;
   auto &rr_ = rr;
+  const bool direct_derivatives = production_quality;
 
   // Resolve the host pointers on the
   // ADM indices.
@@ -688,9 +689,42 @@ void FastFlow::MetricInterp() {
         Ki_(b,p) = InterpolateLagrange<NGHOST>(u_adm, Kind[b], indcs, ind_and_wghts);
       }
 
+      // The historical dg array is computed on interior cells only. Its high-order
+      // interpolation stencil crosses block faces and would read unfilled ghosts.
+      // Production searches differentiate the same ADM interpolation polynomial;
+      // the ADM ghosts are valid, and no derivative ghost exchange is required.
+      auto dxw = ind_and_wghts, dyw = ind_and_wghts, dzw = ind_and_wghts;
+      if (direct_derivatives) {
+        auto mb = size.d_view(ind_and_wghts.ii0);
+        const Real spacing[3] = {mb.dx1,mb.dx2,mb.dx3};
+        const Real low[3] = {mb.x1min,mb.x2min,mb.x3min};
+        const int near[3] = {ind_and_wghts.ii1,ind_and_wghts.ii2,ind_and_wghts.ii3};
+        for (int d=0; d<3; ++d) {
+          const Real s=(pos[d]-low[d])/spacing[d]-0.5-(near[d]-NGHOST+1);
+          for (int i=0; i<2*NGHOST; ++i) {
+            Real derivative=0.0;
+            for (int j=0; j<2*NGHOST; ++j) {
+              if (j==i) continue;
+              Real term=1.0/(i-j);
+              for (int k=0; k<2*NGHOST; ++k) {
+                if (k!=i && k!=j) term*=(s-k)/(i-k);
+              }
+              derivative+=term;
+            }
+            if (d==0) dxw.wght1[i]=derivative/spacing[d];
+            if (d==1) dyw.wght2[i]=derivative/spacing[d];
+            if (d==2) dzw.wght3[i]=derivative/spacing[d];
+          }
+        }
+      }
       // Metric derivatives
       for (int c = 0; c < NDRVSSPMETRIC; ++c) {
-        dgi_(c,p) = InterpolateLagrange<NGHOST>(dg_, c, indcs, ind_and_wghts);
+        if (direct_derivatives) {
+          auto dw = c<6 ? dxw : (c<12 ? dyw : dzw);
+          dgi_(c,p) = InterpolateLagrange<NGHOST>(u_adm,gind[c%6],indcs,dw);
+        } else {
+          dgi_(c,p) = InterpolateLagrange<NGHOST>(dg_, c, indcs, ind_and_wghts);
+        }
       }
     }
   });

@@ -22,18 +22,34 @@ case "$1" in
   cp -p "$ROOT/build/src/athena" "$ROOT/protected/athena"
   cp "$ROOT/build/CMakeCache.txt" "$record/CMakeCache.txt"
   sha256sum "$ROOT/protected/athena" > "$ROOT/evidence/executable.sha256"
-  python3 "$ROOT/scripts/prepare.py"
-  mkdir -p "$ROOT/tests/frozen_ah"
+  if [ ! -f "$ROOT/evidence/SAMPLES_READY.json" ]; then python3 "$ROOT/scripts/prepare.py"; fi
+  export FROZEN_WORK="$ROOT/tests/frozen_ah_$SLURM_JOB_ID"
+  mkdir "$FROZEN_WORK"
   python3 - <<'PYCODE'
 from common import *
-atomic(ROOT/'evidence/active.json',dict(work=str(ROOT/'tests/frozen_ah'),phase='frozen_ah',job=job()))
+atomic(ROOT/'evidence/active.json',dict(work=os.environ['FROZEN_WORK'],phase='frozen_ah',job=job()))
 PYCODE
-  prun "$ROOT/protected/athena" --kokkos-map-device-id-by=mpi_rank -i "$ROOT/inputs/frozen_ah.athinput" -d "$ROOT/tests/frozen_ah" > "$record/frozen_ah.log" 2>&1
-  test -f "$ROOT/tests/frozen_ah/FROZEN_AH_OK"
+  prun "$ROOT/protected/athena" --kokkos-map-device-id-by=mpi_rank -i "$ROOT/inputs/frozen_ah.athinput" -d "$FROZEN_WORK" fastflow/verbose=true > "$record/frozen_ah.log" 2>&1
+  test -f "$FROZEN_WORK/FROZEN_AH_OK"
   python3 - <<'PYCODE'
 from common import *
-atomic(ROOT/'evidence/BUILD_AND_FROZEN_AH_OK.json',dict(utc=now(),job=job(),executable=receipt(ROOT/'protected/athena'),frozen_check=receipt(ROOT/'tests/frozen_ah/FROZEN_AH_OK')))
+atomic(ROOT/'evidence/BUILD_AND_FROZEN_AH_OK.json',dict(utc=now(),job=job(),executable=receipt(ROOT/'protected/athena'),frozen_check=receipt(Path(os.environ['FROZEN_WORK'])/'FROZEN_AH_OK')))
 PYCODE
+ ;;
+ checks)
+  test -f "$ROOT/evidence/BUILD_AND_FROZEN_AH_OK.json"
+  python3 "$ROOT/scripts/native_checks.py"
+ ;;
+ initialize)
+  test -f "$ROOT/evidence/NATIVE_CHECKS_OK.json"
+  for run_case in yc0283 yc0500 yc0605 yc0819 yc0900; do
+    python3 "$ROOT/scripts/run_segment.py" "$run_case" --initialize --wall-seconds 900
+  done
+ ;;
+ run)
+  test -f "$ROOT/evidence/NATIVE_CHECKS_OK.json"
+  shift
+  python3 "$ROOT/scripts/run_segment.py" "$@"
  ;;
  *) echo "Unimplemented job action $1" >&2; exit 2 ;;
 esac
