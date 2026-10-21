@@ -5,7 +5,6 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
-from matplotlib.animation import FFMpegWriter
 from common import *
 from run_segment import cohort
 from reduce import csv_rows
@@ -98,18 +97,25 @@ def ffmpeg_exe():
 
 def encode(name,fig,states,times,sync=False):
     path=ROOT/'movies'/f'{name}.mp4';exe=ffmpeg_exe();plt.rcParams['animation.ffmpeg_path']=exe
-    writer=FFMpegWriter(fps=15,codec='libx264',extra_args=['-crf','18','-pix_fmt','yuv420p','-movflags','+faststart','-threads','4'])
+    frames=ROOT/'frames'/f'{name}_{datetime.datetime.now(datetime.timezone.utc):%Y%m%dT%H%M%S}'
+    frames.mkdir(parents=True,exist_ok=False)
     previews={0,len(times)//2,len(times)-1}
     for i,t in enumerate(times):
         for d,_ in states:
             if d['summary']['ah_first'] is not None and abs(t-d['summary']['ah_first'])<.5:previews.add(i)
-    with writer.saving(fig,str(path),dpi=120):
-        for i,t in enumerate(times):
-            for d,p in states:update(d,p,float(t),sync)
-            if sync:fig.suptitle(f'Session 8 • synchronized time t/M = {t:.1f}',fontsize=12)
-            writer.grab_frame(facecolor='white')
-            if i in previews:fig.savefig(ROOT/'plots'/f'{name}_review_{i:04d}.png',dpi=120)
+    # Lossless PNG inputs avoid the observed raw-RGBA pipe corruption on AMD.
+    # Retain these frames on AMD; only representative review images are mirrored.
+    import shutil
+    for i,t in enumerate(times):
+        for d,p in states:update(d,p,float(t),sync)
+        if sync:fig.suptitle(f'Session 8 • synchronized time t/M = {t:.1f}',fontsize=12)
+        frame=frames/f'{i:06d}.png'
+        fig.savefig(frame,dpi=120,facecolor='white')
+        if i in previews:shutil.copyfile(frame,ROOT/'plots'/f'{name}_review_{i:04d}.png')
     plt.close(fig)
+    cmd([exe,'-y','-v','error','-xerror','-framerate','15','-i',frames/'%06d.png',
+         '-c:v','libx264','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',
+         '-threads','4',path])
     # Decode every frame; fail on any decoder error, then verify the actual frame count.
     verify=subprocess.run([exe,'-v','error','-xerror','-i',str(path),'-f','null','-'],capture_output=True,text=True)
     assert verify.returncode==0 and not verify.stderr,verify.stderr
@@ -125,7 +131,7 @@ def encode(name,fig,states,times,sync=False):
         assert preview.exists() and preview.stat().st_size>0
         decoded_previews.append(dict(frame=frame,time=float(times[frame]),**receipt(preview)))
     return dict(**receipt(path),frames=decoded,duration=duration,full_decode=True,
-                decoded_previews=decoded_previews,visual_review='pending')
+                decoded_previews=decoded_previews,frames_directory=str(frames),visual_review='pending')
 
 def main():
     job();style();(ROOT/'movies').mkdir(exist_ok=True);(ROOT/'plots').mkdir(exist_ok=True)

@@ -54,7 +54,7 @@ def main():
        visual_review='pending; requires inspection of actual exported figures and movie frames'))
     # Do not hash mutable scheduler logs or active telemetry as immutable evidence.
     manifest=[]
-    for directory in ['inputs','samples','runs','reduced','plots','movies','reports']:
+    for directory in ['inputs','samples','runs','reduced','plots','movies','frames','reports']:
         for path in sorted((ROOT/directory).rglob('*')):
             if path.is_file():manifest.append(dict(**receipt(path),relative=str(path.relative_to(ROOT))))
     atomic(ROOT/'evidence/FINAL_DATA_MANIFEST.json',dict(job=job(),utc=now(),files=manifest,
