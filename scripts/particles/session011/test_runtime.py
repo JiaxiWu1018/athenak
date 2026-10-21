@@ -25,6 +25,25 @@ class RuntimeSafety(unittest.TestCase):
         data+=bytes(25*2**3*8)+struct.pack('<4d',count,0,0,0)+bytes(count*80)
         path.write_bytes(data[:-1] if truncated else data)
         return path
+    def test_saved_ah_requires_nan_safe_verified_binary(self):
+        from endpoint import saved_ah_executable
+        gate=dict(executable='unchanged-production',executable_sha256='production-hash',
+                  diagnostic_energy_repair=True)
+        with self.assertRaises(RuntimeError):saved_ah_executable(self.root,gate)
+        exe=self.root/'analysis';exe.write_bytes(b'analysis fixture')
+        record=dict(status='pass',evolution_advances=0,bitwise_particle_check=True,
+                    production_executable_sha256='production-hash',executable=str(exe),
+                    executable_sha256=runtime.digest(exe))
+        self.state('SAVED_AH_TOOLING.json',record)
+        self.assertEqual(saved_ah_executable(self.root,gate),str(exe))
+        exe.write_bytes(b'tampered')
+        with self.assertRaises(RuntimeError):saved_ah_executable(self.root,gate)
+        self.assertEqual(gate['executable'],'unchanged-production')
+    def test_saved_ah_rejects_receipt_from_other_production(self):
+        from endpoint import saved_ah_executable
+        self.state('SAVED_AH_TOOLING.json',dict(status='pass',evolution_advances=0,
+                   bitwise_particle_check=True,production_executable_sha256='other'))
+        with self.assertRaises(RuntimeError):saved_ah_executable(self.root,dict(executable_sha256='current'))
     def test_aged_out_job_is_absent_from_live_queue(self):
         with patch('runtime.subprocess.check_output',return_value='42|RUNNING\n') as call:
             self.assertEqual(runtime.active_job_state('123'),'')

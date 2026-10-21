@@ -7,7 +7,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from runtime import atomic, require_compute
+from runtime import atomic, require_compute, digest
 from make_input import parse
 
 
@@ -38,11 +38,30 @@ def submit_endpoint(root):
             parent=job
 
 
+def saved_ah_executable(root,gate):
+    """Resolve a separately validated analysis binary without changing evolution."""
+    receipt=root/'control/SAVED_AH_TOOLING.json'
+    if not receipt.exists():
+        if gate.get('diagnostic_energy_repair'):
+            raise RuntimeError('missing validated NaN-safe frozen AH tooling')
+        return gate['executable']
+    record=json.loads(receipt.read_text())
+    if (record.get('status')!='pass' or record.get('evolution_advances')!=0
+        or not record.get('bitwise_particle_check')
+        or record.get('production_executable_sha256')!=gate['executable_sha256']):
+        raise RuntimeError('incompatible saved AH tooling receipt')
+    if digest(record['executable'])!=record['executable_sha256']:
+        raise RuntimeError('saved AH executable checksum mismatch')
+    return record['executable']
+
+
 def probe(root):
     require_compute()
     out=root/'evidence'/f'saved_ah_{os.environ["SLURM_JOB_ID"]}'
     out.mkdir(exist_ok=False)
     gate=json.loads((root/'control/VALIDATION_PASS.json').read_text())
+    analysis_executable=saved_ah_executable(root,gate)
+    atomic(out/'analysis_executable.json',dict(path=analysis_executable,sha256=digest(analysis_executable),production_executable=gate['executable']))
     layout=json.loads((root/'control/submission.json').read_text())
     inventory=json.loads((root/'control/checkpoint_inventory.json').read_text())
     events={}
@@ -65,7 +84,7 @@ def probe(root):
         for ntheta in (10,14):
             for horizon in horizons:
                 run=out/f'{label}_c{cycle}_n{ntheta}_h{horizon}';run.mkdir()
-                command=['prun',gate['executable'],'--kokkos-map-device-id-by=mpi_rank',
+                command=['prun',analysis_executable,'--kokkos-map-device-id-by=mpi_rank',
                          '-r',checkpoint['path'],'-d',str(run),'time/nlim=0','time/tlim=75',
                          'diagnostic_checks/frozen_ah_searches=6','diagnostic_checks/require_accept=false',
                          f'diagnostic_checks/horizon={horizon}','gi_diagnostics/enabled=false',
