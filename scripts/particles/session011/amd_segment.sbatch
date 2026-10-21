@@ -3,7 +3,7 @@
 #SBATCH -A eliasmost
 #SBATCH -p mi2104x
 #SBATCH --exclusive
-#SBATCH -t 12:00:00
+#SBATCH -t 04:00:00
 #SBATCH --no-requeue
 set -euo pipefail
 ROOT=${SESSION_ROOT:?}
