@@ -356,6 +356,14 @@ def submit(root):
             return
         state_path=root/'control/submission.json'
         old=json.loads(state_path.read_text()) if state_path.exists() else None
+        intent_path=root/'control/submission_intent.json'
+        if intent_path.exists():
+            intent=json.loads(intent_path.read_text())
+            if intent.get('status')=='prepared':
+                if old and old['segment']==intent['segment']:
+                    atomic(intent_path,dict(intent,status='submitted',job_id=old['job_id']))
+                else:
+                    raise RuntimeError('ambiguous scheduler receipt; review intent before any further submission')
         if old:
             active=subprocess.check_output(['squeue','-h','-j',str(old['job_id']),'-o','%T'],text=True).strip()
             # The current completed segment may submit its successor while finalizing.
@@ -369,11 +377,15 @@ def submit(root):
         export=f'ALL,SESSION_ROOT={root},SEGMENT={segment},LAYOUT_INDEX={layout},BLOCK_CAPACITY={cap}'
         command=['sbatch','--parsable',f'--nodes={nodes}',f'--ntasks={nodes*4}',
                  '--ntasks-per-node=4',f'--export={export}',
+                 f'--chdir={root}',
                  f'--output={root}/evidence/production_%j.slurm.log',str(root/'scripts/amd_segment.sbatch')]
+        atomic(intent_path,dict(status='prepared',segment=segment,command=command,
+                               epoch=time.time(),parent_job=os.environ.get('SLURM_JOB_ID')))
         output=subprocess.check_output(command,text=True).strip()
         job=output.splitlines()[-1].split(';')[0]
         if not job.isdigit():raise RuntimeError('unrecognized scheduler receipt: '+output)
         atomic(state_path,dict(job_id=job,segment=segment,nodes=nodes,capacity=cap,command=command))
+        atomic(intent_path,dict(status='submitted',segment=segment,job_id=job,command=command))
 
 def main():
     ap=argparse.ArgumentParser()

@@ -58,6 +58,12 @@ class RuntimeSafety(unittest.TestCase):
         self.state('submission.json',dict(job_id='999999999',segment=0))
         with patch('runtime.subprocess.check_output',return_value='RUNNING') as call:
             runtime.submit(self.root);self.assertEqual(call.call_count,1)
+    def test_ambiguous_submission_does_not_retry(self):
+        self.state('VALIDATION_PASS.json',{})
+        self.state('submission_intent.json',dict(status='prepared',segment=0))
+        with patch('runtime.subprocess.check_output') as call:
+            with self.assertRaises(RuntimeError):runtime.submit(self.root)
+            call.assert_not_called()
 
 if __name__=='__main__':
     assert os.environ.get('SLURM_JOB_ID'),'run checks in Slurm'
