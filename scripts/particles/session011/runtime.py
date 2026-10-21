@@ -183,6 +183,8 @@ def watch(root, run, nodes):
             request_stop(run,'whole-user storage telemetry stale','review')
         status=last_csv(run/'s11_amd.gi_status.csv')
         if status:
+            if float(status['time'])>15 and (int(status['ever_bits'])&3)!=3:
+                request_stop(run,'formation stage passed without both accepted individual horizons','science')
             if int(status['max_rank_blocks'])>=.90*int(status['capacity']):
                 request_stop(run,'per-rank block capacity pressure','capacity')
             common=status['strict_common']=='1'

@@ -26,6 +26,7 @@
 #include "athena.hpp"
 #include "mesh/mesh.hpp"
 #include "z4c/z4c.hpp"
+#include "particles/particles.hpp"
 #include "coordinates/cell_locations.hpp"
 #include "geodesic-grid/geodesic_grid.hpp"
 #include "geodesic-grid/spherical_grid.hpp"
@@ -121,6 +122,17 @@ void Z4c::WaveExtr(MeshBlockPack *pmbp) {
   #endif
 
   if (0 == global_variable::my_rank) {
+    if (pmbp->ppart && pmbp->ppart->gi_diagnostics) {
+      const std::string path="waveforms/state_times.csv";
+      std::ifstream existing(path);
+      const bool empty=existing.peek()==std::ifstream::traits_type::eof();
+      std::ofstream metadata(path,std::ios::app);
+      if(empty)metadata<<"legacy_cycle,legacy_time,state_cycle,state_time,dt\n";
+      metadata<<std::setprecision(17)<<pmbp->pmesh->ncycle<<','<<pmbp->pmesh->time<<','
+        <<pmbp->pmesh->ncycle+1<<','<<pmbp->pmesh->time+pmbp->pmesh->dt<<','
+        <<pmbp->pmesh->dt<<'\n';
+      if(!metadata)Kokkos::abort("waveform state provenance write failed");
+    }
     int idx = 0;
     for (int g=0; g<nradii; ++g) {
       // Output file names

@@ -21,9 +21,19 @@ if [[ -f $alternates ]]; then
   mv "$alternates" "$TEST_ROOT/kokkos_previous_alternates.txt"
 fi
 git -C "$SESSION/code/kokkos" fsck --no-reflogs > "$TEST_ROOT/kokkos_fsck.log" 2>&1
-git clone --no-hardlinks "$SESSION/code" "$TEST_ROOT/source" > "$TEST_ROOT/clone.log" 2>&1
-git -C "$TEST_ROOT/source" checkout --detach "$SOURCE_COMMIT" >> "$TEST_ROOT/clone.log" 2>&1
-git clone --no-hardlinks "$SESSION/code/kokkos" "$TEST_ROOT/source/kokkos" >> "$TEST_ROOT/clone.log" 2>&1
+if [[ -n ${RESUME_ROOT:-} ]]; then
+  test "$(git -C "$RESUME_ROOT/source" rev-parse HEAD)" = "$SOURCE_COMMIT"
+  BUILD_SOURCE=$RESUME_ROOT/source
+  BUILD_DIR=$RESUME_ROOT/build
+  ln -s "$BUILD_SOURCE" "$TEST_ROOT/source"
+  printf '%s\n' "$RESUME_ROOT" > "$TEST_ROOT/RESUMED_IMMUTABLE_SOURCE"
+else
+  git clone --no-hardlinks "$SESSION/code" "$TEST_ROOT/source" > "$TEST_ROOT/clone.log" 2>&1
+  git -C "$TEST_ROOT/source" checkout --detach "$SOURCE_COMMIT" >> "$TEST_ROOT/clone.log" 2>&1
+  git clone --no-hardlinks "$SESSION/code/kokkos" "$TEST_ROOT/source/kokkos" >> "$TEST_ROOT/clone.log" 2>&1
+  BUILD_SOURCE=$TEST_ROOT/source
+  BUILD_DIR=$TEST_ROOT/build
+fi
 cp "$SESSION/inputs/frozen_ah.athinput" "$TEST_ROOT/input.athinput"
 {
   date -u
@@ -35,17 +45,18 @@ cp "$SESSION/inputs/frozen_ah.athinput" "$TEST_ROOT/input.athinput"
   mpicxx --showme
   nvidia-smi --query-gpu=name,memory.total --format=csv
 } > "$TEST_ROOT/provenance.txt" 2>&1
-cmake -S "$TEST_ROOT/source" -B "$TEST_ROOT/build" \
+cmake -S "$BUILD_SOURCE" -B "$BUILD_DIR" \
   -DKokkos_ENABLE_CUDA=On -DKokkos_ARCH_AMPERE80=On \
   -DCMAKE_C_COMPILER=/usr/bin/gcc \
-  -DCMAKE_CXX_COMPILER="$TEST_ROOT/source/kokkos/bin/nvcc_wrapper" \
+  -DCMAKE_CXX_COMPILER="$BUILD_SOURCE/kokkos/bin/nvcc_wrapper" \
   -DAthena_ENABLE_MPI=ON -DCMAKE_BUILD_TYPE=Release \
   -DPROBLEM=z4c/z4c_one_puncture > "$TEST_ROOT/configure.log" 2>&1
-cmake --build "$TEST_ROOT/build" -j "$SLURM_CPUS_PER_TASK" > "$TEST_ROOT/build.log" 2>&1
-sha256sum "$TEST_ROOT/build/src/athena" "$TEST_ROOT/input.athinput" > "$TEST_ROOT/SHA256SUMS"
+cmake --build "$BUILD_DIR" -j "$SLURM_CPUS_PER_TASK" > "$TEST_ROOT/build.log" 2>&1
+cp "$BUILD_DIR/src/athena" "$TEST_ROOT/athena_frozen"
+sha256sum "$TEST_ROOT/athena_frozen" "$TEST_ROOT/input.athinput" > "$TEST_ROOT/SHA256SUMS"
 mkdir "$TEST_ROOT/fresh"
 cd "$TEST_ROOT/fresh"
-"$TEST_ROOT/build/src/athena" -i "$TEST_ROOT/input.athinput" -d "$TEST_ROOT/fresh" \
+"$TEST_ROOT/athena_frozen" -i "$TEST_ROOT/input.athinput" -d "$TEST_ROOT/fresh" \
   > "$TEST_ROOT/fresh.log" 2>&1
 rg 'FROZEN_AH_CHECKS_PASS.*evolution_advances=0' "$TEST_ROOT/fresh.log"
 python3 "$TEST_ROOT/source/scripts/particles/session011/check_frozen_outputs.py" "$TEST_ROOT" > "$TEST_ROOT/readback.log" 2>&1
