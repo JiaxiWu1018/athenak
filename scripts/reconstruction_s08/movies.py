@@ -103,7 +103,7 @@ def encode(name,fig,states,times,sync=False):
     for i,t in enumerate(times):
         for d,_ in states:
             if d['summary']['ah_first'] is not None and abs(t-d['summary']['ah_first'])<.5:previews.add(i)
-    # Lossless PNG inputs avoid the observed raw-RGBA pipe corruption on AMD.
+    # Keep lossless PNG inputs available for direct encoder/decoder comparisons.
     # Retain these frames on AMD; only representative review images are mirrored.
     import shutil
     for i,t in enumerate(times):
@@ -117,7 +117,7 @@ def encode(name,fig,states,times,sync=False):
          '-c:v','libx264','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',
          '-threads','4',path])
     # Decode every frame; fail on any decoder error, then verify the actual frame count.
-    verify=subprocess.run([exe,'-v','error','-xerror','-i',str(path),'-f','null','-'],capture_output=True,text=True)
+    verify=subprocess.run([exe,'-v','error','-xerror','-threads','1','-i',str(path),'-f','null','-'],capture_output=True,text=True)
     assert verify.returncode==0 and not verify.stderr,verify.stderr
     import imageio_ffmpeg
     decoded,duration=imageio_ffmpeg.count_frames_and_secs(str(path))
@@ -126,12 +126,13 @@ def encode(name,fig,states,times,sync=False):
     decoded_previews=[]
     for frame in sorted(previews):
         preview=ROOT/'plots'/f'{name}_decoded_{frame:04d}.png'
-        cmd([exe,'-v','error','-xerror','-i',path,'-vf',f'select=eq(n\\,{frame})',
+        cmd([exe,'-v','error','-xerror','-threads','1','-i',path,'-vf',f'select=eq(n\\,{frame})',
              '-frames:v','1','-threads','1',preview])
         assert preview.exists() and preview.stat().st_size>0
         decoded_previews.append(dict(frame=frame,time=float(times[frame]),**receipt(preview)))
     return dict(**receipt(path),frames=decoded,duration=duration,full_decode=True,
-                decoded_previews=decoded_previews,frames_directory=str(frames),visual_review='pending')
+                decoded_previews=decoded_previews,frames_directory=str(frames),verification_decoder_threads=1,
+                visual_review='pending')
 
 def main():
     job();style();(ROOT/'movies').mkdir(exist_ok=True);(ROOT/'plots').mkdir(exist_ok=True)
