@@ -89,3 +89,15 @@ parameter serialization and native restart readback, invalid seeds, nonmutation,
 analytic metric/containment math, exact-ID cohort readback, full-population count/
 rest closure, zero transport in frozen fields, and controller refusal of a second
 fresh trajectory or submission at/beyond75. Production is gated until these pass.
+
+Removal energy is measured at the exact deletion-marking position with the same
+trilinear convention as crossing records. The final three death-log columns are
+En_trilinear, Ecoord_trilinear, metric_valid. Rest mass and coordinate J remain
+accountable when the metric-energy measurement is unavailable; reductions mark
+energy sums unknown if any contributing mass has an invalid metric measurement.
+
+Endpoint processing is automatic and performs no evolution: saved first-pair,
+strict-common and final states are searched at ntheta10/14, lmax6; outputs are
+suppressed and nonmutation checked. The product job records failures as missing
+validation evidence. The Perseus archive watcher pulls only top-level manifest
+review artifacts, verifies every size/SHA256, and retains raw AMD states in place.
