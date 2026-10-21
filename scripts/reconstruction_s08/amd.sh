@@ -64,6 +64,7 @@ PYCODE
   for run_case in yc0283 yc0500 yc0605 yc0819 yc0900; do python3 "$ROOT/scripts/reduce.py" "$run_case"; done
   python3 "$ROOT/scripts/plots.py"
   python3 "$ROOT/scripts/movies.py"
+  python3 "$ROOT/scripts/finalize.py"
  ;;
  audit)
   shift
