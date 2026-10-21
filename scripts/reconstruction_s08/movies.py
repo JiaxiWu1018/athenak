@@ -55,8 +55,27 @@ def outline(d,t,phi,basis):
     radii=valid[-1][1]@basis;assert np.isfinite(radii).all() and (radii>0).all()
     return radii*np.cos(phi),radii*np.sin(phi)
 
+def spatial_window(d):
+    # One fixed scale for the whole movie, including an expanding trajectory.
+    # Use precisely the alive central-slice particles shown by update().
+    original=1.15*d['R'];extent=0.;outside=0
+    for row in d['index']:
+        _,_,mask,v=cohort(row['file'])
+        visible=(mask==1)&(np.abs(v[:,3])<.05*d['R'])
+        xy=np.abs(v[visible,1:3]);assert np.isfinite(xy).all()
+        if xy.size:
+            extent=max(extent,float(xy.max()))
+            outside=max(outside,int(np.any(xy>original,axis=1).sum()))
+    return dict(half_width_M=max(original,1.05*extent),
+                maximum_visible_coordinate_M=extent,
+                initial_radius_window_half_width_M=original,
+                max_particles_outside_initial_radius_window=outside,
+                samples=len(d['index']),rule='fixed over all plotted cohort times')
+
+
 def panel(fig,axes,d):
-    xy,shell,lap=axes;c=d['case'];R=d['R'];limits=1.15*R
+    if 'spatial_window' not in d:d['spatial_window']=spatial_window(d)
+    xy,shell,lap=axes;c=d['case'];R=d['R'];limits=d['spatial_window']['half_width_M']
     xy.set(xlim=(-limits,limits),ylim=(-limits,limits),aspect='equal',xlabel=r'$x/M$',ylabel=r'$y/M$',title=rf'$y_c={c["yc"]:.3f}$')
     ang=np.linspace(0,2*np.pi,257);xy.plot(R*np.cos(ang),R*np.sin(ang),color='.5',ls=':',lw=.7)
     scatter=xy.scatter([],[],s=1.8,c=[],cmap='viridis',norm=Normalize(0,R),alpha=.6,edgecolors='none',rasterized=True)
@@ -82,6 +101,7 @@ def update(d,p,t,synchronize=False):
         actual,cy,mask,v=cohort(d['index'][i]['file']);p['last']=i
         # A fixed 20k-ID cohort, shown in a fixed-thickness central slice.
         visible=(mask==1)&(np.abs(v[:,3])<.05*d['R'])
+        assert np.all(np.abs(v[visible,1:3])<=d['spatial_window']['half_width_M'])
         p['scatter'].set_offsets(v[visible,1:3]);p['scatter'].set_array(d['radius'][visible])
         x,y=outline(d,actual,p['phi'],p['basis']);p['ah'].set_data(x,y)
         p['text'].set_text(f't/M = {actual:.2f}\n{int(mask.sum()):,} cohort particles alive')
@@ -132,6 +152,7 @@ def encode(name,fig,states,times,sync=False):
         decoded_previews.append(dict(frame=frame,time=float(times[frame]),**receipt(preview)))
     return dict(**receipt(path),frames=decoded,duration=duration,full_decode=True,
                 decoded_previews=decoded_previews,frames_directory=str(frames),verification_decoder_threads=1,
+                spatial_windows={d['case']['id']:d['spatial_window'] for d,_ in states},
                 visual_review='pending')
 
 def main():
@@ -153,7 +174,7 @@ def main():
     atomic(ROOT/'evidence/MOVIES_RENDERED.json',dict(utc=now(),job=job(),products=products))
     (ROOT/'reports/MOVIES.md').write_text('''# Session 8 movies
 
-Five individual movies and one synchronized comparison, 15 fps. Each uses the same 20,000 initial particle IDs (tags divisible by100), with immutable initial-radius colors. Only the slice |z|<0.05 R_iso(0) is shown. The spatial window and slice thickness remain fixed per model; spatial scales differ between models and axes carry M units. The dotted circle is the initial isotropic surface radius. Black contours are accepted AH equatorial cross-sections reconstructed with the native real spherical-harmonic convention. Rejected searches and stale surfaces are not drawn. Shell curves stop at first removal. Synchronized panels use the latest completed cohort sample and print its actual time; completed runs are explicitly marked and cleared. No frames imply evolution beyond a run endpoint.
+Five individual movies and one synchronized comparison, 15 fps. Each uses the same 20,000 initial particle IDs (tags divisible by100), with immutable initial-radius colors. Only the slice |z|<0.05 R_iso(0) is shown. The spatial window and slice thickness remain fixed per model. The window encloses the central-slice cohort over all plotted times with a 5% margin and is at least 1.15 times the initial surface radius; it does not zoom during playback. Spatial scales differ between models and axes carry M units. The dotted circle is the initial isotropic surface radius. Black contours are accepted AH equatorial cross-sections reconstructed with the native real spherical-harmonic convention. Rejected searches and stale surfaces are not drawn. Shell curves stop at first removal. Synchronized panels use the latest completed cohort sample and print its actual time; completed runs are explicitly marked and cleared. No frames imply evolution beyond a run endpoint.
 
 All encoded frames were decoded for integrity. Final human-readable visual-review status is recorded separately in the session report.
 ''')
