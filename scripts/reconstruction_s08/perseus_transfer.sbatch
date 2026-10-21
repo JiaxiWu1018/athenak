@@ -18,6 +18,7 @@ python3 - <<'PYCODE'
 from common import *
 import shutil
 assert shutil.disk_usage(ROOT).free>2*TIB
+assert not (ROOT/'evidence/IMPORT_SUSPENDED.json').exists(),'Source must be re-inventoried before resuming this suspended copy'
 if (ROOT/'runs').exists():
     # Only resume the preempted, never-evolved copy of this same immutable source.
     assert (ROOT/'evidence/jobs/18652/SOURCE_HOLD.json').exists()

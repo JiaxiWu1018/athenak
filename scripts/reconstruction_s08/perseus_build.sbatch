@@ -20,7 +20,7 @@ export LD_LIBRARY_PATH=/home/emost/codes/openmpi/lib:/usr/local/cuda-12.9/lib64:
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 {
  date -u; hostname; scontrol show job "$SLURM_JOB_ID"
- nvcc --version; mpicxx --showme; cmake --version
+ nvcc --version; mpicxx --showme; mpirun --version; gcc --version; python3 --version; cmake --version
  nvidia-smi --query-gpu=name,memory.total,uuid --format=csv
  git -C "$repo" rev-parse HEAD
  git -C "$repo" submodule status
