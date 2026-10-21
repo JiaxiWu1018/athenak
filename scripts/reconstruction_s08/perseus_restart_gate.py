@@ -49,7 +49,12 @@ def main():
     errors=[]
     for k in range(8):
         aa=pa[k,ia];bb=pb[k,ib]
-        assert np.array_equal(aa,bb),('particle field changed without evolution',k)
+        if k==1:
+            # IPEN=-u_t is recomputed during Driver initialization (driver.cpp).
+            # Positions, covariant momenta, masses and tags must be bit-exact.
+            assert np.allclose(aa,bb,rtol=1e-12,atol=1e-12),('derived energy',k)
+        else:
+            assert np.array_equal(aa,bb),('physical particle field changed without evolution',k)
         errors.append(float(np.max(abs(aa-bb))))
     ga=np.memmap(source,dtype='<f8',mode='r',offset=a[0],shape=(a[1],25,40,40,40))
     gb=np.memmap(destination,dtype='<f8',mode='r',offset=b[0],shape=(b[1],25,40,40,40))
@@ -60,7 +65,7 @@ def main():
     assert max_scaled<1e-12,max_scaled
     before.pop('parameters');after.pop('parameters')
     atomic(ROOT/'evidence/MIGRATION_RESTART_OK.json',dict(utc=now(),job=jid,source=before,destination=after,
-      no_evolution=True,all_particle_fields_exact=True,particle_max_abs_errors=errors,
+      no_evolution=True,physical_particle_fields_exact=True,derived_energy_tolerance=1e-12,particle_max_abs_errors=errors,
       interior_grid_max_scaled_difference=max_scaled,max_gpu_fraction=max(x['fraction'] for x in memory),
       ranks=3,max_nmb_per_rank=192,source_retained=True))
 if __name__=='__main__':main()
