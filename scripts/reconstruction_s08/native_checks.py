@@ -39,6 +39,8 @@ def main():
     assert cy==3 and not mask.any()
     e,log=launch('zero_population_restart',['-r',d['path'],'time/nlim=4'])
     assert e['particle_count']==0 and sum(e['removal_counts'])==2000 and e['cycle']==4
+    ledger=np.atleast_1d(np.genfromtxt(work/'frozen_ah.mass.csv',delimiter=',',names=True))
+    assert (ledger['weight_error']>=0).all() and (ledger['weight_error']<1e-10).all()
     atomic(ROOT/'evidence/NATIVE_CHECKS_OK.json',dict(utc=now(),job=job(),results=results,
            checks=['AMR capacity clean stop','AMR growth and migration','restart','stop file',
                    'complete removal ledger','cohort death masks','zero-population restart']))

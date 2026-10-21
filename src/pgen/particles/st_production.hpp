@@ -100,11 +100,19 @@ inline void STProductionStep(ParameterInput *pin, Mesh *mesh, bool final) {
 #if MPI_PARALLEL_ENABLED
     MPI_Allreduce(MPI_IN_PLACE,&error,1,MPI_ATHENA_REAL,MPI_MAX,MPI_COMM_WORLD);
 #endif
+    // Kokkos::Max uses its lowest-value identity for an empty population.
+    // With no surviving weights, the equal-weight violation is zero.
+    error=std::max(error,static_cast<Real>(0.0));
     int dead=0;
     for (int k=0;k<NPRTCL_DEATH_REASON;++k) {dead+=mesh->nprtcl_destroyed_cum[k];}
     const Real closure=(mass+dead*weight-m0)/m0;
     if (mesh->nprtcl_total+dead!=initial || !std::isfinite(mass) ||
         std::abs(closure)>1e-10 || error>1e-10) {
+      if (global_variable::my_rank==0) {
+        std::cerr<<"ST ledger: alive="<<mesh->nprtcl_total<<" dead="<<dead
+                 <<" initial="<<initial<<" mass="<<std::setprecision(17)<<mass
+                 <<" m0="<<m0<<" closure="<<closure<<" weight_error="<<error<<std::endl;
+      }
       Kokkos::abort("ST production rest-mass/particle ledger failed");
     }
     Real dx=std::numeric_limits<Real>::max();

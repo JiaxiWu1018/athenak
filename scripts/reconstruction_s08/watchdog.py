@@ -66,5 +66,5 @@ def main():
         if time.monotonic()-last_accounting>300:stop('accounting_telemetry_stale')
         with (out/'telemetry.jsonl').open('a') as f:f.write(json.dumps(sample)+'\n')
         atomic(out/'LATEST.json',sample)
-        time.sleep(30)
+        time.sleep(5)
 if __name__=='__main__':main()
