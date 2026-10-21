@@ -1,4 +1,5 @@
 #include "gi_diagnostics.hpp"
+#include "z4c/tmunu.hpp"
 #include "gi_diagnostic_math.hpp"
 #include <cmath>
 #include <iomanip>
@@ -12,7 +13,6 @@
 #include "outputs/outputs.hpp"
 #include "z4c/fastflow.hpp"
 #include "z4c/compact_object_tracker.hpp"
-#include "z4c/tmunu.hpp"
 
 namespace particles {
 namespace {
@@ -26,7 +26,7 @@ void Sum(std::vector<Real> &a) {
   MPI_Allreduce(MPI_IN_PLACE,a.data(),a.size(),MPI_ATHENA_REAL,MPI_SUM,MPI_COMM_WORLD);
 #endif
 }
-struct Crossing { int tag,h,old_in,adv_in,new_in,kind; Real q[12]; };
+struct Crossing { int tag,h,old_in,adv_in,new_in,kind; Real q[18]; };
 }
 
 GiDiagnostics::GiDiagnostics(MeshBlockPack *p,ParameterInput *in):pack(p),mesh(p->pmesh),pin(in){
@@ -46,11 +46,11 @@ GiDiagnostics::GiDiagnostics(MeshBlockPack *p,ParameterInput *in):pack(p),mesh(p
   next_sample=mesh->time;
   std::string base=pin->GetString("job","basename");
   Open(events,base+".gi_crossings.rank"+std::to_string(global_variable::my_rank)+".csv",
-    "cycle,time,tag,component,horizon,kind,old_inside,advected_inside,new_inside,mass,x,y,z,u1_cov,u2_cov,u3_cov,En_trilinear,Ecoord_trilinear,metric_valid,Jz_origin,old_Jz_origin");
+    "cycle,time,tag,component,horizon,kind,old_inside,advected_inside,new_inside,mass,x,y,z,u1_cov,u2_cov,u3_cov,En_trilinear,Ecoord_trilinear,metric_valid,Jz_origin,old_Jz_origin,old_x,old_y,old_z,old_u1_cov,old_u2_cov,old_u3_cov");
   if(global_variable::my_rank==0){
     Open(profiles,base+".gi_particles.csv","cycle,time,component,shell,mask,count,rest_mass,En_trilinear,Ecoord_trilinear,Ecoord_native,Px,Py,Pz,Jx,Jy,Jz,mx,my,mz,mxx,mxy,mxz,myy,myz,mzz,m_ur,invalid_metric_mass");
     Open(grid,base+".gi_grid.csv","cycle,time,shell,mask,proper_volume,H2_volume,M2_volume,alpha_volume,g_rr_volume,beta_r_volume,E_volume,invalid_coordinate_volume");
-    Open(status,base+".gi_status.csv","cycle,time,dt,blocks,max_rank_blocks,capacity,valid_bits,ever_bits,strict_common,tracker0_live,tracker1_live,separation,x0,y0,z0,x1,y1,z1");
+    Open(status,base+".gi_status.csv","cycle,time,dt,blocks,max_rank_blocks,capacity,valid_bits,ever_bits,strict_common,tracker0_live,tracker1_live,separation,x0,y0,z0,x1,y1,z1,proper_exterior_line,line_samples,line_valid_samples");
     Open(transport,base+".gi_shell_transfer.csv","cycle,time,component,shell,mass_in,mass_out,Jz_adv_in,Jz_adv_out,Jz_force_delta,Jz_AH_advection,Jz_AH_sweep,unknown_AH_mass_steps");
     Open(milestones,base+".gi_milestones.csv","cycle,time,event,restart_number");
   }
@@ -149,6 +149,7 @@ void GiDiagnostics::AfterPush(){
           e.q[7]=metric.en;e.q[8]=metric.ec;e.q[9]=metric.valid;
           e.q[10]=e.q[0]*(e.q[1]*e.q[5]-e.q[2]*e.q[4]);
           e.q[11]=e.q[0]*(b(p,0)*b(p,4)-b(p,1)*b(p,3));
+          for(int a=0;a<6;++a)e.q[12+a]=b(p,a);
         } ++offset;
       });
     out.template modify<DevExeSpace>();out.template sync<HostMemSpace>();
@@ -247,18 +248,50 @@ void GiDiagnostics::Sample(bool force){
   std::vector<Real> gt(GI_NSHELL*GM*GQ,0.);
   for(int b=0;b<nb;++b)for(int s=0;s<GI_NSHELL;++s)for(int mask=0;mask<GM;++mask)for(int q=0;q<GQ;++q)gt[(s*GM+mask)*GQ+q]+=gh(b,s,mask,q);
   Sum(gt);
+  auto &tr=pack->pz4c->ptracker;
+  bool live0=tr.size()>0&&tr[0]->DiagnosticLive(),live1=tr.size()>1&&tr[1]->DiagnosticLive();
+  Real pos[6];for(auto &x:pos)x=std::numeric_limits<Real>::quiet_NaN();
+  for(int h=0;h<std::min(2,static_cast<int>(tr.size()));++h)for(int a=0;a<3;++a)pos[h*3+a]=tr[h]->GetPos(a);
+  Real d=std::sqrt(SQR(pos[0]-pos[3])+SQR(pos[1]-pos[4])+SQR(pos[2]-pos[5]));
+  constexpr int NLINE=2048;
+  std::vector<Real> line_total(NLINE*2,0.);
+  bool binary_live=live0&&live1&&!common&&coverage&&std::isfinite(d)&&d>0;
+  if(binary_live){
+    DvceArray2D<Real> line("GI_exterior_line",NLINE,2);Kokkos::deep_copy(line,0.);
+    Kokkos::parallel_for("GI_proper_line",Kokkos::RangePolicy<DevExeSpace>(0,NLINE),
+      KOKKOS_LAMBDA(int p){
+        Real f=(p+.5)/NLINE,dx=pos[3]-pos[0],dy=pos[4]-pos[1],dz=pos[5]-pos[2];
+        Real x=pos[0]+f*dx,y=pos[1]+f*dy,z=pos[2]+f*dz;
+        for(int b=0;b<nb;++b){auto box=sz(b);
+          if(x<box.x1min||x>=box.x1max||y<box.x2min||y>=box.x2max||z<box.x3min||z>=box.x3max)continue;
+          bool interior=false;for(int h=0;h<H;++h)interior|=GiInside(par,coef,h,L,x,y,z);
+          if(interior){line(p,1)=1;break;}
+          Real q[3]={(x-box.x1min)/box.dx1+ng-.5,(y-box.x2min)/box.dx2+ng-.5,(z-box.x3min)/box.dx3+ng-.5};
+          int ix[3];Real w[3];for(int a=0;a<3;++a){ix[a]=static_cast<int>(Kokkos::floor(q[a]));w[a]=q[a]-ix[a];}
+          Real g[6]={};
+          for(int k=0;k<2;++k)for(int j=0;j<2;++j)for(int i=0;i<2;++i){
+            Real wt=(i?w[0]:1-w[0])*(j?w[1]:1-w[1])*(k?w[2]:1-w[2]);
+            for(int a=0;a<6;++a)g[a]+=wt*adm(b,a,ix[2]+k,ix[1]+j,ix[0]+i);
+          }
+          Real ds2=g[0]*dx*dx+g[3]*dy*dy+g[5]*dz*dz+2*(g[1]*dx*dy+g[2]*dx*dz+g[4]*dy*dz);
+          if(ds2>0&&Kokkos::isfinite(ds2)){line(p,0)=Kokkos::sqrt(ds2)/NLINE;line(p,1)=1;}
+          break;
+        }
+      });
+    auto hl=Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),line);
+    for(int p=0;p<NLINE;++p){line_total[p*2]=hl(p,0);line_total[p*2+1]=hl(p,1);}Sum(line_total);
+  }
+  Real proper=0;int line_valid=0;
+  for(int p=0;p<NLINE;++p){proper+=line_total[p*2];if(line_total[p*2+1]==1)++line_valid;}
+  if(!binary_live||line_valid!=NLINE)proper=std::numeric_limits<Real>::quiet_NaN();
   if(global_variable::my_rank==0){
     for(int s=0;s<GI_NSHELL;++s)for(int mask=0;mask<GM;++mask){
       grid<<mesh->ncycle<<','<<mesh->time<<','<<s<<','<<mask;
       for(int q=0;q<GQ;++q)grid<<','<<((mask==1&&!coverage)?std::numeric_limits<Real>::quiet_NaN():gt[(s*GM+mask)*GQ+q]);grid<<'\n';
     }grid.flush();
     int maxb=0;for(int r=0;r<global_variable::nranks;++r)maxb=std::max(maxb,mesh->nmb_eachrank[r]);
-    auto &tr=pack->pz4c->ptracker;bool live0=tr.size()>0&&tr[0]->DiagnosticLive(),live1=tr.size()>1&&tr[1]->DiagnosticLive();
-    Real pos[6];for(auto &x:pos)x=std::numeric_limits<Real>::quiet_NaN();
-    for(int h=0;h<std::min(2,static_cast<int>(tr.size()));++h)for(int a=0;a<3;++a)pos[h*3+a]=tr[h]->GetPos(a);
-    Real d=std::sqrt(SQR(pos[0]-pos[3])+SQR(pos[1]-pos[4])+SQR(pos[2]-pos[5]));
     status<<mesh->ncycle<<','<<mesh->time<<','<<mesh->dt<<','<<mesh->nmb_total<<','<<maxb<<','<<mesh->nmb_maxperrank<<','<<nv<<','<<ne<<','<<common<<','<<live0<<','<<live1<<','<<d;
-    for(auto x:pos)status<<','<<x;status<<'\n';status.flush();
+    for(auto x:pos)status<<','<<x;status<<','<<proper<<','<<NLINE<<','<<line_valid<<'\n';status.flush();
     if(!profiles||!grid||!status||!transport)throw std::runtime_error("GI compact output failed");
   }
 }

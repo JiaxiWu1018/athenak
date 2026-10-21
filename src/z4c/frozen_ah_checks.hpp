@@ -13,10 +13,12 @@
 #include "z4c.hpp"
 #include "particles/particles.hpp"
 #include "particles/gi_diagnostics.hpp"
+#include "particles/gi_math_checks.hpp"
 
 // Opt-in non-evolving validation: no integrator, pusher, or AMR step is executed.
 // Used for the analytic fixture and subsequently for saved production states.
 inline void FrozenAhChecks(Mesh *mesh, ParameterInput *pin, int repetitions) {
+  particles::GiMathChecks();
   auto pack = mesh->pmb_pack;
   if (!pack->pz4c) throw std::runtime_error("Frozen AH checks require Z4c");
   auto u = pack->pz4c->u0;

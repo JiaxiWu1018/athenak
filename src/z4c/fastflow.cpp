@@ -2235,7 +2235,7 @@ void FastFlow::WriteSearchEvent(Real time) {
   for (int q : {harea, hmass, hchi, hSx, hSy, hSz, hPx, hPy, hPz})
     fprintf(pofile_events, ",%.17g", ah_prop[q]);
   fprintf(pofile_events, ",%.17g,%.17g,%.17g,%.17g,%d,",
-      ah_prop[hhmean]/ah_prop[harea], ah_prop[hhrms], rr_min,
+      Kokkos::fabs(ah_prop[hhmean])/ah_prop[harea], ah_prop[hhrms], rr_min,
       ah_prop[hmeanradius], lmax);
   if (published_this_search) {
     for (int l=0; l<lmax1; ++l) fprintf(pofile_events, "%.17g;", a0_surf.h_view(l));

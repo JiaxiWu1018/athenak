@@ -1,0 +1,169 @@
+{
+  "baseline": "GI_in_cluster/session_010_vista_preparation_20261013/inputs/vista_production/production.athinput",
+  "baseline_sha256": "aa712954cd7d0594395082670893378530bf8f7efc047ee3f51224a19c389ffe",
+  "output_sha256": "e761bbdeacf6a51d28438322aa9f8e00935501306e1338985dcca363989ad0b1",
+  "changes": [
+    {
+      "block": "gi_diagnostics",
+      "parameter": "enabled",
+      "old": null,
+      "new": "true"
+    },
+    {
+      "block": "job",
+      "parameter": "basename",
+      "old": "s10_orbit_gw",
+      "new": "s11_amd"
+    },
+    {
+      "block": "mesh_refinement",
+      "parameter": "max_nmb_per_rank",
+      "old": "400",
+      "new": "256"
+    },
+    {
+      "block": "time",
+      "parameter": "stop_check_every",
+      "old": "16",
+      "new": "1"
+    },
+    {
+      "block": "time",
+      "parameter": "tlim",
+      "old": "1e30",
+      "new": "75.0"
+    },
+    {
+      "block": "z4c",
+      "parameter": "co_0_out_every",
+      "old": "20",
+      "new": "1"
+    },
+    {
+      "block": "z4c",
+      "parameter": "co_1_out_every",
+      "old": "20",
+      "new": "1"
+    },
+    {
+      "block": "z4c",
+      "parameter": "extraction_radius_1",
+      "old": null,
+      "new": "36.0"
+    },
+    {
+      "block": "z4c",
+      "parameter": "extraction_radius_2",
+      "old": null,
+      "new": "44.0"
+    },
+    {
+      "block": "z4c",
+      "parameter": "nrad_wave_extraction",
+      "old": "1",
+      "new": "3"
+    }
+  ],
+  "output_blocks": [
+    {
+      "file_type": "hst",
+      "dt": "0.025"
+    },
+    {
+      "file_type": "bin",
+      "variable": "tmunu",
+      "id": "tmunu_xy",
+      "slice_x3": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "con",
+      "id": "con_xy",
+      "slice_x3": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "z4c",
+      "id": "z4c_xy",
+      "slice_x3": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "tmunu",
+      "id": "tmunu_xz",
+      "slice_x2": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "con",
+      "id": "con_xz",
+      "slice_x2": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "z4c",
+      "id": "z4c_xz",
+      "slice_x2": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "tmunu",
+      "id": "tmunu_yz",
+      "slice_x1": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "con",
+      "id": "con_yz",
+      "slice_x1": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "z4c",
+      "id": "z4c_yz",
+      "slice_x1": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "weyl",
+      "id": "weyl_xy",
+      "slice_x3": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "weyl",
+      "id": "weyl_xz",
+      "slice_x2": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "bin",
+      "variable": "weyl",
+      "id": "weyl_yz",
+      "slice_x1": "0.0",
+      "dt": "0.5"
+    },
+    {
+      "file_type": "trk",
+      "nparticles": "90000",
+      "format_version": "2",
+      "cohort_per_component": "30000",
+      "dt": "0.25"
+    },
+    {
+      "file_type": "rst",
+      "dt": "1e30",
+      "last_time": "-1"
+    }
+  ]
+}

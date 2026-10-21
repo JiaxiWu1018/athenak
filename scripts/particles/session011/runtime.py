@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+"""Session-local finite continuation, verification, telemetry and bounded retention.
+
+Never submit beyond t=75. A failed/ambiguous launch or science diagnostic pause
+requires review; it cannot silently start a new t=0 trajectory. Heavy operations
+(hashing and population verification) require an allocated Slurm job.
+"""
+import argparse
+import csv
+import datetime as dt
+import fcntl
+import hashlib
+import json
+import math
+import os
+import re
+import socket
+import struct
+import subprocess
+import time
+from pathlib import Path
+
+END = 75.0
+TIB = 1024**4
+LAYOUTS = [(6, 256), (7, 240), (8, 224)]
+
+def atomic(path, data):
+    path = Path(path)
+    tmp = path.with_suffix(path.suffix+'.tmp')
+    tmp.write_text(json.dumps(data, indent=2)+'\n')
+    os.replace(tmp, path)
+
+def require_compute():
+    if not os.environ.get('SLURM_JOB_ID'):
+        raise RuntimeError('Allocated Slurm compute is required')
+
+def digest(path):
+    require_compute()
+    h = hashlib.sha256()
+    with Path(path).open('rb') as f:
+        for b in iter(lambda: f.read(8*1024**2), b''):
+            h.update(b)
+    return h.hexdigest()
+
+def checkpoint(path, hashing=True, expected_particles=5_000_000, ntrackers=2, block_n=40):
+    """Native Real=double MPI single-file Z4c+particles schema; reject truncation."""
+    path = Path(path)
+    st = path.stat()
+    with path.open('rb') as f:
+        header = f.read(4*1024**2)
+        end = header.find(b'<par_end>')
+        if end < 0:
+            raise ValueError('missing bounded parameter header')
+        offset = end+10
+        f.seek(offset)
+        nmb, rootlevel = struct.unpack('<ii', f.read(8))
+        if not 0 < nmb <= 100_000 or not 0 <= rootlevel < 20:
+            raise ValueError('invalid mesh metadata')
+        f.seek(offset+232)
+        simtime, delta, cycle = struct.unpack('<ddi', f.read(20))
+        if not all(math.isfinite(x) for x in (simtime, delta)) or not 0 <= simtime <= END+1e-10 or delta <= 0 or cycle < 0:
+            raise ValueError('invalid checkpoint time/cycle')
+        f.seek(offset+252+nmb*20+8+24*ntrackers)
+        block_bytes = struct.unpack('<Q', f.read(8))[0]
+        if block_bytes != 25*block_n**3*8:
+            raise ValueError('unexpected Z4c block layout')
+        particle_offset = f.tell()+block_bytes*nmb
+        f.seek(particle_offset)
+        counts = struct.unpack('<4d', f.read(32))
+        if any(not math.isfinite(x) or x < 0 or x != int(x) for x in counts):
+            raise ValueError('invalid particle census')
+        if sum(counts) != expected_particles:
+            raise ValueError('particle count closure failed')
+        expected = particle_offset+32+int(counts[0])*10*8
+        if st.st_size != expected:
+            raise ValueError(f'truncated/incompatible checkpoint: {st.st_size} != {expected}')
+    row = dict(path=str(path.resolve()), bytes=st.st_size, time=simtime, dt=delta,
+               cycle=cycle, blocks=nmb, particles=int(counts[0]),
+               removed=list(map(int, counts[1:])), particle_offset=particle_offset+32)
+    if hashing:
+        row['sha256'] = digest(path)
+    if path.stat().st_size != st.st_size or path.stat().st_mtime_ns != st.st_mtime_ns:
+        raise ValueError('checkpoint changed during verification')
+    return row
+
+def last_csv(path):
+    path = Path(path)
+    if not path.exists():
+        return None
+    with path.open('rb') as f:
+        header = f.readline().decode().strip().split(',')
+        f.seek(max(0, path.stat().st_size-32768))
+        lines = f.read().decode(errors='replace').splitlines()
+    for line in reversed(lines):
+        fields = line.split(',')
+        if len(fields) == len(header) and fields[0].lstrip('-').isdigit():
+            return dict(zip(header, fields))
+    return None
+
+def telemetry(run):
+    require_compute()
+    host = socket.gethostname()
+    run = Path(run)
+    while True:
+        devices = []
+        for p in sorted(Path('/sys/class/drm').glob('card[0-9]*/device')):
+            try:
+                total = int((p/'mem_info_vram_total').read_text())
+                used = int((p/'mem_info_vram_used').read_text())
+                devices.append(dict(device=str(p.resolve()), total=total, used=used))
+            except (OSError, ValueError):
+                continue
+        # PCI addresses can have duplicate DRM aliases; count each physical device once.
+        devices = list({v['device']: v for v in devices}.values())
+        row = dict(epoch=time.time(), host=host, devices=devices,
+                   job=os.environ['SLURM_JOB_ID'])
+        atomic(run/f'telemetry_{host}.json', row)
+        with (run/f'telemetry_{host}.jsonl').open('a') as f:
+            f.write(json.dumps(row)+'\n')
+        time.sleep(5)
+
+def request_stop(run, reason, kind):
+    path = run/'STOP_REASON.json'
+    if not path.exists():
+        atomic(path, dict(epoch=time.time(), reason=reason, kind=kind))
+    (run/'REQUEST_STOP').touch()
+
+def watch(root, run, nodes):
+    require_compute()
+    started=time.time(); last_du=0; usage=None; usage_time=0
+    previous_gpu={}; reserve=2400
+    while True:
+        now=time.time()
+        telemetry_files=list(run.glob('telemetry_*.json'))
+        healthy=0
+        for path in telemetry_files:
+            try:
+                row=json.loads(path.read_text())
+                if now-row['epoch']>60 or len(row['devices'])!=4:
+                    continue
+                healthy+=1
+                for device in row['devices']:
+                    fraction=device['used']/device['total']
+                    key=device['device']+row['host']
+                    old=previous_gpu.get(key)
+                    # Growth observed over the monitor interval predicts the next
+                    # finalization reserve conservatively; abrupt jumps also stop.
+                    growth=max(0,(fraction-old[1])/(now-old[0])) if old and now>old[0] else 0
+                    if fraction>=.80:
+                        with (run/'warnings.jsonl').open('a') as f:
+                            f.write(json.dumps(dict(epoch=now,gpu_fraction=fraction,device=key))+'\n')
+                    if fraction>=.83 or fraction+growth*reserve>=.85:
+                        request_stop(run,'GPU memory pressure before 85%','capacity')
+                    previous_gpu[key]=(now,fraction)
+            except (OSError,ValueError,KeyError):
+                continue
+        if now-started>600 and healthy<nodes:
+            request_stop(run,'GPU telemetry missing or stale','review')
+        if now-last_du>=300:
+            last_du=now
+            try:
+                output=subprocess.check_output(['du','-sb','/work1/eliasmost/jiaxiwu'],timeout=180,text=True)
+                new_usage=int(output.split()[0])
+                growth=max(0,(new_usage-usage)/(now-usage_time)) if usage is not None else 0
+                record=dict(epoch=now,bytes=new_usage,projected_bytes=new_usage+growth*reserve,
+                            warning=new_usage>=1.5*TIB)
+                with (run/'storage.jsonl').open('a') as f:f.write(json.dumps(record)+'\n')
+                usage=new_usage;usage_time=now
+                # Reserve two maximum observed ~64GiB checkpoint writes as well as growth.
+                if new_usage>=1.7*TIB or new_usage+max(growth*reserve,128*1024**3)>=1.9*TIB:
+                    request_stop(run,'whole-user storage reserve exhausted','review')
+            except (OSError,ValueError,subprocess.SubprocessError) as e:
+                with (run/'warnings.jsonl').open('a') as f:f.write(json.dumps(dict(epoch=now,du_error=str(e)))+'\n')
+        if now-started>900 and now-usage_time>900:
+            request_stop(run,'whole-user storage telemetry stale','review')
+        status=last_csv(run/'s11_amd.gi_status.csv')
+        if status:
+            if int(status['max_rank_blocks'])>=.90*int(status['capacity']):
+                request_stop(run,'per-rank block capacity pressure','capacity')
+            common=status['strict_common']=='1'
+            for h in ([2] if common else [0,1]):
+                event=last_csv(run/f's11_amd.ah_events_{h}.csv')
+                if event and int(event['failed_searches'])>=128:
+                    request_stop(run,f'persistent accepted-AH dropout horizon {h}','science')
+        time.sleep(15)
+
+def finish(root,run,rc):
+    require_compute()
+    if rc:
+        atomic(root/'control/PAUSED.json',dict(reason='application failed; no automatic replay',returncode=rc,run=str(run)))
+        return False
+    candidates=[]
+    for p in sorted((run/'rst').glob('*.rst')):
+        candidates.append(checkpoint(p))
+    if not candidates:
+        raise RuntimeError('clean application exit without verified checkpoint')
+    candidates.sort(key=lambda r:(r['cycle'],r['path']))
+    latest=candidates[-1]
+    previous_path=root/'control/latest_checkpoint.json'
+    previous=json.loads(previous_path.read_text()) if previous_path.exists() else None
+    if previous and latest['cycle']<=previous['cycle']:
+        raise RuntimeError('segment made no trajectory progress')
+    atomic(run/'checkpoint_manifest.json',candidates)
+    atomic(previous_path,latest)
+    # Retain every milestone, initialization, final, and the last two recovery states.
+    history_path=root/'control/checkpoint_inventory.json'
+    history=json.loads(history_path.read_text()) if history_path.exists() else []
+    history += candidates
+    milestone_numbers=set()
+    event_file=run/'s11_amd.gi_milestones.csv'
+    if event_file.exists():
+        with event_file.open() as f:
+            milestone_numbers={int(r['restart_number']) for r in csv.DictReader(f)}
+    for r in candidates:
+        number=int(Path(r['path']).stem.rsplit('.',1)[1])
+        r['protected']=r['cycle']==0 or r['time']>=END-1e-10 or number in milestone_numbers
+    recoveries=sorted([r for r in history if not r.get('deleted')],key=lambda r:(r['cycle'],r['path']))
+    keep={r['path'] for r in recoveries[-2:]}
+    atomic(history_path,history)  # inventory exists BEFORE any authorized rotation
+    for r in history:
+        if r.get('deleted') or r.get('protected') or r['path'] in keep:
+            continue
+        p=Path(r['path']).resolve()
+        if root.resolve() not in p.parents or 'runs' not in p.parts:
+            raise RuntimeError('refusing rotation outside this session run tree')
+        # Both recovery copies are validated before deleting an older redundant state.
+        if not all(Path(k).exists() for k in keep) or len(keep)<2:
+            continue
+        if digest(p)!=r['sha256']:
+            raise RuntimeError('checkpoint changed before authorized rotation')
+        p.unlink();r['deleted']=dt.datetime.now(dt.timezone.utc).isoformat()
+    atomic(history_path,history)
+    if latest['time']>=END-1e-10:
+        atomic(root/'control/ENDPOINT_75.json',latest)
+        return False
+    stop=run/'STOP_REASON.json'
+    if stop.exists():
+        reason=json.loads(stop.read_text())
+        if reason['kind']=='capacity':
+            layout=int(os.environ['LAYOUT_INDEX'])+1
+            if layout<len(LAYOUTS):
+                atomic(root/'control/layout.json',dict(index=layout,reason=reason))
+                return True
+        atomic(root/'control/PAUSED.json',reason)
+        return False
+    return True
+
+def submit(root):
+    with (root/'control/submit.lock').open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        for name in ('PAUSED.json','ENDPOINT_75.json'):
+            if (root/'control'/name).exists():
+                return
+        if not (root/'control/VALIDATION_PASS.json').exists():
+            raise RuntimeError('production validation gate has not been released')
+        latest=root/'control/latest_checkpoint.json'
+        if latest.exists() and json.loads(latest.read_text())['time']>=END-1e-10:
+            return
+        state_path=root/'control/submission.json'
+        old=json.loads(state_path.read_text()) if state_path.exists() else None
+        if old:
+            active=subprocess.check_output(['squeue','-h','-j',str(old['job_id']),'-o','%T'],text=True).strip()
+            # The current completed segment may submit its successor while finalizing.
+            if active and str(old['job_id'])!=os.environ.get('SLURM_JOB_ID'):
+                return
+            if not latest.exists():
+                raise RuntimeError('fresh production already submitted; refusing another t=0 launch')
+        layout_path=root/'control/layout.json'
+        layout=json.loads(layout_path.read_text())['index'] if layout_path.exists() else 0
+        nodes,cap=LAYOUTS[layout]; segment=old['segment']+1 if old else 0
+        export=f'ALL,SESSION_ROOT={root},SEGMENT={segment},LAYOUT_INDEX={layout},BLOCK_CAPACITY={cap}'
+        command=['sbatch','--parsable',f'--nodes={nodes}',f'--ntasks={nodes*4}',
+                 '--ntasks-per-node=4',f'--export={export}',
+                 f'--output={root}/evidence/production_%j.slurm.log',str(root/'scripts/amd_segment.sbatch')]
+        output=subprocess.check_output(command,text=True).strip()
+        job=output.splitlines()[-1].split(';')[0]
+        if not job.isdigit():raise RuntimeError('unrecognized scheduler receipt: '+output)
+        atomic(state_path,dict(job_id=job,segment=segment,nodes=nodes,capacity=cap,command=command))
+
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument('action',choices=['telemetry','watch','finish','submit','checkpoint'])
+    ap.add_argument('--root',type=Path,default=Path(os.environ.get('SESSION_ROOT','.')))
+    ap.add_argument('--run',type=Path)
+    ap.add_argument('--nodes',type=int)
+    ap.add_argument('--returncode',type=int,default=0)
+    ap.add_argument('--path',type=Path)
+    a=ap.parse_args()
+    if a.action=='telemetry':telemetry(a.run)
+    elif a.action=='watch':watch(a.root,a.run,a.nodes)
+    elif a.action=='checkpoint':print(json.dumps(checkpoint(a.path),indent=2))
+    elif a.action=='submit':submit(a.root)
+    elif finish(a.root,a.run,a.returncode):submit(a.root)
+
+if __name__=='__main__':main()
