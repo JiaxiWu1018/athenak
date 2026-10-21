@@ -116,7 +116,16 @@ def encode(name,fig,states,times,sync=False):
     import imageio_ffmpeg
     decoded,duration=imageio_ffmpeg.count_frames_and_secs(str(path))
     assert decoded==len(times) and abs(duration-len(times)/15)<.15,(decoded,duration,len(times))
-    return dict(**receipt(path),frames=decoded,duration=duration,full_decode=True,visual_review='pending')
+    # Inspect the encoded artifact itself, not just pre-encoding canvas captures.
+    decoded_previews=[]
+    for frame in sorted(previews):
+        preview=ROOT/'plots'/f'{name}_decoded_{frame:04d}.png'
+        cmd([exe,'-v','error','-xerror','-i',path,'-vf',f'select=eq(n\\,{frame})',
+             '-frames:v','1','-threads','1',preview])
+        assert preview.exists() and preview.stat().st_size>0
+        decoded_previews.append(dict(frame=frame,time=float(times[frame]),**receipt(preview)))
+    return dict(**receipt(path),frames=decoded,duration=duration,full_decode=True,
+                decoded_previews=decoded_previews,visual_review='pending')
 
 def main():
     job();style();(ROOT/'movies').mkdir(exist_ok=True);(ROOT/'plots').mkdir(exist_ok=True)
