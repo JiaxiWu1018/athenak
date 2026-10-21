@@ -7,10 +7,20 @@ import subprocess
 from pathlib import Path
 from runtime import atomic,digest,require_compute
 
-p=argparse.ArgumentParser();p.add_argument('--root',type=Path,required=True);p.add_argument('--final',type=Path,required=True);p.add_argument('--preflight',type=Path,required=True);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--root',type=Path,required=True);p.add_argument('--final',type=Path,required=True);p.add_argument('--preflight',type=Path,required=True);p.add_argument('--held-job');a=p.parse_args()
 require_compute()
 root=a.root;control=root/'control';control.mkdir(exist_ok=True)
-assert not (control/'submission.json').exists(),'cannot replace a launched trajectory gate'
+if (control/'submission.json').exists():
+    submitted=json.loads((control/'submission.json').read_text())
+    assert a.held_job==submitted['job_id'] and submitted['segment']==0
+    assert not (root/'runs/segment_0000').exists() and not (control/'latest_checkpoint.json').exists()
+    scheduler=subprocess.check_output(['scontrol','show','job',a.held_job,'-o'],text=True)
+    assert 'JobState=PENDING' in scheduler and 'Reason=JobHeldUser' in scheduler
+    old=control/'VALIDATION_PASS.json'
+    if old.exists():
+        archive=root/'evidence'/('gate_before_'+a.preflight.name+'.json')
+        assert not archive.exists()
+        archive.write_text(old.read_text())
 final=json.loads((a.final/'RESULT.json').read_text());preflight=json.loads((a.preflight/'RESULT.json').read_text())
 assert final['status']=='pass' and final['mpi_ranks']==4 and final['evolution_advances']==0
 assert preflight['status']=='pass'

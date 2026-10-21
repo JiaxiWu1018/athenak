@@ -344,7 +344,7 @@ def report(root,out,metrics,wave):
     orbit=pd.read_csv(out/'orbit.csv');constraints=pd.read_csv(out/'exterior_constraints.csv')
     # Expose the non-spherical envelope moment in the instantaneous orbital frame.
     e=ledgers[(ledgers.component==0)&(ledgers['mask']==1)].merge(orbit[['cycle','phase']],on='cycle',how='left')
-    quad=(e.mxx-e.myy+2j*e.mxy)*np.exp(-2j*e.phase)
+    quad=(e.mxx-e.myy+2j*e.mxy).to_numpy()*np.exp(-2j*e.phase.to_numpy())
     e['wake_quadrupole_real']=quad.real;e['wake_quadrupole_imag']=quad.imag
     e[['cycle','time','rest_mass','Jz','wake_quadrupole_real','wake_quadrupole_imag']].to_csv(out/'envelope_wake_moments.csv',index=False)
     # Newtonian spherical support proxy; coordinate radius and rest-mass profile,

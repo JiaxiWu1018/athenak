@@ -32,6 +32,24 @@ class ProductChecks(unittest.TestCase):
             self.assertEqual(flux.advected_rest_mass.iloc[0],2.)
             self.assertEqual(removed.Jz.iloc[0],-4.)
             self.assertEqual(removed.Ecoord_trilinear.iloc[0],8.)
+    def test_full_synthetic_report_and_movies(self):
+        import subprocess,sys
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)/'fixture';out=root/'products';scripts=Path(__file__).parent
+            subprocess.run([sys.executable,str(scripts/'product_fixture.py'),str(scripts),str(root)],check=True)
+            subprocess.run([sys.executable,str(scripts/'products.py'),'--root',str(root),'--out',str(out),'--movies'],check=True)
+            metrics=json.loads((out/'metrics.json').read_text())
+            self.assertEqual(metrics['endpoint'],75)
+            self.assertEqual(metrics['strict_common_time'],.75)
+            snapshot=json.loads((out/'snapshot_manifest.json').read_text())
+            self.assertEqual(snapshot['selected_cycles'],[0,1,2,3])
+            self.assertTrue(all(snapshot['events_observed']))
+            import imageio_ffmpeg
+            for name in ('wide','close'):
+                path=out/f'{name}_1080p.mp4';self.assertGreater(path.stat().st_size,1000)
+                subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(),'-v','error','-i',str(path),'-f','null','-'],check=True)
+            for row in json.loads((out/'manifest.json').read_text()):
+                self.assertEqual(products.sha256(out/row['path']),row['sha256'])
     def test_native_harmonic_convention(self):
         theta=np.linspace(0,np.pi,41);phi=np.linspace(-np.pi,np.pi,41)
         np.testing.assert_allclose(products.harmonic(0,0,theta,phi),1/np.sqrt(4*np.pi),atol=1e-14)

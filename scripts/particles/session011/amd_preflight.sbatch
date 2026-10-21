@@ -42,5 +42,7 @@ result=dict(status='pass',job_id=os.environ['SLURM_JOB_ID'],source=source,runtim
 (out/'RESULT.json').write_text(json.dumps(result,indent=2)+'\n')
 PY
 if [[ -n ${FINAL_CHECK:-} ]]; then
-  python3 "$ROOT/scripts/release_gate.py" --root "$ROOT" --final "$FINAL_CHECK" --preflight "$OUT" > "$OUT/validation_gate.json"
+  HELD_ARGS=()
+  if [[ -n ${HELD_PRODUCTION_JOB:-} ]]; then HELD_ARGS=(--held-job "$HELD_PRODUCTION_JOB"); fi
+  python3 "$ROOT/scripts/release_gate.py" "${HELD_ARGS[@]}" --root "$ROOT" --final "$FINAL_CHECK" --preflight "$OUT" > "$OUT/validation_gate.json"
 fi
