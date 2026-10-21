@@ -18,9 +18,23 @@
 // Opt-in non-evolving validation: no integrator, pusher, or AMR step is executed.
 // Used for the analytic fixture and subsequently for saved production states.
 inline void FrozenAhChecks(Mesh *mesh, ParameterInput *pin, int repetitions) {
+  int device=-1;
+#if defined(KOKKOS_ENABLE_HIP)
+  device=Kokkos::HIP().hip_device();
+#elif defined(KOKKOS_ENABLE_CUDA)
+  device=Kokkos::Cuda().cuda_device();
+#endif
+  std::vector<int> devices(global_variable::nranks,device);
+#if MPI_PARALLEL_ENABLED
+  MPI_Allgather(&device,1,MPI_INT,devices.data(),1,MPI_INT,MPI_COMM_WORLD);
+#endif
+  if(global_variable::my_rank==0)
+    for(int r=0;r<global_variable::nranks;++r)
+      std::cout<<"FROZEN_GPU_BINDING rank="<<r<<" device="<<devices[r]<<std::endl;
   particles::GiMathChecks();
   auto pack = mesh->pmb_pack;
   if (!pack->pz4c) throw std::runtime_error("Frozen AH checks require Z4c");
+  if (!pack->ppart) throw std::runtime_error("Frozen particle/AH checks require particles");
   auto u = pack->pz4c->u0;
   auto before = Kokkos::create_mirror(u);
   Kokkos::deep_copy(before, u);

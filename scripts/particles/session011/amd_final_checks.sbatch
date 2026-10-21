@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH -J jeans11-final-check
 #SBATCH -A eliasmost
-#SBATCH -p devel
+#SBATCH -p mi2104x
+#SBATCH --exclusive
 #SBATCH -N 1
 #SBATCH -n 4
 #SBATCH --ntasks-per-node=4
@@ -51,6 +52,8 @@ python3 - "$TEST_ROOT" <<'PY'
 import json,math,re,struct,sys
 from pathlib import Path
 r=Path(sys.argv[1])
+bindings=re.findall(r'FROZEN_GPU_BINDING rank=(\d+) device=(\d+)',(r/'restarted.log').read_text())
+assert sorted((int(rank),int(device)) for rank,device in bindings)==[(i,i) for i in range(4)]
 frames=list((r/'restarted/trk').glob('*.trk2'))
 assert len(frames)==1
 data=frames[0].read_bytes();header=data[:512].rstrip(b'\0').decode()

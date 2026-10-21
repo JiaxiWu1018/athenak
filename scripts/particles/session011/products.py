@@ -143,7 +143,7 @@ def reduce(root,out):
     valid=(status.tracker0_live==1)&(status.tracker1_live==1)&(status.strict_common==0)
     valid &= np.isfinite(vector).all(axis=1)
     valid &= (status.ever_bits.to_numpy(dtype=int)&3&~status.valid_bits.to_numpy(dtype=int))==0
-    phase=np.full(len(status),np.nan);omega=phase.copy();turns=0.;post_turns=0.;gaps=[]
+    phase=np.full(len(status),np.nan);omega=phase.copy();turns=0.;post_turns=0.;gaps=[];post_valid=False
     first=[float(accepted.loc[accepted.horizon==h,'state_time'].min())
            if (accepted.horizon==h).any() else None for h in (0,1)]
     both=max(first) if all(x is not None for x in first) else math.inf
@@ -156,7 +156,8 @@ def reduce(root,out):
             omega[ids]=np.gradient(p,status.time.to_numpy()[ids])
             turns+=(p[-1]-p[0])/(2*np.pi)
             ids_post=np.flatnonzero(status.time.to_numpy()[ids]>=both)
-            if len(ids_post)>1:post_turns+=(p[ids_post[-1]]-p[ids_post[0]])/(2*np.pi)
+            if len(ids_post)>1:
+                post_turns+=(p[ids_post[-1]]-p[ids_post[0]])/(2*np.pi);post_valid=True
             gaps.append(dict(start=float(status.time.iloc[ids[0]]),end=float(status.time.iloc[ids[-1]])))
     orbit=status[['cycle','time','separation','proper_exterior_line']].copy()
     orbit['phase']=phase;orbit['Omega']=omega
@@ -203,7 +204,8 @@ def reduce(root,out):
     grid.to_csv(out/'metric_shells.csv',index=False)
     transfer.to_csv(out/'shell_transfers.csv',index=False)
     metrics=dict(endpoint=latest['time'],cycle=latest['cycle'],first_individual_times=first,
-                 strict_common_time=common,observed_turns=turns,post_individual_turns=post_turns,
+                 strict_common_time=common,observed_turns=turns if gaps else None,
+                 post_individual_turns=post_turns if post_valid else None,
                  valid_orbit_intervals=gaps,particles_alive=latest['particles'],removed=latest['removed'],
                  horizon_accepted_counts={str(h):int((accepted.horizon==h).sum()) for h in range(3)},
                  source_runs=[str(p) for p in runs],endpoint_checkpoint=latest)
@@ -222,6 +224,8 @@ def render(runs,events,out,common,make_movies):
     records=[]
     for cycle,time,path in frames:
         hs=[horizons[cycle,h] for h in range(3) if (cycle,h) in horizons and (common is None or time<common or h==2)]
+        if any(abs(float(h['state_time'])-time)>1e-10 for h in hs):
+            raise RuntimeError('horizon and cohort physical-state timestamps disagree')
         records.append(dict(cycle=cycle,time=time,path=str(path),horizons=hs))
     wanted=[0];observed=[True]
     for label in ('first_individual_pair','first_inward_d_lt_1','strict_common'):
@@ -245,7 +249,10 @@ def render(runs,events,out,common,make_movies):
     fig.subplots_adjust(0,0,1,1,0,0);fig.savefig(out/'four_states.png',dpi=150,facecolor=BG);fig.savefig(out/'four_states.pdf',facecolor=BG);plt.close(fig)
     (out/'snapshot_manifest.json').write_text(json.dumps(dict(selected_cycles=wanted,events_observed=observed,frames=qa),indent=2)+'\n')
     if not make_movies:return
-    if not shutil.which('ffmpeg'):raise RuntimeError('ffmpeg unavailable')
+    ffmpeg=shutil.which('ffmpeg')
+    if not ffmpeg:
+        import imageio_ffmpeg
+        ffmpeg=imageio_ffmpeg.get_ffmpeg_exe()
     for name,limit in (('wide',24),('close',4)):
         directory=out/f'frames_{name}';directory.mkdir()
         concat=[];manifest=[]
@@ -262,8 +269,179 @@ def render(runs,events,out,common,make_movies):
             manifest.append(dict(cycle=item['cycle'],source=item['path'],hold_seconds=duration,**details))
         concat.append(f"file '{path.resolve()}'")
         listing=directory/'concat.txt';listing.write_text('\n'.join(concat)+'\n')
-        subprocess.run(['ffmpeg','-nostdin','-v','error','-f','concat','-safe','0','-i',str(listing),'-vf','fps=24','-c:v','libx264','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',str(out/f'{name}_1080p.mp4')],check=True)
+        subprocess.run([ffmpeg,'-nostdin','-v','error','-f','concat','-safe','0','-i',str(listing),'-vf','fps=24','-c:v','libx264','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',str(out/f'{name}_1080p.mp4')],check=True)
         (out/f'{name}_movie_manifest.json').write_text(json.dumps(dict(physical_Mref_per_second=1,camera=dict(elev=22,azim=-58,roll=0),frames=manifest),indent=2)+'\n')
+
+def ffi(time,psi,f0,taper=True):
+    """FFI for rPsi4=d²[r(h+ - i hx)]/dt², regularized below |f|=f0."""
+    delta=float(time[1]-time[0]);n=len(time)
+    if not np.allclose(np.diff(time),delta,rtol=1e-8,atol=1e-12):raise ValueError('FFI needs uniform samples')
+    window=np.ones(n)
+    if taper:
+        edge=max(2,int(.1*n));ramp=.5*(1-np.cos(np.linspace(0,np.pi,edge)))
+        window[:edge]=ramp;window[-edge:]=ramp[::-1]
+    source=(psi-np.mean(psi))*window
+    omega=2*np.pi*np.fft.fftfreq(n,delta);denominator=np.maximum(np.abs(omega),2*np.pi*f0)**2
+    spectrum=np.fft.fft(source);h=np.fft.ifft(-spectrum/denominator)
+    filtered=np.fft.ifft(spectrum*omega**2/denominator)
+    derivative=np.gradient(np.gradient(h,delta),delta)
+    valid=slice(max(4,int(n*.15)),min(n-4,int(n*.85)))
+    rms=lambda x:float(np.sqrt(np.mean(np.abs(x)**2)))
+    return h,dict(f0=f0,derivative_filtered_relative_rms=rms((derivative-filtered)[valid])/max(rms(filtered[valid]),1e-300),
+                  derivative_original_relative_rms=rms((derivative-source)[valid])/max(rms(source[valid]),1e-300))
+
+def waves(runs,out):
+    records=[];checks=[]
+    fig,ax=plt.subplots(figsize=(8,4))
+    for rad in (36,40,44):
+        chunks=[]
+        for run in runs:
+            real=run/'waveforms'/f'rpsi4_real_{rad:04d}.txt'
+            imag=run/'waveforms'/f'rpsi4_imag_{rad:04d}.txt'
+            times=run/'waveforms/state_times.csv'
+            if not real.exists():continue
+            a=np.loadtxt(real,ndmin=2);b=np.loadtxt(imag,ndmin=2);meta=pd.read_csv(times)
+            if len(a)!=len(b) or len(a)!=len(meta) or not np.allclose(a[:,0],b[:,0],rtol=0,atol=1e-12) or not np.allclose(a[:,0],meta.legacy_time,rtol=0,atol=1e-12):
+                raise RuntimeError('wave state provenance mismatch')
+            chunks.append(pd.DataFrame(dict(cycle=meta.state_cycle,time=meta.state_time,re=a[:,5],im=b[:,5])))
+        if not chunks:continue
+        data=pd.concat(chunks).drop_duplicates('cycle',keep='last').sort_values('cycle')
+        data.to_csv(out/f'wave22_R{rad}.csv',index=False)
+        time=data.time.to_numpy();psi=data.re.to_numpy()+1j*data.im.to_numpy()
+        ax.plot(time-rad,np.abs(psi),label=f'R={rad}')
+        records.append(dict(radius=rad,samples=len(time),first=float(time[0]),last=float(time[-1]),
+                            max_gap=float(np.diff(time).max()) if len(time)>1 else None,
+                            peak_state_time=float(time[np.argmax(np.abs(psi))])))
+        if rad!=40 or len(time)<100:continue
+        splits=np.flatnonzero(np.diff(time)>.0375)+1
+        fig_h,ax_h=plt.subplots(figsize=(8,4))
+        for index,ids in enumerate(np.split(np.arange(len(time)),splits)):
+            if len(ids)<100:continue
+            uniform=np.arange(time[ids[0]],time[ids[-1]],.025)
+            values=np.interp(uniform,time[ids],psi[ids].real)+1j*np.interp(uniform,time[ids],psi[ids].imag)
+            for f0 in (.01,.02,.04):
+                h,check=ffi(uniform,values,f0);check.update(interval=index,start=float(uniform[0]),end=float(uniform[-1]));checks.append(check)
+                pd.DataFrame(dict(time=uniform,rh_plus=h.real,rh_cross=-h.imag)).to_csv(out/f'provisional_strain_interval{index}_f{f0:.2f}.csv',index=False)
+                ax_h.plot(uniform-40,h.real,label=f'f0={f0:.2f}' if index==0 else None)
+        ax_h.set(xlabel='Approximate coordinate retarded time t-R / Mref',ylabel='Provisional r h+ (2,2)')
+        ax_h.set_title('Finite-window FFI sensitivity; no complete burst/ringdown claim');ax_h.legend();savefig(fig_h,out/'provisional_strain')
+    ax.set(xlabel='Approximate coordinate retarded time t-R / Mref',ylabel='|r Psi4 (2,2)|');ax.legend();savefig(fig,out/'wave_radius_comparison')
+    result=dict(convention='Psi4=d2(h_plus-i*h_cross)/dt2; saved modes are rPsi4',
+                modes=records,ffi_checks=checks,taper='10% cosine at each edge; mean removed',
+                gap_policy='split at dt>0.0375; interpolate only within each interval',
+                trust='exclude tapered edges; t75 precedes the historical R40 burst near115; provisional strain only')
+    (out/'wave_method.json').write_text(json.dumps(result,indent=2)+'\n')
+    return result
+
+def report(root,out,metrics,wave):
+    ledgers=pd.read_csv(out/'component_ledgers.csv');env=pd.read_csv(out/'envelope_shells.csv')
+    orbit=pd.read_csv(out/'orbit.csv');constraints=pd.read_csv(out/'exterior_constraints.csv')
+    # Expose the non-spherical envelope moment in the instantaneous orbital frame.
+    e=ledgers[(ledgers.component==0)&(ledgers['mask']==1)].merge(orbit[['cycle','phase']],on='cycle',how='left')
+    quad=(e.mxx-e.myy+2j*e.mxy)*np.exp(-2j*e.phase)
+    e['wake_quadrupole_real']=quad.real;e['wake_quadrupole_imag']=quad.imag
+    e[['cycle','time','rest_mass','Jz','wake_quadrupole_real','wake_quadrupole_imag']].to_csv(out/'envelope_wake_moments.csv',index=False)
+    # Newtonian spherical support proxy; coordinate radius and rest-mass profile,
+    # never presented as a relativistic circular-orbit calculation.
+    shell_radius=np.r_[np.arange(64)*.125+.0625,np.arange(64)+8.5,np.inf]
+    initial=env[(env.cycle==env.cycle.min())&(env['mask']==0)].set_index('shell').rest_mass.reindex(range(129),fill_value=0).to_numpy()
+    model=[]
+    for row in orbit.itertuples():
+        if not np.isfinite(row.Omega) or row.separation<=0:continue
+        p=env[(env.cycle==row.cycle)&(env['mask']==1)]
+        if p.empty or not np.isfinite(p.rest_mass).all():continue
+        mass=p.set_index('shell').rest_mass.reindex(range(129),fill_value=0).to_numpy()
+        radius0=row.separation/2;within=shell_radius<radius0
+        model.append(dict(cycle=row.cycle,time=row.time,radius=radius0,
+              evolving_env_omega2_proxy=float(mass[within].sum()/radius0**3),
+              frozen_env_omega2_proxy=float(initial[within].sum()/radius0**3),measured_omega2=row.Omega**2))
+    pd.DataFrame(model).to_csv(out/'envelope_support_proxy.csv',index=False)
+    # Record actual allocations; scheduler elapsed time includes build/check/final I/O.
+    jobs=[]
+    for path in sorted((root/'evidence').glob('*/RESULT.json')):
+        jobs.append(json.loads(path.read_text()).get('job_id'))
+    for run in sorted((root/'runs').glob('segment_*')):
+        text=(run/'provenance.txt').read_text() if (run/'provenance.txt').exists() else ''
+        match=re.search(r'JobId=(\d+)',text)
+        if match:jobs.append(match[1])
+    if jobs:
+        scheduler=subprocess.run(['sacct','-X','-P','-n','-j',','.join(sorted(set(jobs))),
+                                  '--format=JobID,State,ElapsedRaw,AllocNodes,AllocCPUS,MaxRSS'],text=True,capture_output=True)
+        (out/'scheduler_usage.txt').write_text(scheduler.stdout+scheduler.stderr)
+    inventory=[dict(path=str(p),bytes=p.stat().st_size) for p in sorted((root/'runs').rglob('*')) if p.is_file()]
+    raw_bytes=sum(r['bytes'] for r in inventory)
+    (out/'raw_inventory.json').write_text(json.dumps(inventory,indent=2)+'\n')
+    latest_audit=sorted((root/'runs').glob('segment_*/population_audit.json'))[-1]
+    audit=json.loads(latest_audit.read_text())
+    accepted=pd.read_csv(out/'accepted_horizons.csv')
+    last=[]
+    for h in range(3):
+        a=accepted[accepted.horizon==h]
+        if len(a):
+            r=a.iloc[-1];last.append(f'H{h}: last accepted t={r.state_time:.8g}, mass={r.mass:.8g}, coordinate spin={r.spin:.8g}')
+    text=f'''# Session 011 endpoint readout
+
+Verified state: t={metrics['endpoint']:.12g}, cycle={metrics['cycle']}.
+First individual acceptance: {metrics['first_individual_times']}.
+Strict common enclosure: {metrics['strict_common_time']}.
+Observed turns after both individual horizons, excluding gaps: {metrics['post_individual_turns']}.
+Observed valid orbit intervals: {len(metrics['valid_orbit_intervals'])}.
+
+{chr(10).join(last)}
+
+This is one production trajectory at the inherited grid/RK4/CFL and particle
+realization. There are no independent grid, timestep, seed, or physics controls.
+Accepted measurements and rejected-search gaps remain separate in the event tables.
+
+## Five hypotheses and available evidence
+
+A — Accretion: horizon mass/spin histories, per-horizon exact-tag moving-surface
+crossings, and full surviving/removed rest-mass ledgers are retained. Initial
+enclosure, common reassignment, requalification, advection and surface sweep have
+distinct labels. Horizon mass growth is not identified with particle rest-mass
+flux; a causal accretion fraction is not inferred from their difference.
+
+B — Envelope interaction: `envelope_wake_moments.csv` gives the exterior
+quadrupole in the instantaneous orbital frame; `shell_transfers.csv` records
+origin-J transport and push changes. These are coordinate diagnostics. Individual
+and common fluxes overlap and must not be added into a second accretion torque.
+
+C — Evolving support: `envelope_support_proxy.csv` compares evolving and frozen
+envelope rest-mass support Menv(<d/2)/(d/2)^3 with measured Omega^2. It uses
+coordinate shells and a spherical Newtonian approximation, omits non-spherical
+relativistic forces, and does not provide an exact force decomposition.
+`metric_shells.csv` retains proper volumes and metric averages for further checks.
+
+D — Noncircular motion: `orbit.csv` provides separation, valid-interval phase,
+Omega, |d_dot|/|d Omega| and the exterior proper line length. Binary interpretation
+ends at strict common enclosure; no phase is unwrapped through missing intervals.
+The proper distance is slice- and path-dependent.
+
+E — Numerical evidence: `exterior_constraints.csv`, compact AMR catalogs, exact
+particle partition/rest-weight closure, restart checks and all finder reasons
+are retained. This supports diagnostics and failure detection, not a convergence
+claim or an isolation of the numerical contribution to the short orbit.
+
+## Resources, storage and continuation
+
+Actual scheduler rows are in `scheduler_usage.txt`; include failed checks and all
+production allocations when calculating node-hours. Per-node GPU/host memory and
+whole-user storage telemetry remain in each run. Current retained run data totals
+{raw_bytes/1024**3:.3f} GiB at `{root/'runs'}`. The complete path/byte inventory is
+`raw_inventory.json`; protected science states and the verified latest two recovery
+states remain on AMD. Only explicitly authorized redundant recoveries are rotated.
+
+The endpoint particle audit reports exact alive/removed ID partition and per-tag
+rest-weight closure: {audit['exact_partition']}. No raw cleanup is requested by
+this report. Review artifacts are checksum-exported separately to Perseus.
+
+The t75 endpoint is a stop for scientific/resource review. Extension to150 is not
+submitted. The historical R40 burst near115 lies beyond this endpoint; any strain
+products here are finite-window FFI sensitivity diagnostics, not a completed burst
+or validated ringdown result. Cutoffs, taper, gaps and differentiation checks are
+recorded in `wave_method.json`.
+'''
+    (out/'REPORT.md').write_text(text)
 
 def main():
     require_compute()
@@ -271,6 +449,8 @@ def main():
     if not args.partial and not (args.root/'control/ENDPOINT_75.json').exists():raise RuntimeError('endpoint not verified')
     args.out.mkdir(parents=True,exist_ok=False)
     runs,status,events,metrics=reduce(args.root,args.out)
+    wave=waves(runs,args.out)
+    report(args.root,args.out,metrics,wave)
     render(runs,events,args.out,metrics['strict_common_time'],args.movies)
     manifest=[dict(path=str(p.relative_to(args.out)),bytes=p.stat().st_size,sha256=sha256(p)) for p in sorted(args.out.iterdir()) if p.is_file()]
     (args.out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
