@@ -11,6 +11,7 @@
 #include <limits>
 #include <algorithm>
 #include <cstdlib>
+#include <cmath>
 #include <string> // string
 
 #include "athena.hpp"
@@ -729,6 +730,14 @@ void Driver::Finalize(Mesh *pmesh, ParameterInput *pin, Outputs *pout) {
   for (auto &out : pout->pout_list) {
     out->LoadOutputData(pmesh);
     out->WriteOutputFile(pmesh, pin);
+    if (pin->GetOrAddBoolean("problem", "production_diagnostics", false) &&
+        out->out_params.file_type != "rst" && out->out_params.dt > 0.0) {
+      // A short segment's final dump is extra; preserve the nominal cadence
+      // for the subsequent restart. Restart output is last in the S8 deck.
+      out->out_params.last_time = std::floor(pmesh->time/out->out_params.dt)*
+                                  out->out_params.dt;
+      pin->SetReal(out->out_params.block_name,"last_time",out->out_params.last_time);
+    }
   }
 
   // call any problem specific functions to do work after main loop

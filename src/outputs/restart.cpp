@@ -193,7 +193,11 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin) {
   }
   // increment counters now so values for *next* dump are stored in restart file
   out_params.file_number++;
-  if (out_params.last_time < 0.0) {
+  if (pin->GetOrAddBoolean("problem", "production_diagnostics", false)) {
+    // Forced AH and segment checkpoints must not push recovery fifty M past
+    // a future nominal dump that has not happened yet.
+    out_params.last_time = pm->time;
+  } else if (out_params.last_time < 0.0) {
     out_params.last_time = pm->time;
   } else {
     out_params.last_time += out_params.dt;

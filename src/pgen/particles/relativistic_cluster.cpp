@@ -73,11 +73,11 @@
 #include "coordinates/cell_locations.hpp"
 #include "z4c/z4c.hpp"
 #include "z4c/z4c_amr.hpp"
-#include "st_production.hpp"
 #include "particles/particles.hpp"
 #include "pgen/pgen.hpp"
 #include "pgen/particles/st_sample_input.hpp"
 #include "pgen/particles/st_sampling_history.hpp"
+#include "st_production.hpp"
 
 #if MPI_PARALLEL_ENABLED
 #include <mpi.h>
