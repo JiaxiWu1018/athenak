@@ -58,10 +58,19 @@ def main():
         for path in sorted((ROOT/directory).rglob('*')):
             if path.is_file():manifest.append(dict(**receipt(path),relative=str(path.relative_to(ROOT))))
     atomic(ROOT/'evidence/FINAL_DATA_MANIFEST.json',dict(job=job(),utc=now(),files=manifest,
-       retention='Retained on AMD for review; no deletion authorized by this manifest.'))
+       retention=f'Retained at {ROOT} for review; no deletion authorized by this manifest.',
+       machine=os.environ.get('S8_MACHINE','amd')))
     du=lambda path:int(subprocess.check_output(['du','-s','-B1',str(path)],text=True).split()[0])
-    atomic(ROOT/'evidence/FINAL_STORAGE.json',dict(job=job(),utc=now(),raw_root=str(ROOT),
-       session_bytes=du(ROOT),whole_user_bytes=du(ROOT.parent),raw_on_perseus=False))
+    storage=dict(job=job(),utc=now(),raw_root=str(ROOT),session_bytes=du(ROOT),
+                 raw_on_perseus=os.environ.get('S8_MACHINE')=='perseus')
+    if storage['raw_on_perseus']:
+        import shutil
+        storage['filesystem_free_bytes']=shutil.disk_usage(ROOT).free
+        storage['amd_import_manifest']=receipt(ROOT/'evidence/PERSEUS_EXPORT.json')
+        storage['amd_import_originals_retained']=True
+    else:
+        storage['whole_user_bytes']=du(ROOT.parent)
+    atomic(ROOT/'evidence/FINAL_STORAGE.json',storage)
     # Deliberately do not create COMPLETE: scientific interpretation, visual review,
     # thin-mirror verification and final accounting are still agent obligations.
 
