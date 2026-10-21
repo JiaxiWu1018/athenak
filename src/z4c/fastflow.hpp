@@ -111,6 +111,18 @@ class FastFlow {
   bool reuse_last_surface_shape; // warm-start from the last published full shape
   bool persist_surface_shape;    // put a full-shape warm start in restart parameters
   bool restart_surface_guess_valid; // restored guess only; never consumer-valid
+  // Session011: search state is independent of the last published consumer shape.
+  bool search_surface_valid = false;
+  DualArray1D<Real> a0_search, ac_search, as_search;
+  Real search_center[3] = {0.0, 0.0, 0.0};
+  bool published_this_search = false;
+  bool ever_published = false;
+  int last_search_cycle = -1;
+  Real last_search_time = -1.0;
+  int unpublished_searches = 0;
+  std::string search_reason;
+  void SaveSearchState(bool valid);
+  void WriteSearchEvent(Real time);
   Real center[3]; // Center around which the horizon is searched
 
   // Fast-Flow parameters
@@ -232,6 +244,7 @@ class FastFlow {
   FILE *pofile_ylm;
   FILE *pofile_grid;
   FILE *pofile_consumer;
+  FILE *pofile_events = nullptr;
 
   // Functions to interface with puncture tracker
   Real PuncMaxDistance();

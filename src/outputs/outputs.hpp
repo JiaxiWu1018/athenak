@@ -200,6 +200,7 @@ struct TrackedParticleData {
   int tag;
   Real x,y,z;
   Real vx,vy,vz;
+  Real mass, energy;
 };
 
 //----------------------------------------------------------------------------------------
@@ -460,6 +461,7 @@ class TrackedParticleOutput : public BaseTypeOutput {
   void LoadOutputData(Mesh *pm) override;
   void WriteOutputFile(Mesh *pm, ParameterInput *pin) override;
  protected:
+  int format_version, component_count;
   int ntrack;           // total number of tracked particles across all ranks
   int ntrack_thisrank;  // number of tracked particles this rank (guess)
   int npout;            // number of tracked particles to be written this rank

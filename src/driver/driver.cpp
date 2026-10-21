@@ -23,6 +23,7 @@
 #include "hydro/hydro.hpp"
 #include "mhd/mhd.hpp"
 #include "z4c/z4c.hpp"
+#include "z4c/frozen_ah_checks.hpp"
 #include "dyn_grmhd/dyn_grmhd.hpp"
 #include "particles/particles.hpp"
 #include "ion-neutral/ion-neutral.hpp"
@@ -569,6 +570,11 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
 //! performs outputs. Updates counters like (ncycle, time, etc.)
 
 void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdflag) {
+  const int frozen_checks = pin->GetOrAddInteger("diagnostic_checks", "frozen_ah_searches", 0);
+  if (frozen_checks > 0) {
+    FrozenAhChecks(pmesh, pin, frozen_checks);
+    return;
+  }
   if (global_variable::my_rank == 0) {
     std::cout << "\nSetup complete, executing task list(s)...\n" << std::endl;
   }

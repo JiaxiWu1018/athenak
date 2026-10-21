@@ -180,6 +180,47 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
     as_surf.template sync<DevExeSpace>();
     restart_surface_guess_valid = true;
   }
+  // Restore a provisional seed separately from consumer publication. Legacy accepted
+  // shapes remain supported as guesses, never as measurements in a new process.
+  Kokkos::realloc(a0_search, lmax1);
+  Kokkos::realloc(ac_search, lmpoints);
+  Kokkos::realloc(as_search, lmpoints);
+  const bool has_search_record = pin->DoesParameterExist("fastflow", "search_state_valid_" + n_str);
+  const bool have_search = persist_surface_shape && pin->GetOrAddBoolean(
+      "fastflow", "search_state_valid_" + n_str, false);
+  if (have_search && pin->GetOrAddInteger(
+      "fastflow", "search_state_lmax_" + n_str, lmax) == lmax) {
+    search_surface_valid = true;
+    for (int l=0; l<lmax1; ++l) {
+      a0_search.h_view(l) = pin->GetReal("fastflow", "search_state_a0_" + n_str
+                                        + "_" + std::to_string(l));
+      search_surface_valid &= std::isfinite(a0_search.h_view(l));
+    }
+    for (int lm=0; lm<lmpoints; ++lm) {
+      ac_search.h_view(lm) = pin->GetReal("fastflow", "search_state_ac_" + n_str
+                                         + "_" + std::to_string(lm));
+      as_search.h_view(lm) = pin->GetReal("fastflow", "search_state_as_" + n_str
+                                         + "_" + std::to_string(lm));
+      search_surface_valid &= std::isfinite(ac_search.h_view(lm))
+                           && std::isfinite(as_search.h_view(lm));
+    }
+    for (int a=0; a<3; ++a) {
+      search_center[a] = pin->GetReal("fastflow", "search_state_center_" + n_str
+                                      + "_" + std::to_string(a));
+      search_surface_valid &= std::isfinite(search_center[a]);
+    }
+    search_surface_valid &= a0_search.h_view(0) > 0.0;
+  } else if (!has_search_record && restart_surface_guess_valid) {
+    Kokkos::deep_copy(a0_search.h_view, a0_surf.h_view);
+    Kokkos::deep_copy(ac_search.h_view, ac_surf.h_view);
+    Kokkos::deep_copy(as_search.h_view, as_surf.h_view);
+    search_surface_valid = a0_search.h_view(0) > 0.0;
+    for (int l=0; l<lmax1; ++l) search_surface_valid &= std::isfinite(a0_search.h_view(l));
+    for (int l=0; l<lmpoints; ++l) search_surface_valid &=
+        std::isfinite(ac_search.h_view(l)) && std::isfinite(as_search.h_view(l));
+    for (int a=0; a<3; ++a) search_center[a] = center[a];
+  }
+  ever_published = pin->GetOrAddBoolean("fastflow", "ever_published_" + n_str, false);
   ah_surf_valid = false;
   ah_surf_center[0] = ah_surf_center[1] = ah_surf_center[2] = 0.0;
   ah_surf_rmin = -1.0;
@@ -336,6 +377,15 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   #endif
 
   if (ioproc) {
+    const std::string event_name = pin->GetString("job", "basename")
+                                  + ".ah_events_" + n_str + ".csv";
+    const bool new_events = access(event_name.c_str(), F_OK) != 0;
+    pofile_events = fopen(event_name.c_str(), "a");
+    if (!pofile_events) throw std::runtime_error("Cannot open " + event_name);
+    if (new_events) fprintf(pofile_events,
+        "cycle,legacy_time,state_cycle,state_time,horizon,reason,converged,published,"
+        "seed_valid,streak,failed_searches,x,y,z,area,mass,spin,Jx,Jy,Jz,Px,Py,Pz,"
+        "hrel,hrms,rmin,rmean,lmax,coefficients_a0_ac_as\n");
     // Summary file
     bool new_file = true;
     if (access(ofname_summary.c_str(), F_OK) == 0) {
@@ -472,6 +522,7 @@ FastFlow::~FastFlow() {
   if (ioproc) {
     fclose(pofile_summary);
     fclose(pofile_consumer);
+    if (pofile_events) fclose(pofile_events);
     if (verbose) {
       fclose(pofile_verbose);
     }
@@ -567,8 +618,14 @@ Real FastFlow::LocalCellWidthAtCenter() {
 //! \fn void FastFlow::Find(int iter, Real time)
 //! \brief Search for the horizons
 void FastFlow::Find(int iter, Real time) {
+  published_this_search = false;
+  last_search_cycle = pmbp->pmesh->ncycle;
+  last_search_time = time;
+  search_reason = "inactive";
   if ((time < start_time) || (time > stop_time)) return;
   if (wait_until_punc_are_close && !(PuncAreClose())) return;
+  for (auto &v : ah_prop) v = std::numeric_limits<Real>::quiet_NaN();
+  search_reason = "iteration_limit";
   if (verbose && ioproc) {
     fprintf(pofile_verbose, "time=%.4f, cycle=%d\n", time, iter);
   }
@@ -626,7 +683,9 @@ void FastFlow::Find(int iter, Real time) {
                           && candidate_rmax <= ah_surf_rmax_limit
                           && candidate_area > 0.0 && candidate_hrel <= ah_surf_hrel_limit
                           && association_ok;
-    if (quality_geometry_ok) {
+    int seed_noff = 0;
+    const bool seed_on_grid = CurrentSurfaceOnGrid(seed_noff);
+    if (quality_geometry_ok && seed_on_grid) {
       ++ah_surf_candidate_streak;
     } else {
       ah_surf_candidate_streak = 0;
@@ -685,7 +744,7 @@ void FastFlow::Find(int iter, Real time) {
     } else {
       // In strict mode, a convergence that is unsafe for consumers must not seed the next
       // search. Retain ah_found through Write() for diagnosis, but reset the next guess.
-      last_a0 = -1.0;
+      if (!quality_geometry_ok || !seed_on_grid) last_a0 = -1.0;
       if (ioproc && !ah_surf_geometry_warned && !quality_geometry_ok) {
         ah_surf_geometry_warned = true;
         std::cout << "### WARNING: horizon " << nh
@@ -702,6 +761,18 @@ void FastFlow::Find(int iter, Real time) {
       }
     }
 
+    published_this_search = published_this_candidate;
+    const bool safe_seed = quality_geometry_ok && capability_finite_positive
+                          && seed_on_grid;
+    SaveSearchState(safe_seed);
+    search_reason = published_this_search ? "accepted" :
+        (!capability_finite_positive ? "invalid_geometry" :
+         !seed_on_grid ? "off_grid" :
+         !association_ok ? "association" :
+         !local_dx_ok || rr_min < resolved_rmin ? "underresolved" :
+         candidate_rmax > ah_surf_rmax_limit ? "radius_bound" :
+         candidate_hrel > ah_surf_hrel_limit ? "residual" :
+         !quality_persist_ok ? "pending_persistence" : "publication_failed");
     if (ioproc) {
       const Real rmin_cells = (Kokkos::isfinite(ah_surf_local_dx)
                                && ah_surf_local_dx > 0.0)
@@ -724,7 +795,16 @@ void FastFlow::Find(int iter, Real time) {
     }
   } else {
     ah_surf_candidate_streak = 0;
+    SaveSearchState(false);
   }
+  if (published_this_search) {
+    ever_published = true;
+    unpublished_searches = 0;
+    pin->SetBoolean("fastflow", "ever_published_" + std::to_string(nh), true);
+  } else if (ever_published) {
+    ++unpublished_searches;
+  }
+  WriteSearchEvent(time);
 
   // Retain `last_a0` in restart: this serves as primary ini. guess.
   if (ah_found) {
@@ -748,28 +828,46 @@ void FastFlow::InitialGuess() {
   Kokkos::deep_copy(as.h_view, 0.0);
 
   if (use_puncture >= 0) {
+    for (int a=0; a<3; ++a) center[a] = pmbp->pz4c->ptracker[use_puncture]->GetPos(a);
+  } else if (use_puncture_massweighted_center) {
+    PuncWeightedMassCentralPoint(&center[0], &center[1], &center[2]);
+  } else if (search_surface_valid) {
+    for (int a=0; a<3; ++a) center[a] = search_center[a];
+  }
+  if (reuse_last_surface_shape && search_surface_valid) {
+    Kokkos::deep_copy(a0.h_view, a0_search.h_view);
+    Kokkos::deep_copy(ac.h_view, ac_search.h_view);
+    Kokkos::deep_copy(as.h_view, as_search.h_view);
+    a0.h_view(0) *= expand_guess;
+    a0.template modify<HostMemSpace>(); a0.template sync<DevExeSpace>();
+    ac.template modify<HostMemSpace>(); ac.template sync<DevExeSpace>();
+    as.template modify<HostMemSpace>(); as.template sync<DevExeSpace>();
+    RadiiFromSphericalHarmonics();
+    switch (pmbp->pmesh->mb_indcs.ng) {
+      case 2: MetricInterp<2>(); break;
+      case 3: MetricInterp<3>(); break;
+      case 4: MetricInterp<4>(); break;
+    }
+    int noff = 0;
+    const bool on_grid = CurrentSurfaceOnGrid(noff);
+    int bad = 0;
+    auto rr_check = rr;
+    Kokkos::parallel_reduce("FastFlow_seed_check", Kokkos::RangePolicy<DevExeSpace>(0,nangles),
+      KOKKOS_LAMBDA(int i, int &n) {
+        if (!Kokkos::isfinite(rr_check(i)) || rr_check(i)<=0.0) ++n;
+      }, bad);
+    if (on_grid && bad == 0) return;
+    SaveSearchState(false);
+    Kokkos::deep_copy(a0.h_view, 0.0);
+    Kokkos::deep_copy(ac.h_view, 0.0);
+    Kokkos::deep_copy(as.h_view, 0.0);
+  }
+
+  if (use_puncture >= 0) {
     // Update the center to the puncture position
     center[0] = pmbp->pz4c->ptracker[use_puncture]->GetPos(0);
     center[1] = pmbp->pz4c->ptracker[use_puncture]->GetPos(1);
     center[2] = pmbp->pz4c->ptracker[use_puncture]->GetPos(2);
-
-    // A published or restart-serialized surface is stronger than a spherical guess:
-    // retain all l,m coefficients while translating the expansion origin with the
-    // tracker. A restart copy remains only a guess; ah_surf_valid stays false until a
-    // new surface passes the current publication gates.
-    if (reuse_last_surface_shape && (ah_surf_valid || restart_surface_guess_valid)) {
-      Kokkos::deep_copy(a0.h_view, a0_surf.h_view);
-      Kokkos::deep_copy(ac.h_view, ac_surf.h_view);
-      Kokkos::deep_copy(as.h_view, as_surf.h_view);
-      a0.h_view(0) *= expand_guess;
-      a0.template modify<HostMemSpace>();
-      a0.template sync<DevExeSpace>();
-      ac.template modify<HostMemSpace>();
-      ac.template sync<DevExeSpace>();
-      as.template modify<HostMemSpace>();
-      as.template sync<DevExeSpace>();
-      return;
-    }
 
     // Update a0
     // For single BH in isotropic coordinates: horizon radius=m/2
@@ -1045,6 +1143,7 @@ void FastFlow::FastFlowLoop() {
         fprintf(pofile_verbose, "Failed, Area not finite\n");
         fflush(pofile_verbose);
       }
+      search_reason = "nonfinite_area";
       failed = true;
       break;
     }
@@ -1054,6 +1153,7 @@ void FastFlow::FastFlowLoop() {
         fprintf(pofile_verbose, "Failed, hmean not finite\n");
         fflush(pofile_verbose);
       }
+      search_reason = "nonfinite_expansion";
       failed = true;
       break;
     }
@@ -1074,6 +1174,7 @@ void FastFlow::FastFlowLoop() {
         fprintf(pofile_verbose, "Failed, hmean > %f\n", hmean_tol);
         fflush(pofile_verbose);
       }
+      search_reason = "expansion_guard";
       failed = true;
       break;
      }
@@ -1093,12 +1194,14 @@ void FastFlow::FastFlowLoop() {
         fprintf(pofile_verbose, "Failed mass < 1e-10\n");
         fflush(pofile_verbose);
       }
+      search_reason = "degenerate_mass";
       failed = true;
       break;
     }
 
-    // End flow when mass difference is small
-    if (Kokkos::fabs(mass_prev-mass) < mass_tol) {
+    // Stagnation is not convergence when the unchanged residual gate still fails.
+    if (Kokkos::fabs(mass_prev-mass) < mass_tol && area > 0.0
+        && (ah_surf_capability_mode || Kokkos::fabs(hmean)/area <= ah_surf_hrel_limit)) {
       ah_found = true;
       break;
     }
@@ -1107,6 +1210,12 @@ void FastFlow::FastFlowLoop() {
     UpdateFlowSpectralComponents();
   }
 
+  // Always retain the last numerical candidate for the diagnostic event row.
+  ah_prop[harea] = area;
+  ah_prop[hhmean] = hmean;
+  ah_prop[hhrms] = hrms;
+  ah_prop[hminradius] = rr_min;
+  ah_prop[hmeanradius] = meanradius;
   if (ah_found) {
     last_a0 = a0.h_view(0);
 
@@ -1421,7 +1530,7 @@ void FastFlow::RadiiFromSphericalHarmonics() {
   // Step 2: Compute the global minimum.
   rr_min = std::numeric_limits<Real>::infinity();
   Kokkos::parallel_reduce("FastFlow_sphradii",
-  Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles-1),
+  Kokkos::RangePolicy<>(DevExeSpace(), 0, nangles),
   KOKKOS_LAMBDA(const int &p, Real &lmin) {
     lmin = Kokkos::min(lmin, rr_(p));
   }, Kokkos::Min<Real>(rr_min));
@@ -2091,4 +2200,48 @@ bool FastFlow::PuncAreClose() {
   Real const mass = PuncSumMasses();
   Real const maxdist = PuncMaxDistance();
   return (maxdist < merger_distance * mass);
+}
+
+// Independent, fully serialized provisional warm-start state. No consumer flag changes.
+void FastFlow::SaveSearchState(bool valid) {
+  search_surface_valid = valid;
+  const std::string id = std::to_string(nh);
+  if (!valid) last_a0 = -1.0;
+  if (persist_surface_shape) pin->SetBoolean("fastflow", "search_state_valid_" + id, valid);
+  if (!valid) return;
+  Kokkos::deep_copy(a0_search.h_view, a0.h_view);
+  Kokkos::deep_copy(ac_search.h_view, ac.h_view);
+  Kokkos::deep_copy(as_search.h_view, as.h_view);
+  for (int a=0; a<3; ++a) search_center[a] = center[a];
+  if (!persist_surface_shape) return;
+  pin->SetInteger("fastflow", "search_state_lmax_" + id, lmax);
+  for (int a=0; a<3; ++a) pin->SetReal("fastflow", "search_state_center_" + id
+                                         + "_" + std::to_string(a), search_center[a]);
+  for (int l=0; l<lmax1; ++l) pin->SetReal("fastflow", "search_state_a0_" + id
+                                         + "_" + std::to_string(l), a0_search.h_view(l));
+  for (int l=0; l<lmpoints; ++l) {
+    pin->SetReal("fastflow", "search_state_ac_" + id + "_" + std::to_string(l), ac_search.h_view(l));
+    pin->SetReal("fastflow", "search_state_as_" + id + "_" + std::to_string(l), as_search.h_view(l));
+  }
+}
+
+void FastFlow::WriteSearchEvent(Real time) {
+  if (!ioproc) return;
+  fprintf(pofile_events, "%d,%.17g,%d,%.17g,%d,%s,%d,%d,%d,%d,%d",
+      pmbp->pmesh->ncycle, time, pmbp->pmesh->ncycle+1, time+pmbp->pmesh->dt,
+      nh, search_reason.c_str(), int(ah_found), int(published_this_search),
+      int(search_surface_valid), ah_surf_candidate_streak, unpublished_searches);
+  for (int a=0; a<3; ++a) fprintf(pofile_events, ",%.17g", center[a]);
+  for (int q : {harea, hmass, hchi, hSx, hSy, hSz, hPx, hPy, hPz})
+    fprintf(pofile_events, ",%.17g", ah_prop[q]);
+  fprintf(pofile_events, ",%.17g,%.17g,%.17g,%.17g,%d,",
+      ah_prop[hhmean]/ah_prop[harea], ah_prop[hhrms], rr_min,
+      ah_prop[hmeanradius], lmax);
+  if (published_this_search) {
+    for (int l=0; l<lmax1; ++l) fprintf(pofile_events, "%.17g;", a0_surf.h_view(l));
+    for (int l=0; l<lmpoints; ++l) fprintf(pofile_events, "%.17g;", ac_surf.h_view(l));
+    for (int l=0; l<lmpoints; ++l) fprintf(pofile_events, "%.17g;", as_surf.h_view(l));
+  }
+  fprintf(pofile_events, "\n");
+  fflush(pofile_events);
 }
