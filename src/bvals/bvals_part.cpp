@@ -24,6 +24,8 @@
 #include "particles/particles.hpp"
 #include "bvals.hpp"
 #include "prtcl_search.hpp"
+#include "z4c/tmunu.hpp"
+#include "particles/gi_diagnostic_math.hpp"
 
 namespace particles {
 //----------------------------------------------------------------------------------------
@@ -103,6 +105,13 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   auto &ecrit = pmy_part->excise_crit;
   int component_split_tag = pmy_part->destroy_component_split_tag;
   int component_split_tag_2 = pmy_part->destroy_component_split_tag_2;
+  const bool gi_energy = static_cast<bool>(pmy_part->gi_diagnostics);
+  DvceArray5D<Real> death_adm, death_z4c;
+  if (gi_energy) {
+    death_adm = pmy_part->pmy_pack->padm->u_adm;
+    death_z4c = pmy_part->pmy_pack->pz4c->u0;
+  }
+  const int death_ng = pmy_part->pmy_pack->pmesh->mb_indcs.ng;
 
   // Exact list sizing, pass 1 of 2: count (i) the particles that crossed a MeshBlock
   // boundary and (ii) the particles to destroy (mesh exits through non-periodic
@@ -145,7 +154,7 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
   if (ndest_ub > destroy_rec_r.extent_int(1)) {
     int old_cap = destroy_rec_r.extent_int(1);
     int new_cap = std::max(ndest_ub, old_cap + std::max(old_cap/8, 1));
-    Kokkos::realloc(destroy_rec_r, 8, new_cap);
+    Kokkos::realloc(destroy_rec_r, 11, new_cap);
     Kokkos::realloc(destroy_rec_i, 4, new_cap);
   }
   par_for("part_update",DevExeSpace(),0,(npart-1), KOKKOS_LAMBDA(const int p) {
@@ -193,6 +202,15 @@ TaskStatus ParticlesBoundaryValues::SetNewPrtclGID() {
       drr(5,slot) = three_d ? pr(IPVZ,p) : 0.0;
       drr(6,slot) = (reason > 0) ? ecrit(p) : 0.0;  // r or alpha at marking
       drr(7,slot) = pr(IPM,p);  // proper rest mass
+      drr(8,slot) = drr(9,slot) = drr(10,slot) = 0;
+      if (gi_energy) {
+        auto energy = GiEnergy(death_adm, death_z4c, mbsize.d_view, m, death_ng,
+                               x1, x2, x3, pr(IPVX,p), pr(IPVY,p), pr(IPVZ,p),
+                               pr(IPM,p));
+        drr(8,slot) = energy.en;
+        drr(9,slot) = energy.ec;
+        drr(10,slot) = energy.valid;
+      }
       dri(0,slot) = pi(PTAG,p);
       dri(1,slot) = pi(PGID,p);
       dri(2,slot) = reason;

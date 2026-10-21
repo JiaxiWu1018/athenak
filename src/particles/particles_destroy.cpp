@@ -37,10 +37,10 @@
 namespace particles {
 
 namespace {
-// one death record, POD for the byte-wise MPI_Gatherv (4 ints + 8 Reals)
+// one death record, POD for the byte-wise MPI_Gatherv (4 ints + 11 Reals)
 struct DeathRec {
   int tag, gid, reason, component;
-  Real r[8];   // {x, y, z, u1, u2, u3, crit, proper rest mass}
+  Real r[11];  // {x,y,z,u1,u2,u3,crit,mass,En_trilinear,Ecoord_trilinear,valid}
 };
 // indexed by ParticlesDeathReason. Adding a name extends the set of values the `reason`
 // column of <basename>.prtcl_destroy.csv can take. Session 006 appends component and
@@ -56,7 +56,7 @@ void Particles::FlushDeathLog() {
   int nloc = pbval_part->nprtcl_destroy;
 
   // pack this rank's records from the device record arrays.
-  // The record arrays are (8, cap) / (4, cap) LayoutRight and cap is grow-only, so a
+  // The record arrays are (11, cap) / (4, cap) LayoutRight and cap is grow-only, so a
   // column subview (ALL, 0:nloc) is NON-CONTIGUOUS whenever nloc < cap. Mirroring such a
   // strided device view to the host has no available copy mechanism on a separate-memory
   // -space backend (HIP/CUDA) and Kokkos throws
@@ -74,7 +74,7 @@ void Particles::FlushDeathLog() {
       loc[n].gid       = hi(1,n);
       loc[n].reason    = hi(2,n);
       loc[n].component = hi(3,n);
-      for (int k=0; k<8; ++k) {loc[n].r[k] = hr(k,n);}
+      for (int k=0; k<11; ++k) {loc[n].r[k] = hr(k,n);}
     }
   }
 
@@ -125,19 +125,24 @@ void Particles::FlushDeathLog() {
   std::fseek(pfile, 0, SEEK_END);
   if (std::ftell(pfile) == 0) {
     std::fprintf(pfile, "# cycle,time,tag,reason,x1,x2,x3,u1_cov,u2_cov,u3_cov,"
-                        "gid,rank,crit,component,mass\n");
+                        "gid,rank,crit,component,mass");
+    if (gi_diagnostics) std::fprintf(pfile, ",En_trilinear,Ecoord_trilinear,metric_valid");
+    std::fprintf(pfile, "\n");
   }
   int n = 0;
   for (int r=0; r<nranks; ++r) {
     for (int q=0; q<nrec_eachrank[r]; ++q, ++n) {
       const DeathRec &d = all[n];
       std::fprintf(pfile,
-          "%d,%.17g,%d,%s,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%d,%d,%.17g,%d,%.17g\n",
+          "%d,%.17g,%d,%s,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%d,%d,%.17g,%d,%.17g",
           cycle, tdeath, d.tag,
           (d.reason >= 0 && d.reason < NPRTCL_DEATH_REASON) ? reason_name[d.reason]
                                                             : "unknown",
           d.r[0], d.r[1], d.r[2], d.r[3], d.r[4], d.r[5], d.gid, r, d.r[6],
           d.component, d.r[7]);
+      if (gi_diagnostics) std::fprintf(pfile, ",%.17g,%.17g,%d", d.r[8], d.r[9],
+                                      static_cast<int>(d.r[10]));
+      std::fprintf(pfile, "\n");
     }
   }
   std::fclose(pfile);

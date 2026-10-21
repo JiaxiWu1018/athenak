@@ -821,6 +821,17 @@ void FastFlow::Find(int iter, Real time) {
 //----------------------------------------------------------------------------------------
 //! \fn void FastFlow::InitialGuess()
 //! \brief Initial guess for spectral coefs of horizon n
+namespace {
+int InvalidSeedRadii(DvceArray1D<Real> radii, int count) {
+  int bad = 0;
+  Kokkos::parallel_reduce("FastFlow_seed_check", Kokkos::RangePolicy<DevExeSpace>(0,count),
+    KOKKOS_LAMBDA(int i, int &n) {
+      if (!Kokkos::isfinite(radii(i)) || radii(i)<=0.0) ++n;
+    }, bad);
+  return bad;
+}
+}
+
 void FastFlow::InitialGuess() {
   // Reset Coefficients to Zero
   Kokkos::deep_copy(a0.h_view, 0.0);
@@ -850,12 +861,7 @@ void FastFlow::InitialGuess() {
     }
     int noff = 0;
     const bool on_grid = CurrentSurfaceOnGrid(noff);
-    int bad = 0;
-    auto rr_check = rr;
-    Kokkos::parallel_reduce("FastFlow_seed_check", Kokkos::RangePolicy<DevExeSpace>(0,nangles),
-      KOKKOS_LAMBDA(int i, int &n) {
-        if (!Kokkos::isfinite(rr_check(i)) || rr_check(i)<=0.0) ++n;
-      }, bad);
+    const int bad = InvalidSeedRadii(rr, nangles);
     if (on_grid && bad == 0) return;
     SaveSearchState(false);
     Kokkos::deep_copy(a0.h_view, 0.0);
