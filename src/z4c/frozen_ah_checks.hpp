@@ -30,7 +30,9 @@ inline void FrozenAhChecks(Mesh *mesh, ParameterInput *pin, int repetitions) {
   Kokkos::deep_copy(particle_before, pr);
   mesh->dt = 0.0;  // event timestamps are the unchanged saved-state time
   const bool require_accept = pin->GetOrAddBoolean("diagnostic_checks", "require_accept", true);
+  const int selected = pin->GetOrAddInteger("diagnostic_checks", "horizon", -1);
   for (size_t h=0; h<pack->pz4c->pfastflow.size(); ++h) {
+    if (selected >= 0 && static_cast<int>(h) != selected) continue;
     auto *finder = pack->pz4c->pfastflow[h].get();
     switch (mesh->mb_indcs.ng) {
       case 2: finder->MetricDerivatives<2>(mesh->time); break;

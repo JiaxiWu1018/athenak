@@ -3,8 +3,8 @@
 #SBATCH -p debug
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -c 2
-#SBATCH --gres=gpu:1
+#SBATCH -c 8
+#SBATCH --gres=gpu:4
 #SBATCH --mem=64G
 #SBATCH -t 02:00:00
 set -euo pipefail
@@ -14,6 +14,13 @@ export LD_LIBRARY_PATH=/home/emost/codes/openmpi/lib:/usr/local/cuda-12.9/lib64:
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 TEST_ROOT=$SESSION/evidence/frozen_${SLURM_JOB_ID}
 mkdir -p "$TEST_ROOT"
+python3 "$SESSION/code/scripts/particles/session011/test_runtime.py" > "$TEST_ROOT/controller_checks.log" 2>&1
+git -C "$SESSION/code/kokkos" repack -a -d > "$TEST_ROOT/kokkos_repack.log" 2>&1
+alternates=$SESSION/code/.git/modules/kokkos/objects/info/alternates
+if [[ -f $alternates ]]; then
+  mv "$alternates" "$TEST_ROOT/kokkos_previous_alternates.txt"
+fi
+git -C "$SESSION/code/kokkos" fsck --no-reflogs > "$TEST_ROOT/kokkos_fsck.log" 2>&1
 git clone --no-hardlinks "$SESSION/code" "$TEST_ROOT/source" > "$TEST_ROOT/clone.log" 2>&1
 git -C "$TEST_ROOT/source" checkout --detach "$SOURCE_COMMIT" >> "$TEST_ROOT/clone.log" 2>&1
 git clone --no-hardlinks "$SESSION/code/kokkos" "$TEST_ROOT/source/kokkos" >> "$TEST_ROOT/clone.log" 2>&1
@@ -41,5 +48,6 @@ cd "$TEST_ROOT/fresh"
 "$TEST_ROOT/build/src/athena" -i "$TEST_ROOT/input.athinput" -d "$TEST_ROOT/fresh" \
   > "$TEST_ROOT/fresh.log" 2>&1
 rg 'FROZEN_AH_CHECKS_PASS.*evolution_advances=0' "$TEST_ROOT/fresh.log"
+python3 "$TEST_ROOT/source/scripts/particles/session011/check_frozen_outputs.py" "$TEST_ROOT" > "$TEST_ROOT/readback.log" 2>&1
 printf '{"job_id":"%s","source":"%s","stage":"fresh_frozen_pass"}\n' \
   "$SLURM_JOB_ID" "$SOURCE_COMMIT" > "$TEST_ROOT/RESULT.json"

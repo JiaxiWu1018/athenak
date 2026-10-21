@@ -128,7 +128,7 @@ def request_stop(run, reason, kind):
 def watch(root, run, nodes):
     require_compute()
     started=time.time(); last_du=0; usage=None; usage_time=0
-    previous_gpu={}; reserve=2400
+    previous_gpu={}; reserve=2400; horizon_gaps={}
     while True:
         now=time.time()
         telemetry_files=list(run.glob('telemetry_*.json'))
@@ -179,6 +179,14 @@ def watch(root, run, nodes):
                 request_stop(run,'per-rank block capacity pressure','capacity')
             common=status['strict_common']=='1'
             for h in ([2] if common else [0,1]):
+                established=int(status['ever_bits'])&(1<<h)
+                current=int(status['valid_bits'])&(1<<h)
+                if established and not current:
+                    horizon_gaps.setdefault(h,int(status['cycle']))
+                    if int(status['cycle'])-horizon_gaps[h]>=128:
+                        request_stop(run,f'no current accepted surface for horizon {h}','science')
+                else:
+                    horizon_gaps.pop(h,None)
                 event=last_csv(run/f's11_amd.ah_events_{h}.csv')
                 if event and int(event['failed_searches'])>=128:
                     request_stop(run,f'persistent accepted-AH dropout horizon {h}','science')
@@ -200,6 +208,7 @@ def finish(root,run,rc):
     previous=json.loads(previous_path.read_text()) if previous_path.exists() else None
     if previous and latest['cycle']<=previous['cycle']:
         raise RuntimeError('segment made no trajectory progress')
+    audit_population(root,run,candidates,latest)
     atomic(run/'checkpoint_manifest.json',candidates)
     atomic(previous_path,latest)
     # Retain every milestone, initialization, final, and the last two recovery states.
@@ -215,7 +224,8 @@ def finish(root,run,rc):
         number=int(Path(r['path']).stem.rsplit('.',1)[1])
         r['protected']=r['cycle']==0 or r['time']>=END-1e-10 or number in milestone_numbers
     recoveries=sorted([r for r in history if not r.get('deleted')],key=lambda r:(r['cycle'],r['path']))
-    keep={r['path'] for r in recoveries[-2:]}
+    unique_cycles={r['cycle']:r for r in recoveries}
+    keep={r['path'] for r in list(unique_cycles.values())[-2:]}
     atomic(history_path,history)  # inventory exists BEFORE any authorized rotation
     for r in history:
         if r.get('deleted') or r.get('protected') or r['path'] in keep:
@@ -244,6 +254,65 @@ def finish(root,run,rc):
         atomic(root/'control/PAUSED.json',reason)
         return False
     return True
+
+def audit_population(root,run,candidates,latest):
+    """Exact all-tag alive/dead partition and per-tag rest-weight closure."""
+    require_compute()
+    import numpy as np
+    def table(row):
+        return np.memmap(row['path'],dtype='<f8',mode='r',offset=row['particle_offset'],
+                         shape=(10,row['particles']))
+    def identities(row):
+        data=table(row)
+        if not np.isfinite(data).all():raise RuntimeError('nonfinite native particle state')
+        raw=data[9];tags=raw.astype(np.int64)
+        if np.any(raw!=tags) or np.any(tags<0) or np.any(tags>=5_000_000):
+            raise RuntimeError('invalid exact particle IDs')
+        counts=np.bincount(tags,minlength=5_000_000)
+        if counts.max(initial=0)>1:raise RuntimeError('duplicate surviving particle ID')
+        if np.any(data[0]<=0):raise RuntimeError('nonpositive particle rest weight')
+        return data,tags,counts.astype(bool)
+    weights_path=root/'control/initial_mass.npy'
+    if not weights_path.exists():
+        initial=next((r for r in candidates if r['cycle']==0),None)
+        if initial is None:raise RuntimeError('missing mandatory initialization state')
+        data,tags,alive=identities(initial)
+        if not alive.all():raise RuntimeError('incomplete initial tag population')
+        weights=np.empty(5_000_000);weights[tags]=data[0]
+        with weights_path.open('wb') as f:np.save(f,weights)
+        atomic(root/'control/initial_mass_manifest.json',dict(path=str(weights_path),
+               sha256=digest(weights_path),source_checkpoint=initial))
+    weights=np.load(weights_path,mmap_mode='r')
+    dead_path=root/'control/dead_tags.npy'
+    dead=np.load(dead_path) if dead_path.exists() else np.zeros(5_000_000,dtype=bool)
+    death_file=run/'s11_amd.prtcl_destroy.csv'
+    new_deaths=0
+    if death_file.exists():
+        with death_file.open() as f:
+            for row in csv.DictReader(f):
+                tag=int(row['tag']);mass=float(row['mass'])
+                if not 0<=tag<5_000_000 or dead[tag]:raise RuntimeError('duplicate/invalid removed ID')
+                if not math.isclose(mass,float(weights[tag]),rel_tol=1e-12,abs_tol=1e-16):
+                    raise RuntimeError('removed rest-weight mismatch')
+                dead[tag]=True;new_deaths+=1
+    data,tags,alive=identities(latest)
+    if np.any(alive&dead) or not np.all(alive|dead):
+        raise RuntimeError('alive plus removed IDs do not partition initial population')
+    if not np.allclose(data[0],weights[tags],rtol=1e-12,atol=1e-16):
+        raise RuntimeError('surviving per-tag rest weights changed')
+    if int(dead.sum())!=sum(latest['removed']):raise RuntimeError('native/death-log census differs')
+    components=[]
+    for start,end in ((0,3000000),(3000000,4000000),(4000000,5000000)):
+        components.append(dict(initial=end-start,alive=int(alive[start:end].sum()),
+          dead=int(dead[start:end].sum()),initial_mass=float(weights[start:end].sum()),
+          alive_mass=float(weights[start:end][alive[start:end]].sum()),
+          removed_mass=float(weights[start:end][dead[start:end]].sum())))
+    # Publish state only after all closure checks pass; new segment is not submitted
+    # if any check above fails. A failed audit retains its raw evidence for review.
+    with dead_path.with_suffix('.tmp').open('wb') as f:np.save(f,dead)
+    os.replace(dead_path.with_suffix('.tmp'),dead_path)
+    atomic(run/'population_audit.json',dict(cycle=latest['cycle'],time=latest['time'],
+           exact_partition=True,new_deaths=new_deaths,components=components))
 
 def submit(root):
     with (root/'control/submit.lock').open('a') as lock:

@@ -16,6 +16,7 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 TEST_ROOT=$ROOT/evidence/build_${SLURM_JOB_ID}
 mkdir -p "$TEST_ROOT"
 test "$(git -C "$ROOT/code" rev-parse HEAD)" = "$SOURCE_COMMIT"
+python3 "$ROOT/code/scripts/particles/session011/test_runtime.py" > "$TEST_ROOT/controller_checks.log" 2>&1
 {
   date -u
   hostname
@@ -41,6 +42,12 @@ cd "$TEST_ROOT/fresh"
 "$TEST_ROOT/athena_frozen" -i "$TEST_ROOT/input.athinput" -d "$TEST_ROOT/fresh" \
   > "$TEST_ROOT/fresh.log" 2>&1
 grep 'FROZEN_AH_CHECKS_PASS.*evolution_advances=0' "$TEST_ROOT/fresh.log"
+python3 "$ROOT/code/scripts/particles/session011/check_frozen_outputs.py" "$TEST_ROOT" > "$TEST_ROOT/readback.log" 2>&1
+RST=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["checkpoints"][-1]["path"])' "$TEST_ROOT/readback.json")
+mkdir "$TEST_ROOT/restarted"
+"$TEST_ROOT/athena_frozen" -r "$RST" -d "$TEST_ROOT/restarted" \
+  diagnostic_checks/frozen_ah_searches=6 time/nlim=0 > "$TEST_ROOT/restarted.log" 2>&1
+grep 'FROZEN_AH_CHECKS_PASS.*evolution_advances=0' "$TEST_ROOT/restarted.log"
 cmake -S "$ROOT/code" -B "$ROOT/build" -DPROBLEM=particles/gi_cluster \
   > "$TEST_ROOT/configure_production.log" 2>&1
 cmake --build "$ROOT/build" -j 16 > "$TEST_ROOT/build_production.log" 2>&1
