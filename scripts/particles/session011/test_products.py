@@ -11,6 +11,24 @@ from PIL import Image
 import products
 
 class ProductChecks(unittest.TestCase):
+    def test_mixed_known_unknown_native_energy_total_stays_unknown(self):
+        import pandas as pd
+        rows=pd.DataFrame(dict(cycle=[1,1],time=[2.,2.],component=[0,0],mask=[0,0],
+             rest_mass=[1.,2.],Ecoord_native=[3.,np.nan]))
+        total=products.aggregate_particles(rows)
+        self.assertEqual(total.rest_mass.iloc[0],3.)
+        self.assertEqual(total.native_energy_unknown_shells.iloc[0],1)
+        self.assertTrue(np.isnan(total.Ecoord_native.iloc[0]))
+    def test_cohort_unknown_energy_is_preserved_but_bad_position_fails(self):
+        with tempfile.TemporaryDirectory() as temp:
+            p=Path(temp)/'frame.trk2'
+            data=np.zeros(1,dtype=[('tag','<i8'),('q','<f8',(8,))])
+            data['q'][0,0]=1.;data['q'][0,1]=np.nan
+            header=b'ATHENAK_TRK2 count=1 cycle=2 time=3\n'.ljust(512,b'\0')
+            p.write_bytes(header+data.tobytes())
+            _,_,loaded=products.trk(p);self.assertTrue(np.isnan(loaded['q'][0,1]))
+            data['q'][0,2]=np.nan;p.write_bytes(header+data.tobytes())
+            with self.assertRaises(ValueError):products.trk(p)
     def test_missing_metric_energy_is_unknown_and_removal_J_is_exact(self):
         import pandas as pd
         with tempfile.TemporaryDirectory() as temp:

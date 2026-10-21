@@ -274,6 +274,26 @@ def finish(root,run,rc):
         return False
     return True
 
+def particle_diagnostic_quality(data):
+    """IPEN is derived -u_t, not evolved state; preserve invalid energy as unknown.
+
+    The pusher/deposition use mass, position and covariant momentum. Those and
+    both ID fields must remain finite. No energy value is replaced or clipped.
+    """
+    import numpy as np
+    for index in (0,2,3,4,5,6,7,8,9):
+        if not np.isfinite(data[index]).all():
+            raise RuntimeError(f'nonfinite native physical particle field {index}')
+    invalid=~np.isfinite(data[1])
+    components=[]
+    for lo,hi in ((0,3000000),(3000000,4000000),(4000000,5000000)):
+        selected=invalid & (data[9]>=lo) & (data[9]<hi)
+        components.append(dict(unknown_count=int(selected.sum()),
+                               unknown_rest_mass=float(data[0,selected].sum())))
+    return dict(field='IPEN',definition='specific coordinate energy -u_t, high-order metric interpolation',
+                unknown_count=int(invalid.sum()),components=components,
+                policy='retain nonfinite diagnostic as unknown; reject any nonfinite physical field')
+
 def audit_population(root,run,candidates,latest):
     """Exact all-tag alive/dead partition and per-tag rest-weight closure."""
     require_compute()
@@ -284,7 +304,7 @@ def audit_population(root,run,candidates,latest):
                          shape=(10,row['particles']))
     def identities(row):
         data=table(row)
-        if not np.isfinite(data).all():raise RuntimeError('nonfinite native particle state')
+        particle_diagnostic_quality(data)
         raw=data[9];tags=raw.astype(np.int64)
         if np.any(raw!=tags) or np.any(tags<0) or np.any(tags>=5_000_000):
             raise RuntimeError('invalid exact particle IDs')
@@ -351,7 +371,8 @@ def audit_population(root,run,candidates,latest):
     with dead_path.with_suffix('.tmp').open('wb') as f:np.save(f,dead)
     os.replace(dead_path.with_suffix('.tmp'),dead_path)
     atomic(run/'population_audit.json',dict(cycle=latest['cycle'],time=latest['time'],
-           exact_partition=True,new_deaths=new_deaths,components=components))
+           exact_partition=True,new_deaths=new_deaths,components=components,
+           native_energy_quality=particle_diagnostic_quality(data)))
 
 def submit(root):
     with (root/'control/submit.lock').open('a') as lock:
@@ -397,6 +418,15 @@ def submit(root):
         atomic(state_path,dict(job_id=job,segment=segment,nodes=nodes,capacity=cap,command=command))
         atomic(intent_path,dict(status='submitted',segment=segment,job_id=job,command=command))
 
+def finish_and_submit(root,run,returncode):
+    try:
+        if finish(root,run,returncode):submit(root)
+    except Exception as exc:
+        atomic(root/'control/PAUSED.json',dict(kind='review',run=str(run),
+               job=os.environ.get('SLURM_JOB_ID'),reason=f'{type(exc).__name__}: {exc}',
+               epoch=time.time()))
+        raise
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('action',choices=['telemetry','watch','finish','submit','checkpoint'])
@@ -410,6 +440,6 @@ def main():
     elif a.action=='watch':watch(a.root,a.run,a.nodes)
     elif a.action=='checkpoint':print(json.dumps(checkpoint(a.path),indent=2))
     elif a.action=='submit':submit(a.root)
-    elif finish(a.root,a.run,a.returncode):submit(a.root)
+    else:finish_and_submit(a.root,a.run,a.returncode)
 
 if __name__=='__main__':main()

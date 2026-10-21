@@ -25,6 +25,23 @@ class RuntimeSafety(unittest.TestCase):
         data+=bytes(25*2**3*8)+struct.pack('<4d',count,0,0,0)+bytes(count*80)
         path.write_bytes(data[:-1] if truncated else data)
         return path
+    def test_unknown_energy_preserves_mass_but_physical_nan_fails(self):
+        import numpy as np
+        data=np.zeros((10,3));data[0]=[1.,2.,3.];data[9]=[0,3000000,4000000]
+        data[1]=[1.,np.nan,np.inf]
+        report=runtime.particle_diagnostic_quality(data)
+        self.assertEqual(report['unknown_count'],2)
+        self.assertEqual([c['unknown_rest_mass'] for c in report['components']],[0.,2.,3.])
+        for field in (0,2,3,4,5,6,7,8,9):
+            broken=data.copy();broken[field,0]=np.nan
+            with self.assertRaises(RuntimeError):runtime.particle_diagnostic_quality(broken)
+        self.assertTrue(np.isnan(data[1,1]))
+    def test_failed_finalization_publishes_pause_and_never_submits(self):
+        with patch('runtime.finish',side_effect=RuntimeError('audit failed')),patch('runtime.submit') as submit:
+            with self.assertRaises(RuntimeError):runtime.finish_and_submit(self.root,self.root/'run',0)
+            submit.assert_not_called()
+        pause=json.loads((self.root/'control/PAUSED.json').read_text())
+        self.assertIn('audit failed',pause['reason'])
     def test_endpoint_jobs_are_idempotent_and_analysis_only(self):
         from endpoint import submit_endpoint
         self.state('ENDPOINT_75.json',dict(time=75))

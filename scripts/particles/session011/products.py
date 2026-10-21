@@ -77,7 +77,11 @@ def trk(path):
     dtype=np.dtype([('tag','<i8'),('q','<f8',(8,))])
     if path.stat().st_size!=512+n*dtype.itemsize:raise ValueError('truncated cohort')
     records=np.fromfile(path,dtype=dtype,offset=512,count=n)
-    if len(np.unique(records['tag']))!=n or not np.isfinite(records['q']).all():raise ValueError('invalid cohort records')
+    # q = mass, derived IPEN, x,y,z,u1,u2,u3. Energy is not used for geometry.
+    physical=records['q'][:,[0,2,3,4,5,6,7]]
+    if (len(np.unique(records['tag']))!=n or not np.isfinite(physical).all()
+        or np.any(records['q'][:,0]<=0) or np.any(records['tag']<0)
+        or np.any(records['tag']>=5_000_000)):raise ValueError('invalid cohort records')
     return cycle,time,records
 
 def surface(ax,row):
@@ -110,7 +114,7 @@ def draw_state(ax,records,horizons,limit,time,caption=True):
     for row in horizons:surface(ax,row)
     ax.set(xlim=(-limit,limit),ylim=(-limit,limit),zlim=(-limit,limit));ax.set_box_aspect((1,1,1));ax.set_axis_off()
     if caption:ax.text2D(.025,.95,f'Saved state  t = {time:.4f} Mref',transform=ax.transAxes,color='white',fontsize=12)
-    return dict(saved_time=time,alive_cohort=[int((group==c).sum()) for c in range(3)],visible=[int((visible&(group==c)).sum()) for c in range(3)],accepted_horizons=[int(r['horizon']) for r in horizons])
+    return dict(saved_time=time,unknown_native_energy_count=int((~np.isfinite(q[:,1])).sum()),alive_cohort=[int((group==c).sum()) for c in range(3)],visible=[int((visible&(group==c)).sum()) for c in range(3)],accepted_horizons=[int(r['horizon']) for r in horizons])
 
 def intervals(cycles,valid):
     selected=np.flatnonzero(valid)
@@ -140,6 +144,16 @@ def complete_ledgers(sums,status):
     sums.loc[missing&known,columns]=0.
     if 'invalid_metric_mass' in sums:
         sums.loc[sums.invalid_metric_mass>0,['En_trilinear','Ecoord_trilinear']]=np.nan
+    if 'native_energy_unknown_shells' in sums:
+        sums.loc[sums.native_energy_unknown_shells>0,'Ecoord_native']=np.nan
+    return sums
+
+def aggregate_particles(particles):
+    particles=particles.copy()
+    particles['native_energy_unknown_shells']=(~np.isfinite(particles.Ecoord_native)).astype(int)
+    keys=['cycle','time','component','mask']
+    sums=particles.groupby(keys,dropna=False).sum(numeric_only=True,min_count=1).reset_index()
+    sums.loc[sums.native_energy_unknown_shells>0,'Ecoord_native']=np.nan
     return sums
 
 def reduce(root,out):
@@ -208,7 +222,7 @@ def reduce(root,out):
     axs[0].plot(orbit.time,orbit.separation,label='Coordinate');axs[0].plot(orbit.time,orbit.proper_exterior_line,label='Exterior proper line');axs[0].legend()
     axs[0].set_ylabel('Separation / Mref');axs[1].plot(orbit.time,orbit.Omega);axs[1].set_ylabel('Omega Mref')
     axs[2].plot(orbit.time,orbit.radial_over_tangential);axs[2].set_ylabel('|d_dot| / |d Omega|');axs[2].set_xlabel('State time / Mref');savefig(fig,out/'orbit_diagnostics')
-    sums=particles.groupby(['cycle','time','component','mask'],dropna=False).sum(numeric_only=True,min_count=1).reset_index()
+    sums=aggregate_particles(particles)
     sums=complete_ledgers(sums,status)
     sums.to_csv(out/'component_ledgers.csv',index=False)
     norms=grid[grid['mask']==1].groupby(['cycle','time']).sum(numeric_only=True,min_count=1).reset_index()
@@ -486,6 +500,14 @@ D — Noncircular motion: `orbit.csv` provides separation, valid-interval phase,
 Omega, |d_dot|/|d Omega| and the exterior proper line length. Binary interpretation
 ends at strict common enclosure; no phase is unwrapped through missing intervals.
 The proper distance is slice- and path-dependent.
+
+Stored native particle energy uses high-order metric interpolation, which can
+produce invalid geometry near collapse. Such energies remain unknown; they are
+never replaced by zero or silently omitted from a component total.
+`native_energy_unknown_shells` flags affected aggregate rows; checkpoint audits
+record affected counts/rest mass, and movie manifests record affected cohort
+counts. The independently labelled trilinear energies have their own metric
+validity mask. Finite mass, position, momentum and exact IDs remain mandatory.
 
 E — Numerical evidence: `exterior_constraints.csv`, compact AMR catalogs, exact
 particle partition/rest-weight closure, restart checks and all finder reasons
