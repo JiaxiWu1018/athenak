@@ -2,9 +2,9 @@
 #SBATCH -J st_s08_perseus_run
 #SBATCH -p debug
 #SBATCH -N 1
-#SBATCH -n 3
+#SBATCH -n 2
 #SBATCH -c 1
-#SBATCH --gres=gpu:3
+#SBATCH --gres=gpu:2
 #SBATCH --mem=256G
 #SBATCH -t 04:00:00
 #SBATCH --no-requeue
@@ -20,7 +20,7 @@ finish() {
  python3 - "$record" "$start_epoch" "$status" <<'PYCODE'
 from common import *
 import sys,time
-r=Path(sys.argv[1]);elapsed=time.time()-int(sys.argv[2]);atomic(r/'ALLOCATION_END.json',dict(utc=now(),job=job(),elapsed_seconds=elapsed,allocated_nodes=int(os.environ['SLURM_NNODES']),gpus=3,cpus=3,returncode=int(sys.argv[3])))
+r=Path(sys.argv[1]);elapsed=time.time()-int(sys.argv[2]);atomic(r/'ALLOCATION_END.json',dict(utc=now(),job=job(),elapsed_seconds=elapsed,allocated_nodes=int(os.environ['SLURM_NNODES']),gpus=2,cpus=2,returncode=int(sys.argv[3])))
 PYCODE
 }
 trap finish EXIT

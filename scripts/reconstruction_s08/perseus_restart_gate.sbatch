@@ -2,9 +2,9 @@
 #SBATCH -J st_s08_restart_gate
 #SBATCH -p debug
 #SBATCH -N 1
-#SBATCH -n 3
+#SBATCH -n 2
 #SBATCH -c 1
-#SBATCH --gres=gpu:3
+#SBATCH --gres=gpu:2
 #SBATCH --mem=192G
 #SBATCH -t 00:20:00
 #SBATCH --no-requeue

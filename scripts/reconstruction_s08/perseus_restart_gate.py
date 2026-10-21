@@ -24,7 +24,7 @@ def main():
     work=ROOT/'tests'/f'migration_{jid}';work.mkdir()
     command=native_launcher()+[str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank',
       '-r',str(source),'-d',str(work),'time/nlim='+str(before['cycle']),
-      'mesh_refinement/max_nmb_per_rank=192','problem/cluster_sample_file='+str(ROOT/'samples/yc0500.bin'),
+      'mesh_refinement/max_nmb_per_rank=256','problem/cluster_sample_file='+str(ROOT/'samples/yc0500.bin'),
       'problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
     atomic(work/'launch.json',dict(job=jid,utc=now(),command=command,executable=receipt(ROOT/'protected/athena')))
     memory=[]
@@ -32,7 +32,7 @@ def main():
         process=subprocess.Popen(command,stdout=f,stderr=subprocess.STDOUT)
         while process.poll() is None:
             raw=subprocess.check_output(['nvidia-smi','--query-gpu=uuid,memory.used,memory.total','--format=csv,noheader,nounits'],text=True)
-            rows=[x.split(',') for x in raw.splitlines() if x.strip()];assert len(rows)==3
+            rows=[x.split(',') for x in raw.splitlines() if x.strip()];assert len(rows)==2
             frac=max(float(x[1])/float(x[2]) for x in rows);memory.append(dict(utc=now(),fraction=frac,raw=raw))
             if frac>=.85:(work/'REQUEST_STOP').write_text('gpu_memory_85_percent\n')
             time.sleep(5)
@@ -67,5 +67,5 @@ def main():
     atomic(ROOT/'evidence/MIGRATION_RESTART_OK.json',dict(utc=now(),job=jid,source=before,destination=after,
       no_evolution=True,physical_particle_fields_exact=True,derived_energy_tolerance=1e-12,particle_max_abs_errors=errors,
       interior_grid_max_scaled_difference=max_scaled,max_gpu_fraction=max(x['fraction'] for x in memory),
-      ranks=3,max_nmb_per_rank=192,source_retained=True))
+      ranks=2,max_nmb_per_rank=256,source_retained=True))
 if __name__=='__main__':main()

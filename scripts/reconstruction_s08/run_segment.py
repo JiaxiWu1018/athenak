@@ -130,7 +130,7 @@ def run(c,initialize=False,target=300,wall_seconds=12600):
         launch+=['-r',latest['path'],'time/nlim=100000000',f'time/tlim={target}']
     if os.environ.get('S8_MACHINE')=='perseus':
         assert (ROOT/'evidence/MIGRATION_RESTART_OK.json').exists()
-        launch+=['mesh_refinement/max_nmb_per_rank=192',
+        launch+=['mesh_refinement/max_nmb_per_rank=256',
                  'problem/cluster_sample_file='+str(ROOT/'samples'/f"{c['id']}.bin"),
                  'problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
     launch+=['-t',f'{wall_seconds//3600:02d}:{wall_seconds//60%60:02d}:{wall_seconds%60:02d}']
