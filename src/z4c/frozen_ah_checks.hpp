@@ -112,9 +112,18 @@ inline void FrozenAhChecks(Mesh *mesh, ParameterInput *pin, int repetitions) {
     pack->ppart->gi_diagnostics->Sample(true);
   }
   auto particle_after = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), pr);
+  int unknown_energy = 0;
+  for (int p=0; p<pack->ppart->nprtcl_thispack; ++p)
+    if (!std::isfinite(particle_before(IPEN,p))) ++unknown_energy;
+#if MPI_PARALLEL_ENABLED
+  MPI_Allreduce(MPI_IN_PLACE, &unknown_energy, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  // Unknown derived IPEN may be NaN. Require identical bits, including the NaN
+  // payload, rather than arithmetic equality (NaN != itself). Every active
+  // particle field is still checked; no value is changed or exempted.
   for (int p=0; p<pack->ppart->nprtcl_thispack; ++p)
     for (int q=0; q<pack->ppart->nrdata; ++q)
-      if (particle_before(q,p) != particle_after(q,p))
+      if (std::memcmp(&particle_before(q,p), &particle_after(q,p), sizeof(Real)) != 0)
         throw std::runtime_error("frozen diagnostics changed particle state");
   auto after = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), u);
   if (std::memcmp(before.data(),after.data(),u.size()*sizeof(Real)) != 0)
@@ -122,6 +131,8 @@ inline void FrozenAhChecks(Mesh *mesh, ParameterInput *pin, int repetitions) {
   mesh->dt = old_dt;
   if (global_variable::my_rank == 0)
     std::cout << "FROZEN_AH_CHECKS_PASS time=" << std::setprecision(17) << mesh->time
-              << " cycle=" << mesh->ncycle << " evolution_advances=0" << std::endl;
+              << " cycle=" << mesh->ncycle << " evolution_advances=0"
+              << " bitwise_particle_check=pass unknown_native_energy=" << unknown_energy
+              << std::endl;
 }
 #endif

@@ -11,6 +11,16 @@ from PIL import Image
 import products
 
 class ProductChecks(unittest.TestCase):
+    def test_scheduler_ids_never_mix_clusters(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);e=root/'evidence';e.mkdir()
+            for name,receipt in [('perseus_cuda_18291',{'job_id':'18291'}),
+                                 ('foreign_receipt',{'job_id':'123','scheduler_cluster':'perseus'}),
+                                 ('final_473059',{'job_id':'473059'})]:
+                p=e/name;p.mkdir();(p/'RESULT.json').write_text(json.dumps(receipt))
+            (e/'production_473355.slurm.log').touch()
+            (e/'perseus_release_18297.slurm.log').touch()
+            self.assertEqual(products.amd_job_ids(root),['473059','473355'])
     def test_mixed_known_unknown_native_energy_total_stays_unknown(self):
         import pandas as pd
         rows=pd.DataFrame(dict(cycle=[1,1],time=[2.,2.],component=[0,0],mask=[0,0],

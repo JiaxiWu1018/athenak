@@ -156,6 +156,25 @@ def aggregate_particles(particles):
     sums.loc[sums.native_energy_unknown_shells>0,'Ecoord_native']=np.nan
     return sums
 
+def amd_job_ids(root):
+    """Discover AMD allocations only; copied foreign scheduler IDs can collide."""
+    jobs=set()
+    for path in sorted((root/'evidence').glob('*/RESULT.json')):
+        # These are one-way copies of foreign receipts, not AMD allocations.
+        if path.parent.name.startswith(('perseus_','vista_','anta_')):continue
+        row=json.loads(path.read_text())
+        if row.get('scheduler_cluster','amd')!='amd':continue
+        if row.get('job_id'):jobs.add(str(row['job_id']))
+    for path in (root/'evidence').glob('*.slurm.log'):
+        if path.name.startswith(('perseus_','vista_','anta_')):continue
+        match=re.search(r'_(\d+)\.slurm\.log$',path.name)
+        if match:jobs.add(match[1])
+    for run in sorted((root/'runs').glob('segment_*')):
+        text=(run/'provenance.txt').read_text() if (run/'provenance.txt').exists() else ''
+        match=re.search(r'JobId=(\d+)',text)
+        if match:jobs.add(match[1])
+    return sorted(jobs)
+
 def reduce(root,out):
     runs=sorted(p for p in (root/'runs').glob('segment_*') if (p/'checkpoint_manifest.json').exists())
     if not runs:raise RuntimeError('no verified production segment')
@@ -397,17 +416,7 @@ def report(root,out,metrics,wave):
               frozen_env_omega2_proxy=float(initial[within].sum()/radius0**3),measured_omega2=row.Omega**2))
     pd.DataFrame(model).to_csv(out/'envelope_support_proxy.csv',index=False)
     # Record actual allocations; scheduler elapsed time includes build/check/final I/O.
-    jobs=[];node_hours=None
-    for path in sorted((root/'evidence').glob('*/RESULT.json')):
-        jobs.append(json.loads(path.read_text()).get('job_id'))
-    for path in (root/'evidence').glob('*.slurm.log'):
-        match=re.search(r'_(\d+)\.slurm\.log$',path.name)
-        if match:jobs.append(match[1])
-    jobs=[j for j in jobs if j]
-    for run in sorted((root/'runs').glob('segment_*')):
-        text=(run/'provenance.txt').read_text() if (run/'provenance.txt').exists() else ''
-        match=re.search(r'JobId=(\d+)',text)
-        if match:jobs.append(match[1])
+    jobs=amd_job_ids(root);node_hours=None
     if jobs:
         scheduler=subprocess.run(['sacct','-X','-P','-n','-j',','.join(sorted(set(jobs))),
                                   '--format=JobID,State,ElapsedRaw,AllocNodes,AllocCPUS,MaxRSS'],text=True,capture_output=True)
