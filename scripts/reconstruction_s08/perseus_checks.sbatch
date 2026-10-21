@@ -2,9 +2,9 @@
 #SBATCH -J st_s08_cuda_checks
 #SBATCH -p debug
 #SBATCH -N 1
-#SBATCH -n 4
+#SBATCH -n 3
 #SBATCH -c 1
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:3
 #SBATCH --mem=192G
 #SBATCH -t 00:30:00
 #SBATCH --no-requeue
@@ -16,7 +16,7 @@ mkdir -p "$record"
 { date -u; hostname; scontrol show job "$SLURM_JOB_ID"; mpicxx --showme; nvidia-smi --query-gpu=uuid,name,memory.total --format=csv; sha256sum "$ROOT/protected/athena" "$ROOT/samples/frozen_ah.bin"; } > "$record/environment.txt" 2>&1
 export FROZEN_WORK=$ROOT/tests/frozen_ah_$SLURM_JOB_ID
 mkdir "$FROZEN_WORK"
-mpirun --bind-to none -np 4 "$ROOT/protected/athena" --kokkos-map-device-id-by=mpi_rank -i "$ROOT/inputs/frozen_ah.athinput" -d "$FROZEN_WORK" fastflow/verbose=true "problem/cluster_t0_dump=$FROZEN_WORK/initial_particles.bin" > "$record/frozen_ah.log" 2>&1
+mpirun --bind-to none -np 3 "$ROOT/protected/athena" --kokkos-map-device-id-by=mpi_rank -i "$ROOT/inputs/frozen_ah.athinput" -d "$FROZEN_WORK" fastflow/verbose=true "problem/cluster_t0_dump=$FROZEN_WORK/initial_particles.bin" > "$record/frozen_ah.log" 2>&1
 test -f "$FROZEN_WORK/FROZEN_AH_OK"
 python3 - <<'PYCODE'
 from common import *

@@ -17,6 +17,9 @@ def cohort(path):
     return t,cyc,mask,data
 
 def admission():
+    if os.environ.get('S8_MACHINE')=='perseus':
+        from perseus_resources import admission as local_admission
+        return local_admission()
     assert not (ROOT/'evidence/RESOURCE_STOP.json').exists(),'Unresolved resource stop'
     whole=int(subprocess.check_output(['du','-s','-B1',str(ROOT.parent)],text=True,timeout=180).split()[0])
     own=int(subprocess.check_output(['du','-s','-B1',str(ROOT)],text=True,timeout=180).split()[0])
