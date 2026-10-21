@@ -65,5 +65,9 @@ PYCODE
   python3 "$ROOT/scripts/plots.py"
   python3 "$ROOT/scripts/movies.py"
  ;;
+ audit)
+  shift
+  python3 "$ROOT/scripts/reduce.py" "$@"
+ ;;
  *) echo "Unimplemented job action $1" >&2; exit 2 ;;
 esac

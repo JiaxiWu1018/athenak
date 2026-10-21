@@ -7,13 +7,16 @@ p.add_argument('--hours',type=float,default=1);p.add_argument('--dependency')
 p.add_argument('--case',choices=[c['id'] for c in CASES]);p.add_argument('--target',type=float,default=300)
 p.add_argument('--wall-seconds',type=int,default=12600)
 a=p.parse_args();assert a.nodes in [1,2] and 0<a.hours<=6
-assert a.phase in ['checks','initialize','run','postprocess']
+assert a.phase in ['checks','initialize','run','audit','postprocess']
 a.args=[]
 if a.phase=='run':
     assert a.case and 0<a.target<=300 and 0<a.wall_seconds<=a.hours*3600-180
     a.args=[a.case,'--target',str(a.target),'--wall-seconds',str(a.wall_seconds)]
-partition='mi2101x' if a.phase=='postprocess' else 'mi2104x'
-ranks=1 if a.phase=='postprocess' else 4*a.nodes
+if a.phase=='audit':
+    assert a.case
+    a.args=[a.case,'--partial']
+partition='mi2101x' if a.phase in ['audit','postprocess'] else 'mi2104x'
+ranks=1 if a.phase in ['audit','postprocess'] else 4*a.nodes
 def remote(args):return subprocess.check_output(['ssh','-o','BatchMode=yes','hpcfund.amd.com',shlex.join(list(map(str,args)))],text=True,stderr=subprocess.STDOUT,timeout=60)
 e=LOCAL/'evidence';state=load(e/'state.json');ids=[str(j['id']) for j in state['jobs'] if j['host']=='amd']
 accounting=remote(['sacct','-X','-j',','.join(ids),'-n','-P','--format=JobIDRaw,State,ElapsedRaw,AllocNodes'])
