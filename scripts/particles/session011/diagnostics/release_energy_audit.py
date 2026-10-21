@@ -12,7 +12,8 @@ a=metric['summary']['invalid'];assert a['high']['nonpositive_metric']==330
 assert a['high']['negative_discriminant']==330 and a['high']['nonfinite_nodes']==0
 assert a['linear']['nonpositive_metric']==a['linear']['negative_discriminant']==a['linear']['nonfinite_nodes']==0
 assert a['linear']['min_alpha']>0
-qa=json.loads((fix/'qa_473917/RESULT.json').read_text())
+qa_path=fix/f'qa_{os.environ["QA_JOB"]}/RESULT.json'
+qa=json.loads(qa_path.read_text())
 assert qa['status']=='pass' and qa['evolution_steps']==0
 assert qa['audit']['exact_partition'] and qa['audit']['cycle']==1902
 assert qa['audit']['native_energy_quality']['unknown_count']==330
@@ -45,7 +46,7 @@ for name in changed:
 gate['tooling_source']=source
 gate['diagnostic_energy_repair']=dict(job=os.environ['SLURM_JOB_ID'],epoch=time.time(),
     previous_gate=str(out/'VALIDATION_PASS.json'),metric_evidence=str(fix/'metric_473909.json'),
-    quality_validation=str(fix/'qa_473917/RESULT.json'),engine_unchanged=True,
+    quality_validation=str(qa_path),engine_unchanged=True,
     checkpoint_mutation=False,policy='unknown native IPEN retained; all physical fields, partition, rest weights and Jz remain required')
 sys.path.insert(0,str(root/'scripts'))
 import runtime
