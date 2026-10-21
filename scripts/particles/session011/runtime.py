@@ -130,6 +130,10 @@ def request_stop(run, reason, kind):
         atomic(path, dict(epoch=time.time(), reason=reason, kind=kind))
     (run/'REQUEST_STOP').touch()
 
+def persistent_dropout(status,event,horizon):
+    # Failed searches before the first accepted AH are formation evidence, not dropout.
+    return bool(int(status['ever_bits'])&(1<<horizon)) and event is not None and int(event['failed_searches'])>=128
+
 def watch(root, run, nodes):
     require_compute()
     started=time.time(); last_du=0; usage=None; usage_time=0
@@ -201,7 +205,7 @@ def watch(root, run, nodes):
                 else:
                     horizon_gaps.pop(h,None)
                 event=last_csv(run/f's11_amd.ah_events_{h}.csv')
-                if event and int(event['failed_searches'])>=128:
+                if persistent_dropout(status,event,h):
                     request_stop(run,f'persistent accepted-AH dropout horizon {h}','science')
         time.sleep(15)
 

@@ -46,6 +46,12 @@ class RuntimeSafety(unittest.TestCase):
         with patch('endpoint.subprocess.check_output') as call:
             with self.assertRaises(RuntimeError):submit_endpoint(self.root)
             call.assert_not_called()
+    def test_preformation_failures_are_not_horizon_dropout(self):
+        event=dict(failed_searches='1000')
+        self.assertFalse(runtime.persistent_dropout(dict(ever_bits='0'),event,0))
+        self.assertFalse(runtime.persistent_dropout(dict(ever_bits='1'),event,1))
+        self.assertTrue(runtime.persistent_dropout(dict(ever_bits='1'),event,0))
+        self.assertFalse(runtime.persistent_dropout(dict(ever_bits='1'),dict(failed_searches='3'),0))
     def test_checkpoint_schema(self):
         r=runtime.checkpoint(self.fixture(),False,5,1,2)
         self.assertEqual(r['particles'],5);self.assertEqual(r['cycle'],200)
