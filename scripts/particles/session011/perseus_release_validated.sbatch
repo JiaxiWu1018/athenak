@@ -34,13 +34,13 @@ state=subprocess.check_output(['scontrol','show','job','473069','-o'],text=True)
 assert 'JobState=PENDING' in state and 'Reason=JobHeldUser' in state
 path=control/'VALIDATION_PASS.json';gate=json.loads(path.read_text())
 assert gate['source']=='df6ab41d5cdd95c7e33a8b70726891d52691c0cf'
-assert gate['tooling_source']=='4dd2eb67ae4ca2b7248fe3482cbd8a10e72a571c'
-assert gate['preflight']['job_id']=='473100'
+assert gate['tooling_source']=='a3c074265cae303d5771d37c98bb722edd176bbc'
+assert gate['preflight']['job_id']=='473104'
 receipt=json.loads((root/'evidence/perseus_cuda_18291/RESULT.json').read_text())
 assert receipt['stage']=='fresh_frozen_pass'
 gate['cuda_validation']=dict(receipt=receipt,path=str(root/'evidence/perseus_cuda_18291'),engine_source_identical=True)
 tmp=path.with_suffix('.tmp');tmp.write_text(json.dumps(gate,indent=2)+'\n');tmp.replace(path)
 subprocess.run(['scontrol','release','473069'],check=True)
-(control/'CUDA_RELEASE.json').write_text(json.dumps(dict(production_job='473069',cuda_job='18291',preflight_job='473100',status='released'),indent=2)+'\n')
+(control/'CUDA_RELEASE.json').write_text(json.dumps(dict(production_job='473069',cuda_job='18291',preflight_job='473104',status='released'),indent=2)+'\n')
 print('Released the one approved production job473069 after AMD and CUDA validation.')
 PY
