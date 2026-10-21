@@ -16,6 +16,7 @@
 #include "mesh/mesh.hpp"
 #include "bvals/bvals.hpp"
 #include "particles.hpp"
+#include "gi_diagnostics.hpp"
 #include "mhd/mhd.hpp"            // MHD::nmhd/nscalars for gr_boris snapshot sizing
 #include "coordinates/adm.hpp"   // ADM::nadm
 #include "z4c/z4c.hpp"           // Z4c::nz4c, Z4c::pfastflow

@@ -5,10 +5,14 @@
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
+#include <sstream>
+#include <cstring>
 #include "fastflow.hpp"
 #include "mesh/mesh.hpp"
 #include "parameter_input.hpp"
 #include "z4c.hpp"
+#include "particles/particles.hpp"
+#include "particles/gi_diagnostics.hpp"
 
 // Opt-in non-evolving validation: no integrator, pusher, or AMR step is executed.
 // Used for the analytic fixture and subsequently for saved production states.
@@ -19,6 +23,9 @@ inline void FrozenAhChecks(Mesh *mesh, ParameterInput *pin, int repetitions) {
   auto before = Kokkos::create_mirror(u);
   Kokkos::deep_copy(before, u);
   const Real old_dt = mesh->dt;
+  auto pr = pack->ppart->prtcl_rdata;
+  auto particle_before = Kokkos::create_mirror(pr);
+  Kokkos::deep_copy(particle_before, pr);
   mesh->dt = 0.0;  // event timestamps are the unchanged saved-state time
   const bool require_accept = pin->GetOrAddBoolean("diagnostic_checks", "require_accept", true);
   for (size_t h=0; h<pack->pz4c->pfastflow.size(); ++h) {
@@ -35,9 +42,16 @@ inline void FrozenAhChecks(Mesh *mesh, ParameterInput *pin, int repetitions) {
       if (finder->search_reason == "pending_persistence" && !tested_pending) {
         if (!finder->search_surface_valid)
           throw std::runtime_error("quality-passing provisional seed discarded");
-        FastFlow restored(pack, pin, static_cast<int>(h));
+        std::stringstream serialized;
+        pin->ParameterDump(serialized);
+        ParameterInput loaded;
+        loaded.LoadFromStream(serialized);
+        FastFlow restored(pack, &loaded, static_cast<int>(h));
         if (!restored.search_surface_valid || restored.ah_surf_valid)
           throw std::runtime_error("restored search/publication state conflated");
+        for (int a=0; a<3; ++a)
+          if (restored.search_center[a] != finder->search_center[a])
+            throw std::runtime_error("provisional center serialization differs");
         for (int i=0; i<finder->GetLmax()+1; ++i)
           if (restored.a0_search.h_view(i) != finder->a0_search.h_view(i))
             throw std::runtime_error("provisional coefficient serialization differs");
@@ -74,10 +88,19 @@ inline void FrozenAhChecks(Mesh *mesh, ParameterInput *pin, int repetitions) {
       pin->SetReal("fastflow", key, saved);
     }
   }
+  if (pack->ppart->gi_diagnostics) {
+    pack->ppart->gi_diagnostics->BeforeStep();
+    pack->ppart->gi_diagnostics->AfterPush();
+    pack->ppart->gi_diagnostics->Sample(true);
+  }
+  auto particle_after = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), pr);
+  for (int p=0; p<pack->ppart->nprtcl_thispack; ++p)
+    for (int q=0; q<pack->ppart->nrdata; ++q)
+      if (particle_before(q,p) != particle_after(q,p))
+        throw std::runtime_error("frozen diagnostics changed particle state");
   auto after = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), u);
-  for (size_t i=0; i<u.size(); ++i)
-    if (before.data()[i] != after.data()[i])
-      throw std::runtime_error("non-evolving AH check changed evolution fields");
+  if (std::memcmp(before.data(),after.data(),u.size()*sizeof(Real)) != 0)
+    throw std::runtime_error("non-evolving AH check changed evolution fields");
   mesh->dt = old_dt;
   if (global_variable::my_rank == 0)
     std::cout << "FROZEN_AH_CHECKS_PASS time=" << std::setprecision(17) << mesh->time

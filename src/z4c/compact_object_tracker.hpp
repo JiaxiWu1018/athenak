@@ -62,6 +62,12 @@ class CompactObjectTracker {
   inline Real GetMass() const {
     return mass;
   }
+  inline int DiagnosticSource() const { return track_source; }
+  inline Real DiagnosticCoreMass() const { return core_rest_mass; }
+  inline Real DiagnosticLapse() const { return lapse_min; }
+  inline bool DiagnosticLive() const {
+    return mode != ParticleLapse || track_source == 1 || track_source == 2;
+  }
   //! Check whether the tracked object is a black hole
   inline bool IsBlackHole() const {
     return type == BlackHole;

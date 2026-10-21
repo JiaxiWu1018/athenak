@@ -128,6 +128,7 @@ add_executable(
         particles/particles_excise.cpp
         particles/particles_tmunu.cpp
         particles/calc_energy.cpp
+        particles/gi_diagnostics.cpp
         particles/boris_pusher.cpp
         particles/gr_boris.cpp
         particles/read_particle.cpp

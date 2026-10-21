@@ -19,6 +19,7 @@
 #include "mesh/mesh.hpp"
 #include "bvals/bvals.hpp"
 #include "particles.hpp"
+#include "gi_diagnostics.hpp"
 
 namespace particles {
 //----------------------------------------------------------------------------------------
@@ -37,9 +38,10 @@ void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> t
   id.push   = atl->AddTask(&Particles::Push, this, none);
   // excision marking (Stage 3c(b)): scheduled only when a criterion is enabled; writes
   // the excise_flag/crit arrays that NewGID's destruction marking consumes
-  TaskID newgid_dep = id.push;
+  id.gi_account = atl->AddTask(&Particles::GiAccount, this, id.push);
+  TaskID newgid_dep = id.gi_account;
   if (excise_any) {
-    id.excise = atl->AddTask(&Particles::MarkExcised, this, id.push);
+    id.excise = atl->AddTask(&Particles::MarkExcised, this, id.gi_account);
     newgid_dep = id.excise;
   }
   id.newgid = atl->AddTask(&Particles::NewGID, this, newgid_dep);
@@ -72,6 +74,11 @@ void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> t
 TaskStatus Particles::NewGID(Driver *pdrive, int stage) {
   TaskStatus tstat = pbval_part->SetNewPrtclGID();
   return tstat;
+}
+
+TaskStatus Particles::GiAccount(Driver *, int) {
+  if (gi_diagnostics) gi_diagnostics->AfterPush();
+  return TaskStatus::complete;
 }
 
 //----------------------------------------------------------------------------------------

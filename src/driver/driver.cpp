@@ -26,6 +26,7 @@
 #include "z4c/frozen_ah_checks.hpp"
 #include "dyn_grmhd/dyn_grmhd.hpp"
 #include "particles/particles.hpp"
+#include "particles/gi_diagnostics.hpp"
 #include "ion-neutral/ion-neutral.hpp"
 #include "radiation/radiation.hpp"
 #include "driver.hpp"
@@ -529,6 +530,11 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
     }
   }
 
+  if (ppart && pin->GetOrAddBoolean("gi_diagnostics", "enabled", false)) {
+    ppart->gi_diagnostics = std::make_unique<particles::GiDiagnostics>(pmesh->pmb_pack,pin);
+    ppart->gi_diagnostics->Sample(true);
+  }
+
   //---- Step 3.  Cycle through output Types and load data / write files.
   if (!res_flag) { // only write outputs at the beginning of the run
     for (auto &out : pout->pout_list) {
@@ -632,6 +638,9 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
         EndSTSSweep();
       }
 
+      if (pmesh->pmb_pack->ppart && pmesh->pmb_pack->ppart->gi_diagnostics)
+        pmesh->pmb_pack->ppart->gi_diagnostics->BeforeStep();
+
       // Execute TaskLists
       // Work before time integrator indicated by "0" in stage
       ExecuteTaskList(pmesh, "before_timeintegrator", 0);
@@ -682,6 +691,11 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
             static_cast<float>(pmesh->nmb_total);
       }
 
+      if (pmesh->pmb_pack->ppart && pmesh->pmb_pack->ppart->gi_diagnostics) {
+        pmesh->pmb_pack->ppart->gi_diagnostics->Milestones(pout);
+        pmesh->pmb_pack->ppart->gi_diagnostics->Sample();
+      }
+
       // Test for/make outputs
       for (auto &out : pout->pout_list) {
         // compare at floating point (32-bit) precision to reduce effect of round off
@@ -718,6 +732,8 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
 //!  and printing diagnostic messages
 
 void Driver::Finalize(Mesh *pmesh, ParameterInput *pin, Outputs *pout) {
+  if (pmesh->pmb_pack->ppart && pmesh->pmb_pack->ppart->gi_diagnostics)
+    pmesh->pmb_pack->ppart->gi_diagnostics->Sample(true);
   // cycle through output Types and load data / write files
   //  This design allows for asynchronous outputs to implemented in the future.
   for (auto &out : pout->pout_list) {

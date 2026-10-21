@@ -40,6 +40,7 @@ enum class CrossLevelDeposit {conservative, native};
 
 struct ParticlesTaskIDs {
   TaskID push;
+  TaskID gi_account;
   TaskID excise;
   TaskID newgid;
   TaskID count;
@@ -55,6 +56,7 @@ struct ParticlesTaskIDs {
 };
 
 namespace particles {
+class GiDiagnostics;
 
 //----------------------------------------------------------------------------------------
 //! \struct TmunuImage
@@ -102,6 +104,8 @@ class Particles {
  public:
   Particles(MeshBlockPack *ppack, ParameterInput *pin);
   ~Particles();
+  std::unique_ptr<GiDiagnostics> gi_diagnostics;
+  TaskStatus GiAccount(Driver *, int);
 
   // data
   ParticleType particle_type;

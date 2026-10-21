@@ -160,7 +160,8 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   Kokkos::realloc(a0_surf, lmax1);
   Kokkos::realloc(ac_surf, lmpoints);
   Kokkos::realloc(as_surf, lmpoints);
-  if (persist_surface_shape && pin->GetOrAddBoolean(
+  if (persist_surface_shape && !pin->DoesParameterExist(
+      "fastflow", "search_state_valid_" + n_str) && pin->GetOrAddBoolean(
       "fastflow", "surface_state_valid_" + n_str, false)) {
     for (int l = 0; l < lmax1; ++l) {
       a0_surf.h_view(l) = pin->GetReal(
@@ -685,14 +686,6 @@ void FastFlow::Find(int iter, Real time) {
                           && association_ok;
     int seed_noff = 0;
     const bool seed_on_grid = CurrentSurfaceOnGrid(seed_noff);
-    if (quality_geometry_ok && seed_on_grid) {
-      ++ah_surf_candidate_streak;
-    } else {
-      ah_surf_candidate_streak = 0;
-    }
-    const bool quality_persist_ok =
-        (ah_surf_candidate_streak >= ah_surf_persist);
-
     // Catastrophic-only capability gate. This intentionally does NOT depend on the
     // minimum radius in cells, normalized expansion, or persistence values above. All
     // angular radii must nevertheless be finite and positive; checking every collocation
@@ -724,6 +717,13 @@ void FastFlow::Find(int iter, Real time) {
     const bool capability_geometry_ok = capability_finite_positive
         && capability_on_grid && capability_center_jump_ok
         && candidate_rmax <= ah_surf_capability_rmax && association_ok;
+
+    if (quality_geometry_ok && seed_on_grid && capability_finite_positive) {
+      ++ah_surf_candidate_streak;
+    } else {
+      ah_surf_candidate_streak = 0;
+    }
+    const bool quality_persist_ok = ah_surf_candidate_streak >= ah_surf_persist;
 
     bool published_this_candidate = false;
     if (ah_surf_capability_mode) {
@@ -2228,7 +2228,7 @@ void FastFlow::SaveSearchState(bool valid) {
 void FastFlow::WriteSearchEvent(Real time) {
   if (!ioproc) return;
   fprintf(pofile_events, "%d,%.17g,%d,%.17g,%d,%s,%d,%d,%d,%d,%d",
-      pmbp->pmesh->ncycle, time, pmbp->pmesh->ncycle+1, time+pmbp->pmesh->dt,
+      pmbp->pmesh->ncycle, time, pmbp->pmesh->ncycle+(pmbp->pmesh->dt > 0), time+pmbp->pmesh->dt,
       nh, search_reason.c_str(), int(ah_found), int(published_this_search),
       int(search_surface_valid), ah_surf_candidate_streak, unpublished_searches);
   for (int a=0; a<3; ++a) fprintf(pofile_events, ",%.17g", center[a]);
