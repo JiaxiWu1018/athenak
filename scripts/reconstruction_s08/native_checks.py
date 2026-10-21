@@ -9,7 +9,7 @@ def main():
     atomic(ROOT/'evidence/active.json',dict(work=str(work),phase='native_checks',job=job()))
     results=[]
     def launch(label,args):
-        command=['prun',str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-d',str(work)]+args+['problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
+        command=native_launcher()+[str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-d',str(work)]+args+['problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
         atomic(work/f'{label}.launch.json',dict(command=command,utc=now(),job=job()))
         with (work/f'{label}.log').open('w') as f:r=subprocess.run(command,stdout=f,stderr=subprocess.STDOUT)
         assert r.returncode==0,(label,r.returncode)

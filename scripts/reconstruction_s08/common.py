@@ -31,3 +31,10 @@ def job():
 def cmd(args,**kwargs):return subprocess.run(list(map(str,args)),check=True,**kwargs)
 def receipt(path):
     p=Path(path);return dict(path=str(p),bytes=p.stat().st_size,sha256=sha(p))
+
+
+def native_launcher():
+    """One MPI rank per allocated GPU; physics arguments stay unchanged."""
+    if os.environ.get('S8_MACHINE','amd')=='perseus':
+        return ['mpirun','--bind-to','none','-np',os.environ['SLURM_NTASKS']]
+    return ['prun']

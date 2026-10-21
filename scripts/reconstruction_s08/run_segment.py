@@ -109,7 +109,7 @@ def run(c,initialize=False,target=300,wall_seconds=12600):
         state.update(segments=[record],latest=latest,complete=False);atomic(statefile,state)
         return state
     log=work/f'{job()}.log';assert not log.exists()
-    launch=['prun',str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-d',str(work)]
+    launch=native_launcher()+[str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-d',str(work)]
     start_time=0.0
     if initialize:
         assert not state['segments'] and not list((work/'rst').glob('*.rst'))
