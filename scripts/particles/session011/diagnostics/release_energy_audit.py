@@ -24,7 +24,11 @@ for name in changed:
 assert subprocess.check_output(['git','-C',str(root/'code'),'rev-parse','HEAD'],text=True).strip()==source
 assert not subprocess.check_output(['git','-C',str(root/'code'),'status','--porcelain'],text=True).strip()
 assert not subprocess.check_output(['git','-C',str(root/'code'),'diff','df6ab41d','HEAD','--','src','CMakeLists.txt','cmake'],text=True).strip()
-assert not subprocess.check_output(['squeue','-h','-j','473355','-o','%T'],text=True).strip()
+terminal=subprocess.check_output(['sacct','-X','-n','-j','473355','-o','State'],text=True).strip()
+assert terminal=='FAILED',terminal
+sys.path.insert(0,str(fix/'tooling'))
+import runtime
+assert not runtime.active_job_state('473355')
 assert json.loads((root/'control/submission.json').read_text())['segment']==3
 assert json.loads((root/'control/latest_checkpoint.json').read_text())['cycle']==1230
 assert not (root/'control/PAUSED.json').exists()

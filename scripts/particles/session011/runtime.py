@@ -374,6 +374,17 @@ def audit_population(root,run,candidates,latest):
            exact_partition=True,new_deaths=new_deaths,components=components,
            native_energy_quality=particle_diagnostic_quality(data)))
 
+def active_job_state(job_id):
+    # Query the live user queue, not an old job ID: Slurm may purge completed IDs
+    # from squeue while their authoritative terminal record remains in sacct.
+    import getpass
+    rows=subprocess.check_output(['squeue','-h','-u',getpass.getuser(),'-o','%i|%T'],text=True)
+    for row in rows.splitlines():
+        fields=row.strip().split('|')
+        if len(fields)!=2:raise RuntimeError('unrecognized live scheduler row: '+row)
+        if fields[0]==str(job_id):return fields[1]
+    return ''
+
 def submit(root):
     with (root/'control/submit.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
@@ -396,7 +407,7 @@ def submit(root):
                 else:
                     raise RuntimeError('ambiguous scheduler receipt; review intent before any further submission')
         if old:
-            active=subprocess.check_output(['squeue','-h','-j',str(old['job_id']),'-o','%T'],text=True).strip()
+            active=active_job_state(old['job_id'])
             # The current completed segment may submit its successor while finalizing.
             if active and str(old['job_id'])!=os.environ.get('SLURM_JOB_ID'):
                 return

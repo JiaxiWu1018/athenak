@@ -25,6 +25,12 @@ class RuntimeSafety(unittest.TestCase):
         data+=bytes(25*2**3*8)+struct.pack('<4d',count,0,0,0)+bytes(count*80)
         path.write_bytes(data[:-1] if truncated else data)
         return path
+    def test_aged_out_job_is_absent_from_live_queue(self):
+        with patch('runtime.subprocess.check_output',return_value='42|RUNNING\n') as call:
+            self.assertEqual(runtime.active_job_state('123'),'')
+            self.assertNotIn('-j',call.call_args.args[0])
+        with patch('runtime.subprocess.check_output',side_effect=RuntimeError('scheduler unavailable')):
+            with self.assertRaises(RuntimeError):runtime.active_job_state('123')
     def test_unknown_energy_preserves_mass_but_physical_nan_fails(self):
         import numpy as np
         data=np.zeros((10,3));data[0]=[1.,2.,3.];data[9]=[0,3000000,4000000]
@@ -100,7 +106,7 @@ class RuntimeSafety(unittest.TestCase):
     def test_current_active_job_not_duplicated(self):
         self.state('VALIDATION_PASS.json',{})
         self.state('submission.json',dict(job_id='999999999',segment=0))
-        with patch('runtime.subprocess.check_output',return_value='RUNNING') as call:
+        with patch('runtime.subprocess.check_output',return_value='999999999|RUNNING\n') as call:
             runtime.submit(self.root);self.assertEqual(call.call_count,1)
     def test_ambiguous_submission_does_not_retry(self):
         self.state('VALIDATION_PASS.json',{})
