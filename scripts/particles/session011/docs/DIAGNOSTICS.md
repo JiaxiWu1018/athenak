@@ -17,6 +17,7 @@ particle state. Derived ADM constraints may be refreshed for measurement.
 | `.trk2` | Fixed 30k IDs per component; no replenishment; int64 tag and float64 mass, -ut, xyz, covariant ui | .25; .05 near collapse/close binary; forced milestones/final | Movies and display snapshots only |
 | Native waves | Saved rPsi4, ell2..8, coordinate R40 primary, R36/R44 companions | .025 | Wave/strain assessment with finite-radius limitations |
 | Native slices | All existing compact Session 010 slice outputs | .5 | Wakes, non-spherical structure, metric/constraint context |
+| Native coarsened mesh | Original cbin chi with coarsen_factor32 (one value per block) | .025 | Mesh geometry, level counts and wave-floor validation |
 | Native checkpoints | Full Z4c and all surviving particles; exact continuation metadata | Initialization, individual pair, inward d<1, strict common, final, recovery | Reproduction and non-evolving searches |
 
 Shells are coordinate-origin radii: 64 bins of width .125 on [0,8), then 64
@@ -30,7 +31,9 @@ is explicitly NaN and current/ever-valid bits are recorded independently.
 An AH is usable at a sample only when accepted at that step. The sticky last
 accepted consumer snapshot is not treated as a current measurement. A previously
 accepted horizon missing from the current search invalidates the union exterior.
-On restart, established horizons must requalify; first capture following a gap is
+After strict common enclosure, the common horizon alone defines the exterior;
+retired individual finders do not invalidate remnant coverage. On restart,
+established horizons must requalify; first capture following a gap is
 labelled requalification, not new physical accretion. Before a horizon has ever
 been accepted, the exterior is relative to the set of known accepted surfaces,
 not evidence that no unobserved trapped surface exists.

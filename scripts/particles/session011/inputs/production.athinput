@@ -375,76 +375,83 @@ slice_x3 = 0.0
 dt = 0.5
 
 <output5>
+file_type = cbin
+variable = z4c_chi
+id = mesh
+coarsen_factor = 32
+dt = 0.025
+
+<output6>
 file_type = bin
 variable = tmunu
 id = tmunu_xz
 slice_x2 = 0.0
 dt = 0.5
 
-<output6>
+<output7>
 file_type = bin
 variable = con
 id = con_xz
 slice_x2 = 0.0
 dt = 0.5
 
-<output7>
+<output8>
 file_type = bin
 variable = z4c
 id = z4c_xz
 slice_x2 = 0.0
 dt = 0.5
 
-<output8>
+<output9>
 file_type = bin
 variable = tmunu
 id = tmunu_yz
 slice_x1 = 0.0
 dt = 0.5
 
-<output9>
+<output10>
 file_type = bin
 variable = con
 id = con_yz
 slice_x1 = 0.0
 dt = 0.5
 
-<output10>
+<output11>
 file_type = bin
 variable = z4c
 id = z4c_yz
 slice_x1 = 0.0
 dt = 0.5
 
-<output11>
+<output12>
 file_type = bin
 variable = weyl
 id = weyl_xy
 slice_x3 = 0.0
 dt = 0.5
 
-<output12>
+<output13>
 file_type = bin
 variable = weyl
 id = weyl_xz
 slice_x2 = 0.0
 dt = 0.5
 
-<output13>
+<output14>
 file_type = bin
 variable = weyl
 id = weyl_yz
 slice_x1 = 0.0
 dt = 0.5
 
-<output14>
+<output15>
 file_type = trk
 nparticles = 90000
 format_version = 2
 cohort_per_component = 30000
 dt = 0.25
 
-<output15>
+<output16>
 file_type = rst
 dt = 1e30
 last_time = -1

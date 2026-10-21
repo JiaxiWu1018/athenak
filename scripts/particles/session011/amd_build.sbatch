@@ -48,6 +48,7 @@ mkdir "$TEST_ROOT/restarted"
 "$TEST_ROOT/athena_frozen" -r "$RST" -d "$TEST_ROOT/restarted" \
   diagnostic_checks/frozen_ah_searches=6 time/nlim=0 > "$TEST_ROOT/restarted.log" 2>&1
 grep 'FROZEN_AH_CHECKS_PASS.*evolution_advances=0' "$TEST_ROOT/restarted.log"
+python3 "$ROOT/code/scripts/particles/session011/check_restart.py" "$TEST_ROOT" > "$TEST_ROOT/restart_comparison.log" 2>&1
 cmake -S "$ROOT/code" -B "$ROOT/build" -DPROBLEM=particles/gi_cluster \
   > "$TEST_ROOT/configure_production.log" 2>&1
 cmake --build "$ROOT/build" -j 16 > "$TEST_ROOT/build_production.log" 2>&1

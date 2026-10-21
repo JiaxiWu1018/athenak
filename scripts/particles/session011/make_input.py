@@ -49,7 +49,8 @@ def main():
     # Preserve every compact slice and history from the baseline. Replace full
     # particle/volume dumps with the fixed exact-ID cohort and milestone restarts.
     outputs = [v for k, v in old.items() if k.startswith('output') and
-               (v.get('file_type') == 'hst' or any(k.startswith('slice_') for k in v))]
+               (v.get('file_type') == 'hst' or any(k.startswith('slice_') for k in v)
+                or (v.get('file_type')=='cbin' and v.get('coarsen_factor')=='32'))]
     outputs += [dict(file_type='trk', nparticles='90000', format_version='2',
                      cohort_per_component='30000', dt='0.25'),
                 dict(file_type='rst', dt='1e30', last_time='-1')]

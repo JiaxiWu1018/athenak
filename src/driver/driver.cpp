@@ -504,11 +504,6 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
     pmesh->NewTimeStep(tlim);
     RefreshSTSCycleState(pmesh);
 
-    // compute conserved particle energy (IPEN) once so it is valid for the initial output
-    if (ppart != nullptr) {
-      (void) ppart->EnergyCalculation(this, 1);
-    }
-
     // Restart-file state holds physical cells only, so ghost-dependent particle data
     // must be re-derived after the Step-1 exchange. For live Z4c, refresh ADM and the
     // GR-pusher snapshots from the exchanged Z4c state. On fresh starts these copies
@@ -521,6 +516,13 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
                           pmesh->pmb_pack->padm->u_adm);
         Kokkos::deep_copy(DevExeSpace(), ppart->z4c_last, pz4c->u0);
       }
+    }
+
+    // IPEN is a derived diagnostic, not a pusher/deposition input. Refresh only
+    // after rebuilding ADM from exchanged restart fields so initial diagnostics
+    // never interpolate an uninitialized or pre-exchange metric.
+    if (ppart != nullptr) {
+      (void) ppart->EnergyCalculation(this, 1);
     }
 
     // Tmunu is derived state and is not stored in restarts. Seed it after the initial
@@ -578,6 +580,11 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
 void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdflag) {
   const int frozen_checks = pin->GetOrAddInteger("diagnostic_checks", "frozen_ah_searches", 0);
   if (frozen_checks > 0) {
+    if (pmesh->pmb_pack->ppart) {
+      pmesh->nprtcl_initial = pmesh->nprtcl_total;
+      for (int k=0; k<NPRTCL_DEATH_REASON; ++k)
+        pmesh->nprtcl_initial += pmesh->nprtcl_destroyed_cum[k];
+    }
     FrozenAhChecks(pmesh, pin, frozen_checks);
     return;
   }

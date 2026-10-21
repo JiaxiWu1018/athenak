@@ -112,8 +112,13 @@ def telemetry(run):
                 continue
         # PCI addresses can have duplicate DRM aliases; count each physical device once.
         devices = list({v['device']: v for v in devices}.values())
+        host_memory={}
+        for line in Path('/proc/meminfo').read_text().splitlines():
+            key,value=line.split(':',1)
+            if key in ('MemTotal','MemAvailable'):
+                host_memory[key]=int(value.split()[0])*1024
         row = dict(epoch=time.time(), host=host, devices=devices,
-                   job=os.environ['SLURM_JOB_ID'])
+                   job=os.environ['SLURM_JOB_ID'],host_memory=host_memory)
         atomic(run/f'telemetry_{host}.json', row)
         with (run/f'telemetry_{host}.jsonl').open('a') as f:
             f.write(json.dumps(row)+'\n')
@@ -139,6 +144,9 @@ def watch(root, run, nodes):
                 if now-row['epoch']>60 or len(row['devices'])!=4:
                     continue
                 healthy+=1
+                hm=row.get('host_memory',{})
+                if hm.get('MemTotal',0) and hm.get('MemAvailable',0)<.15*hm['MemTotal']:
+                    request_stop(run,'host memory reserve below 15%','capacity')
                 for device in row['devices']:
                     fraction=device['used']/device['total']
                     key=device['device']+row['host']
@@ -307,6 +315,25 @@ def audit_population(root,run,candidates,latest):
           dead=int(dead[start:end].sum()),initial_mass=float(weights[start:end].sum()),
           alive_mass=float(weights[start:end][alive[start:end]].sum()),
           removed_mass=float(weights[start:end][dead[start:end]].sum())))
+    profile_file=run/'s11_amd.gi_particles.csv'
+    measured={}
+    with profile_file.open() as f:
+        for row in csv.DictReader(f):
+            if int(row['cycle'])==latest['cycle'] and row['mask']=='0':
+                measured[int(row['component']),int(row['shell'])]=row
+    for c,(start,end) in enumerate(((0,3000000),(3000000,4000000),(4000000,5000000))):
+        selected=[v for (component,shell),v in measured.items() if component==c]
+        if sum(float(r['count']) for r in selected)!=components[c]['alive']:
+            raise RuntimeError('online population count disagrees with native checkpoint')
+        online_mass=sum(float(r['rest_mass']) for r in selected)
+        if not math.isclose(online_mass,components[c]['alive_mass'],rel_tol=1e-9,abs_tol=1e-12):
+            raise RuntimeError('online rest-mass profile disagrees with native checkpoint')
+        member=(tags>=start)&(tags<end)
+        native_j=float((data[0,member]*(data[2,member]*data[5,member]-data[4,member]*data[3,member])).sum())
+        online_j=sum(float(r['Jz']) for r in selected)
+        if not math.isclose(online_j,native_j,rel_tol=1e-9,abs_tol=1e-10):
+            raise RuntimeError('online Jz profile disagrees with native checkpoint')
+        components[c].update(native_Jz=native_j,online_Jz=online_j)
     # Publish state only after all closure checks pass; new segment is not submitted
     # if any check above fails. A failed audit retains its raw evidence for review.
     with dead_path.with_suffix('.tmp').open('wb') as f:np.save(f,dead)

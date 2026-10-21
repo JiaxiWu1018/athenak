@@ -41,6 +41,7 @@ GiDiagnostics::GiDiagnostics(MeshBlockPack *p,ParameterInput *in):pack(p),mesh(p
   Kokkos::realloc(old_coef,nh,lm+1+2*lmp); Kokkos::realloc(new_coef,nh,lm+1+2*lmp);
   Kokkos::realloc(shell_ledger,3,GI_NSHELL,8); Kokkos::deep_copy(shell_ledger,0.);
   common=pin->GetOrAddBoolean("gi_diagnostics","strict_common_seen",false);
+  common_time=pin->GetOrAddReal("gi_diagnostics","strict_common_time",-1);
   first_pair=pin->GetOrAddBoolean("gi_diagnostics","individual_pair_seen",false);
   close_pair=pin->GetOrAddBoolean("gi_diagnostics","close_pair_seen",false);
   next_sample=mesh->time;
@@ -95,6 +96,7 @@ void GiDiagnostics::AfterPush(){
   Stage(new_par,new_coef,new_valid,new_ever,mesh->ncycle);
   auto pr=pack->ppart->prtcl_rdata; auto pi=pack->ppart->prtcl_idata;
   int n=pack->ppart->nprtcl_thispack, H=nh,L=lm,ov=old_valid,nv=new_valid,oe=old_ever;
+  const int required=common?4:7;
   auto b=before,op=old_par,np=new_par,oc=old_coef,nc=new_coef;
   auto ledger=shell_ledger;
   if(before.extent(0)!=static_cast<size_t>(n)) throw std::runtime_error("GI pre-migration particle count changed");
@@ -115,7 +117,7 @@ void GiDiagnostics::AfterPush(){
         bool i0=(ov&(1<<h)) && GiInside(op,oc,h,L,b(p,0),b(p,1),b(p,2));
         bool ia=(ov&(1<<h)) && GiInside(op,oc,h,L,x,y,z);
         bool i1=(nv&(1<<h)) && GiInside(np,nc,h,L,x,y,z);
-        union0|=i0;uniona|=ia;union1|=i1;
+        if(required&(1<<h)){union0|=i0;uniona|=ia;union1|=i1;}
         // Bits: old/adv/new membership, old/current validity; kind assigned on host.
         int code=int(i0)+2*int(ia)+4*int(i1)+8*int(bool(ov&(1<<h)))+16*int(bool(nv&(1<<h)));
         bool event=((ov&nv&(1<<h)) && (i0!=ia || ia!=i1)) ||
@@ -123,7 +125,7 @@ void GiDiagnostics::AfterPush(){
         codes(p,h)=event?code:-1;
       }
       // Union ledger avoids counting individual + common overlaps twice.
-      if((ov==nv) && !(oe&~nv)){
+      if((ov&required)==(nv&required) && !(oe&required&~nv)){
         Kokkos::atomic_add(&ledger(c,s1,5),j0*(int(uniona)-int(union0)));
         Kokkos::atomic_add(&ledger(c,s1,6),j0*(int(union1)-int(uniona)));
       }else Kokkos::atomic_add(&ledger(c,s1,7),m);
@@ -165,7 +167,8 @@ void GiDiagnostics::Sample(bool force){
   next_sample=mesh->time+(common?.05:.025);
   constexpr int Q=24, MASKS=5;
   const int H=nh,L=lm,nv=new_valid,ne=new_ever;
-  const bool coverage=(ne&~nv)==0;
+  const int required=common?4:7;
+  const bool coverage=(ne&required&~nv)==0;
   auto par=new_par,coef=new_coef,pr=pack->ppart->prtcl_rdata;
   auto pi=pack->ppart->prtcl_idata;
   auto sz=pack->pmb->mb_size.d_view;
@@ -181,7 +184,7 @@ void GiDiagnostics::Sample(bool force){
       Real x=pr(IPX,p),y=pr(IPY,p),z=pr(IPZ,p),m=pr(IPM,p);
       Real ux=pr(IPVX,p),uy=pr(IPVY,p),uz=pr(IPVZ,p),r=Kokkos::sqrt(x*x+y*y+z*z);
       int s=GiShell(r);bool inside[3]={};bool any=false;
-      for(int h=0;h<H;++h){inside[h]=GiInside(par,coef,h,L,x,y,z);any|=inside[h];}
+      for(int h=0;h<H;++h){inside[h]=GiInside(par,coef,h,L,x,y,z);if(required&(1<<h))any|=inside[h];}
       auto metric=GiEnergy(adm,zu,sz,block,ng,x,y,z,ux,uy,uz,m);
       Real v[Q]={1,m,metric.en,metric.ec,m*pr(IPEN,p),m*ux,m*uy,m*uz,
         m*(y*uz-z*uy),m*(z*ux-x*uz),m*(x*uy-y*ux),m*x,m*y,m*z,
@@ -231,7 +234,7 @@ void GiDiagnostics::Sample(bool force){
     KOKKOS_LAMBDA(int t){int i=t%nx,j=(t/nx)%ny,k=(t/(nx*ny))%nz,b=t/(nx*ny*nz);
       auto box=sz(b);Real x=box.x1min+(i+.5)*box.dx1,y=box.x2min+(j+.5)*box.dx2,z=box.x3min+(k+.5)*box.dx3;
       i+=ng;j+=ng;k+=ng;Real r=Kokkos::sqrt(x*x+y*y+z*z);int s=GiShell(r);
-      bool any=false;for(int h=0;h<H;++h)any|=GiInside(par,coef,h,L,x,y,z);
+      bool any=false;for(int h=0;h<H;++h)if(required&(1<<h))any|=GiInside(par,coef,h,L,x,y,z);
       Real g[6];for(int a=0;a<6;++a)g[a]=adm(b,a,k,j,i);
       Real dv=box.dx1*box.dx2*box.dx3,det=Primitive::GetDeterminant(g);
       bool good=det>0 && Kokkos::isfinite(det);Real v=good?dv*Kokkos::sqrt(det):0;
@@ -311,11 +314,20 @@ void GiDiagnostics::Milestones(Outputs *outputs){
   if(pair&&!first_pair){first_pair=true;pin->SetBoolean("gi_diagnostics","individual_pair_seen",true);event="first_individual_pair";}
   bool distinct=pair && !GiInside(par,coef,0,lm,tr[1]->GetPos(0),tr[1]->GetPos(1),tr[1]->GetPos(2)) &&
     !GiInside(par,coef,1,lm,tr[0]->GetPos(0),tr[0]->GetPos(1),tr[0]->GetPos(2));
+  if(distinct){
+    Real centers=0;for(int a=0;a<3;++a)centers+=SQR(par(0,a)-par(1,a));
+    distinct=std::sqrt(centers)>par(0,IAHRMAX)+par(1,IAHRMAX);
+  }
   if(distinct&&!close_pair&&d<1&&previous_separation>d){close_pair=true;pin->SetBoolean("gi_diagnostics","close_pair_seen",true);event+=(event.empty()?"":"+")+std::string("first_inward_d_lt_1");}
-  if(enclosed&&!common){common=true;pin->SetBoolean("gi_diagnostics","strict_common_seen",true);event+=(event.empty()?"":"+")+std::string("strict_common");}
+  if(enclosed&&!common){common=true;common_time=mesh->time;
+    pin->SetBoolean("gi_diagnostics","strict_common_seen",true);
+    pin->SetReal("gi_diagnostics","strict_common_time",common_time);
+    event+=(event.empty()?"":"+")+std::string("strict_common");}
   previous_separation=d;
   for(auto &out:outputs->pout_list){
-    if(out->out_params.file_type=="trk")out->out_params.dt=(!common && ((mesh->time>=6&&mesh->time<=12)||d<2))?.05:.25;
+    if(out->out_params.file_type=="trk")out->out_params.dt=
+      ((!common && ((mesh->time>=6&&mesh->time<=12)||d<2)) ||
+       (common && common_time>=0 && mesh->time<common_time+2))?.05:.25;
     if(event.empty())continue;
     if(out->out_params.file_type=="rst" || out->out_params.file_type=="trk"){
       int number=out->out_params.file_number;
