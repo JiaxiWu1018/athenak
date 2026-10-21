@@ -2,6 +2,7 @@
 import argparse
 import re
 import time
+import shutil
 import numpy as np
 from common import *
 from checkpoint import validate
@@ -84,14 +85,35 @@ def initial_check(work,c):
 def run(c,initialize=False,target=300,wall_seconds=12600):
     job();admission();work=ROOT/'runs'/c['id'];work.mkdir(parents=True,exist_ok=True)
     statefile=work/'state.json';state=load(statefile) if statefile.exists() else dict(segments=[])
+    if initialize and state['segments']:
+        assert (work/'INITIAL_OK.json').exists() and state['latest']['time']==0
+        return state
     assert not state.get('complete'), 'Already complete'
     active=dict(job=job(),work=str(work),case=c['id'],phase='initialization' if initialize else 'evolution')
     atomic(ROOT/'evidence/active.json',active)
+    if initialize and list((work/'rst').glob('*.rst')):
+        # Resume validation of a completed zero-step initialization, never redraw it.
+        latest=promote(work);assert latest['time']==0 and latest['cycle']==0
+        original=[load(p) for p in sorted(work.glob('*.result.json'))]
+        assert len(original)==1 and original[0]['returncode']==0
+        destination=work/'initial_particles.bin'
+        if not destination.exists():
+            legacy=ROOT/'src/athenak/initial_particles.bin'
+            with legacy.open('rb') as f:header=f.readline().decode()
+            assert 'npart=2000000' in header and abs(float(re.search(r'yc=([^ ]+)',header)[1])-c['yc'])<1e-12
+            before=receipt(legacy);shutil.copy2(legacy,destination);after=receipt(destination)
+            assert before['sha256']==after['sha256']
+            atomic(work/'INITIAL_DUMP_RECOVERY.json',dict(source=before,destination=after,utc=now(),job=job()))
+        initial_check(work,c)
+        record=original[0];record.update(checkpoint=latest,complete=False,initial_check_job=job())
+        state.update(segments=[record],latest=latest,complete=False);atomic(statefile,state)
+        return state
     log=work/f'{job()}.log';assert not log.exists()
     launch=['prun',str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-d',str(work)]
     if initialize:
         assert not state['segments'] and not list((work/'rst').glob('*.rst'))
-        launch+=['-i',str(ROOT/'inputs'/f"{c['id']}.athinput"),'time/nlim=0']
+        launch+=['-i',str(ROOT/'inputs'/f"{c['id']}.athinput"),'time/nlim=0',
+                 'problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
     else:
         assert (work/'INITIAL_OK.json').exists()
         latest=promote(work);assert latest['time']<target

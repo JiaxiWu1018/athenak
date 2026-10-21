@@ -3,8 +3,17 @@ import sys,argparse,re,shlex
 sys.path.insert(0,'/data/jiaxiwu/NRPIC/reconstruction_ST/08_production_20261021/src/athenak/scripts/reconstruction_s08')
 from common import *
 p=argparse.ArgumentParser();p.add_argument('phase');p.add_argument('--nodes',type=int,default=1)
-p.add_argument('--hours',type=float,default=1);p.add_argument('--dependency');p.add_argument('args',nargs='*')
+p.add_argument('--hours',type=float,default=1);p.add_argument('--dependency')
+p.add_argument('--case',choices=[c['id'] for c in CASES]);p.add_argument('--target',type=float,default=300)
+p.add_argument('--wall-seconds',type=int,default=12600)
 a=p.parse_args();assert a.nodes in [1,2] and 0<a.hours<=6
+assert a.phase in ['checks','initialize','run','postprocess']
+a.args=[]
+if a.phase=='run':
+    assert a.case and 0<a.target<=300 and 0<a.wall_seconds<=a.hours*3600-180
+    a.args=[a.case,'--target',str(a.target),'--wall-seconds',str(a.wall_seconds)]
+partition='mi2101x' if a.phase=='postprocess' else 'mi2104x'
+ranks=1 if a.phase=='postprocess' else 4*a.nodes
 def remote(args):return subprocess.check_output(['ssh','-o','BatchMode=yes','hpcfund.amd.com',shlex.join(list(map(str,args)))],text=True,stderr=subprocess.STDOUT,timeout=60)
 e=LOCAL/'evidence';state=load(e/'state.json');ids=[str(j['id']) for j in state['jobs'] if j['host']=='amd']
 accounting=remote(['sacct','-X','-j',','.join(ids),'-n','-P','--format=JobIDRaw,State,ElapsedRaw,AllocNodes'])
@@ -36,10 +45,10 @@ cp {AMD}/evidence/{pin.name} {AMD}/evidence/WORKFLOW_PIN.json
 '''
 script.write_text(f'''#!/bin/bash
 #SBATCH -J st_s08_{a.phase}
-#SBATCH -p mi2104x
+#SBATCH -p {partition}
 #SBATCH -A eliasmost
 #SBATCH -N {a.nodes}
-#SBATCH -n {a.nodes*4}
+#SBATCH -n {ranks}
 #SBATCH --exclusive
 #SBATCH --no-requeue
 #SBATCH --exclude=k003-002,k003-009,k003-010

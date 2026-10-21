@@ -29,7 +29,7 @@ case "$1" in
 from common import *
 atomic(ROOT/'evidence/active.json',dict(work=os.environ['FROZEN_WORK'],phase='frozen_ah',job=job()))
 PYCODE
-  prun "$ROOT/protected/athena" --kokkos-map-device-id-by=mpi_rank -i "$ROOT/inputs/frozen_ah.athinput" -d "$FROZEN_WORK" fastflow/verbose=true > "$record/frozen_ah.log" 2>&1
+  prun "$ROOT/protected/athena" --kokkos-map-device-id-by=mpi_rank -i "$ROOT/inputs/frozen_ah.athinput" -d "$FROZEN_WORK" fastflow/verbose=true "problem/cluster_t0_dump=$FROZEN_WORK/initial_particles.bin" > "$record/frozen_ah.log" 2>&1
   test -f "$FROZEN_WORK/FROZEN_AH_OK"
   python3 - <<'PYCODE'
 from common import *
