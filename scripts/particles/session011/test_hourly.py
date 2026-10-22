@@ -31,11 +31,20 @@ class HourlySafety(unittest.TestCase):
             self.assertIn('--begin=now+3599seconds',call.call_args.args[0])
         with patch('hourly.active_job_state',return_value='PENDING'),patch('hourly.subprocess.check_output') as call:
             self.assertEqual(hourly.schedule(self.root)['job_id'],'42');call.assert_not_called()
-    def test_hourly_native_anchor_and_live_cutoff_have_distinct_labels(self):
+    def test_live_reduction_preserves_the_native_audit_anchor(self):
+        import subprocess
+        import sys
         import products
-        source=Path(products.__file__).read_text()
-        self.assertIn("endpoint_checkpoint=checkpoint_latest",source)
-        self.assertIn('Sampled live diagnostic state',source)
-        self.assertIn('latest fully audited native checkpoint'.lower(),source.lower())
+        scripts=Path(products.__file__).parent
+        view=self.root/'view';out=self.root/'out';out.mkdir()
+        subprocess.run([sys.executable,str(scripts/'product_fixture.py'),str(scripts),str(view)],check=True,stdout=subprocess.DEVNULL)
+        native=dict(time=.75,cycle=3,particles=3,removed=[0,0,0,0])
+        (view/'control/latest_checkpoint.json').write_text(json.dumps(native))
+        sample=dict(time=75.,cycle=4,particles=3,removed=[0,0,0,0])
+        (view/'control/HOURLY_CONTEXT.json').write_text(json.dumps(dict(sample=sample,source_root=str(view))))
+        _,_,_,metrics=products.reduce(view,out)
+        self.assertEqual(metrics['endpoint_checkpoint'],native)
+        self.assertEqual(metrics['endpoint'],75.)
+        self.assertEqual(metrics['state_kind'],'sampled live diagnostics')
 
 if __name__=='__main__':unittest.main()
