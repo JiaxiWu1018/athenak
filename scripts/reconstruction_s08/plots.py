@@ -65,6 +65,10 @@ def main():
         axs[0,j].plot(t,array(m,'n_exit')/2000000,color='#686868',ls=':',label='Escaped',lw=1.1)
         axs[0,j].plot(t,1+array(m,'closure'),color='.15',ls='--',label='Accounted total',lw=.8)
         axs[0,j].set(title=rf'$y_c={c["yc"]:.3f}$',ylim=(-.03,1.04))
+        if np.all(removed==0) and np.all(array(m,'n_exit')==0):
+            axs[0,j].text(.5,.16,'Removed = escaped = 0',ha='center',transform=axs[0,j].transAxes,fontsize=7.5)
+        if np.allclose(array(m,'m_alive')/m0,1,rtol=0,atol=1e-12):
+            axs[0,j].text(.5,.84,'Alive = accounted total',ha='center',transform=axs[0,j].transAxes,fontsize=7.5)
         axs[1,j].plot(t,array(m,'closure'),color='#275d7f',lw=.9)
         axs[1,j].axhline(0,color='.6',lw=.6);axs[1,j].set(ylim=(-extent,extent),xlabel=r'$t/M$')
         axs[1,j].ticklabel_format(axis='y',style='sci',scilimits=(0,0))
