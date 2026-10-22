@@ -390,12 +390,23 @@ def ffi(time,psi,f0,taper=True):
         window[:edge]=ramp;window[-edge:]=ramp[::-1]
     source=(psi-np.mean(psi))*window
     omega=2*np.pi*np.fft.fftfreq(n,delta);denominator=np.maximum(np.abs(omega),2*np.pi*f0)**2
-    spectrum=np.fft.fft(source);h=np.fft.ifft(-spectrum/denominator)
+    spectrum=np.fft.fft(source)
+    # Tapering can reintroduce a mean after the pre-taper mean subtraction.
+    # Psi4 cannot determine a constant strain. Do not turn that zero-frequency
+    # component into an arbitrary f0-dependent strain integration constant.
+    tapered_dc=spectrum[0]/n
+    spectrum[0]=0.
+    h=np.fft.ifft(-spectrum/denominator)
     filtered=np.fft.ifft(spectrum*omega**2/denominator)
     derivative=np.gradient(np.gradient(h,delta),delta)
     valid=slice(max(4,int(n*.15)),min(n-4,int(n*.85)))
     rms=lambda x:float(np.sqrt(np.mean(np.abs(x)**2)))
-    return h,dict(f0=f0,derivative_filtered_relative_rms=rms((derivative-filtered)[valid])/max(rms(filtered[valid]),1e-300),
+    first_frequency=1/(n*delta)
+    return h,dict(f0=f0,first_nonzero_frequency=first_frequency,
+                  regularized_nonzero_bins=int(np.count_nonzero((np.abs(omega)>0)&(np.abs(omega)<2*np.pi*f0))),
+                  zero_frequency_strain='set to zero; unconstrained integration constant',
+                  tapered_source_dc_real=float(tapered_dc.real),tapered_source_dc_imag=float(tapered_dc.imag),
+                  derivative_filtered_relative_rms=rms((derivative-filtered)[valid])/max(rms(filtered[valid]),1e-300),
                   derivative_original_relative_rms=rms((derivative-source)[valid])/max(rms(source[valid]),1e-300))
 
 def waves(runs,out):
@@ -433,14 +444,16 @@ def waves(runs,out):
                 pd.DataFrame(dict(time=uniform,rh_plus=h.real,rh_cross=-h.imag)).to_csv(out/f'provisional_strain_interval{index}_f{f0:.2f}.csv',index=False)
                 ax_h.plot(uniform-40,h.real,color=color,label=f'f0={f0:.2f}' if f0 not in labelled else None)
                 labelled.add(f0)
-        ax_h.set(xlabel='Approximate coordinate retarded time t-R / Mref',ylabel='Provisional r h+ (2,2)')
-        ax_h.set_title('Finite-window FFI sensitivity; no complete burst/ringdown claim')
+        ax_h.set(xlabel='Approximate coordinate retarded time t-R / Mref',ylabel='Provisional r h+ (2,2), mean zero')
+        ax_h.set_title('Zero-DC FFI; finite-window sensitivity only')
         if labelled:ax_h.legend()
         else:ax_h.text(.5,.5,'No interval with at least 100 samples',ha='center',transform=ax_h.transAxes)
         savefig(fig_h,out/'provisional_strain')
     ax.set(xlabel='Approximate coordinate retarded time t-R / Mref',ylabel='|r Psi4 (2,2)|');ax.legend();savefig(fig,out/'wave_radius_comparison')
     result=dict(convention='Psi4=d2(h_plus-i*h_cross)/dt2; saved modes are rPsi4',
-                modes=records,ffi_checks=checks,taper='10% cosine at each edge; mean removed',
+                modes=records,ffi_checks=checks,taper='10% cosine at each edge; pre-taper mean removed; FFT zero mode projected out',
+                zero_frequency='Strain FFT zero mode is set to zero; no constant strain or memory is inferred',
+                frequency_resolution='Cutoffs below the first nonzero FFT frequency regularize no resolved nonzero bins; overlapping curves do not establish cutoff robustness',
                 gap_policy='split at dt>0.0375; interpolate only within each interval',
                 trust='exclude tapered edges; t75 precedes the historical R40 burst near115; provisional strain only')
     (out/'wave_method.json').write_text(json.dumps(result,indent=2)+'\n')
@@ -624,8 +637,11 @@ an additional trajectory.
 The t75 endpoint is a stop for scientific/resource review. Extension to150 is not
 submitted. The historical R40 burst near115 lies beyond this endpoint; any strain
 products here are finite-window FFI sensitivity diagnostics, not a completed burst
-or validated ringdown result. Cutoffs, taper, gaps and differentiation checks are
-recorded in `wave_method.json`.
+or validated ringdown result. The strain FFT zero mode is set to zero because a
+constant strain cannot be recovered from Psi4. Cutoffs below an interval's first
+nonzero FFT frequency alter no resolved nonzero bins; overlapping curves do not
+establish cutoff robustness. Cutoffs, FFT frequencies, affected bin counts, taper,
+gaps and differentiation checks are recorded in `wave_method.json`.
 '''
     (out/'REPORT.md').write_text(text)
 

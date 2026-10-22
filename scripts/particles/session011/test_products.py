@@ -99,7 +99,29 @@ class ProductChecks(unittest.TestCase):
         np.testing.assert_allclose(reconstructed,expected,rtol=1e-12,atol=1e-12)
         self.assertLess(check['derivative_filtered_relative_rms'],1e-4)
     def test_ffi_refuses_nonuniform_time(self):
-        with self.assertRaises(ValueError):products.ffi(np.array([0.,1.,3.]),np.ones(3),.04)
+        time=np.arange(32,dtype=float);time[15]+=.1
+        with self.assertRaises(ValueError):products.ffi(time,np.ones(32),.04)
+    def test_taper_does_not_create_cutoff_dependent_strain_constant(self):
+        time=np.arange(223)*.025
+        # A non-periodic complex trend acquires a nonzero mean after tapering.
+        source=(time-time.mean())**2+1j*np.exp(.1*time)
+        centered=[]
+        for cutoff in (.01,.02,.04):
+            h,check=products.ffi(time,source,cutoff)
+            self.assertLess(abs(h.mean()),1e-13)
+            self.assertEqual(check['regularized_nonzero_bins'],0)
+            self.assertGreater(check['first_nonzero_frequency'],.04)
+            self.assertGreater(abs(check['tapered_source_dc_real']),1e-3)
+            centered.append(h)
+        np.testing.assert_allclose(centered[0],centered[1],atol=1e-13,rtol=1e-13)
+        np.testing.assert_allclose(centered[0],centered[2],atol=1e-13,rtol=1e-13)
+    def test_ffi_reports_regularized_resolved_modes(self):
+        time=np.arange(1024)/32
+        omega=2*np.pi*.0625
+        expected=np.exp(1j*omega*time)
+        h,check=products.ffi(time,-omega**2*expected,.125,taper=False)
+        np.testing.assert_allclose(h,.25*expected,atol=1e-12,rtol=1e-12)
+        self.assertEqual(check['regularized_nonzero_bins'],6)
     def test_exact_ids_and_horizon_geometry(self):
         path=Path(os.environ['PRODUCT_QA'])
         path.mkdir(parents=True,exist_ok=True)
