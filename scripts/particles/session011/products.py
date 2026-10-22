@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 
 BG='#071A2B'
 COLORS=['#8E5AB5','#FF9F1C','#31B7E5']
+AH_RENDERING='Accepted spectral AH surfaces overlaid above particle markers; particle/surface depth is not resolved'
 
 def require_compute():
     if not os.environ.get('SLURM_JOB_ID'):raise RuntimeError('Slurm allocation required')
@@ -88,7 +89,7 @@ def surface(ax,row):
     theta,phi=np.meshgrid(np.linspace(0,np.pi,37),np.linspace(0,2*np.pi,73),indexing='ij')
     r=radius(row,theta,phi)
     x=row['x']+r*np.sin(theta)*np.cos(phi);y=row['y']+r*np.sin(theta)*np.sin(phi);z=row['z']+r*np.cos(theta)
-    ax.plot_surface(x,y,z,color='black',linewidth=0,edgecolor='none',shade=False,alpha=1)
+    ax.plot_surface(x,y,z,color='black',linewidth=0,edgecolor='none',shade=False,alpha=1,zorder=10)
 
 def draw_state(ax,records,horizons,limit,time,caption=True):
     q=records['q'];xyz=q[:,2:5];tags=records['tag']
@@ -107,14 +108,18 @@ def draw_state(ax,records,horizons,limit,time,caption=True):
             visible[near[r[near]<radius(row,theta,phi)]]=False
     ax.set_facecolor(BG);ax.set_proj_type('persp',focal_length=1.25)
     ax.view_init(elev=22,azim=-58,roll=0)
+    # mplot3d sorts whole scatter collections against surfaces, which can paint
+    # every marker above an AH regardless of individual particle depth. Display
+    # the exact measured surface as an explicit overlay; never enlarge its shape.
+    ax.computed_zorder=False
     for c in range(3):
         use=visible&(group==c)
         ax.scatter(*xyz[use].T,s=1.45 if c==0 else 2.1,alpha=.34 if c==0 else .82,
-                   color=COLORS[c],edgecolors='none',linewidths=0,depthshade=False,rasterized=True)
+                   color=COLORS[c],edgecolors='none',linewidths=0,depthshade=False,rasterized=True,zorder=c+1)
     for row in horizons:surface(ax,row)
     ax.set(xlim=(-limit,limit),ylim=(-limit,limit),zlim=(-limit,limit));ax.set_box_aspect((1,1,1));ax.set_axis_off()
     if caption:ax.text2D(.025,.95,f'Saved state  t = {time:.4f} Mref',transform=ax.transAxes,color='white',fontsize=12)
-    return dict(saved_time=time,unknown_native_energy_count=int((~np.isfinite(q[:,1])).sum()),alive_cohort=[int((group==c).sum()) for c in range(3)],visible=[int((visible&(group==c)).sum()) for c in range(3)],accepted_horizons=[int(r['horizon']) for r in horizons])
+    return dict(saved_time=time,ah_rendering=AH_RENDERING,unknown_native_energy_count=int((~np.isfinite(q[:,1])).sum()),alive_cohort=[int((group==c).sum()) for c in range(3)],visible=[int((visible&(group==c)).sum()) for c in range(3)],accepted_horizons=[int(r['horizon']) for r in horizons])
 
 def intervals(cycles,valid):
     selected=np.flatnonzero(valid)
@@ -320,7 +325,7 @@ def render(runs,events,out,common,make_movies):
             fig=plt.figure(figsize=(16,9),dpi=120,facecolor=BG)
             ax=fig.add_axes([0,0,1,1],projection='3d',facecolor=BG)
             details=draw_state(ax,data,item['horizons'],limit,time)
-            ax.text2D(.025,.035,'Fixed particle IDs; accepted AH geometry at this saved cycle',transform=ax.transAxes,color='white',fontsize=10)
+            ax.text2D(.025,.035,'Fixed particle IDs; exact-cycle AH geometry overlaid above particles',transform=ax.transAxes,color='white',fontsize=10)
             path=directory/f'frame_{i:05d}.png';fig.savefig(path,facecolor=BG);plt.close(fig)
             duration=(records[i+1]['time']-time) if i+1<len(records) else .25
             if duration<=0:raise RuntimeError('nonmonotonic cohort times')
@@ -485,6 +490,8 @@ Provisional additional75Mref application cost: {forecast['central_node_hours_75_
 This is one production trajectory at the inherited grid/RK4/CFL and particle
 realization. There are no independent grid, timestep, seed, or physics controls.
 Accepted measurements and rejected-search gaps remain separate in the event tables.
+In particle figures and movies, {AH_RENDERING}. Surface centers, coefficients and
+coordinate sizes are unmodified. This visibility convention is not ray tracing.
 
 ## Five hypotheses and available evidence
 
