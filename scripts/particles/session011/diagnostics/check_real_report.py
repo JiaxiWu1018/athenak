@@ -8,7 +8,7 @@ root=Path(os.environ['SESSION_ROOT'])
 tooling=Path(os.environ['TOOLING_DIR']);sys.path.insert(0,str(tooling))
 import products
 products.require_compute()
-qa=json.loads((root/'evidence/render_qa_474151/RESULT.json').read_text())
+qa=json.loads(Path(os.environ.get('REPORT_RENDER_QA',str(root/'evidence/render_qa_474151/RESULT.json'))).read_text())
 assert qa['status']=='pass'
 assert products.sha256(tooling/'products.py')==qa['tooling_sha256']['products.py']
 out=root/'evidence'/f'real_report_{os.environ["SLURM_JOB_ID"]}';out.mkdir()
@@ -60,6 +60,10 @@ for c,a in enumerate(audit['components']):
 assert last.loc[[1,2],'native_energy_unknown_shells'].gt(0).all()
 assert last.loc[[1,2],'Ecoord_native'].isna().all()
 removed=pd.read_csv(p/'removal_ledgers.csv');assert int(removed['count'].sum())==801_530
+orbit=pd.read_csv(p/'orbit.csv')
+if 'tangential_speed_resolved' in orbit:
+    unresolved=~orbit.tangential_speed_resolved
+    assert orbit.loc[unresolved,'radial_over_tangential'].isna().all()
 accepted=pd.read_csv(p/'accepted_horizons.csv')
 assert set(accepted.horizon)=={0,1} and accepted.state_cycle.max()==1902
 wave=json.loads((p/'wave_method.json').read_text())

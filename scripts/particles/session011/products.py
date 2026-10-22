@@ -161,6 +161,17 @@ def aggregate_particles(particles):
     sums.loc[sums.native_energy_unknown_shells>0,'Ecoord_native']=np.nan
     return sums
 
+def radial_motion(time,separation,omega):
+    """Raw tracker derivatives; roundoff-zero tangential speed gives no ratio."""
+    time=np.asarray(time,dtype=float);separation=np.asarray(separation,dtype=float)
+    radial=np.abs(np.gradient(separation,time))
+    tangential=np.abs(separation*np.asarray(omega,dtype=float))
+    tolerance=64*np.finfo(float).eps*np.maximum(1.,np.abs(separation)/np.min(np.diff(time)))
+    resolved=np.isfinite(radial)&np.isfinite(tangential)&(tangential>tolerance)
+    ratio=np.full(len(time),np.nan)
+    np.divide(radial,tangential,out=ratio,where=resolved)
+    return radial,tangential,resolved,ratio
+
 def amd_job_ids(root):
     """Discover AMD allocations only; copied foreign scheduler IDs can collide."""
     jobs=set()
@@ -219,10 +230,14 @@ def reduce(root,out):
     orbit=status[['cycle','time','separation','proper_exterior_line']].copy()
     orbit['phase']=phase;orbit['Omega']=omega
     orbit['radial_over_tangential']=np.nan
+    orbit['radial_speed']=np.nan;orbit['tangential_speed']=np.nan
+    orbit['tangential_speed_resolved']=False
     for ids in intervals(status.cycle.to_numpy(),np.isfinite(omega)):
         if len(ids)>2:
-            dd=np.gradient(status.separation.to_numpy()[ids],status.time.to_numpy()[ids])
-            orbit.loc[ids,'radial_over_tangential']=np.abs(dd)/np.maximum(np.abs(status.separation.to_numpy()[ids]*omega[ids]),1e-15)
+            radial,tangential,resolved,ratio=radial_motion(status.time.to_numpy()[ids],status.separation.to_numpy()[ids],omega[ids])
+            orbit.loc[ids,'radial_speed']=radial;orbit.loc[ids,'tangential_speed']=tangential
+            orbit.loc[ids,'tangential_speed_resolved']=resolved
+            orbit.loc[ids,'radial_over_tangential']=ratio
     orbit.to_csv(out/'orbit.csv',index=False)
     common_rows=status[status.strict_common==1]
     common=float(common_rows.time.min()) if len(common_rows) else None
@@ -245,7 +260,8 @@ def reduce(root,out):
     fig,axs=plt.subplots(3,1,figsize=(8,8),sharex=True)
     axs[0].plot(orbit.time,orbit.separation,label='Coordinate');axs[0].plot(orbit.time,orbit.proper_exterior_line,label='Exterior proper line');axs[0].legend()
     axs[0].set_ylabel('Separation / Mref');axs[1].plot(orbit.time,orbit.Omega);axs[1].set_ylabel('Omega Mref')
-    axs[2].plot(orbit.time,orbit.radial_over_tangential);axs[2].set_ylabel('|d_dot| / |d Omega|');axs[2].set_xlabel('State time / Mref');savefig(fig,out/'orbit_diagnostics')
+    axs[2].plot(orbit.time,orbit.radial_over_tangential);axs[2].set_ylabel('|d_dot| / |d Omega|');axs[2].set_xlabel('State time / Mref')
+    axs[2].set_title('Unresolved tangential speed omitted',fontsize=10);savefig(fig,out/'orbit_diagnostics')
     sums=aggregate_particles(particles)
     sums=complete_ledgers(sums,status)
     sums.to_csv(out/'component_ledgers.csv',index=False)
@@ -379,16 +395,21 @@ def waves(runs,out):
         if rad!=40 or len(time)<100:continue
         splits=np.flatnonzero(np.diff(time)>.0375)+1
         fig_h,ax_h=plt.subplots(figsize=(8,4))
+        labelled=set()
         for index,ids in enumerate(np.split(np.arange(len(time)),splits)):
             if len(ids)<100:continue
             uniform=np.arange(time[ids[0]],time[ids[-1]],.025)
             values=np.interp(uniform,time[ids],psi[ids].real)+1j*np.interp(uniform,time[ids],psi[ids].imag)
-            for f0 in (.01,.02,.04):
+            for color,f0 in zip(('C0','C1','C2'),(.01,.02,.04)):
                 h,check=ffi(uniform,values,f0);check.update(interval=index,start=float(uniform[0]),end=float(uniform[-1]));checks.append(check)
                 pd.DataFrame(dict(time=uniform,rh_plus=h.real,rh_cross=-h.imag)).to_csv(out/f'provisional_strain_interval{index}_f{f0:.2f}.csv',index=False)
-                ax_h.plot(uniform-40,h.real,label=f'f0={f0:.2f}' if index==0 else None)
+                ax_h.plot(uniform-40,h.real,color=color,label=f'f0={f0:.2f}' if f0 not in labelled else None)
+                labelled.add(f0)
         ax_h.set(xlabel='Approximate coordinate retarded time t-R / Mref',ylabel='Provisional r h+ (2,2)')
-        ax_h.set_title('Finite-window FFI sensitivity; no complete burst/ringdown claim');ax_h.legend();savefig(fig_h,out/'provisional_strain')
+        ax_h.set_title('Finite-window FFI sensitivity; no complete burst/ringdown claim')
+        if labelled:ax_h.legend()
+        else:ax_h.text(.5,.5,'No interval with at least 100 samples',ha='center',transform=ax_h.transAxes)
+        savefig(fig_h,out/'provisional_strain')
     ax.set(xlabel='Approximate coordinate retarded time t-R / Mref',ylabel='|r Psi4 (2,2)|');ax.legend();savefig(fig,out/'wave_radius_comparison')
     result=dict(convention='Psi4=d2(h_plus-i*h_cross)/dt2; saved modes are rPsi4',
                 modes=records,ffi_checks=checks,taper='10% cosine at each edge; mean removed',
@@ -478,7 +499,7 @@ First individual acceptance: {metrics['first_individual_times']}.
 Strict common enclosure: {metrics['strict_common_time']}.
 Observed turns after both individual horizons, excluding gaps: {metrics['post_individual_turns']}.
 Observed valid orbit intervals: {len(metrics['valid_orbit_intervals'])}.
-Median pre-common |d_dot|/|d Omega|: {quantitative['median_radial_ratio']}.
+Median pre-common |d_dot|/|d Omega| over resolved tangential samples: {quantitative['median_radial_ratio']}.
 Median post-formation mass-growth / orbital-period ratios: {quantitative['mass_growth_to_orbit']}.
 Accepted-search coverage during each horizon's relevant interval: {quantitative['coverage']}.
 Actual AMD node-hours from available allocation accounting: {node_hours}.
@@ -516,6 +537,11 @@ D — Noncircular motion: `orbit.csv` provides separation, valid-interval phase,
 Omega, |d_dot|/|d Omega| and the exterior proper line length. Binary interpretation
 ends at strict common enclosure; no phase is unwrapped through missing intervals.
 The proper distance is slice- and path-dependent.
+Raw tracker positions can be quantized by the mesh, so instantaneous derivatives
+can show steps and spikes. `tangential_speed_resolved` marks samples above the
+floating-point derivative tolerance (64 eps times max(1, separation/min dt)).
+Ratios at unresolved tangential speed remain unknown; no denominator floor is
+used to manufacture finite values. This is not a spatial-resolution error estimate.
 
 Stored native particle energy uses high-order metric interpolation, which can
 produce invalid geometry near collapse. Such energies remain unknown; they are

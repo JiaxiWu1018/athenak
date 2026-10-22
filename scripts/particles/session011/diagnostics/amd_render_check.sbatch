@@ -24,6 +24,9 @@ export RENDERER_SHA256=$(sha256sum "$TOOLING_DIR/products.py" | cut -d ' ' -f 1)
 } > "$OUT/provenance.txt"
 python3 "$TOOLING_DIR/test_runtime.py" > "$OUT/runtime_tests.log" 2>&1
 python3 "$TOOLING_DIR/test_products.py" > "$OUT/product_tests.log" 2>&1
+if [[ -f "$TOOLING_DIR/diagnostics/test_product_regressions.py" ]]; then
+ python3 "$TOOLING_DIR/diagnostics/test_product_regressions.py" > "$OUT/product_regressions.log" 2>&1
+fi
 python3 "$TOOLING_DIR/diagnostics/check_real_render.py" > "$OUT/real_render.log" 2>&1
 python3 - "$OUT" <<'PY'
 import hashlib,json,os,sys
@@ -37,3 +40,7 @@ record=dict(status='pass',source=os.environ['SOURCE_COMMIT'],job_id=os.environ['
  tooling_sha256={n:sha(scripts/n) for n in ('endpoint.py','products.py','test_runtime.py','test_products.py')})
 (out/'RESULT.json').write_text(json.dumps(record,indent=2)+'\n')
 PY
+if [[ ${RUN_REAL_REPORT:-0} == 1 ]]; then
+ export REPORT_RENDER_QA=$OUT/RESULT.json
+ python3 "$TOOLING_DIR/diagnostics/check_real_report.py" > "$OUT/real_report.log" 2>&1
+fi
