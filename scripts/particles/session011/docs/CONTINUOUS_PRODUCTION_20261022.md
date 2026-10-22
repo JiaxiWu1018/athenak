@@ -34,3 +34,15 @@ The running application's executable and launched arguments are never modified.
 Initial QA474345:21 existing tests passed; one new test relied on filesystem
 mtime changing for same-size rapid writes. The fixture now changes size explicitly.
 No runtime deployment or production interruption occurred during this failed QA.
+
+## Verified release
+
+Corrected QA474346 passed21runtime and5continuous checks plus the unchanged-engine
+native -n parameter comparison,3s/1node. Guarded deployment474350 passed5s/1node,
+including a real10.078125 saved-state full partition audit while474260 evolved.
+No boundary ledger mutation or application interruption. Original QA474345 cost3s
+/1node; total incremental11node-seconds. Installer3efd0efe and deployed source
+a6a39bad pushed.23compact files checksum-verified on Perseus in the session's
+evidence/continuous_production_20261022. Existing474260 reservation extension was
+denied by Slurm; its already-running2h invocation will end normally once. Future
+automatic launches use24h/23h20m with periodic saved-file auditing.
