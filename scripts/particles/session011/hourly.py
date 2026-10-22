@@ -154,6 +154,24 @@ def health(root):
                 telemetry=telemetry,issues=issues,requires_investigation=bool(issues))
 
 
+def production_state(health):
+    state=health.get('live_scheduler_state','')
+    if state:return state
+    job=str(health.get('submission',{}).get('job_id',''))
+    for line in health.get('sacct','').splitlines():
+        fields=line.split('|')
+        if len(fields)>1 and fields[0]==job:return fields[1]
+    return 'unavailable'
+
+
+def qualify_report(report,health):
+    state=production_state(health)
+    text=report.read_text().replace('Hourly partial analysis; production continues.',
+        f'Hourly partial analysis. Production state at the monitor snapshot: {state}.')
+    report.write_text(text)
+    return state
+
+
 def schedule(root,immediate=False):
     control=root/'hourly_control';control.mkdir(exist_ok=True)
     with (control/'schedule.lock').open('a') as lock:
@@ -216,9 +234,11 @@ def refresh(root):
                 ffmpeg=imageio_ffmpeg.get_ffmpeg_exe()
             for movie in ('wide_1080p.mp4','close_1080p.mp4'):
                 subprocess.run([ffmpeg,'-nostdin','-v','error','-i',str(products/movie),'-f','null','-'],check=True)
+            state=qualify_report(products/'REPORT.md',json.loads((out/'health.json').read_text()))
             qualification=('# Hourly partial analysis\n\nLatest diagnostic state t='+str(metrics['endpoint'])+
                 '; latest audited native checkpoint t='+str(context['audited_checkpoint']['time'])+
-                '. Production continued during analysis. Saved-state angular validation and the t75 final report remain pending.\n')
+                '. Production state at the monitor snapshot: '+state+
+                '. Analysis issued no production stop or signal. Saved-state angular validation and the t75 final report remain pending.\n')
             (products/'QUALIFICATION.md').write_text(qualification)
             (products/'health.json').write_bytes((out/'health.json').read_bytes())
             names=[p for p in products.iterdir() if p.is_file() and p.name!='manifest.json']
