@@ -26,3 +26,9 @@ checkpoint review markers. Terminal failures and bad-data evidence are preserved
 for immediate agent investigation; no blind replay occurs on queue/observer errors.
 Memory/storage watchdogs continue. Report construction errors are separate from
 simulation failures and never trigger production interruption.
+
+Initial QA474354 exposed missing PRODUCT_QA in the launcher; corrected474356
+passed10product+4hourly regressions in32s/1node. First scheduler request was
+explicitly rejected: AMD devel max30minutes, so hourly jobs now request30minutes.
+No production interruption or failed-data inference was made. Definite scheduler
+filter rejections are recorded separately from ambiguous submission receipts.

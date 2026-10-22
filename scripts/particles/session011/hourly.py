@@ -171,7 +171,14 @@ def schedule(root,immediate=False):
         intent=control/'submission_intent.json'
         if intent.exists() and json.loads(intent.read_text()).get('status')=='prepared':raise RuntimeError('ambiguous hourly scheduler receipt; review before resubmitting')
         atomic(intent,dict(status='prepared',command=command,due_epoch=due))
-        job=subprocess.check_output(command,text=True).strip().splitlines()[-1].split(';')[0]
+        try:
+            response=subprocess.run(command,text=True,capture_output=True,check=True)
+        except subprocess.CalledProcessError as exc:
+            message=(exc.stdout or '')+(exc.stderr or '')
+            if 'Batch job submission failed' in message or 'requested timelimit exceeds' in message:
+                atomic(intent,dict(status='rejected',command=command,reason=message,due_epoch=due))
+            raise
+        job=response.stdout.strip().splitlines()[-1].split(';')[0]
         if not job.isdigit():raise RuntimeError('unrecognized hourly scheduler receipt')
         result=dict(status='submitted',job_id=job,due_epoch=due,command=command,cadence='hourly on the hour; scheduler start subject to resources')
         atomic(old_path,result);atomic(intent,result);return result

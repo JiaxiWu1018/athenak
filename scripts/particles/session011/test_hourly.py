@@ -25,11 +25,11 @@ class HourlySafety(unittest.TestCase):
         with out.open() as f:rows=list(csv.DictReader(f))
         self.assertEqual(len(rows),1);self.assertEqual(rows[0]['state_cycle'],'10')
     def test_schedule_is_hour_aligned_and_idempotent(self):
-        with patch('hourly.time.time',return_value=3601.),patch('hourly.subprocess.check_output',return_value='42\n') as call:
+        with patch('hourly.time.time',return_value=3601.),patch('hourly.subprocess.run',return_value=__import__('subprocess').CompletedProcess([],0,'42\n','')) as call:
             value=hourly.schedule(self.root)
             self.assertEqual(value['due_epoch'],7200.)
             self.assertIn('--begin=now+3599seconds',call.call_args.args[0])
-        with patch('hourly.active_job_state',return_value='PENDING'),patch('hourly.subprocess.check_output') as call:
+        with patch('hourly.active_job_state',return_value='PENDING'),patch('hourly.subprocess.run') as call:
             self.assertEqual(hourly.schedule(self.root)['job_id'],'42');call.assert_not_called()
     def test_live_reduction_preserves_the_native_audit_anchor(self):
         import subprocess
