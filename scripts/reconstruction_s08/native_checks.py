@@ -25,7 +25,7 @@ def main():
       'time/tlim=1','time/nlim=3','time/ndiag=1'])
     assert 'CLEAN_STOP: amr_capacity' in log and a['particle_count']==2000
     # Small 16^3-cell fixture only: allow its deliberately forced all-block split.
-    b,log=launch('amr_restart',['-r',a['path'],'mesh_refinement/max_nmb_per_rank='+str(768 if os.environ.get('S8_MACHINE')=='perseus' and int(os.environ['SLURM_NTASKS'])==2 else 512),
+    b,log=launch('amr_restart',['-r',a['path'],'mesh_refinement/max_nmb_per_rank='+str(832 if os.environ.get('S8_MACHINE')=='perseus' and int(os.environ['SLURM_NTASKS'])==2 else 512),
       'mesh_refinement/capacity_stop_fraction=0.9','time/nlim=2'])
     assert b['cycle']==2 and b['nblocks']>a['nblocks'] and b['particle_count']==2000
     (work/'REQUEST_STOP').write_text('requested_fixture_stop\n')
