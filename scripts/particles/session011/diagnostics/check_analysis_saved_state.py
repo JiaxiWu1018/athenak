@@ -5,7 +5,7 @@ root=Path(os.environ['SESSION_ROOT']);scripts=Path(__file__).resolve().parents[1
 sys.path.insert(0,str(scripts))
 from runtime import atomic,checkpoint,digest,require_compute
 from make_input import parse
-from endpoint import saved_ah_controls
+from endpoint import saved_ah_controls,saved_output_overrides
 require_compute()
 build=root/'evidence'/f'analysis_build_{os.environ["BUILD_JOB"]}'
 receipt=json.loads((build/'RESULT.json').read_text())
@@ -25,7 +25,7 @@ out=root/'evidence'/f'analysis_saved_{os.environ["SLURM_JOB_ID"]}';out.mkdir()
 run=out/'run';run.mkdir();os.environ['RUN']=str(run)
 overlay=saved_ah_controls(run/'diagnostic_controls.athinput',0,True)
 blocks=parse((root/'inputs/production.athinput').read_text())
-disable=[f'{b}/{key}={value}' for b in blocks if b.startswith('output') for key,value in [('dt',-1),('dcycle',0)]]
+disable=saved_output_overrides(blocks)
 command=['prun',str(root/'scripts/amd_rank_wrapper.sh'),receipt['executable'],
  '--kokkos-map-device-id-by=mpi_rank','-r',str(source),'-i',str(overlay),'-d',str(run),
  'time/nlim=0','time/tlim=75',

@@ -61,6 +61,13 @@ class RuntimeSafety(unittest.TestCase):
         for horizon,required in ((-1,True),(3,False),(0,'false')):
             with self.assertRaises(ValueError):saved_ah_controls(path,horizon,required)
         self.assertFalse(path.exists())
+    def test_saved_output_disable_uses_existing_cadence_only(self):
+        from endpoint import saved_output_overrides
+        blocks={'time':{'dt':'.01'},'output1':{'dt':'.25'},
+                'output2':{'dcycle':'8'},'output3':{'dt':'.1','dcycle':'4'}}
+        self.assertEqual(saved_output_overrides(blocks),
+                         ['output1/dt=-1','output2/dcycle=0','output3/dcycle=0'])
+        with self.assertRaises(ValueError):saved_output_overrides({'output1':{}})
     def test_saved_ah_rejects_receipt_from_other_production(self):
         from endpoint import saved_ah_executable
         self.state('SAVED_AH_TOOLING.json',dict(status='pass',evolution_advances=0,

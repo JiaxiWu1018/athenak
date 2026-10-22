@@ -55,6 +55,17 @@ def saved_ah_executable(root,gate):
     return record['executable']
 
 
+def saved_output_overrides(blocks):
+    """Disable outputs through their existing cadence, without inventing keys."""
+    result=[]
+    for block,values in blocks.items():
+        if not block.startswith('output'):continue
+        if 'dcycle' in values:result.append(f'{block}/dcycle=0')
+        elif 'dt' in values:result.append(f'{block}/dt=-1')
+        else:raise ValueError(f'output has no cadence: {block}')
+    return result
+
+
 def saved_ah_controls(path,horizon,require_accept):
     """Add analysis-only knobs absent from ordinary production restart headers.
 
@@ -89,8 +100,7 @@ def probe(root):
     endpoint=json.loads((root/'control/ENDPOINT_75.json').read_text())
     selected[endpoint['cycle']]='final75'
     blocks=parse((root/'inputs/production.athinput').read_text())
-    disable=[f'{block}/dcycle=0' for block in blocks if block.startswith('output')]
-    disable += [f'{block}/dt=-1' for block in blocks if block.startswith('output')]
+    disable=saved_output_overrides(blocks)
     results=[]
     common=any('strict_common' in key for key in events)
     for cycle,label in sorted(selected.items()):
