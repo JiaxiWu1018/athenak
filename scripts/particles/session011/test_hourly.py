@@ -31,6 +31,18 @@ class HourlySafety(unittest.TestCase):
             self.assertIn('--begin=now+3599seconds',call.call_args.args[0])
         with patch('hourly.active_job_state',return_value='PENDING'),patch('hourly.subprocess.run') as call:
             self.assertEqual(hourly.schedule(self.root)['job_id'],'42');call.assert_not_called()
+    def test_frame_cache_reuses_physics_across_snapshot_paths(self):
+        import products
+        p=self.root/'cohort';p.write_bytes(b'immutable cohort')
+        item=dict(path=str(p),cycle=10,time=1.,horizons=[dict(x=1.,coefficients_a0_ac_as='1;0;0;',source='hour1/events.csv',segment='segment_1')])
+        before=products.frame_cache_key(item,4)
+        item['horizons'][0]['source']='hour2/events.csv'
+        self.assertEqual(before,products.frame_cache_key(item,4))
+        item['horizons'][0]['x']=2.
+        self.assertNotEqual(before,products.frame_cache_key(item,4))
+        item['horizons'][0]['x']=1.;p.write_bytes(b'changed physical cohort')
+        self.assertNotEqual(before,products.frame_cache_key(item,4))
+
     def test_live_reduction_preserves_the_native_audit_anchor(self):
         import subprocess
         import sys

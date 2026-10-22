@@ -58,6 +58,11 @@ def main():
                 atomic(destination/'PERSEUS_TRANSFER.json',transferred);atomic(control/'LATEST.json',transferred)
         except Exception as exc:
             error=f'{type(exc).__name__}: {exc}';atomic(out/'ERROR.json',dict(reason=error))
+        if error is None:
+            complete=ssh_python('from pathlib import Path\nimport json\nprint(json.dumps((Path('+repr(str(REMOTE))+')/"control/PRODUCTS_COMPLETE.json").exists()))')
+            if complete:
+                atomic(control/'COMPLETE.json',dict(utc=dt.datetime.now(dt.timezone.utc).isoformat(),hourly_reviews_transferred=True))
+                return
         # Keep cadence even if a transfer failed; retry retained completed results.
         due=(math.floor((time.time()-900)/3600)+1)*3600+900
         script=Path(__file__).with_name('perseus_hourly_archive.sbatch')

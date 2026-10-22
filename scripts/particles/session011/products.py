@@ -296,6 +296,14 @@ def reduce(root,out):
     (out/'metrics.json').write_text(json.dumps(metrics,indent=2,allow_nan=False)+'\n')
     return runs,status,events,metrics
 
+def frame_cache_key(item,limit):
+    # Snapshot paths change every hour; physical state and renderer determine pixels.
+    shapes=[{k:v for k,v in h.items() if k not in ('source','segment')} for h in item['horizons']]
+    return hashlib.sha256(json.dumps(dict(renderer=sha256(Path(__file__)),
+        source=sha256(Path(item['path'])),horizons=shapes,limit=limit,
+        cycle=item['cycle'],time=item['time']),sort_keys=True).encode()).hexdigest()
+
+
 def render(runs,events,out,common,make_movies,cache=None):
     candidates={}
     for run in runs:
@@ -346,9 +354,7 @@ def render(runs,events,out,common,make_movies,cache=None):
             cached=None
             if cache is not None:
                 cache.mkdir(parents=True,exist_ok=True)
-                key=hashlib.sha256(json.dumps(dict(renderer=sha256(Path(__file__)),
-                    source=sha256(Path(item['path'])),horizons=item['horizons'],limit=limit,
-                    cycle=item['cycle'],time=time),sort_keys=True).encode()).hexdigest()
+                key=frame_cache_key(item,limit)
                 cached=cache/key
             if cached is not None and cached.with_suffix('.json').exists():
                 stored=json.loads(cached.with_suffix('.json').read_text())
