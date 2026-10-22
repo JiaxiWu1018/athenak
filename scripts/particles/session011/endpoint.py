@@ -55,6 +55,21 @@ def saved_ah_executable(root,gate):
     return record['executable']
 
 
+def saved_ah_controls(path,horizon,require_accept):
+    """Add analysis-only knobs absent from ordinary production restart headers.
+
+    Athena loads this minimal -i overlay after -r. Never reload the production
+    input: the checkpoint's physical parameters and serialized finder seeds stay
+    authoritative. Command-line overrides alone cannot add missing parameters.
+    """
+    if horizon not in (0,1,2) or not isinstance(require_accept,bool):
+        raise ValueError('invalid saved-state AH selection')
+    path.write_text('<diagnostic_checks>\nfrozen_ah_searches = 6\n'
+                    f'require_accept = {str(require_accept).lower()}\n'
+                    f'horizon = {horizon}\n')
+    return path
+
+
 def probe(root):
     require_compute()
     out=root/'evidence'/f'saved_ah_{os.environ["SLURM_JOB_ID"]}'
@@ -84,10 +99,10 @@ def probe(root):
         for ntheta in (10,14):
             for horizon in horizons:
                 run=out/f'{label}_c{cycle}_n{ntheta}_h{horizon}';run.mkdir()
+                overlay=saved_ah_controls(run/'diagnostic_controls.athinput',horizon,False)
                 command=['prun',analysis_executable,'--kokkos-map-device-id-by=mpi_rank',
-                         '-r',checkpoint['path'],'-d',str(run),'time/nlim=0','time/tlim=75',
-                         'diagnostic_checks/frozen_ah_searches=6','diagnostic_checks/require_accept=false',
-                         f'diagnostic_checks/horizon={horizon}','gi_diagnostics/enabled=false',
+                         '-r',checkpoint['path'],'-i',str(overlay),'-d',str(run),
+                         'time/nlim=0','time/tlim=75','gi_diagnostics/enabled=false',
                          f'fastflow/ntheta={ntheta}',f"mesh_refinement/max_nmb_per_rank={layout['capacity']}"]+disable
                 atomic(run/'command.json',command)
                 with (run/'run.log').open('w') as f:
@@ -98,7 +113,8 @@ def probe(root):
                     rows += [r for r in csv.DictReader(path.open()) if r['published']=='1']
                 results.append(dict(event=label,cycle=cycle,ntheta=ntheta,horizon=horizon,
                                     returncode=rc,nonmutating_pass=rc==0 and 'FROZEN_AH_CHECKS_PASS' in log,
-                                    accepted=rows[-1] if rows else None,run=str(run),checkpoint_sha256=checkpoint['sha256']))
+                                    accepted=rows[-1] if rows else None,run=str(run),checkpoint_sha256=checkpoint['sha256'],
+                                    diagnostic_overlay_sha256=digest(overlay)))
                 atomic(out/'RESULT.json',dict(job_id=os.environ['SLURM_JOB_ID'],evolution_advances=0,checks=results))
                 if rc:raise RuntimeError(f'saved-state probe failed: {run}')
     atomic(root/'control/SAVED_AH_CHECKS.json',dict(path=str(out/'RESULT.json'),checks=results))

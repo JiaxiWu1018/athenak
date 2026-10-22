@@ -39,6 +39,28 @@ class RuntimeSafety(unittest.TestCase):
         exe.write_bytes(b'tampered')
         with self.assertRaises(RuntimeError):saved_ah_executable(self.root,gate)
         self.assertEqual(gate['executable'],'unchanged-production')
+    def test_saved_ah_overlay_preserves_checkpoint_physics_and_seeds(self):
+        from endpoint import saved_ah_controls
+        from make_input import parse
+        before=parse('<time>\ndt = 0.0015625\nnlim = -1\n'
+                     '<fastflow>\nsearch_state_a0_0_0 = 0.037\n'
+                     '<particles>\nfeedback = true\n'
+                     '<diagnostic_checks>\nfrozen_ah_searches = 0\n')
+        for horizon in (0,1,2):
+            for required in (False,True):
+                overlay=parse(saved_ah_controls(self.root/'controls',horizon,required).read_text())
+                self.assertEqual(overlay,{'diagnostic_checks':dict(frozen_ah_searches='6',
+                                 require_accept=str(required).lower(),horizon=str(horizon))})
+                merged={b:dict(v) for b,v in before.items()}
+                for b,values in overlay.items():merged.setdefault(b,{}).update(values)
+                for block in ('time','fastflow','particles'):
+                    self.assertEqual(merged[block],before[block])
+    def test_saved_ah_overlay_rejects_invalid_selection(self):
+        from endpoint import saved_ah_controls
+        path=self.root/'controls'
+        for horizon,required in ((-1,True),(3,False),(0,'false')):
+            with self.assertRaises(ValueError):saved_ah_controls(path,horizon,required)
+        self.assertFalse(path.exists())
     def test_saved_ah_rejects_receipt_from_other_production(self):
         from endpoint import saved_ah_executable
         self.state('SAVED_AH_TOOLING.json',dict(status='pass',evolution_advances=0,
