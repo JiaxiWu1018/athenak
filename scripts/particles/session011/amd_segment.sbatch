@@ -3,7 +3,7 @@
 #SBATCH -A eliasmost
 #SBATCH -p mi2104x
 #SBATCH --exclusive
-#SBATCH -t 04:00:00
+#SBATCH -t 4-00:00:00
 #SBATCH --no-requeue
 set -euo pipefail
 ROOT=${SESSION_ROOT:?}
@@ -31,6 +31,9 @@ for relative,expected in gate['runtime_scripts'].items():
 (run/'validation_gate.json').write_text(json.dumps(gate,indent=2)+'\n')
 PY
 EXE=$(cat "$RUN/executable_path")
+# Output cadence changes only; retain checkpoint physics and finder warm state.
+CHECKPOINT_ARGS=(output16/dt=1 output16/last_time=0)
+
 START_ARGS=(-i "$RUN/canonical.athinput")
 if [[ -e "$ROOT/control/latest_checkpoint.json" ]]; then
   RST=$(python3 -c 'import json,os; from pathlib import Path; print(json.loads((Path(os.environ["SESSION_ROOT"])/"control/latest_checkpoint.json").read_text())["path"])')
@@ -43,6 +46,8 @@ PY
   # Preserve the checkpoint's warm state, output counters, and milestones. Only
   # operational overrides below are applied; do not reload the fresh input.
   START_ARGS=(-r "$RST")
+  RST_TIME=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["time"])' "$RUN/restart_readback.json")
+  CHECKPOINT_ARGS=(output16/dt=1 "output16/last_time=$RST_TIME")
 else
   test "$SEGMENT" = 0
 fi
@@ -55,17 +60,25 @@ fi
   git -C "$ROOT/code" submodule status
   sha256sum "$EXE" "$RUN/canonical.athinput"
   printf 'command: prun amd_rank_wrapper.sh %q ' "$EXE"
-  printf '%q ' "${START_ARGS[@]}"
-  printf '%s\n' "--kokkos-map-device-id-by=mpi_rank -d $RUN -t 02:00:00 time/tlim=75 time/nlim=-1 mesh_refinement/max_nmb_per_rank=$BLOCK_CAPACITY time/stop_file=$RUN/REQUEST_STOP time/stop_check_every=1"
+  printf '%q ' "${START_ARGS[@]}" "${CHECKPOINT_ARGS[@]}"
+  printf '%s\n' "--kokkos-map-device-id-by=mpi_rank -d $RUN -t 95:20:00 time/tlim=75 time/nlim=-1 mesh_refinement/max_nmb_per_rank=$BLOCK_CAPACITY time/stop_file=$RUN/REQUEST_STOP time/stop_check_every=1"
 } > "$RUN/provenance.txt" 2>&1
 python3 "$ROOT/scripts/runtime.py" watch --root "$ROOT" --run "$RUN" --nodes "$SLURM_JOB_NUM_NODES" &
 monitor=$!
-cleanup(){ kill "$monitor" 2>/dev/null || true; wait "$monitor" 2>/dev/null || true; }
+python3 "$ROOT/scripts/continuous.py" --root "$ROOT" --run "$RUN" > "$RUN/checkpoint_audit.log" 2>&1 &
+auditor=$!
+cleanup(){
+  kill "$monitor" 2>/dev/null || true
+  wait "$monitor" 2>/dev/null || true
+  # Ask the auditor to finish its current saved-file audit; never kill a rotation.
+  touch "$RUN/AUDIT_FINISH"
+  wait "$auditor" 2>/dev/null || true
+}
 trap cleanup EXIT
 rc=0
 date -u +%s > "$RUN/START_EPOCH"
 (cd "$RUN"; prun "$ROOT/scripts/amd_rank_wrapper.sh" "$EXE" \
-  --kokkos-map-device-id-by=mpi_rank "${START_ARGS[@]}" -d "$RUN" -t 02:00:00 \
+  --kokkos-map-device-id-by=mpi_rank "${START_ARGS[@]}" "${CHECKPOINT_ARGS[@]}" -d "$RUN" -t 95:20:00 \
   time/tlim=75 time/nlim=-1 mesh_refinement/max_nmb_per_rank="$BLOCK_CAPACITY" \
   time/stop_file="$RUN/REQUEST_STOP" time/stop_check_every=1) > "$RUN/run.log" 2>&1 || rc=$?
 date -u +%s > "$RUN/END_EPOCH"

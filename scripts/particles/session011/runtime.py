@@ -228,35 +228,7 @@ def finish(root,run,rc):
     audit_population(root,run,candidates,latest)
     atomic(run/'checkpoint_manifest.json',candidates)
     atomic(previous_path,latest)
-    # Retain every milestone, initialization, final, and the last two recovery states.
-    history_path=root/'control/checkpoint_inventory.json'
-    history=json.loads(history_path.read_text()) if history_path.exists() else []
-    history += candidates
-    milestone_numbers=set()
-    event_file=run/'s11_amd.gi_milestones.csv'
-    if event_file.exists():
-        with event_file.open() as f:
-            milestone_numbers={int(r['restart_number']) for r in csv.DictReader(f)}
-    for r in candidates:
-        number=int(Path(r['path']).stem.rsplit('.',1)[1])
-        r['protected']=r['cycle']==0 or r['time']>=END-1e-10 or number in milestone_numbers
-    recoveries=sorted([r for r in history if not r.get('deleted')],key=lambda r:(r['cycle'],r['path']))
-    unique_cycles={r['cycle']:r for r in recoveries}
-    keep={r['path'] for r in list(unique_cycles.values())[-2:]}
-    atomic(history_path,history)  # inventory exists BEFORE any authorized rotation
-    for r in history:
-        if r.get('deleted') or r.get('protected') or r['path'] in keep:
-            continue
-        p=Path(r['path']).resolve()
-        if root.resolve() not in p.parents or 'runs' not in p.parts:
-            raise RuntimeError('refusing rotation outside this session run tree')
-        # Both recovery copies are validated before deleting an older redundant state.
-        if not all(Path(k).exists() for k in keep) or len(keep)<2:
-            continue
-        if digest(p)!=r['sha256']:
-            raise RuntimeError('checkpoint changed before authorized rotation')
-        p.unlink();r['deleted']=dt.datetime.now(dt.timezone.utc).isoformat()
-    atomic(history_path,history)
+    retain_checkpoints(root,run,candidates)
     if latest['time']>=END-1e-10:
         atomic(root/'control/ENDPOINT_75.json',latest)
         from endpoint import submit_endpoint
@@ -273,6 +245,46 @@ def finish(root,run,rc):
         atomic(root/'control/PAUSED.json',reason)
         return False
     return True
+
+def retain_checkpoints(root,run,candidates):
+    """Inventory and rotate only checksummed session-created recovery states."""
+    # Retain every milestone, initialization, final, and the last two recovery states.
+    history_path=root/'control/checkpoint_inventory.json'
+    history=json.loads(history_path.read_text()) if history_path.exists() else []
+    by_path={r['path']:r for r in history}
+    for r in candidates:
+        prior=by_path.get(r['path'],{})
+        by_path[r['path']]=dict(prior,**r)
+    history=list(by_path.values())
+    milestone_numbers=set()
+    event_file=run/'s11_amd.gi_milestones.csv'
+    if event_file.exists():
+        with event_file.open() as f:
+            milestone_numbers={int(r['restart_number']) for r in csv.DictReader(f)}
+    for r in candidates:
+        number=int(Path(r['path']).stem.rsplit('.',1)[1])
+        entry=by_path[r['path']]
+        entry['protected']=bool(entry.get('protected')) or r['cycle']==0 or r['time']>=END-1e-10 or number in milestone_numbers
+    recoveries=sorted([r for r in history if not r.get('deleted')],key=lambda r:(r['cycle'],r['path']))
+    unique_cycles={r['cycle']:r for r in recoveries}
+    keep={r['path'] for r in list(unique_cycles.values())[-2:]}
+    for r in unique_cycles.values():
+        if r['path'] in keep and digest(r['path'])!=r['sha256']:
+            raise RuntimeError('retained recovery checksum changed')
+    atomic(history_path,history)  # inventory exists BEFORE any authorized rotation
+    for r in history:
+        if r.get('deleted') or r.get('protected') or r['path'] in keep:
+            continue
+        p=Path(r['path']).resolve()
+        if root.resolve() not in p.parents or 'runs' not in p.parts:
+            raise RuntimeError('refusing rotation outside this session run tree')
+        # Both recovery copies are validated before deleting an older redundant state.
+        if not all(Path(k).exists() for k in keep) or len(keep)<2:
+            continue
+        if digest(p)!=r['sha256']:
+            raise RuntimeError('checkpoint changed before authorized rotation')
+        p.unlink();r['deleted']=dt.datetime.now(dt.timezone.utc).isoformat()
+    atomic(history_path,history)
 
 def particle_diagnostic_quality(data):
     """IPEN is derived -u_t, not evolved state; preserve invalid energy as unknown.
@@ -294,7 +306,7 @@ def particle_diagnostic_quality(data):
                 unknown_count=int(invalid.sum()),components=components,
                 policy='retain nonfinite diagnostic as unknown; reject any nonfinite physical field')
 
-def audit_population(root,run,candidates,latest):
+def audit_population(root,run,candidates,latest,*,publish=True,require_online=True):
     """Exact all-tag alive/dead partition and per-tag rest-weight closure."""
     require_compute()
     import numpy as np
@@ -330,6 +342,8 @@ def audit_population(root,run,candidates,latest):
     if death_file.exists():
         with death_file.open() as f:
             for row in csv.DictReader(f):
+                # A live log can already contain deaths after this saved state.
+                if not publish and float(row['time'])>latest['time']+1.e-10:continue
                 tag=int(row['tag']);mass=float(row['mass'])
                 if not 0<=tag<5_000_000 or dead[tag]:raise RuntimeError('duplicate/invalid removed ID')
                 if not math.isclose(mass,float(weights[tag]),rel_tol=1e-12,abs_tol=1e-16):
@@ -355,24 +369,28 @@ def audit_population(root,run,candidates,latest):
                 measured[int(row['component']),int(row['shell'])]=row
     for c,(start,end) in enumerate(((0,3000000),(3000000,4000000),(4000000,5000000))):
         selected=[v for (component,shell),v in measured.items() if component==c]
-        if sum(float(r['count']) for r in selected)!=components[c]['alive']:
-            raise RuntimeError('online population count disagrees with native checkpoint')
-        online_mass=sum(float(r['rest_mass']) for r in selected)
-        if not math.isclose(online_mass,components[c]['alive_mass'],rel_tol=1e-9,abs_tol=1e-12):
-            raise RuntimeError('online rest-mass profile disagrees with native checkpoint')
+        if selected or require_online:
+            if sum(float(r['count']) for r in selected)!=components[c]['alive']:
+                raise RuntimeError('online population count disagrees with native checkpoint')
+            online_mass=sum(float(r['rest_mass']) for r in selected)
+            if not math.isclose(online_mass,components[c]['alive_mass'],rel_tol=1e-9,abs_tol=1e-12):
+                raise RuntimeError('online rest-mass profile disagrees with native checkpoint')
         member=(tags>=start)&(tags<end)
         native_j=float((data[0,member]*(data[2,member]*data[5,member]-data[4,member]*data[3,member])).sum())
-        online_j=sum(float(r['Jz']) for r in selected)
-        if not math.isclose(online_j,native_j,rel_tol=1e-9,abs_tol=1e-10):
+        online_j=sum(float(r['Jz']) for r in selected) if selected else None
+        if (selected or require_online) and not math.isclose(online_j or 0.,native_j,rel_tol=1e-9,abs_tol=1e-10):
             raise RuntimeError('online Jz profile disagrees with native checkpoint')
         components[c].update(native_Jz=native_j,online_Jz=online_j)
-    # Publish state only after all closure checks pass; new segment is not submitted
-    # if any check above fails. A failed audit retains its raw evidence for review.
-    with dead_path.with_suffix('.tmp').open('wb') as f:np.save(f,dead)
-    os.replace(dead_path.with_suffix('.tmp'),dead_path)
-    atomic(run/'population_audit.json',dict(cycle=latest['cycle'],time=latest['time'],
+    result=dict(cycle=latest['cycle'],time=latest['time'],
            exact_partition=True,new_deaths=new_deaths,components=components,
-           native_energy_quality=particle_diagnostic_quality(data)))
+           online_profile_compared=bool(measured),
+           native_energy_quality=particle_diagnostic_quality(data))
+    # Live audits never advance the segment-boundary death ledger or stop evolution.
+    if publish:
+        with dead_path.with_suffix('.tmp').open('wb') as f:np.save(f,dead)
+        os.replace(dead_path.with_suffix('.tmp'),dead_path)
+        atomic(run/'population_audit.json',result)
+    return result
 
 def active_job_state(job_id):
     # Query the live user queue, not an old job ID: Slurm may purge completed IDs
