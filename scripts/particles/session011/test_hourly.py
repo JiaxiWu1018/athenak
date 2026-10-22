@@ -43,6 +43,34 @@ class HourlySafety(unittest.TestCase):
         item['horizons'][0]['x']=1.;p.write_bytes(b'changed physical cohort')
         self.assertNotEqual(before,products.frame_cache_key(item,4))
 
+    def test_cached_movie_frames_reuse_then_invalidate_geometry(self):
+        import numpy as np
+        import pandas as pd
+        import products
+        run=self.root/'run';(run/'trk').mkdir(parents=True)
+        data=np.zeros(3,dtype=[('tag','<i8'),('q','<f8',(8,))])
+        data['tag']=[0,3_000_000,4_000_000];data['q'][:,0:2]=1.
+        header=b'ATHENAK_TRK2 version=2 endian=native record_bytes=72 count=3 cycle=0 time=0\n'.ljust(512,b'\0')
+        (run/'trk/x.trk2').write_bytes(header+data.tobytes())
+        events=pd.DataFrame([dict(state_cycle=0,state_time=0.,horizon=0,published=1,lmax=0,
+            x=0.,y=0.,z=0.,coefficients_a0_ac_as=f'{.5*np.sqrt(4*np.pi)};0;0;',source='hour1')])
+        cache=self.root/'cache'
+        first=self.root/'first';second=self.root/'second';third=self.root/'third'
+        for p in (first,second,third):p.mkdir()
+        with patch.object(products,'draw_state',wraps=products.draw_state) as draw:
+            products.render([run],events,first,None,True,cache)
+            self.assertEqual(draw.call_count,6)
+        events['source']='hour2'
+        with patch.object(products,'draw_state',wraps=products.draw_state) as draw:
+            products.render([run],events,second,None,True,cache)
+            self.assertEqual(draw.call_count,4) # only the four-panel figure redraws
+        self.assertEqual(len(list(cache.glob('*.png'))),2)
+        events['x']=.1
+        with patch.object(products,'draw_state',wraps=products.draw_state) as draw:
+            products.render([run],events,third,None,True,cache)
+            self.assertEqual(draw.call_count,6)
+        self.assertEqual(len(list(cache.glob('*.png'))),4)
+
     def test_live_reduction_preserves_the_native_audit_anchor(self):
         import subprocess
         import sys
