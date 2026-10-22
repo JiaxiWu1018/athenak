@@ -203,6 +203,10 @@ def refresh(root):
             atomic(out/'command.json',command)
             with (out/'pipeline.log').open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True)
             import products as tools
+            from hourly_analysis import analyze
+            analyze(products)
+            with (products/'REPORT.md').open('a') as report:
+                report.write('\nAdditional hourly comparisons and qualifications: [ANALYSIS.md](ANALYSIS.md).\n')
             metrics=json.loads((products/'metrics.json').read_text())
             assert metrics['state_kind']=='sampled live diagnostics' and metrics['cycle']==context['sample']['cycle']
             assert metrics['particles_alive']+sum(metrics['removed'])==5_000_000
