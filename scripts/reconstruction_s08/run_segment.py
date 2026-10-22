@@ -85,7 +85,8 @@ def initial_check(work,c):
     atomic(work/'INITIAL_OK.json',dict(utc=now(),job=job(),count=len(sample),cohort=20000,
            native_sample_exact=True,vtk_float32_exact=True,blocks=344,dx=float(rows['dx_min'][0])))
 
-def run(c,initialize=False,target=300,wall_seconds=12600):
+def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=False):
+    assert not (initialize and suppress_segment_3d)
     job();admission();work=ROOT/'runs'/c['id'];work.mkdir(parents=True,exist_ok=True)
     statefile=work/'state.json';state=load(statefile) if statefile.exists() else dict(segments=[])
     if initialize and state['segments']:
@@ -133,8 +134,12 @@ def run(c,initialize=False,target=300,wall_seconds=12600):
         launch+=['mesh_refinement/max_nmb_per_rank=256',
                  'problem/cluster_sample_file='+str(ROOT/'samples'/f"{c['id']}.bin"),
                  'problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
+    if suppress_segment_3d:
+        # final_fields.py exports full 3D data at the true endpoint without evolution.
+        launch+=['output6/dt=0','output7/dt=0']
     launch+=['-t',f'{wall_seconds//3600:02d}:{wall_seconds//60%60:02d}:{wall_seconds%60:02d}']
     record=dict(**active,utc=now(),launch=launch,executable=receipt(ROOT/'protected/athena'))
+    record['segment_3d_suppressed']=suppress_segment_3d
     atomic(work/f'{job()}.launch.json',record)
     start=time.monotonic()
     with log.open('w') as out:result=subprocess.run(launch,stdout=out,stderr=subprocess.STDOUT)
@@ -166,5 +171,6 @@ def run(c,initialize=False,target=300,wall_seconds=12600):
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('case');p.add_argument('--initialize',action='store_true')
     p.add_argument('--target',type=float,default=300);p.add_argument('--wall-seconds',type=int,default=12600)
+    p.add_argument('--suppress-segment-3d',action='store_true')
     a=p.parse_args();c=next(c for c in CASES if c['id']==a.case)
-    print(json.dumps(run(c,a.initialize,a.target,a.wall_seconds),indent=2))
+    print(json.dumps(run(c,a.initialize,a.target,a.wall_seconds,a.suppress_segment_3d),indent=2))

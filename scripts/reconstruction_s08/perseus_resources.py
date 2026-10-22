@@ -3,12 +3,18 @@ import shutil,time
 from common import *
 
 def storage():
-    own=int(subprocess.check_output(['du','-s','-B1',str(ROOT)],text=True,timeout=180).split()[0])
+    storage_root=Path(os.environ.get('S8_STORAGE_ROOT',str(ROOT))).resolve()
+    if 'S8_STORAGE_ROOT' in os.environ:
+        assert storage_root==(LOCAL/'perseus').resolve()
+        assert ROOT.resolve()==storage_root or storage_root in ROOT.resolve().parents
+    # A single whole-tree du counts cross-root hard links once.
+    own=int(subprocess.check_output(['du','-s','-B1',str(storage_root)],text=True,timeout=180).split()[0])
     # The AMD snapshot is conservative while its sole ST trajectory is held/stopped.
     permit=load(ROOT/'evidence/PRODUCTION_ADMISSION.json')
     amd=permit['amd_retained_bytes_upper_bound']
     free=shutil.disk_usage(ROOT).free
-    return dict(utc=now(),perseus_bytes=own,amd_reserved_bytes=amd,
+    return dict(utc=now(),storage_root=str(storage_root),work_root=str(ROOT),
+                perseus_bytes=own,amd_reserved_bytes=amd,
                 combined_reserved_bytes=own+amd,filesystem_free_bytes=free)
 
 def admission():
