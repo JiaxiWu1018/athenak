@@ -87,6 +87,8 @@ def initial_check(work,c):
 
 def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=False):
     assert not (initialize and suppress_segment_3d)
+    if os.environ.get('S8_MACHINE')=='perseus':
+        assert load(ROOT/'evidence/PRODUCTION_ADMISSION.json')['case']==c['id']
     job();admission();work=ROOT/'runs'/c['id'];work.mkdir(parents=True,exist_ok=True)
     statefile=work/'state.json';state=load(statefile) if statefile.exists() else dict(segments=[])
     if initialize and state['segments']:
@@ -130,7 +132,9 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
             (work/'REQUEST_STOP').unlink()
         launch+=['-r',latest['path'],'time/nlim=100000000',f'time/tlim={target}']
     if os.environ.get('S8_MACHINE')=='perseus':
-        assert (ROOT/'evidence/MIGRATION_RESTART_OK.json').exists()
+        gate=ROOT/'evidence/migrations'/c['id']/'MIGRATION_RESTART_OK.json'
+        if not gate.exists():gate=ROOT/'evidence/MIGRATION_RESTART_OK.json'
+        assert load(gate)['case']==c['id'],'Restart gate belongs to another case'
         launch+=['mesh_refinement/max_nmb_per_rank=256',
                  'problem/cluster_sample_file='+str(ROOT/'samples'/f"{c['id']}.bin"),
                  'problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
