@@ -3,7 +3,7 @@
 #SBATCH -A eliasmost
 #SBATCH -p mi2104x
 #SBATCH --exclusive
-#SBATCH -t 4-00:00:00
+#SBATCH -t 1-00:00:00
 #SBATCH --no-requeue
 set -euo pipefail
 ROOT=${SESSION_ROOT:?}
@@ -61,7 +61,7 @@ fi
   sha256sum "$EXE" "$RUN/canonical.athinput"
   printf 'command: prun amd_rank_wrapper.sh %q ' "$EXE"
   printf '%q ' "${START_ARGS[@]}" "${CHECKPOINT_ARGS[@]}"
-  printf '%s\n' "--kokkos-map-device-id-by=mpi_rank -d $RUN -t 95:20:00 time/tlim=75 time/nlim=-1 mesh_refinement/max_nmb_per_rank=$BLOCK_CAPACITY time/stop_file=$RUN/REQUEST_STOP time/stop_check_every=1"
+  printf '%s\n' "--kokkos-map-device-id-by=mpi_rank -d $RUN -t 23:20:00 time/tlim=75 time/nlim=-1 mesh_refinement/max_nmb_per_rank=$BLOCK_CAPACITY time/stop_file=$RUN/REQUEST_STOP time/stop_check_every=1"
 } > "$RUN/provenance.txt" 2>&1
 python3 "$ROOT/scripts/runtime.py" watch --root "$ROOT" --run "$RUN" --nodes "$SLURM_JOB_NUM_NODES" &
 monitor=$!
@@ -78,7 +78,7 @@ trap cleanup EXIT
 rc=0
 date -u +%s > "$RUN/START_EPOCH"
 (cd "$RUN"; prun "$ROOT/scripts/amd_rank_wrapper.sh" "$EXE" \
-  --kokkos-map-device-id-by=mpi_rank "${START_ARGS[@]}" "${CHECKPOINT_ARGS[@]}" -d "$RUN" -t 95:20:00 \
+  --kokkos-map-device-id-by=mpi_rank "${START_ARGS[@]}" "${CHECKPOINT_ARGS[@]}" -d "$RUN" -t 23:20:00 \
   time/tlim=75 time/nlim=-1 mesh_refinement/max_nmb_per_rank="$BLOCK_CAPACITY" \
   time/stop_file="$RUN/REQUEST_STOP" time/stop_check_every=1) > "$RUN/run.log" 2>&1 || rc=$?
 date -u +%s > "$RUN/END_EPOCH"

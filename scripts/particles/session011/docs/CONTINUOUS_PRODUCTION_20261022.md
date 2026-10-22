@@ -2,9 +2,11 @@
 
 The user explicitly replaced two-hour application chunks: use the longest AMD
 wall time, write checkpoints during evolution, and keep checkpoint analysis from
-interrupting production. Partition mi2104x MaxTime=4-00:00:00; the active account
-QOS has no additional MaxWall. New launches reserve96h and permit95h20m application
-time, leaving40m for checkpoint/finalization. Every launch still enforces tlim75.
+interrupting production. Partition mi2104x advertises MaxTime=4-00:00:00 and the active account
+QOS has no additional MaxWall. However, actual sbatch --test-only rejected96h:
+AMD submission filter enforces max24h. New launches reserve24h and permit23h20m
+application time, leaving40m for checkpoint/finalization. This is the longest
+request accepted by the submission policy. Every launch still enforces tlim75.
 The existing process474260 has a fixed2h limit already passed to its Driver; it
 is left running and allowed its normal checkpointed exit. No debugger/process
 mutation, cancellation, replay or alternate trajectory is used.
@@ -28,3 +30,7 @@ finishes any current audit before finalization; no evolution is paused for analy
 
 Source checks and compute-node regressions precede transactional runtime deployment.
 The running application's executable and launched arguments are never modified.
+
+Initial QA474345:21 existing tests passed; one new test relied on filesystem
+mtime changing for same-size rapid writes. The fixture now changes size explicitly.
+No runtime deployment or production interruption occurred during this failed QA.

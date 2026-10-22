@@ -24,7 +24,7 @@ class ContinuousSafety(unittest.TestCase):
         with patch('continuous.checkpoint',return_value={'cycle':100}):
             self.assertFalse(continuous.eligible(p,stamp,100)[0])
             self.assertTrue(continuous.eligible(p,stamp,101)[0])
-        p.write_bytes(b'changed')
+        p.write_bytes(b'changed checkpoint size')
         with patch('continuous.checkpoint') as check:
             self.assertFalse(continuous.eligible(p,stamp,101)[0]);check.assert_not_called()
     def test_live_audit_does_not_publish_boundary_ledger_or_stop(self):
