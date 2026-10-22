@@ -47,6 +47,10 @@ def export(case):
         assert previous['checkpoint']['sha256']==state['latest']['sha256']
         assert all(Path(x['path']).stat().st_size==x['bytes'] for x in previous['files'])
         return previous
+    if os.environ.get('S8_MACHINE')=='perseus':
+        from perseus_resources import admission,storage
+        admission()
+        assert storage()['combined_reserved_bytes']+2*GIB<350*GIB
     checkpoint=validate(state['latest']['path']);checkpoint.pop('parameters')
     assert checkpoint['sha256']==state['latest']['sha256']
     destination=work/'final_fields'/f'{jid}_{time.time_ns()}';destination.mkdir(parents=True)
@@ -64,6 +68,8 @@ def export(case):
     assert executable['sha256']==state['segments'][-1]['executable']['sha256']
     atomic(destination/'launch.json',dict(utc=now(),job=jid,command=command,
            checkpoint=checkpoint,executable=executable,no_evolution_requested=True))
+    atomic(ROOT/'evidence/active.json',dict(job=jid,work=str(destination),case=case,
+           phase='final_field_export'))
     with (destination/'native.log').open('w') as stream:
         result=subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT)
     assert result.returncode==0
