@@ -49,6 +49,7 @@ PYCODE
  run)
   test -f "$ROOT/evidence/NATIVE_CHECKS_OK.json"
   shift
+  python3 "$ROOT/scripts/serial_guard.py" "$1"
   python3 "$ROOT/scripts/run_segment.py" "$@"
  ;;
  postprocess)
