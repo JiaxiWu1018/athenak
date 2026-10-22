@@ -192,7 +192,7 @@ def amd_job_ids(root):
     return sorted(jobs)
 
 def reduce(root,out):
-    runs=sorted(p for p in (root/'runs').glob('segment_*') if (p/'checkpoint_manifest.json').exists())
+    runs=sorted(p for p in (root/'runs').glob('segment_*') if (p/'checkpoint_manifest.json').exists() or ((root/'control/HOURLY_CONTEXT.json').exists() and (p/'DIAGNOSTIC_SNAPSHOT.json').exists()))
     if not runs:raise RuntimeError('no verified production segment')
     status=load_csvs(runs,'*.gi_status.csv',['cycle'],priority='valid_bits')
     events=load_csvs(runs,'*.ah_events_*.csv',['state_cycle','horizon'])
@@ -203,7 +203,10 @@ def reduce(root,out):
     accepted=events[events.published==1].copy()
     status.to_csv(out/'state_index.csv',index=False)
     accepted.to_csv(out/'accepted_horizons.csv',index=False)
-    latest=json.loads((root/'control/latest_checkpoint.json').read_text())
+    checkpoint_latest=json.loads((root/'control/latest_checkpoint.json').read_text())
+    hourly_path=root/'control/HOURLY_CONTEXT.json'
+    hourly=json.loads(hourly_path.read_text()) if hourly_path.exists() else None
+    latest=hourly['sample'] if hourly else checkpoint_latest
     if status.empty or abs(status.time.max()-latest['time'])>1e-9:raise RuntimeError('diagnostics do not reach verified endpoint')
     # Resolve duplicate restart-boundary status in favor of an actual measurement
     # at that exact state; gaps on subsequent steps remain visible in event records.
@@ -288,11 +291,12 @@ def reduce(root,out):
                  post_individual_turns=post_turns if post_valid else None,
                  valid_orbit_intervals=gaps,particles_alive=latest['particles'],removed=latest['removed'],
                  horizon_accepted_counts={str(h):int((accepted.horizon==h).sum()) for h in range(3)},
-                 source_runs=[str(p) for p in runs],endpoint_checkpoint=latest)
+                 source_runs=[str(p) for p in runs],endpoint_checkpoint=checkpoint_latest,
+                 state_kind='sampled live diagnostics' if hourly else 'audited native checkpoint')
     (out/'metrics.json').write_text(json.dumps(metrics,indent=2,allow_nan=False)+'\n')
     return runs,status,events,metrics
 
-def render(runs,events,out,common,make_movies):
+def render(runs,events,out,common,make_movies,cache=None):
     candidates={}
     for run in runs:
         for path in sorted((run/'trk').glob('*.trk2')):
@@ -338,11 +342,29 @@ def render(runs,events,out,common,make_movies):
         concat=[];manifest=[]
         for i,item in enumerate(records):
             _,time,data=trk(Path(item['path']))
-            fig=plt.figure(figsize=(16,9),dpi=120,facecolor=BG)
-            ax=fig.add_axes([0,0,1,1],projection='3d',facecolor=BG)
-            details=draw_state(ax,data,item['horizons'],limit,time)
-            ax.text2D(.025,.035,'Fixed particle IDs; exact-cycle AH geometry overlaid above particles',transform=ax.transAxes,color='white',fontsize=10)
-            path=directory/f'frame_{i:05d}.png';fig.savefig(path,facecolor=BG);plt.close(fig)
+            path=directory/f'frame_{i:05d}.png'
+            cached=None
+            if cache is not None:
+                cache.mkdir(parents=True,exist_ok=True)
+                key=hashlib.sha256(json.dumps(dict(renderer=sha256(Path(__file__)),
+                    source=sha256(Path(item['path'])),horizons=item['horizons'],limit=limit,
+                    cycle=item['cycle'],time=time),sort_keys=True).encode()).hexdigest()
+                cached=cache/key
+            if cached is not None and cached.with_suffix('.json').exists():
+                stored=json.loads(cached.with_suffix('.json').read_text())
+                assert sha256(cached.with_suffix('.png'))==stored['image_sha256']
+                details=stored['details'];path.symlink_to(cached.with_suffix('.png').resolve())
+            else:
+                fig=plt.figure(figsize=(16,9),dpi=120,facecolor=BG)
+                ax=fig.add_axes([0,0,1,1],projection='3d',facecolor=BG)
+                details=draw_state(ax,data,item['horizons'],limit,time)
+                ax.text2D(.025,.035,'Fixed particle IDs; exact-cycle AH geometry overlaid above particles',transform=ax.transAxes,color='white',fontsize=10)
+                target=cached.with_suffix('.png') if cached is not None else path
+                fig.savefig(target,facecolor=BG);plt.close(fig)
+                if cached is not None:
+                    cached.with_suffix('.json').write_text(json.dumps(dict(details=details,
+                        image_sha256=sha256(target)),sort_keys=True)+'\n')
+                    path.symlink_to(target.resolve())
             duration=(records[i+1]['time']-time) if i+1<len(records) else .25
             if duration<=0:raise RuntimeError('nonmonotonic cohort times')
             concat.extend([f"file '{path.resolve()}'",f'duration {duration:.17g}'])
@@ -419,6 +441,9 @@ def waves(runs,out):
     return result
 
 def report(root,out,metrics,wave):
+    hourly_path=root/'control/HOURLY_CONTEXT.json'
+    hourly=json.loads(hourly_path.read_text()) if hourly_path.exists() else None
+    resource_root=Path(hourly['source_root']) if hourly else root
     ledgers=pd.read_csv(out/'component_ledgers.csv');env=pd.read_csv(out/'envelope_shells.csv')
     orbit=pd.read_csv(out/'orbit.csv');constraints=pd.read_csv(out/'exterior_constraints.csv')
     # Expose the non-spherical envelope moment in the instantaneous orbital frame.
@@ -442,7 +467,7 @@ def report(root,out,metrics,wave):
               frozen_env_omega2_proxy=float(initial[within].sum()/radius0**3),measured_omega2=row.Omega**2))
     pd.DataFrame(model).to_csv(out/'envelope_support_proxy.csv',index=False)
     # Record actual allocations; scheduler elapsed time includes build/check/final I/O.
-    jobs=amd_job_ids(root);node_hours=None
+    jobs=amd_job_ids(resource_root);node_hours=None
     if jobs:
         scheduler=subprocess.run(['sacct','-X','-P','-n','-j',','.join(sorted(set(jobs))),
                                   '--format=JobID,State,ElapsedRaw,AllocNodes,AllocCPUS,MaxRSS'],text=True,capture_output=True)
@@ -480,7 +505,7 @@ def report(root,out,metrics,wave):
     saved_check=root/'control/SAVED_AH_CHECKS.json'
     ah_resolution=json.loads(saved_check.read_text()) if saved_check.exists() else dict(status='unavailable; inspect endpoint AH job log')
     (out/'saved_AH_resolution_checks.json').write_text(json.dumps(ah_resolution,indent=2)+'\n')
-    inventory=[dict(path=str(p),bytes=p.stat().st_size) for p in sorted((root/'runs').rglob('*')) if p.is_file()]
+    inventory=[dict(path=str(p),bytes=p.stat().st_size) for p in sorted((resource_root/'runs').rglob('*')) if p.is_file()]
     raw_bytes=sum(r['bytes'] for r in inventory)
     (out/'raw_inventory.json').write_text(json.dumps(inventory,indent=2)+'\n')
     latest_audit=sorted((root/'runs').glob('segment_*/population_audit.json'))[-1]
@@ -492,9 +517,14 @@ def report(root,out,metrics,wave):
         a=accepted[accepted.horizon==h]
         if len(a):
             r=a.iloc[-1];last.append(f'H{h}: last accepted t={r.state_time:.8g}, mass={r.mass:.8g}, coordinate spin={r.spin:.8g}')
-    text=f'''# Session 011 endpoint readout
+    title='Session 011 hourly partial readout' if hourly else 'Session 011 endpoint readout'
+    state_label='Sampled live diagnostic state' if hourly else 'Verified state'
+    qualification=(f"Hourly partial analysis; production continues. Latest fully audited native checkpoint: "
+                   f"t={metrics['endpoint_checkpoint']['time']:.12g}, cycle={metrics['endpoint_checkpoint']['cycle']}. "
+                   "The live sample is not a native checkpoint audit.\n\n") if hourly else ''
+    text=f'''# {title}
 
-Verified state: t={metrics['endpoint']:.12g}, cycle={metrics['cycle']}.
+{qualification}{state_label}: t={metrics['endpoint']:.12g}, cycle={metrics['cycle']}.
 First individual acceptance: {metrics['first_individual_times']}.
 Strict common enclosure: {metrics['strict_common_time']}.
 Observed turns after both individual horizons, excluding gaps: {metrics['post_individual_turns']}.
@@ -568,12 +598,12 @@ relevant processes; one trajectory cannot assign unique causal percentages to Aâ
 Actual scheduler rows are in `scheduler_usage.txt`; include failed checks and all
 production allocations when calculating node-hours. Per-node GPU/host memory and
 whole-user storage telemetry remain in each run. Current retained run data totals
-{raw_bytes/1024**3:.3f} GiB at `{root/'runs'}`. The complete path/byte inventory is
+{raw_bytes/1024**3:.3f} GiB at `{resource_root/'runs'}`. The complete path/byte inventory is
 `raw_inventory.json`; protected science states and the verified latest two recovery
 states remain on AMD. Only explicitly authorized redundant recoveries are rotated.
 
-The endpoint particle audit reports exact alive/removed ID partition and per-tag
-rest-weight closure: {audit['exact_partition']}. No raw cleanup is requested by
+The native checkpoint particle audit at t={metrics['endpoint_checkpoint']['time']:.12g}
+reports exact alive/removed ID partition and per-tag rest-weight closure: {audit['exact_partition']}. No raw cleanup is requested by
 this report. The product manifest supports the one-way checksum-verified transfer to Perseus;
 transfer completion is recorded separately.
 
@@ -683,13 +713,13 @@ def diagnose(root,out,metrics,accepted,orbit):
 
 def main():
     require_compute()
-    parser=argparse.ArgumentParser();parser.add_argument('--root',type=Path,required=True);parser.add_argument('--out',type=Path,required=True);parser.add_argument('--movies',action='store_true');parser.add_argument('--partial',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--root',type=Path,required=True);parser.add_argument('--out',type=Path,required=True);parser.add_argument('--movies',action='store_true');parser.add_argument('--partial',action='store_true');parser.add_argument('--frame-cache',type=Path);args=parser.parse_args()
     if not args.partial and not (args.root/'control/ENDPOINT_75.json').exists():raise RuntimeError('endpoint not verified')
     args.out.mkdir(parents=True,exist_ok=False)
     runs,status,events,metrics=reduce(args.root,args.out)
     wave=waves(runs,args.out)
     report(args.root,args.out,metrics,wave)
-    render(runs,events,args.out,metrics['strict_common_time'],args.movies)
+    render(runs,events,args.out,metrics['strict_common_time'],args.movies,args.frame_cache)
     manifest=[dict(path=str(p.relative_to(args.out)),bytes=p.stat().st_size,sha256=sha256(p)) for p in sorted(args.out.iterdir()) if p.is_file()]
     (args.out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 
