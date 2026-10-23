@@ -8,7 +8,7 @@ from matplotlib.colors import Normalize
 from common import *
 from run_segment import cohort
 from reduce import csv_rows
-from publication_style import style,array,shell_limits
+from publication_style import style,array,shell_limits,time_axis
 
 def equator_basis(phi,lmax=6):
     # Exact real-harmonic convention in utils/spherical_harm.hpp and FastFlow.
@@ -89,6 +89,7 @@ def panel(fig,axes,d):
     lap.set(ylim=(0,1),xlim=(0,d['summary']['endpoint']),xlabel=r'$t/M_{\rm ref}$',ylabel=r'$\langle\alpha\rangle_c$')
     lines=[ax.axvline(0,color='#b35c26',lw=1) for ax in [shell,lap]]
     for ax in [shell,lap]:ax.grid(alpha=.15,lw=.5)
+    for ax in [shell,lap]:time_axis(ax,d['summary']['endpoint'])
     return dict(scatter=scatter,ah=ah,text=text,ended=ended,lines=lines,last=-1,phi=ang,basis=equator_basis(ang))
 
 def update(d,p,t,synchronize=False):

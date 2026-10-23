@@ -5,6 +5,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
+from matplotlib.ticker import AutoLocator,StrMethodFormatter
 from common import *
 from reduce import csv_rows,write_csv
 
@@ -19,6 +20,13 @@ def save(fig,name):
     plt.close(fig)
 
 def array(rows,key):return np.array([r[key] for r in rows])
+
+def time_axis(ax,end):
+    """Keep the actual fractional endpoint explicit without crowded edge ticks."""
+    ax.set_xlim(0,end);ax.xaxis.set_major_locator(AutoLocator())
+    ticks=ax.get_xticks();step=float(np.median(np.diff(ticks))) if len(ticks)>1 else end
+    inside=ticks[(ticks>0)&(ticks<end-.45*step)]
+    ax.set_xticks(np.r_[0,inside,end]);ax.xaxis.set_major_formatter(StrMethodFormatter('{x:g}'))
 
 def shell_limits(*datasets):
     values=np.array([row[f'r{q}'] for rows in datasets for row in rows

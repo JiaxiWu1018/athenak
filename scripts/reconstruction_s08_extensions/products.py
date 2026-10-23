@@ -4,7 +4,7 @@ import numpy as np
 from common import *
 from extension_resources import EXT
 from reduce import csv_rows,write_csv
-from publication_style import style,save,array,shell_limits
+from publication_style import style,save,array,shell_limits,time_axis
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
@@ -184,7 +184,7 @@ def figures(data):
         for q in range(10,100,10):ax[0,j].plot(t,array(d['shells'],f'r{q}'),c=cm(norm(q/100)),lw=1)
         ax[0,j].set(yscale='log',ylim=lim,title=d['case']['title']);ax[1,j].plot(array(d['history'],'time'),array(d['history'],'core_lapse'),c='#275d7f',lw=1.2)
         ax[1,j].set(ylim=(0,1),xlabel=r'$t/M_{\rm ref}$')
-        for a in ax[:,j]:a.set_xlim(0,s['endpoint'])
+        for a in ax[:,j]:time_axis(a,s['endpoint'])
         if d['case']['mode']=='long':
             for a in ax[:,j]:a.axvline(300,c='.55',ls='-.',lw=.8)
         events(ax[:,j],s)
@@ -201,7 +201,7 @@ def figures(data):
         ax[0,j].plot(t,1+array(m,'closure'),c='.1',ls='--',lw=.9,label='Accounted total')
         ax[0,j].set(title=d['case']['title'],ylim=(-.03,1.04));ax[1,j].plot(t,array(m,'closure'),c='#275d7f',lw=.9)
         ax[1,j].set(ylim=(-extent,extent),xlabel=r'$t/M_{\rm ref}$');ax[1,j].ticklabel_format(axis='y',style='sci',scilimits=(0,0))
-        for a in ax[:,j]:a.set_xlim(0,d['summary']['endpoint'])
+        for a in ax[:,j]:time_axis(a,d['summary']['endpoint'])
         events(ax[:,j],d['summary'])
     ax[0,0].set_ylabel(r'Rest mass / initial $M_0$');ax[1,0].set_ylabel(r'$M_{0,{\rm accounted}}/M_0(0)-1$');ax[0,-1].legend(frameon=False,fontsize=8,loc='center')
     save(fig,'s08_extension_mass_conservation')
@@ -213,7 +213,7 @@ def figures(data):
         for key,c,ls,label in [('mirr','#275d7f','-',r'$M_{\rm irr}$'),('mass','#b35c26','--',r'$M_{\rm CH}$')]:
             values=array(ah,key);values[~good]=np.nan;ax.plot(array(ah,'time'),values,c=c,ls=ls,label=label)
         if not good.any():ax.text(.5,.5,'No accepted horizon',ha='center',transform=ax.transAxes)
-        ax.set(title=d['case']['title'],xlabel=r'$t/M_{\rm ref}$',xlim=(0,d['summary']['endpoint']),ylim=(0,ah_upper));events([ax],d['summary'])
+        ax.set(title=d['case']['title'],xlabel=r'$t/M_{\rm ref}$',ylim=(0,ah_upper));time_axis(ax,d['summary']['endpoint']);events([ax],d['summary'])
     axes[0,0].set_ylabel(r'AH mass / $M_{\rm ref}$');axes[0,-1].legend(frameon=False)
     save(fig,'s08_extension_AH_masses')
     atomic(ROOT/'evidence/PLOTS_RENDERED.json',dict(job=job(),utc=now(),products=[receipt(p) for p in sorted((ROOT/'plots').glob('*.pdf'))],visual_review='pending actual inspection',x_axes='Each column uses its actual endpoint; time units common; do not compare column widths as durations'))
@@ -229,7 +229,7 @@ def movies(data):
     fig=plt.figure(figsize=(5*len(data),8),layout='constrained');g=fig.add_gridspec(3,len(data),height_ratios=[2,1,1])
     for j,d in enumerate(data):
         case=load_case(d['case']);axes=[fig.add_subplot(g[k,j]) for k in range(3)];p=panel(fig,axes,case);axes[0].set_title(d['case']['title'])
-        for a in axes[1:]:a.set_xlim(0,500)
+        for a in axes[1:]:time_axis(a,500)
         states.append((case,p));spatial.append(axes[0])
     fig.colorbar(states[0][1]['scatter'],ax=spatial,fraction=.02,pad=.02,label=r'Initial radius $r_0/R_{\rm iso}(0)$')
     end=max(d['summary']['endpoint'] for d in data);times=np.arange(0,end+1e-8,.5)
