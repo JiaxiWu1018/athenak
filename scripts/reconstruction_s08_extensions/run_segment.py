@@ -87,7 +87,8 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
         record=original[0];record.update(checkpoint=latest,complete=False,initial_check_job=job())
         state.update(segments=[record],latest=latest,complete=False);atomic(statefile,state)
         return state
-    log=work/f'{job()}.log';assert not log.exists()
+    segment=f"{job()}_s{len(state['segments']):03d}"
+    log=work/f'{segment}.log';assert not log.exists()
     launch=native_launcher()+[str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-d',str(work)]
     start_time=0.0
     if initialize:
@@ -114,11 +115,11 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
     launch+=['-t',f'{wall_seconds//3600:02d}:{wall_seconds//60%60:02d}:{wall_seconds%60:02d}']
     record=dict(**active,utc=now(),launch=launch,executable=receipt(ROOT/'protected/athena'))
     record['segment_3d_suppressed']=suppress_segment_3d
-    atomic(work/f'{job()}.launch.json',record)
+    atomic(work/f'{segment}.launch.json',record)
     start=time.monotonic()
     with log.open('w') as out:result=subprocess.run(launch,stdout=out,stderr=subprocess.STDOUT)
     record.update(returncode=result.returncode,elapsed=time.monotonic()-start,end=now())
-    atomic(work/f'{job()}.result.json',record)
+    atomic(work/f'{segment}.result.json',record)
     assert result.returncode==0, f'Native failure: {log}'
     txt=log.read_text();assert '### FATAL' not in txt and not re.search(r'search_fail=[1-9]',txt)
     latest=promote(work)

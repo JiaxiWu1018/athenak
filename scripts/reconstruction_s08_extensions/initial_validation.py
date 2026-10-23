@@ -39,6 +39,9 @@ def initial_check(work,c):
         tang=(va-v)-np.sum((va-v)*n,axis=1)[:,None]*n
         assert np.max(np.linalg.norm(tang,axis=1))<1e-7
         result=dict(U=U,max_momentum_error=error,max_speed=float(np.sqrt(v2.max())),mean_delta_vr=float(dv.mean()),source_sample=receipt(ROOT/'samples/yc0500.bin'))
+        alpha=np.interp(r,p['riso_over_m'],p['lapse']);mass=base[:,7]
+        L0=np.linalg.norm(np.cross(pos,base[:,4:7]),axis=1);L1=np.linalg.norm(np.cross(pos,native[:,5:8]),axis=1)
+        result.update(particle_Eulerian_energy_initial=float(np.sum(mass*w0)),particle_Eulerian_energy_perturbed=float(np.sum(mass*wa)),particle_Killing_energy_initial=float(np.sum(mass*alpha*w0)),particle_Killing_energy_perturbed=float(np.sum(mass*alpha*wa)),relative_mean_abs_L_change=float(np.sum(mass*L1)/np.sum(mass*L0)-1),mean_base_vr=float(np.mean(np.sum(v0*n,axis=1))),mean_perturbed_vr=float(np.mean(np.sum(va*n,axis=1))),energy_caveat='particle energies at initialization; not total ADM energy or conserved live-metric Killing energy')
     result.update(utc=now(),job=job(),count=len(base),positions_ids_weights_exact=True)
     atomic(work/'INITIAL_OK.json',result)
     return result

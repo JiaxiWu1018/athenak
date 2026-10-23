@@ -99,9 +99,18 @@ def long():
     if not (ROOT/'evidence/PRODUCTION_ADMISSION.json').exists() or load(ROOT/'evidence/PRODUCTION_ADMISSION.json').get('ranks')!=int(os.environ['SLURM_NTASKS']):
         from restart_identity import gate
         gate(load(state)['latest']['path'])
-    state=run(CASE,target=500,wall_seconds=120,suppress_segment_3d=True)
-    rate=state['segments'][-1].get('native_node_hours_per_M')
-    atomic(ROOT/'evidence/BENCHMARK.json',dict(job=job(),utc=now(),native_node_hours_per_M=rate,remaining_M=500-state['latest']['time']))
+    benchmark=ROOT/'evidence/BENCHMARK.json'
+    if benchmark.exists():
+        prior=load(benchmark)
+        registered={str(v['id']):v for v in load(EXT/'evidence/jobs.json')}
+        same_topology=registered[prior['job']]['ranks']==int(os.environ['SLURM_NTASKS'])
+    else:same_topology=False
+    if same_topology:
+        state=load(work/'state.json');rate=prior['native_node_hours_per_M']
+    else:
+        state=run(CASE,target=500,wall_seconds=120,suppress_segment_3d=True)
+        rate=state['segments'][-1].get('native_node_hours_per_M')
+        atomic(benchmark,dict(job=job(),utc=now(),native_node_hours_per_M=rate,remaining_M=500-state['latest']['time']))
     # A queued four-GPU node was at least two hours away at submission. Avoid a
     # slow single-GPU long run when its measured forecast loses that advantage.
     if rate and rate/int(os.environ['SLURM_NNODES'])<=.027 and not (work/'REQUEST_STOP').exists():
@@ -129,6 +138,9 @@ def inward(mode):
 
 if __name__=='__main__':
     job();mode=sys.argv[1]
-    if mode=='long':long()
+    if mode=='reference':
+        from reference_validation import main
+        main()
+    elif mode=='long':long()
     elif mode=='initialize':initialize(sys.argv[2],float(sys.argv[3]))
     else:inward(mode)
