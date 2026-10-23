@@ -20,7 +20,11 @@ def inherited_start(c,work):
     atomic(work/'INITIAL_OK.json',dict(inherited_original=True,source=receipt(source),utc=now(),job=job(),initial_count=2000000))
 
 def main():
-    job();c=CASE;admission();work=setup(c)
+    job();c=CASE;admission()
+    if os.environ.get('ST8_IMPORT_SNAPSHOT'):
+        from import_snapshot import materialize
+        materialize(os.environ['ST8_IMPORT_SNAPSHOT'])
+    work=setup(c)
     if c.get('inherited_time'):inherited_start(c,work)
     else:
         from fresh_initial import admit
@@ -28,6 +32,9 @@ def main():
     state=load(work/'state.json')
     from recover import recover
     state=recover(c,work)
+    if os.environ.get('ST8_RECOVER_ONLY')=='1':
+        atomic(ROOT/'evidence/jobs'/job()/'PREFIX_REPAIRED.json',dict(utc=now(),job=job(),checkpoint=state['latest'],no_native_evolution=True,original_interrupted_bytes_preserved=True))
+        return
     prior=ROOT/'evidence/PRODUCTION_ADMISSION.json'
     compatible=False
     if prior.exists():

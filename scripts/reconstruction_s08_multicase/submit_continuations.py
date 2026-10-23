@@ -43,8 +43,8 @@ def budget(state,live):
     return total,detail
 
 def main():
-    lane,parent,count=sys.argv[1],sys.argv[2],int(sys.argv[3]);assert lane in ['long','weak'] and 1<=count<=6
-    mode='yc0500_long700' if lane=='long' else 'weak_pair'
+    lane,parent,count=sys.argv[1],sys.argv[2],int(sys.argv[3]);assert lane in ['long','weak','u0005'] and 1<=count<=6
+    mode={'long':'yc0500_long700','weak':'weak_pair','u0005':'yc0500_u0005'}[lane]
     statefile=N/'evidence/state.json';state=json.loads(statefile.read_text())
     registered={str(r['id']):r for r in state['Perseus_jobs']};assert parent in registered and registered[parent]['mode']==mode
     assert not any(str(r.get('afterany',r.get('predecessor','')))==parent for r in state['Perseus_jobs']), 'Parent already has a registered successor; append at the current tail'
@@ -52,7 +52,7 @@ def main():
     live={line.split('|')[0]:line.split('|')[2] for line in q.splitlines() if line.strip()}
     assert parent in live or any(p.exists() for p in [N/'evidence'/f'SLURM_{parent}_TERMINAL.txt',N/'evidence'/f'SLURM_{parent}_COMPLETED.txt'])
     used,detail=budget(state,live);assert used+count/3<state['node_hour_review']-1,(used,count,state['node_hour_review'])
-    repo=N/'src/athenak';script=repo/'scripts/reconstruction_s08_multicase'/('run_long.sbatch' if lane=='long' else 'run_weak.sbatch')
+    repo=N/'src/athenak';script=repo/'scripts/reconstruction_s08_multicase'/dict(long='run_long.sbatch',weak='run_weak.sbatch',u0005='run_u0005.sbatch')[lane]
     changes=subprocess.check_output(['git','-C',str(repo),'status','--porcelain'],text=True).splitlines()
     diagnostics=[]
     for change in changes:

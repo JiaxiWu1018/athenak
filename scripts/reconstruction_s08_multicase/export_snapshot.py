@@ -19,9 +19,16 @@ def main(source_job):
         scheduler=subprocess.run(['scontrol','show','job',source_job],text=True,capture_output=True)
         if scheduler.returncode==0:
             assert not re.search(r'JobState=(RUNNING|PENDING|COMPLETING)',scheduler.stdout)
+        queue=subprocess.check_output(['squeue','-u','jiaxiwu','-h','-o','%i|%j|%T'],text=True)
+        assert not any('|st8b_long700|' in row for row in queue.splitlines()),'Source lane must have no queued or running continuation during snapshot qualification'
         work=ROOT/'runs'/CASE['id'];state=load(work/'state.json')
         latest=validate(state['latest']['path']);latest.pop('parameters')
         assert latest['sha256']==state['latest']['sha256'] and latest['time']>=500
+        from collections import deque
+        ledger=work/f"{CASE['id']}.mass.csv"
+        if ledger.exists():
+            last=deque(ledger.open(),maxlen=1)[0]
+            assert float(last.split(',')[0])<=latest['time']+1e-7,'Repair/preserve an interrupted source prefix before exporting; export never edits it'
         record=ROOT/'evidence/jobs'/job();record.mkdir(parents=True,exist_ok=True)
         files=[];retained=[]
         for name in ['runs','inputs','evidence']:
@@ -33,7 +40,7 @@ def main(source_job):
                 r=receipt(p);r['relative']=str(p.relative_to(ROOT));files.append(r)
         stage=str(AMD/'staging'/f"snapshot_{CASE['key']}_{job()}")
         manifest=dict(utc=now(),job=job(),case=CASE,source_root=str(ROOT),source_job=source_job,
-          source_scheduler_stdout=scheduler.stdout,source_scheduler_stderr=scheduler.stderr,
+          source_scheduler_stdout=scheduler.stdout,source_scheduler_stderr=scheduler.stderr,source_queue=queue,
           source_case_lock_acquired=True,checkpoint=latest,files=files,
           omitted_old_restarts=retained,logical_bytes=sum(r['bytes'] for r in files),destination_stage=stage,
           source_unchanged=True,ownership_unchanged=True,raw_tail_requires_prefix_validation=True,
@@ -43,7 +50,8 @@ def main(source_job):
         remote=shlex.join(['mkdir','-p',stage])
         cmd(['ssh','-o','BatchMode=yes','hpcfund.amd.com',remote])
         cmd(['rsync','-a','--files-from='+str(selection),str(ROOT)+'/', 'hpcfund.amd.com:'+stage+'/'])
-        cmd(['rsync','-a',path,'hpcfund.amd.com:'+stage+'/SNAPSHOT_MANIFEST.json'])
+        cmd(['rsync','-a',path,'hpcfund.amd.com:'+stage+'/SNAPSHOT_MANIFEST.json.incoming'])
+        cmd(['ssh','-o','BatchMode=yes','hpcfund.amd.com',shlex.join(['mv',stage+'/SNAPSHOT_MANIFEST.json.incoming',stage+'/SNAPSHOT_MANIFEST.json'])])
         atomic(record/'SNAPSHOT_EXPORTED.json',dict(utc=now(),job=job(),manifest=receipt(path),
           destination_stage=stage,source_unchanged=True,source_can_still_resume=True,
           no_native_evolution_started=True,destination_validation_pending=True))

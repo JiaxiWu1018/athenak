@@ -19,8 +19,8 @@ def output_time(path):
 def recover(c,work):
     """Caller holds the case-wide allocation lock. No original bytes are deleted."""
     state=load(work/'state.json')
-    accepted_logs={r.get('log') for r in state['segments']}
-    launches=[p for p in work.glob('*.launch.json') if load(p).get('log') not in accepted_logs]
+    accepted_logs={(str(r.get('job')),Path(r['log']).name) for r in state['segments'] if r.get('log')}
+    launches=[p for p in work.glob('*.launch.json') if (str(load(p).get('job')),Path(load(p)['log']).name) not in accepted_logs]
     valid=[];invalid=[]
     for path in sorted((work/'rst').glob('*.rst')):
         try:

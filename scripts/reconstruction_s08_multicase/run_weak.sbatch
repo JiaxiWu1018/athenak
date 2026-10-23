@@ -28,6 +28,7 @@ trap finish EXIT
 test -f "$batch/perseus/evidence/CUDA_BUILD_OK.json"
 for specification in 'yc0500_u0010 -0.01' 'yc0500_u0005 -0.005'; do
  read -r case_name mode_u <<< "$specification"
+ if [ "$case_name" = yc0500_u0005 ] && [ -f "$batch/evidence/U0005_DEDICATED.json" ]; then continue; fi
  remaining=$((1200-$(date +%s)+start))
  if [ "$remaining" -lt 600 ]; then break; fi
  export ST8X_WALL_SECONDS="$remaining"
