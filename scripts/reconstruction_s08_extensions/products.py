@@ -167,7 +167,9 @@ def movies(data):
         for a in axes[1:]:a.set_xlim(0,500)
         states.append((case,p));spatial.append(axes[0])
     fig.colorbar(states[0][1]['scatter'],ax=spatial,fraction=.02,pad=.02,label=r'Initial radius $r_0/R_{\rm iso}(0)$')
-    products.append(encode('s08_extension_comparison',fig,states,np.arange(0,max(d['summary']['endpoint'] for d in data)+1e-8,.5),True))
+    end=max(d['summary']['endpoint'] for d in data);times=np.arange(0,end+1e-8,.5)
+    if times[-1]<end-1e-8:times=np.r_[times,end]
+    products.append(encode('s08_extension_comparison',fig,states,times,True))
     atomic(ROOT/'evidence/MOVIES_RENDERED.json',dict(job=job(),utc=now(),products=products,visual_review='pending encoded-frame inspection'))
 
 def main():
