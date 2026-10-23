@@ -63,7 +63,7 @@ def assemble():
 
 def numeric(data):
     from reduce_run import read_pvtk
-    rows=[];spotchecks=[]
+    rows=[];spotchecks=[];coverage=[]
     for d in data:
         s=d['summary'];m=d['mass'];h=d['history'];shell=d['shells'];mode=d['case']['mode']
         assert shell and h and m and shell[0]['time']==0 and h[0]['time']==0
@@ -78,6 +78,36 @@ def numeric(data):
             assert r['mirr']>0 and r['mass']>0 and np.isclose(r['mirr'],np.sqrt(r['area']/(16*np.pi)),rtol=1e-12)
         snaps=load(d['source']/'reduced/yc0500/snapshots.json')
         if mode=='long':snaps=load(BASE/'reduced/yc0500/snapshots.json')+snaps
+        max_dt=max(float(r[k]) for r in h for k in ['dt','dt_completed'])
+        streams={}
+        for name,values,nominal in [('history',h,.25),('mass',m,.25),
+                                   ('cohort',d['cohort_index'],.5),('full_particles',snaps,1.),
+                                   ('AH_searches',d['ah'],.5)]:
+            times=np.unique(np.round([r['time'] for r in values],8))
+            assert len(times)>1 and np.isfinite(times).all(),(mode,name)
+            assert times[0]>=-1e-7 and times[-1]<=s['endpoint']+1e-7,(mode,name)
+            gap=float(np.diff(times).max())
+            assert gap<=nominal+max_dt+2e-7,(mode,name,'missing outputs',gap,nominal,max_dt)
+            if name=='AH_searches':
+                assert times[0]<=nominal+max_dt+1e-7 and s['endpoint']-times[-1]<=nominal+max_dt+1e-7
+            else:
+                assert abs(times[0])<1e-7 and abs(times[-1]-s['endpoint'])<1e-7,(mode,name,'endpoint coverage')
+            streams[name]=dict(unique_times=len(times),first_M=float(times[0]),last_M=float(times[-1]),
+                               maximum_gap_M=gap,nominal_cadence_M=nominal,maximum_completed_or_reported_step_M=max_dt)
+        global_rows=[];global_sources=[]
+        for source in ([BASE,d['source']] if mode=='long' else [d['source']]):
+            path=source/'runs/yc0500/yc0500.z4c.user.hst'
+            values=np.atleast_2d(np.loadtxt(path));assert values.shape[1]==11 and np.isfinite(values).all()
+            assert (values[:,10]>0).all() and (values[:,3:5]>=0).all()
+            global_rows.extend(dict(time=r[0],H_integral_squared=r[3],M_integral_squared=r[4],
+                                    proper_unexcised_volume=r[10],H_RMS=float(np.sqrt(r[3]/r[10])),
+                                    M_RMS=float(np.sqrt(r[4]/r[10]))) for r in values)
+            global_sources.append(receipt(path))
+        global_rows=merge(global_rows)
+        assert abs(global_rows[0]['time'])<1e-7 and abs(global_rows[-1]['time']-s['endpoint'])<1e-7
+        write_csv(ROOT/'reduced'/d['case']['id']/'global_constraints.csv',global_rows)
+        coverage.append(dict(mode=mode,streams=streams,global_constraint_sources=global_sources,
+                             global_constraint_definition='sqrt(integral constraint squared dV / integral dV), proper volume over native chi-unexcised cells. Large exterior volume dilutes whole-box RMS; not a cluster-local error bound.'))
         eligible=[v for v in snaps if s['first_removal'] is None or v['time']<s['first_removal']]
         for snap in [eligible[0],eligible[len(eligible)//2],eligible[-1]]:
             t,cy,n,f=read_pvtk(snap['file']);assert n==2000000
@@ -91,6 +121,10 @@ def numeric(data):
         record=dict(mode=mode,endpoint_M=s['endpoint'],AH_accepted_records=len(good),first_AH_M=good[0]['time'] if good else None,first_removal_M=s['first_removal'],r50_initial=shell[0]['r50'],r50_last_pre_removal=shell[-1]['r50'],last_shell_time_M=shell[-1]['time'],core_lapse_final=h[-1]['core_lapse'],core_lapse_min=min(r['core_lapse'] for r in h),max_rest_mass_closure=max(abs(r['closure']) for r in m),final_particles=d['state']['latest']['particle_count'],final_Mirr_median=np.median([r['mirr'] for r in tail]) if tail else None,final_MCH_median=np.median([r['mass'] for r in tail]) if tail else None)
         healthy=[r for r in h if s['first_removal'] is None or r['time']<s['first_removal']]
         record.update(max_H_rms_r10_pre_removal=max(r['H_rms_r10'] for r in healthy),max_M_rms_r10_pre_removal=max(r['M_rms_r10'] for r in healthy),max_sampled_blocks=max(r['nblocks'] for r in m),minimum_sampled_dx_M=min(r['dx_min'] for r in m),minimum_completed_dt_M=min(r['dt_completed'] for r in h if r['dt_completed']>0))
+        global_healthy=[r for r in global_rows if s['first_removal'] is None or r['time']<s['first_removal']]
+        record.update(max_H_rms_global_pre_removal=max(r['H_RMS'] for r in global_healthy),
+                      max_M_rms_global_pre_removal=max(r['M_RMS'] for r in global_healthy),
+                      final_H_rms_global=global_rows[-1]['H_RMS'],final_M_rms_global=global_rows[-1]['M_RMS'])
         states=[(d['source'],d['state'])]
         if mode=='long':states.insert(0,(BASE,load(BASE/'runs/yc0500/state.json')))
         logs=set()
@@ -119,6 +153,8 @@ def numeric(data):
             peak=max(shell,key=lambda r:r['r50']);record['r50_max']=peak['r50'];record['r50_max_time_M']=peak['time']
         rows.append(record)
     atomic(ROOT/'evidence/INDEPENDENT_NUMERIC_QA.json',dict(job=job(),utc=now(),cases=rows,full_population_audits_reused=True,shell_spotchecks=spotchecks,scope='All reduced ledgers/AH rows/shell ordering; independent full-population shell calculations at3 times per case. Not temporal/mesh convergence.'))
+    atomic(ROOT/'evidence/COVERAGE_AND_GLOBAL_CONSTRAINTS.json',dict(job=job(),utc=now(),cases=coverage,
+           cadence_rule='Every stream spans the actual endpoint (AH searches within their cadence); maximum gap cannot exceed nominal cadence plus one maximum completed/reported timestep. Duplicate source times are collapsed.'))
     # Dict keys differ for the long-run extra diagnostics; make explicit empty columns.
     keys=list(dict.fromkeys(k for row in rows for k in row));write_csv(ROOT/'reports/extension_summary.csv',[{k:r.get(k) for k in keys} for r in rows])
     return rows
