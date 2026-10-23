@@ -47,6 +47,8 @@ def main():
     if state.get('complete'):
         from final_fields import export
         export(c['id'])
+        from case_review import review
+        review(c)
     atomic(ROOT/'evidence/jobs'/job()/'CASE_RESULT.json',dict(utc=now(),job=job(),case=c,state=state['latest'],complete=state.get('complete',False),reduction=summary))
 
 if __name__=='__main__':main()

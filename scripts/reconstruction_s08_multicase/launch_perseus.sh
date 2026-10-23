@@ -32,4 +32,5 @@ trap finish EXIT
 sha256sum "$record/workflow/"* > "$record/workflow.sha256"
 python3 "$record/workflow/extension_resources.py" > "$record/watchdog.log" 2>&1 &
 guard_pid=$!
+python3 "$record/workflow/source_independence.py" > "$record/source_objects.log" 2>&1
 python3 "$record/workflow/trajectory.py" > "$record/campaign.log" 2>&1

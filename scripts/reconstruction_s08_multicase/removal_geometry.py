@@ -7,15 +7,16 @@ import re
 from common import *
 
 
-def audit(source,ah,maximum_step,expected_count):
+def audit(source,ah,maximum_step,expected_count,case=None):
     job()
-    work=source/'runs/yc0500';path=work/'yc0500.prtcl_destroy.csv'
+    case=CASE['id'] if case is None else case
+    work=source/'runs'/case;path=work/f'{case}.prtcl_destroy.csv'
     qualified=[r for r in ah if r['converged']==1 and r['missing']==0
                and math.isfinite(r['hrel']) and r['hrel']<=.05
                and r['rmin']>=4*r['dx'] and r['rmin']>0]
     assert qualified and path.exists()
     times=[r['time'] for r in qualified]
-    text=(source/'inputs/yc0500.athinput').read_text()
+    text=(source/'inputs'/f'{case}.athinput').read_text()
     center=[float(re.search(r'(?m)^center_'+axis+r'_0\s*=\s*([-+0-9.eE]+)',text)[1]) for axis in 'xyz']
     counts={};early=post=outside=stale=0
     maximum_radius=maximum_ratio=early_maximum_ratio=maximum_early_lead=0.
@@ -38,7 +39,7 @@ def audit(source,ah,maximum_step,expected_count):
                 post+=1;ratio=radius/qualified[index]['rmin'];maximum_ratio=max(maximum_ratio,ratio)
                 outside+=int(ratio>1+1e-10)
     assert sum(counts.values())==expected_count,(counts,expected_count)
-    return dict(source=receipt(path),input=receipt(source/'inputs/yc0500.athinput'),center=center,
+    return dict(source=receipt(path),input=receipt(source/'inputs'/f'{case}.athinput'),center=center,
                 first_qualified_converged_M=times[0],reason_counts=counts,
                 events_before_first_converged=early,maximum_early_lead_M=maximum_early_lead,
                 early_max_radius_over_first_following_rmin=early_maximum_ratio,
