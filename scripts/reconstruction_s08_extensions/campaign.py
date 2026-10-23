@@ -77,6 +77,8 @@ def constraint_gate(mode):
     control=EXT/'control/runs/yc0500';work=EXT/mode/'runs/yc0500'
     a=np.atleast_2d(np.loadtxt(control/'yc0500.user.hst'))[0];b=np.atleast_2d(np.loadtxt(work/'yc0500.user.hst'))[0]
     ratios={name:float(np.sqrt(b[k]/a[k])) for name,k in [('H_r10',3),('M_r10',4),('H_r16',9),('M_r16',10)]}
+    ga=np.atleast_2d(np.loadtxt(control/'yc0500.z4c.user.hst'))[0];gb=np.atleast_2d(np.loadtxt(work/'yc0500.z4c.user.hst'))[0]
+    ratios.update(H_global=float(gb[3]/ga[3]),M_global=float(gb[4]/ga[4]))
     assert np.isfinite(list(ratios.values())).all() and max(ratios.values())<=1.005,ratios
     record=dict(job=job(),utc=now(),case='yc0500',constraint_norm_ratios=ratios,tolerance=1.005,control=receipt(control/'yc0500.user.hst'),perturbed=receipt(work/'yc0500.user.hst'))
     atomic(ROOT/'evidence/PRODUCTION_ADMISSION.json',record)
