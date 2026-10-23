@@ -124,6 +124,8 @@ def review_indices(states,times,sync):
             if d['summary']['ah_first'] is not None and abs(t-d['summary']['ah_first'])<.5:previews.add(i)
     for d,_ in states:
         landmarks=[300,500] if d['case'].get('inherited_time') else []
+        removal=d['summary']['first_removal']
+        if removal is not None:landmarks.extend([removal-.5,removal,removal+.5])
         if sync:landmarks.extend([d['summary']['endpoint'],d['summary']['endpoint']+.5])
         for t in landmarks:
             if times[0]<=t<=times[-1]:previews.add(int(np.argmin(abs(times-t))))

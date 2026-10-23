@@ -39,8 +39,8 @@ python3 "$record/workflow/extension_resources.py" > "$record/resource_guard.log"
 guard_pid=$!
 case "$mode" in
  import) python3 "$record/workflow/import_packets.py" ;;
- figures) shift; python3 "$record/workflow/products.py" "$@" ;;
- boundary) python3 "$record/workflow/boundary.py" ;;
+ figures) shift; python3 "$record/workflow/products.py" "$@"; python3 "$record/workflow/pdf_previews.py" ;;
+ boundary) python3 "$record/workflow/boundary.py"; python3 "$record/workflow/pdf_previews.py" ;;
  movie) python3 "$record/workflow/movies.py" "$2" ;;
  movie_chunk) python3 "$record/workflow/movie_chunks.py" render "$2" "${SLURM_ARRAY_TASK_ID:-${3:-0}}" ;;
  movie_encode) python3 "$record/workflow/movie_chunks.py" encode "$2" ;;
