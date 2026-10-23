@@ -39,7 +39,7 @@ def filtered_text(source,destination,cut,cycle):
     kept=[]
     with source.open() as f:
         for line in f:
-            if not line.strip() or line.startswith('#') or line.startswith('time,'):
+            if not line.strip() or line.startswith('#') or line.startswith(('time,','cycle,')):
                 kept.append(line);continue
             parts=line.strip().split(',') if ',' in line else line.split()
             if source.name.endswith('prtcl_destroy.csv'):
@@ -68,6 +68,9 @@ def main():
         d=validate(path);d.pop('parameters');checkpoints.append(d)
     latest=max(checkpoints,key=lambda r:r['time']);cut=latest['time'];cycle=latest['cycle']
     assert abs(cut-450)<1e-7 and latest['particle_count']==2000000 and latest['ah_onset']<0
+    selected=[str(p.relative_to(work)) for name in ['pvtk','cohort','bin']
+              for p in sorted((work/name).glob('*')) if p.is_file() and output_time(p)<=cut+1e-8]
+    assert all(any(p.startswith(name+'/') for p in selected) for name in ['pvtk','cohort','bin'])
     files=[receipt(p) for p in sorted(work.rglob('*')) if p.is_file()]
     inventory=ROOT/'evidence/INTERRUPTED_475604_MANIFEST.json'
     atomic(inventory,dict(utc=now(),job=job(),original_root=str(work),archive_root=str(archive),
@@ -78,11 +81,8 @@ def main():
     archive.parent.mkdir(parents=True,exist_ok=True);work.rename(archive);work.mkdir()
     by_relative={str(Path(r['path']).relative_to(work)):r for r in files}
     copied=[];derived=[]
-    for name in ['pvtk','cohort','bin']:
-        for source in sorted((archive/name).glob('*')):
-            if source.is_file() and output_time(source)<=cut+1e-8:
-                relative=str(source.relative_to(archive))
-                copied.append(copy_checked(source,work/relative,by_relative[relative]))
+    for relative in selected:
+        copied.append(copy_checked(archive/relative,work/relative,by_relative[relative]))
     restart=Path(latest['path']).name;relative='rst/'+restart
     copied.append(copy_checked(archive/relative,work/relative,by_relative[relative]))
     current=validate(work/relative);current.pop('parameters')
@@ -125,8 +125,11 @@ def main():
           interrupted_attempt_preserved=str(archive),recovery_manifest=receipt(inventory)))
     with (work/'yc0500.mass.csv').open() as f:mass=list(csv.DictReader(f))
     assert abs(float(mass[-1]['time'])-cut)<.11 and int(mass[-1]['n_alive'])==2000000
+    from reduce import reduce_case
+    prefix_summary=reduce_case(CASES[0],require_complete=False)
     result=dict(utc=now(),job=job(),archive=str(archive),manifest=receipt(inventory),
                 checkpoint=current,accepted_prefix_endpoint_M=cut,copied=copied,derived=derived,
+                full_population_prefix_audit=receipt(ROOT/'reduced/yc0500/REDUCTION_OK.json'),prefix_summary=prefix_summary,
                 data_deleted=False,discarded_tail='Excluded from canonical science, retained byte-for-byte in interrupted archive')
     atomic(marker,result)
     return result

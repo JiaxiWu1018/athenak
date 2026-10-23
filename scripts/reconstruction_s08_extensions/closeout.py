@@ -78,6 +78,8 @@ def main():
                            final_fields=final, executable=bound(root / 'protected/athena'),
                            input=bound(root / 'inputs/yc0500.athinput'),
                            sample=bound(root / 'samples/yc0500.bin')))
+        recovery=root/'evidence/RECOVERY_475604_OK.json'
+        if recovery.exists():closed[-1]['interrupted_attempt_recovery']=load(recovery)
         for subdir in ['runs/yc0500', 'reduced/yc0500', 'inputs']:
             raw.extend(bound(p) for p in files_under(root / subdir))
     for mode in sorted(controls):
