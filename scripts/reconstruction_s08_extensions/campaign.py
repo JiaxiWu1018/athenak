@@ -142,10 +142,22 @@ def inward(mode):
         state=run(CASE,target=300,wall_seconds=max(120,int(remain)),suppress_segment_3d=True)
     from reduce import reduce_case
     reduce_case(CASE,require_complete=state['complete'])
+    if state['complete']:
+        from final_fields import export
+        export('yc0500')
+        other=EXT/'long/runs/yc0500/state.json'
+        if other.exists() and load(other).get('complete') and not (EXT/'long/runs/yc0500/FINAL_FIELDS_OK.json').exists():
+            env=os.environ.copy();env['ROOT']=str(EXT/'long')
+            cmd(['python3',Path(__file__).resolve().parent/'final_fields.py','yc0500'],env=env)
 
 if __name__=='__main__':
     job();mode=sys.argv[1]
-    if mode=='reference':
+    if mode=='review':
+        from products import main
+        main()
+        from boundary_review import main as boundary_main
+        boundary_main()
+    elif mode=='reference':
         from reference_validation import main
         main()
     elif mode=='long':long()
