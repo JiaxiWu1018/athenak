@@ -113,6 +113,14 @@ class Particles {
   Real mass;                       // default/scalar rest mass (per-particle override
                                    // in IPM)
   Real q_over_m;                   // charge-to-mass ratio (0 for dust)
+  Real orbit_dt = 0.0, orbit_last = -1.0;
+  std::string orbit_basename;
+  DvceArray2D<Real> orbit_old;
+  DvceArray1D<Real> orbit_changes;
+  DvceArray1D<Real> orbit_cohort_changes;
+  void OrbitBeginPush();
+  void OrbitEndPush();
+  void OrbitWrite(bool force=false);
 
   // migration debug instrumentation (<particles> debug = 0|1|2, default 0):
   //   1 = per-cycle migration summary + post-migration validation task (CheckMigration),

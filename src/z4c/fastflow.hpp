@@ -212,6 +212,15 @@ class FastFlow {
   void FastFlowLoop();
   void InitialGuess();
   void PersistSurfaceWarmStart();
+  // A search guess is NOT the authoritative consumer surface. In particular a
+  // geometrically good candidate may seed the next search before persistence passes.
+  DualArray1D<Real> a0_guess, ac_guess, as_guess;
+  bool search_guess_valid = false;
+  bool published_current = false;
+  Real diagnostic_dt = 0.0, diagnostic_last = -1.0;
+  void CacheSearchGuess();
+  bool LoadSearchGuess();
+  void WriteDiagnostic(Real state_time, int state_cycle);
 
   // Pointers to MeshBlockPack and ParameterInput
   MeshBlockPack *pmbp;

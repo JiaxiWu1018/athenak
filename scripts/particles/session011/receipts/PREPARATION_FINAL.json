@@ -1,0 +1,65 @@
+{
+  "preparation_code_and_compile_passed": true,
+  "native_source_sha256": "d8d40c41cd60852058a9b3f39021ffd9c2dea8f1e90e618da09ecfda267a1fce",
+  "builds": {
+    "gi": {
+      "kind": "gi",
+      "executable": "/scratch/10222/jiaxiwu1018/jeans_s11_20261022/build/gi/src/athena",
+      "executable_sha256": "9d1b398488c39b5a54b496a1b1e88dc78b7dc84b52081f34f60d2275b8ac2d8b",
+      "native_source_sha256": "d8d40c41cd60852058a9b3f39021ffd9c2dea8f1e90e618da09ecfda267a1fce",
+      "job_id": "1091077",
+      "host": "i614-071.vista.tacc.utexas.edu",
+      "epoch": 1792716263.214666,
+      "compiled": true,
+      "simulation_tested": false,
+      "kokkos_commit": "6739bc623081648af9e752b616d9671527922cbf"
+    },
+    "os": {
+      "kind": "os",
+      "executable": "/scratch/10222/jiaxiwu1018/jeans_s11_20261022/build/os/src/athena",
+      "executable_sha256": "0b7052aa3ee0d30fa8828570645ea99aecb2a1fb9af0e058cedc5d4935924694",
+      "native_source_sha256": "d8d40c41cd60852058a9b3f39021ffd9c2dea8f1e90e618da09ecfda267a1fce",
+      "job_id": "1091077",
+      "host": "i614-071.vista.tacc.utexas.edu",
+      "epoch": 1792716272.851034,
+      "compiled": true,
+      "simulation_tested": false,
+      "kokkos_commit": "6739bc623081648af9e752b616d9671527922cbf"
+    },
+    "spin": {
+      "kind": "spin",
+      "executable": "/scratch/10222/jiaxiwu1018/jeans_s11_20261022/build/spin/src/athena",
+      "executable_sha256": "5e1977cb83ccd5c9509604fe5a1abacc9cc8467fe57f8123328e341d8b3d06bc",
+      "native_source_sha256": "d8d40c41cd60852058a9b3f39021ffd9c2dea8f1e90e618da09ecfda267a1fce",
+      "job_id": "1091077",
+      "host": "i614-071.vista.tacc.utexas.edu",
+      "epoch": 1792716282.641258,
+      "compiled": true,
+      "simulation_tested": false,
+      "kokkos_commit": "6739bc623081648af9e752b616d9671527922cbf"
+    }
+  },
+  "source_tests": 8,
+  "session10_source_unchanged": [
+    "src/z4c/fastflow.cpp",
+    "src/z4c/fastflow.hpp",
+    "src/particles/particles.cpp",
+    "src/particles/particles.hpp",
+    "src/particles/particles_pushers.cpp",
+    "src/driver/driver.cpp",
+    "src/z4c/z4c_wave_extr.cpp",
+    "src/CMakeLists.txt"
+  ],
+  "production_input_sha256": "7421e4c3aae37c231ea92f20d02946747e2e32fc37102f2f5901fc31689607be",
+  "science_runs_performed": false,
+  "slurm_jobs_submitted": false,
+  "production_ready": false,
+  "pushed": false,
+  "remaining": [
+    "Native OS collapse/reference/restart and spin/angular tests",
+    "Inspect actual diagnostic outputs",
+    "Conditional fast-forward GitHub push",
+    "User-submitted single production job after readiness",
+    "Post-run scientific analysis and paper visual verification"
+  ]
+}

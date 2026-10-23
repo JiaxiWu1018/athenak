@@ -1,0 +1,17 @@
+{
+  "created_epoch": 1792716170.2123694,
+  "source_base": "cb394a814e7a403a47f8c14cb7b35bf90a85ce0f",
+  "native_source_sha256": "d8d40c41cd60852058a9b3f39021ffd9c2dea8f1e90e618da09ecfda267a1fce",
+  "production_input_sha256": "7421e4c3aae37c231ea92f20d02946747e2e32fc37102f2f5901fc31689607be",
+  "physics_input_diff_verified": true,
+  "production_ready": false,
+  "science_runs_performed": false,
+  "conditional_push_performed": false,
+  "validation_pending": [
+    "OS collapse/restart",
+    "bad guess regression",
+    "spin/angular resolution",
+    "full output contract",
+    "full-size startup"
+  ]
+}

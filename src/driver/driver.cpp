@@ -537,6 +537,7 @@ void Driver::Initialize(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool re
   }
 
   //---- Step 4.  Initialize various counters, timers, etc.
+  if (pmesh->pmb_pack->ppart != nullptr) { pmesh->pmb_pack->ppart->OrbitWrite(true); }
   run_time_.reset();
   nmb_updated_ = 0;
 
@@ -664,6 +665,7 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
       pmesh->time = pmesh->time + pmesh->dt;
       pmesh->ncycle++;
       pmesh->dt_last_completed = pmesh->dt;
+      if (pmesh->pmb_pack->ppart != nullptr) { pmesh->pmb_pack->ppart->OrbitWrite(); }
       nmb_updated_ += pmesh->nmb_total;
       npart_updated_ += pmesh->nprtcl_total;
       // load balancing efficiency
@@ -712,6 +714,7 @@ void Driver::Execute(Mesh *pmesh, ParameterInput *pin, Outputs *pout, bool wdfla
 //!  and printing diagnostic messages
 
 void Driver::Finalize(Mesh *pmesh, ParameterInput *pin, Outputs *pout) {
+  if (pmesh->pmb_pack->ppart != nullptr) { pmesh->pmb_pack->ppart->OrbitWrite(true); }
   // cycle through output Types and load data / write files
   //  This design allows for asynchronous outputs to implemented in the future.
   for (auto &out : pout->pout_list) {

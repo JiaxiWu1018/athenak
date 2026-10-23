@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "tests": 8,
+  "failures": 0,
+  "errors": 0,
+  "output": "test_common_guess_path_and_persistence (test_preparation.PreparationTests.test_common_guess_path_and_persistence) ... ok\ntest_ffi_plus_cross_sign (test_preparation.PreparationTests.test_ffi_plus_cross_sign) ... ok\ntest_ffi_rejects_gaps (test_preparation.PreparationTests.test_ffi_rejects_gaps) ... ok\ntest_frozen_physics (test_preparation.PreparationTests.test_frozen_physics) ... ok\ntest_jz_exact_product_rule (test_preparation.PreparationTests.test_jz_exact_product_rule) ... ok\ntest_no_bridging_orbit_gap (test_preparation.PreparationTests.test_no_bridging_orbit_gap) ... ok\ntest_no_production_submission_in_build (test_preparation.PreparationTests.test_no_production_submission_in_build) ... ok\ntest_removal_not_torque (test_preparation.PreparationTests.test_removal_not_torque) ... ok\n\n----------------------------------------------------------------------\nRan 8 tests in 0.067s\n\nOK\n",
+  "science_runs_performed": false
+}

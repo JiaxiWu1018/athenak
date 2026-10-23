@@ -66,6 +66,17 @@ int LmIndex(int l,int m) {
 //
 // This function operates only on the interior points of the MeshBlock
 void Z4c::WaveExtr(MeshBlockPack *pmbp) {
+  // Legacy wave columns retain their historical time convention. This explicit
+  // mapping ties each measurement of the final RK state to its actual state time.
+  if (global_variable::my_rank == 0) {
+    const bool fresh = access("wave_state_times.csv",F_OK)!=0;
+    FILE *map=fopen("wave_state_times.csv","a");
+    if (!map) throw std::runtime_error("Cannot write waveform time mapping");
+    if (fresh) fprintf(map,"state_cycle,legacy_time,state_time,dt\n");
+    fprintf(map,"%d,%.17g,%.17g,%.17g\n",pmbp->pmesh->ncycle+1,
+      pmbp->pmesh->time,pmbp->pmesh->time+pmbp->pmesh->dt,pmbp->pmesh->dt);
+    fclose(map);
+  }
   // Spherical Grid for user-defined history
   auto &grids = pmbp->pz4c->spherical_grids;
   auto &u_weyl = pmbp->pz4c->u_weyl;

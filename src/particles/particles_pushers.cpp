@@ -21,6 +21,7 @@ TaskStatus Particles::Push(Driver *pdriver, int stage) {
   bool &three_d = pmy_pack->pmesh->three_d;
   auto &pr = prtcl_rdata;
   auto dt_ = (pmy_pack->pmesh->dt);
+  OrbitBeginPush();
 
   switch (pusher) {
     case ParticlesPusher::drift:
@@ -51,6 +52,7 @@ TaskStatus Particles::Push(Driver *pdriver, int stage) {
     break;
   }
 
+  OrbitEndPush();
   return TaskStatus::complete;
 }
 } // namespace particles

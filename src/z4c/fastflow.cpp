@@ -105,6 +105,7 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   persist_surface_shape = pin->GetOrAddBoolean(
       "fastflow", "persist_surface_shape_" + n_str, false);
   restart_surface_guess_valid = false;
+  diagnostic_dt = pin->GetOrAddReal("fastflow", "diagnostic_dt", 0.0);
 
   // If surface was found prior to checkpoint, read it as warm-up guess
   last_a0 = pin->GetOrAddReal("fastflow", "last_a0_" + n_str, -1.0);
@@ -160,8 +161,14 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
   Kokkos::realloc(a0_surf, lmax1);
   Kokkos::realloc(ac_surf, lmpoints);
   Kokkos::realloc(as_surf, lmpoints);
+  Kokkos::realloc(a0_guess, lmax1);
+  Kokkos::realloc(ac_guess, lmpoints);
+  Kokkos::realloc(as_guess, lmpoints);
   if (persist_surface_shape && pin->GetOrAddBoolean(
       "fastflow", "surface_state_valid_" + n_str, false)) {
+    if (pin->GetOrAddInteger("fastflow", "surface_state_lmax_" + n_str, lmax) != lmax) {
+      throw std::runtime_error("Warm-surface lmax differs from current finder");
+    }
     for (int l = 0; l < lmax1; ++l) {
       a0_surf.h_view(l) = pin->GetReal(
           "fastflow", "surface_state_a0_" + n_str + "_" + std::to_string(l));
@@ -179,6 +186,10 @@ FastFlow::FastFlow(MeshBlockPack *pmbp, ParameterInput *pin, int n):
     as_surf.template modify<HostMemSpace>();
     as_surf.template sync<DevExeSpace>();
     restart_surface_guess_valid = true;
+    Kokkos::deep_copy(a0_guess.h_view, a0_surf.h_view);
+    Kokkos::deep_copy(ac_guess.h_view, ac_surf.h_view);
+    Kokkos::deep_copy(as_guess.h_view, as_surf.h_view);
+    search_guess_valid = true;
   }
   ah_surf_valid = false;
   ah_surf_center[0] = ah_surf_center[1] = ah_surf_center[2] = 0.0;
@@ -567,6 +578,7 @@ Real FastFlow::LocalCellWidthAtCenter() {
 //! \fn void FastFlow::Find(int iter, Real time)
 //! \brief Search for the horizons
 void FastFlow::Find(int iter, Real time) {
+  published_current = false;
   if ((time < start_time) || (time > stop_time)) return;
   if (wait_until_punc_are_close && !(PuncAreClose())) return;
   if (verbose && ioproc) {
@@ -666,6 +678,10 @@ void FastFlow::Find(int iter, Real time) {
         && capability_on_grid && capability_center_jump_ok
         && candidate_rmax <= ah_surf_capability_rmax && association_ok;
 
+    // Retain an instantaneous QUALITY-passing, wholly on-grid guess independently
+    // of whether the required consecutive publication streak has completed.
+    if (quality_geometry_ok && capability_on_grid) { CacheSearchGuess(); }
+
     bool published_this_candidate = false;
     if (ah_surf_capability_mode) {
       if (capability_geometry_ok) {
@@ -685,7 +701,7 @@ void FastFlow::Find(int iter, Real time) {
     } else {
       // In strict mode, a convergence that is unsafe for consumers must not seed the next
       // search. Retain ah_found through Write() for diagnosis, but reset the next guess.
-      last_a0 = -1.0;
+      if (!quality_geometry_ok || !capability_on_grid) { last_a0 = -1.0; }
       if (ioproc && !ah_surf_geometry_warned && !quality_geometry_ok) {
         ah_surf_geometry_warned = true;
         std::cout << "### WARNING: horizon " << nh
@@ -702,6 +718,7 @@ void FastFlow::Find(int iter, Real time) {
       }
     }
 
+    published_current = published_this_candidate;
     if (ioproc) {
       const Real rmin_cells = (Kokkos::isfinite(ah_surf_local_dx)
                                && ah_surf_local_dx > 0.0)
@@ -736,6 +753,7 @@ void FastFlow::Find(int iter, Real time) {
     parname = "ah_found_a0_" + std::to_string(nh);
     pin->SetBoolean("fastflow", parname, ah_found);
   }
+  WriteDiagnostic(time + pmbp->pmesh->dt, pmbp->pmesh->ncycle + 1);
 }
 
 //----------------------------------------------------------------------------------------
@@ -757,19 +775,7 @@ void FastFlow::InitialGuess() {
     // retain all l,m coefficients while translating the expansion origin with the
     // tracker. A restart copy remains only a guess; ah_surf_valid stays false until a
     // new surface passes the current publication gates.
-    if (reuse_last_surface_shape && (ah_surf_valid || restart_surface_guess_valid)) {
-      Kokkos::deep_copy(a0.h_view, a0_surf.h_view);
-      Kokkos::deep_copy(ac.h_view, ac_surf.h_view);
-      Kokkos::deep_copy(as.h_view, as_surf.h_view);
-      a0.h_view(0) *= expand_guess;
-      a0.template modify<HostMemSpace>();
-      a0.template sync<DevExeSpace>();
-      ac.template modify<HostMemSpace>();
-      ac.template sync<DevExeSpace>();
-      as.template modify<HostMemSpace>();
-      as.template sync<DevExeSpace>();
-      return;
-    }
+    if (LoadSearchGuess()) { return; }
 
     // Update a0
     // For single BH in isotropic coordinates: horizon radius=m/2
@@ -802,6 +808,10 @@ void FastFlow::InitialGuess() {
     center[1] = pos[1];
     center[2] = pos[2];
   }
+
+  // Common/fixed-center horizons require precisely the same full-shape reuse as
+  // puncture-centered horizons. A translated shape is only a search seed.
+  if (LoadSearchGuess()) { return; }
 
   // Take a0 either from previous or from input value
   if (ah_found && last_a0 > 0) {
@@ -1098,7 +1108,8 @@ void FastFlow::FastFlowLoop() {
     }
 
     // End flow when mass difference is small
-    if (Kokkos::fabs(mass_prev-mass) < mass_tol) {
+    if (Kokkos::fabs(mass_prev-mass) < mass_tol && area > 0.0 &&
+        Kokkos::fabs(hmean)/area <= ah_surf_hrel_limit) {
       ah_found = true;
       break;
     }
@@ -1359,19 +1370,115 @@ bool FastFlow::SnapshotSurface() {
 //! ah_surf_valid deliberately remains false until that process independently converges
 //! and passes every current consumer gate.
 void FastFlow::PersistSurfaceWarmStart() {
-  if (!persist_surface_shape) return;
+  if (!persist_surface_shape || !search_guess_valid) return;
   const std::string n_str = std::to_string(nh);
+  pin->SetInteger("fastflow", "surface_state_lmax_" + n_str, lmax);
   for (int l = 0; l < lmax1; ++l) {
     pin->SetReal("fastflow", "surface_state_a0_" + n_str + "_" + std::to_string(l),
-                 a0_surf.h_view(l));
+                 a0_guess.h_view(l));
   }
   for (int lm = 0; lm < lmpoints; ++lm) {
     pin->SetReal("fastflow", "surface_state_ac_" + n_str + "_" + std::to_string(lm),
-                 ac_surf.h_view(lm));
+                 ac_guess.h_view(lm));
     pin->SetReal("fastflow", "surface_state_as_" + n_str + "_" + std::to_string(lm),
-                 as_surf.h_view(lm));
+                 as_guess.h_view(lm));
   }
   pin->SetBoolean("fastflow", "surface_state_valid_" + n_str, true);
+}
+
+void FastFlow::CacheSearchGuess() {
+  Kokkos::deep_copy(a0_guess.h_view, a0.h_view);
+  Kokkos::deep_copy(ac_guess.h_view, ac.h_view);
+  Kokkos::deep_copy(as_guess.h_view, as.h_view);
+  search_guess_valid = true;
+  PersistSurfaceWarmStart();
+}
+
+bool FastFlow::LoadSearchGuess() {
+  if (!reuse_last_surface_shape || !search_guess_valid) { return false; }
+  Kokkos::deep_copy(a0.h_view, a0_guess.h_view);
+  Kokkos::deep_copy(ac.h_view, ac_guess.h_view);
+  Kokkos::deep_copy(as.h_view, as_guess.h_view);
+  a0.h_view(0) *= expand_guess;
+  a0.template modify<HostMemSpace>(); a0.template sync<DevExeSpace>();
+  ac.template modify<HostMemSpace>(); ac.template sync<DevExeSpace>();
+  as.template modify<HostMemSpace>(); as.template sync<DevExeSpace>();
+  return true;
+}
+
+void FastFlow::WriteDiagnostic(Real state_time, int state_cycle) {
+  if (diagnostic_dt <= 0.0 ||
+      (diagnostic_last >= 0.0 && state_time + 1.e-10 < diagnostic_last + diagnostic_dt)) {
+    return;
+  }
+  diagnostic_last = std::floor((state_time + 1.e-10)/diagnostic_dt)*diagnostic_dt;
+  if (ioproc) {
+  std::string name = pin->GetString("job", "basename") + ".ah_" +
+                     std::to_string(nh) + ".csv";
+  bool fresh = access(name.c_str(), F_OK) != 0;
+  FILE *f = fopen(name.c_str(), "a");
+  if (!f) { throw std::runtime_error("Cannot open AH diagnostics"); }
+  if (fresh) {
+    fprintf(f, "state_cycle,state_time,horizon,found,published,streak,guess_valid,"
+               "mass,mirr,spin,Sx,Sy,Sz,area,hrms,hmean,rmin,rmax,cx,cy,cz,local_dx\n");
+  }
+  // Fields are NaN on failed attempts; ah_prop can otherwise retain stale values.
+  const Real bad = std::numeric_limits<Real>::quiet_NaN();
+  fprintf(f, "%d,%.17g,%d,%d,%d,%d,%d", state_cycle, state_time, nh,
+          static_cast<int>(ah_found), static_cast<int>(published_current),
+          ah_surf_candidate_streak, static_cast<int>(search_guess_valid));
+  const int props[] = {hmass,hmirr,hchi,hSx,hSy,hSz,harea,hhrms,hhmean,hminradius};
+  for (int p : props) { fprintf(f, ",%.17g", ah_found ? ah_prop[p] : bad); }
+  fprintf(f, ",%.17g,%.17g,%.17g,%.17g,%.17g\n",
+          published_current ? ah_surf_rmax : bad,center[0],center[1],center[2],
+          ah_surf_local_dx);
+  fclose(f);
+  if (ah_found) {
+    std::string coeff_name=pin->GetString("job","basename")+".ah_coefficients_"+
+      std::to_string(nh)+".csv";
+    FILE *coeff=fopen(coeff_name.c_str(),"a");
+    if (!coeff) throw std::runtime_error("Cannot write AH coefficients");
+    fprintf(coeff,"%d,%.17g,%d,%d",state_cycle,state_time,
+            static_cast<int>(published_current),lmax);
+    for(int l=0;l<lmax1;++l) fprintf(coeff,",%.17g",a0.h_view(l));
+    for(int k=0;k<lmpoints;++k) fprintf(coeff,",%.17g",ac.h_view(k));
+    for(int k=0;k<lmpoints;++k) fprintf(coeff,",%.17g",as.h_view(k));
+    fprintf(coeff,"\n"); fclose(coeff);
+  }
+  }
+  if (!ah_found) { return; }
+  // Surface data are rank-local pieces of the distributed interpolation. Every
+  // rank writes its owned collocation points; merge by angle, never sum duplicates.
+  auto radius = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), rr);
+  auto rt = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), rr_dth);
+  auto rp = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), rr_dph);
+  auto metric = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), g_interp);
+  auto extr = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), K_interp);
+  auto deriv = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), dg_interp);
+  std::string path = pin->GetString("job", "basename") + ".ah_quadrature_" +
+      std::to_string(nh) + ".rank" + std::to_string(global_variable::my_rank) + ".csv";
+  bool new_file = access(path.c_str(), F_OK) != 0;
+  FILE *q = fopen(path.c_str(), "a");
+  if (!q) { throw std::runtime_error("Cannot open AH quadrature"); }
+  if (new_file) {
+    fprintf(q,"cycle,time,published,angle,theta,phi,r,dr_dtheta,dr_dphi,solid_weight,cx,cy,cz");
+    for (int a=0;a<NSPMETRIC;++a) fprintf(q,",g%d",a);
+    for (int a=0;a<NEXCURV;++a) fprintf(q,",K%d",a);
+    for (int a=0;a<NDRVSSPMETRIC;++a) fprintf(q,",dg%d",a);
+    fprintf(q,"\n");
+  }
+  for (int p=0;p<nangles;++p) {
+    if (!havepoint.h_view(p)) { continue; }
+    fprintf(q,"%d,%.17g,%d,%d,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g",
+      state_cycle,state_time,static_cast<int>(published_current),p,
+      gl_grid->polar_pos.h_view(p,0),gl_grid->polar_pos.h_view(p,1),radius(p),rt(p),rp(p),
+      gl_grid->int_weights.h_view(p),center[0],center[1],center[2]);
+    for (int a=0;a<NSPMETRIC;++a) fprintf(q,",%.17g",metric(a,p));
+    for (int a=0;a<NEXCURV;++a) fprintf(q,",%.17g",extr(a,p));
+    for (int a=0;a<NDRVSSPMETRIC;++a) fprintf(q,",%.17g",deriv(a,p));
+    fprintf(q,"\n");
+  }
+  fclose(q);
 }
 
 //----------------------------------------------------------------------------------------

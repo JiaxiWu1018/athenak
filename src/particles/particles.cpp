@@ -28,6 +28,14 @@ namespace particles {
 
 Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     pmy_pack(ppack) {
+  orbit_dt = pin->GetOrAddReal("particles", "orbit_diagnostic_dt", 0.0);
+  orbit_basename = pin->GetString("job", "basename");
+  if (orbit_dt > 0.0) {
+    Kokkos::realloc(orbit_changes, 6);
+    Kokkos::deep_copy(orbit_changes, 0.0);
+    Kokkos::realloc(orbit_cohort_changes, 12000*6);
+    Kokkos::deep_copy(orbit_cohort_changes, 0.0);
+  }
   // check this is at least a 2D problem
   if (pmy_pack->pmesh->one_d) {
     std::cout << "### FATAL ERROR in " << __FILE__ << " at line " << __LINE__ << std::endl

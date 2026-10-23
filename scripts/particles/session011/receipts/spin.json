@@ -1,0 +1,12 @@
+{
+  "kind": "spin",
+  "executable": "/scratch/10222/jiaxiwu1018/jeans_s11_20261022/build/spin/src/athena",
+  "executable_sha256": "5e1977cb83ccd5c9509604fe5a1abacc9cc8467fe57f8123328e341d8b3d06bc",
+  "native_source_sha256": "d8d40c41cd60852058a9b3f39021ffd9c2dea8f1e90e618da09ecfda267a1fce",
+  "job_id": "1091077",
+  "host": "i614-071.vista.tacc.utexas.edu",
+  "epoch": 1792716282.641258,
+  "compiled": true,
+  "simulation_tested": false,
+  "kokkos_commit": "6739bc623081648af9e752b616d9671527922cbf"
+}
