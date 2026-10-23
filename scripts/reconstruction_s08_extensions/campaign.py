@@ -189,6 +189,8 @@ if __name__=='__main__':
             doc[0].render(scale=1.7).to_pil().save(out)
             previews.append(dict(pdf=receipt(path),preview=receipt(out)))
         atomic(ROOT/'evidence/PDF_RASTERS.json',dict(utc=now(),job=job(),products=previews,actual_visual_review='pending'))
+        from closeout import main as closeout_main
+        closeout_main()
     elif mode=='reference':
         from reference_validation import main
         main()
