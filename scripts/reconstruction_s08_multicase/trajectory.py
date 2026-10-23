@@ -26,6 +26,8 @@ def main():
         from fresh_initial import admit
         admit(c,work)
     state=load(work/'state.json')
+    from recover import recover
+    state=recover(c,work)
     if state.get('complete'):return
     prior=ROOT/'evidence/PRODUCTION_ADMISSION.json'
     compatible=False
