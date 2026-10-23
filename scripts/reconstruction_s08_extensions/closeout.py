@@ -82,11 +82,12 @@ def main():
             raw.extend(bound(p) for p in files_under(root / subdir))
     for mode in sorted(controls):
         raw.extend(bound(p) for p in files_under(EXT / mode / 'runs/yc0500'))
+    raw.extend(bound(p) for p in files_under(ROOT / 'reduced'))
     assert len({p['relative_path'] for p in raw}) == len(raw)
     atomic(ROOT / 'evidence/CLOSED_DATA_MANIFEST.json', dict(
         utc=now(), job=job(), files=raw, files_count=len(raw),
         logical_bytes=sum(p['bytes'] for p in raw),
-        scope='Closed production raw, reductions, exact inputs, final 3D fields, matched initial controls. No deletion or relocation. Per-case executable/sample links are bound separately.'))
+        scope='Closed production raw, canonical and assembled review reductions, exact inputs, final 3D fields, matched initial controls. No deletion or relocation. Per-case executable/sample links are bound separately.'))
     # Bind every original reduced prefix used by the continuation without copying
     # or rehashing the entire immutable baseline raw campaign.
     baseline = [bound(p) if EXT in p.parents else receipt(p)
