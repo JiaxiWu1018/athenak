@@ -6,10 +6,15 @@ from common import *
 def storage():
     scope=LOCAL if MACHINE=='perseus' else EXT
     own=int(subprocess.check_output(['du','-s','-B1',str(scope)],text=True,timeout=180).split()[0])
-    # Reservations sum to200GiB across clusters. They can be rebalanced only
-    # after fresh inventories, while preserving the combined allowance.
-    limit=(120 if MACHINE=='perseus' else 80)*GIB
-    data=dict(own=own,limit=limit,checkpoint_reserve=16*GIB,storage_root=str(scope),filesystem_free=shutil.disk_usage(scope).free)
+    policy=(LOCAL if MACHINE=='perseus' else EXT)/'evidence/RESOURCE_RESERVATIONS.json'
+    if policy.exists():
+        reservation=load(policy)
+        assert sum(reservation['platform_GiB'].values())==reservation['combined_review_GiB']<=350
+        limit=reservation['platform_GiB'][MACHINE]*GIB
+        reserve=reservation['checkpoint_reserve_GiB']*GIB
+    else:
+        limit=(120 if MACHINE=='perseus' else 80)*GIB;reserve=16*GIB
+    data=dict(own=own,limit=limit,checkpoint_reserve=reserve,policy=str(policy),storage_root=str(scope),filesystem_free=shutil.disk_usage(scope).free)
     if MACHINE=='amd':
         whole=int(subprocess.check_output(['du','-s','-B1','/work1/eliasmost/jiaxiwu'],text=True,timeout=180).split()[0])
         data.update(whole=whole,forecast=whole+max(0,limit-own),whole_storage_warning=whole>=1.5*TIB)
