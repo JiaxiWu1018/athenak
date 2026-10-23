@@ -82,13 +82,14 @@ def constraint_gate(mode):
     U=-.02 if mode=='inward0020' else -.05
     checked=next(v for v in reference['results'] if v['U']==U)
     assert checked['source_profile']['sha256']==receipt(EXT/'evidence'/f'constraint_{abs(U):.3f}.txt')['sha256']
-    control=EXT/f"control_{os.environ['SLURM_NTASKS']}"/'runs/yc0500';work=EXT/mode/'runs/yc0500'
+    work=EXT/mode/'runs/yc0500';initial_ranks=load(work/'INITIAL_OK.json')['ranks']
+    control=EXT/f'control_{initial_ranks}'/'runs/yc0500'
     a=np.atleast_2d(np.loadtxt(control/'yc0500.user.hst'))[0];b=np.atleast_2d(np.loadtxt(work/'yc0500.user.hst'))[0]
     ratios={name:float(np.sqrt(b[k]/a[k])) for name,k in [('H_r10',3),('M_r10',4),('H_r16',9),('M_r16',10)]}
     ga=np.atleast_2d(np.loadtxt(control/'yc0500.z4c.user.hst'))[0];gb=np.atleast_2d(np.loadtxt(work/'yc0500.z4c.user.hst'))[0]
     ratios.update(H_global=float(np.sqrt(gb[3]/ga[3])),M_global=float(np.sqrt(gb[4]/ga[4])))
     assert np.isfinite(list(ratios.values())).all() and max(ratios.values())<=1.005,ratios
-    record=dict(job=job(),utc=now(),case='yc0500',constraint_norm_ratios=ratios,tolerance=1.005,control=receipt(control/'yc0500.user.hst'),perturbed=receipt(work/'yc0500.user.hst'))
+    record=dict(job=job(),utc=now(),case='yc0500',initial_ranks=initial_ranks,constraint_norm_ratios=ratios,tolerance=1.005,initial_rows=dict(control_local=a.tolist(),perturbed_local=b.tolist(),control_global=ga.tolist(),perturbed_global=gb.tolist()),control=receipt(control/'yc0500.user.hst'),perturbed=receipt(work/'yc0500.user.hst'))
     atomic(ROOT/'evidence/PRODUCTION_ADMISSION.json',record)
     return record
 
@@ -139,8 +140,15 @@ def inward(mode):
             atomic(ROOT/'evidence/FALLBACK_NOT_REQUIRED.json',dict(utc=now(),job=job(),prior=prior['latest']));return
     build()
     if not (EXT/'evidence/constraint_0.020.txt').exists():constraint_reference()
-    initialize('control_'+os.environ['SLURM_NTASKS'],0);initialize(mode,U);constraint_gate(mode)
+    initial_marker=ROOT/'runs/yc0500/INITIAL_OK.json'
+    control_ranks=str(load(initial_marker)['ranks']) if initial_marker.exists() else os.environ['SLURM_NTASKS']
+    initialize('control_'+control_ranks,0);initialize(mode,U);constraint_gate(mode)
     work=ROOT/'runs/yc0500';state=load(work/'state.json')
+    registered={str(v['id']):v for v in load(EXT/'evidence/jobs.json')}
+    previous=state['segments'][-1];old_ranks=previous.get('ranks',registered[str(previous['job'])]['ranks'])
+    if not state['complete'] and old_ranks!=int(os.environ['SLURM_NTASKS']):
+        from restart_identity import gate
+        gate(state['latest']['path'])
     if not state['complete']:
         remain=int(os.environ['ST8X_WALL_SECONDS'])-(time.time()-float(os.environ['ST8X_START_EPOCH']))-600
         state=run(CASE,target=300,wall_seconds=max(120,int(remain)),suppress_segment_3d=True)

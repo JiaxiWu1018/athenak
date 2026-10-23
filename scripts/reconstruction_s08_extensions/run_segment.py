@@ -105,11 +105,17 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
             if not last.startswith('time'):
                 assert float(last.split(',')[0])<=latest['time']+1e-7, 'Uncheckpointed output tail: inventory and preserve the interrupted attempt before restarting'
         start_time=latest['time']
-        if (work/'REQUEST_STOP').exists():
-            reason=(work/'REQUEST_STOP').read_text().strip()
-            assert reason.startswith('amr_capacity') and int(os.environ['SLURM_NNODES'])==2,reason
-            atomic(work/f'{job()}.cleared_capacity_stop.json',dict(reason=reason,utc=now(),checkpoint=latest))
-            (work/'REQUEST_STOP').unlink()
+        request=work/'REQUEST_STOP'
+        reason=request.read_text().strip() if request.exists() else (state['segments'][-1].get('stop_reason') if state['segments'] else None)
+        if reason and reason.startswith('amr_capacity'):
+            match=re.search(r'predicted=(\d+)',reason);assert match,reason
+            predicted=int(match[1]);ranks=int(os.environ['SLURM_NTASKS']);per=max(128,512//ranks)
+            reserve=float(validate(latest['path'])['parameters']['mesh_refinement'].get('capacity_stop_fraction','0.9'))
+            assert (predicted+ranks-1)//ranks<=reserve*per,('Insufficient upgraded capacity',reason,ranks,per,reserve)
+            atomic(work/f'{job()}.cleared_capacity_stop.json',dict(reason=reason,utc=now(),checkpoint=latest,ranks=ranks,max_nmb_per_rank=per))
+            if request.exists():request.unlink()
+        elif request.exists():
+            raise RuntimeError('Unresolved resource/user stop: '+reason)
         launch+=['-r',latest['path'],'time/nlim=100000000',f'time/tlim={target}']
     ranks=int(os.environ.get('SLURM_NTASKS','1'))
     launch += [f'mesh_refinement/max_nmb_per_rank={max(128,512//ranks)}',
@@ -119,7 +125,7 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
         # final_fields.py exports full 3D data at the true endpoint without evolution.
         launch+=['output6/dt=0','output7/dt=0']
     launch+=['-t',f'{wall_seconds//3600:02d}:{wall_seconds//60%60:02d}:{wall_seconds%60:02d}']
-    record=dict(**active,utc=now(),launch=launch,executable=receipt(ROOT/'protected/athena'))
+    record=dict(**active,utc=now(),launch=launch,log=str(log),nodes=int(os.environ['SLURM_NNODES']),ranks=ranks,executable=receipt(ROOT/'protected/athena'))
     record['segment_3d_suppressed']=suppress_segment_3d
     atomic(work/f'{segment}.launch.json',record)
     start=time.monotonic()

@@ -22,15 +22,20 @@ def gate(source):
     dest=sorted((work/'rst').glob('*.rst'))[-1];after=validate(dest)
     for key in ['time','cycle','particle_count','removal_counts','nblocks','ah_onset']:assert before[key]==after[key],key
     a=layout(source);b=layout(dest);assert a[1:3]==b[1:3] and a[4]==b[4]
-    pa=np.memmap(source,dtype='<f8',mode='r',offset=a[3],shape=(10,a[4]));pb=np.memmap(dest,dtype='<f8',mode='r',offset=b[3],shape=(10,b[4]))
-    ia=np.argsort(pa[9]);ib=np.argsort(pb[9]);assert np.array_equal(pa[9,ia],pb[9,ib])
-    for k in range(8):
-        if k==1:assert np.allclose(pa[k,ia],pb[k,ib],rtol=1e-12,atol=1e-12)
-        else:assert np.array_equal(pa[k,ia],pb[k,ib]),k
+    if a[4]>0:
+        pa=np.memmap(source,dtype='<f8',mode='r',offset=a[3],shape=(10,a[4]));pb=np.memmap(dest,dtype='<f8',mode='r',offset=b[3],shape=(10,b[4]))
+        ia=np.argsort(pa[9]);ib=np.argsort(pb[9]);assert np.array_equal(pa[9,ia],pb[9,ib])
+        for k in range(8):
+            if k==1:assert np.allclose(pa[k,ia],pb[k,ib],rtol=1e-12,atol=1e-12)
+            else:assert np.array_equal(pa[k,ia],pb[k,ib]),k
     ga=np.memmap(source,dtype='<f8',mode='r',offset=a[0],shape=(a[1],25,40,40,40));gb=np.memmap(dest,dtype='<f8',mode='r',offset=b[0],shape=(b[1],25,40,40,40))
     err=max(float(np.max(abs(ga[k,:,4:-4,4:-4,4:-4]-gb[k,:,4:-4,4:-4,4:-4])/np.maximum(1,abs(ga[k,:,4:-4,4:-4,4:-4])))) for k in range(a[1]))
     assert err<1e-12,err
     before.pop('parameters');after.pop('parameters')
     record=dict(job=job(),utc=now(),case='yc0500',source=before,destination=after,physical_fields_exact=True,interior_grid_max_scaled_error=err,ranks=ranks,zero_steps=True)
-    atomic(ROOT/'evidence/PRODUCTION_ADMISSION.json',record)
+    atomic(ROOT/'evidence'/('RESTART_IDENTITY_'+job()+'.json'),record)
+    path=ROOT/'evidence/PRODUCTION_ADMISSION.json'
+    previous=load(path) if path.exists() else {}
+    if 'constraint_norm_ratios' in previous:record['initial_constraint_admission']=previous
+    atomic(path,record)
     return record
