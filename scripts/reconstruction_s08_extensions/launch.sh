@@ -38,6 +38,7 @@ trap finish EXIT
 mkdir -p "$record/workflow"
 cp -p "$ST8X_ROOT"/scripts/*.py "$ST8X_ROOT"/scripts/*.sh "$record/workflow/"
 cp -p "$ST8X_ROOT/evidence/SOURCE_PIN.json" "$record/NATIVE_SOURCE_PIN.json"
+if [ -f "$ST8X_ROOT/evidence/NATIVE_ACTIVE.json" ]; then cp -p "$ST8X_ROOT/evidence/NATIVE_ACTIVE.json" "$record/NATIVE_ACTIVE.json"; fi
 sha256sum "$record"/workflow/* > "$record/workflow.sha256"
 export PYTHONPATH="$record/workflow:$PYTHONPATH"
 python3 "$record/workflow/extension_resources.py" > "$record/watchdog.log" 2>&1 &

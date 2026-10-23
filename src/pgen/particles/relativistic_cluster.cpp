@@ -1699,7 +1699,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   int nham = solve_hamiltonian_constraint
       ? static_cast<int>(constraint_correction.radius.size()) : 1;
   DvceArray1D<Real> ham_radius_d("cluster_ham_radius", nham);
-  DvceArray1D<Real> ham_conf_d("cluster_ham_conformal_a", nham);
+  DvceArray1D<Real> ham_delta_a_d("cluster_ham_delta_a", nham);
   int nscpd = apply_displacement
       ? static_cast<int>(displacement_metric.radius.size()) : 1;
   DvceArray1D<Real> scpd_radius_d("cluster_scpd_radius", nscpd);
@@ -1713,7 +1713,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   auto lapse_h = Kokkos::create_mirror_view(lapse_d);
   auto ctt_a_h = Kokkos::create_mirror_view(ctt_a_d);
   auto ham_radius_h = Kokkos::create_mirror_view(ham_radius_d);
-  auto ham_conf_h = Kokkos::create_mirror_view(ham_conf_d);
+  auto ham_delta_a_h = Kokkos::create_mirror_view(ham_delta_a_d);
   for (int i = 0; i < nprof; ++i) {
     radius_h(i) = total_mass*profile.riso_over_m[i];
     conf_h(i) = profile.conformal_a[i];
@@ -1727,11 +1727,21 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   if (solve_hamiltonian_constraint) {
     for (int i = 0; i < nham; ++i) {
       ham_radius_h(i) = constraint_correction.radius[i];
-      ham_conf_h(i) = constraint_correction.conformal_a[i];
+      // Interpolate only the small correction. Interpolating the full exterior
+      // Schwarzschild background on the coarse logarithmic solver grid introduces
+      // a U-independent metric error and spurious vacuum Hamiltonian residuals.
+      Real background_a;
+      if (i < nprof) {
+        background_a = profile.conformal_a[i];
+      } else {
+        Real q = 0.5*total_mass/constraint_correction.radius[i];
+        background_a = (1.0 + q)*(1.0 + q);
+      }
+      ham_delta_a_h(i) = constraint_correction.conformal_a[i] - background_a;
     }
   } else {
     ham_radius_h(0) = 0.0;
-    ham_conf_h(0) = 1.0;
+    ham_delta_a_h(0) = 0.0;
   }
   if (apply_displacement) {
     for (int i = 0; i < nscpd; ++i) {
@@ -1746,7 +1756,7 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   }
   Kokkos::deep_copy(ctt_a_d, ctt_a_h);
   Kokkos::deep_copy(ham_radius_d, ham_radius_h);
-  Kokkos::deep_copy(ham_conf_d, ham_conf_h);
+  Kokkos::deep_copy(ham_delta_a_d, ham_delta_a_h);
   Kokkos::deep_copy(scpd_radius_d, scpd_radius_h);
   Kokkos::deep_copy(scpd_conf_d, scpd_conf_h);
   Kokkos::deep_copy(scpd_lapse_d, scpd_lapse_h);
@@ -1823,7 +1833,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
         }
         Real denom = ham_radius_d(hhi) - ham_radius_d(hlo);
         Real frac = (denom > 0.0) ? (riso - ham_radius_d(hlo))/denom : 0.0;
-        conformal_a = ham_conf_d(hlo) + frac*(ham_conf_d(hhi) - ham_conf_d(hlo));
+        conformal_a += ham_delta_a_d(hlo) +
+                       frac*(ham_delta_a_d(hhi) - ham_delta_a_d(hlo));
       } else {
         // This branch lies beyond the 10^6 M solver grid in normal use; the omitted
         // CTT r^-6 source is then negligible compared with the ADM 1/r term.

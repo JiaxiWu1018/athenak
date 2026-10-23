@@ -25,8 +25,12 @@ def setup(root,U,exe):
     (root/'inputs/yc0500.athinput').write_text(text)
 
 
+def native_executable():
+    marker=EXT/'evidence/NATIVE_ACTIVE.json'
+    return Path(load(marker)['path']) if marker.exists() else EXT/'protected/athena'
+
 def build():
-    exe=EXT/'protected/athena'
+    exe=native_executable()
     if exe.exists():return exe
     repo=EXT/'src/athenak';build=EXT/'build';out=EXT/'evidence'/('build_'+job());out.mkdir(parents=True,exist_ok=True)
     admission()
@@ -67,7 +71,7 @@ int main(int argc,char**argv){
 
 
 def initialize(mode,U):
-    root=EXT/mode;exe=EXT/'protected/athena';setup(root,U,exe)
+    root=EXT/mode;exe=native_executable();setup(root,U,exe)
     if (root/'runs/yc0500/INITIAL_OK.json').exists():return
     env=os.environ.copy();env.update(ROOT=str(root),ST8X_U=str(U))
     cmd(['python3',Path(__file__).resolve().parent/'run_segment.py','yc0500','--initialize','--target','300','--wall-seconds','900'],env=env)
@@ -152,7 +156,12 @@ def inward(mode):
 
 if __name__=='__main__':
     job();mode=sys.argv[1]
-    if mode=='preflight':
+    if mode=='preflight_increment':
+        from build_revision import main as revision_main
+        revision_main()
+        from preflight import main
+        main()
+    elif mode=='preflight':
         from preflight import main
         main()
     elif mode=='render_check':

@@ -3,13 +3,13 @@ import sys
 import numpy as np
 from common import *
 from extension_resources import EXT,admission
-from campaign import setup,section
+from campaign import setup,section,native_executable
 
 def main():
     job();admission();records=[]
     assert int(os.environ['SLURM_NTASKS'])==1
     for name,U in [('control',0.),('inward0020',-.02)]:
-        root=ROOT/name;setup(root,U,EXT/'protected/athena');work=root/'runs/yc0500'
+        root=ROOT/name;setup(root,U,native_executable());work=root/'runs/yc0500'
         text=(root/'inputs/yc0500.athinput').read_text()
         text=section(text,'mesh_refinement',dict(refinement='static',max_nmb_per_rank=344))
         text=section(text,'time',dict(nlim=0,tlim=0))
@@ -29,6 +29,7 @@ def main():
     ratios={name:float(np.sqrt(b[k]/a[k])) for name,k in [('H_r10',3),('M_r10',4),('H_r16',9),('M_r16',10)]}
     ratios.update(H_global=float(np.sqrt(gb[3]/ga[3])),M_global=float(np.sqrt(gb[4]/ga[4])))
     result=dict(utc=now(),job=job(),records=records,ratios=ratios,threshold=1.005,passed=max(ratios.values())<=1.005,scope='Full2M particle transformation and discrete initial constraints on identical344-block fixed mesh. Zero evolution steps; does not replace matched adaptive production-layout admission or authorize singleGPU evolution.')
+    atomic(EXT/'evidence'/('STATIC_PREFLIGHT_'+job()+'.json'),result)
     atomic(EXT/'evidence/STATIC_PREFLIGHT.json',result)
     assert result['passed'],ratios
     print(json.dumps(result,indent=2))
