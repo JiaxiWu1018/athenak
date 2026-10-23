@@ -104,7 +104,7 @@ def long():
     atomic(ROOT/'evidence/BENCHMARK.json',dict(job=job(),utc=now(),native_node_hours_per_M=rate,remaining_M=500-state['latest']['time']))
     # A queued four-GPU node was at least two hours away at submission. Avoid a
     # slow single-GPU long run when its measured forecast loses that advantage.
-    if rate and rate<=.027 and not (work/'REQUEST_STOP').exists():
+    if rate and rate/int(os.environ['SLURM_NNODES'])<=.027 and not (work/'REQUEST_STOP').exists():
         remain=int(os.environ['ST8X_WALL_SECONDS'])-(time.time()-float(os.environ['ST8X_START_EPOCH']))-240
         if remain>180:state=run(CASE,target=500,wall_seconds=int(remain),suppress_segment_3d=True)
     from reduce import reduce_case
