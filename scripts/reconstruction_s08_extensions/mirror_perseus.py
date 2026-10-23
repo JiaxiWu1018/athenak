@@ -65,7 +65,7 @@ def main():
     # Verification receipts remain compact; no raw/reduced arrays, logs, source
     # tree, lossless frame sequence or checkpoint is imported in this mirror.
     evidence = ['REVIEW_PRODUCT_MANIFEST', 'CLOSED_DATA_MANIFEST', 'PROVENANCE',
-                'SOURCE_MAP', 'INDEPENDENT_NUMERIC_QA', 'COVERAGE_AND_GLOBAL_CONSTRAINTS', 'PLOTS_RENDERED',
+                'SOURCE_MAP', 'INDEPENDENT_NUMERIC_QA', 'COVERAGE_AND_GLOBAL_CONSTRAINTS', 'REMOVAL_GEOMETRY', 'PLOTS_RENDERED',
                 'MOVIES_RENDERED', 'PDF_RASTERS', 'BOUNDARY_DIAGNOSTICS',
                 'PRODUCTS_READY', 'ACCOUNTING_OBSERVED', 'STORAGE_REVIEW']
     dest = E / 'review_mirror'

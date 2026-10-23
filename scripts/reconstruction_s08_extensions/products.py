@@ -63,7 +63,7 @@ def assemble():
 
 def numeric(data):
     from reduce_run import read_pvtk
-    rows=[];spotchecks=[];coverage=[]
+    rows=[];spotchecks=[];coverage=[];removal_audits=[]
     for d in data:
         s=d['summary'];m=d['mass'];h=d['history'];shell=d['shells'];mode=d['case']['mode']
         assert shell and h and m and shell[0]['time']==0 and h[0]['time']==0
@@ -119,6 +119,15 @@ def numeric(data):
             spotchecks.append(dict(mode=mode,time=t,source=receipt(Path(snap['file'])),equal_weight_quantiles='all9 agree within one particle rank; COM independently computed'))
         tail=[r for r in good if r['time']>=s['endpoint']-5]
         record=dict(mode=mode,endpoint_M=s['endpoint'],AH_accepted_records=len(good),first_AH_M=good[0]['time'] if good else None,first_removal_M=s['first_removal'],r50_initial=shell[0]['r50'],r50_last_pre_removal=shell[-1]['r50'],last_shell_time_M=shell[-1]['time'],core_lapse_final=h[-1]['core_lapse'],core_lapse_min=min(r['core_lapse'] for r in h),max_rest_mass_closure=max(abs(r['closure']) for r in m),final_particles=d['state']['latest']['particle_count'],final_Mirr_median=np.median([r['mirr'] for r in tail]) if tail else None,final_MCH_median=np.median([r['mass'] for r in tail]) if tail else None)
+        converged=[r for r in d['ah'] if r['converged']==1]
+        record['first_converged_AH_M']=converged[0]['time'] if converged else None
+        if good and s['first_removal'] is not None:
+            from removal_geometry import audit
+            geometry=audit(d['source'],d['ah'],max_dt,sum(s['removals'].values()))
+            removal_audits.append(dict(mode=mode,**geometry))
+            record.update(removals_before_first_converged_AH=geometry['events_before_first_converged'],
+                          removals_outside_sampled_inscribed_AH=geometry['events_outside_preceding_inscribed_radius'],
+                          maximum_removed_radius_over_sampled_AH_rmin=geometry['maximum_radius_over_preceding_rmin'])
         healthy=[r for r in h if s['first_removal'] is None or r['time']<s['first_removal']]
         record.update(max_H_rms_r10_pre_removal=max(r['H_rms_r10'] for r in healthy),max_M_rms_r10_pre_removal=max(r['M_rms_r10'] for r in healthy),max_sampled_blocks=max(r['nblocks'] for r in m),minimum_sampled_dx_M=min(r['dx_min'] for r in m),minimum_completed_dt_M=min(r['dt_completed'] for r in h if r['dt_completed']>0))
         global_healthy=[r for r in global_rows if s['first_removal'] is None or r['time']<s['first_removal']]
@@ -155,6 +164,7 @@ def numeric(data):
     atomic(ROOT/'evidence/INDEPENDENT_NUMERIC_QA.json',dict(job=job(),utc=now(),cases=rows,full_population_audits_reused=True,shell_spotchecks=spotchecks,scope='All reduced ledgers/AH rows/shell ordering; independent full-population shell calculations at3 times per case. Not temporal/mesh convergence.'))
     atomic(ROOT/'evidence/COVERAGE_AND_GLOBAL_CONSTRAINTS.json',dict(job=job(),utc=now(),cases=coverage,
            cadence_rule='Every stream spans the actual endpoint (AH searches within their cadence); maximum gap cannot exceed nominal cadence plus one maximum completed/reported timestep. Duplicate source times are collapsed.'))
+    atomic(ROOT/'evidence/REMOVAL_GEOMETRY.json',dict(job=job(),utc=now(),cases=removal_audits))
     # Dict keys differ for the long-run extra diagnostics; make explicit empty columns.
     keys=list(dict.fromkeys(k for row in rows for k in row));write_csv(ROOT/'reports/extension_summary.csv',[{k:r.get(k) for k in keys} for r in rows])
     return rows
