@@ -28,7 +28,6 @@ def main():
     state=load(work/'state.json')
     from recover import recover
     state=recover(c,work)
-    if state.get('complete'):return
     prior=ROOT/'evidence/PRODUCTION_ADMISSION.json'
     compatible=False
     if prior.exists():
@@ -38,13 +37,15 @@ def main():
     start=float(os.environ['ST8X_START_EPOCH']);limit=int(os.environ['ST8X_WALL_SECONDS'])
     assert not (ROOT/'evidence/RESOURCE_STOP.json').exists(), 'Resolve resource guard stop before evolution'
     while not state.get('complete'):
-        remaining=limit-(time.time()-start)-480
+        remaining=limit-(time.time()-start)-120
         if remaining<150:break
         state=run(c,target=c['target'],wall_seconds=int(min(300,remaining)),suppress_segment_3d=True)
         if state['segments'][-1].get('stop_reason') not in [None,'ah_tail_complete']:break
         if (ROOT/'evidence/RESOURCE_STOP.json').exists():break
-    from reduce import reduce_case
-    summary=reduce_case(c,require_complete=state.get('complete',False))
+    summary=None
+    if state.get('complete') or os.environ.get('ST8_REDUCE_PARTIAL')=='1':
+        from reduce import reduce_case
+        summary=reduce_case(c,require_complete=state.get('complete',False))
     if state.get('complete'):
         from final_fields import export
         export(c['id'])

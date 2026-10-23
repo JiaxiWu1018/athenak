@@ -118,6 +118,10 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
             assert os.environ.get('ST8X_GUARDS_CORRECTED')=='1'
             atomic(work/f'{job()}.cleared_guard_review.json',dict(utc=now(),reason=reason,source_checkpoint=latest))
             if request.exists():request.unlink()
+        elif reason=='switch_to_short_allocations':
+            assert int(os.environ['ST8X_WALL_SECONDS'])<=1200
+            atomic(work/f'{job()}.cleared_allocation_switch.json',dict(utc=now(),reason=reason,source_checkpoint=latest))
+            if request.exists():request.unlink()
         elif request.exists():
             raise RuntimeError('Unresolved resource/user stop: '+reason)
         launch+=['-r',latest['path'],'time/nlim=100000000',f'time/tlim={target}']

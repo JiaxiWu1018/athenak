@@ -36,6 +36,8 @@ def main():
     result=dict(utc=stamp,Perseus_scheduler=ps,AMD_accounting=remote,AMD_queue=query,Perseus_cases=local,
       scope='Scheduler and small state receipts only. No scientific completion inferred from a terminal job. No raw hashing, reductions, plotting or submissions.')
     (N/'evidence/STATUS_LATEST.json').write_text(json.dumps(result,indent=2)+'\n')
+    history=N/'evidence/status_history';history.mkdir(exist_ok=True)
+    (history/(stamp.replace(':','-')+'.json')).write_text(json.dumps(result,indent=2)+'\n')
     print('UTC',stamp)
     for key,s in local.items():
         if 'latest' in s:print(key,'checkpoint_M',s['latest']['time'],'N',s['latest']['particle_count'],'AH_onset',s['latest']['ah_onset'],'complete',s['complete'])
