@@ -1,5 +1,5 @@
 """Source-bound extension figures, numeric checks and review assembly; Slurm only."""
-import csv,shutil
+import csv,shutil,re
 import numpy as np
 from common import *
 from extension_resources import EXT
@@ -89,8 +89,26 @@ def numeric(data):
             spotchecks.append(dict(mode=mode,time=t,source=receipt(Path(snap['file'])),equal_weight_quantiles='all9 agree within one particle rank; COM independently computed'))
         tail=[r for r in good if r['time']>=s['endpoint']-5]
         record=dict(mode=mode,endpoint_M=s['endpoint'],AH_accepted_records=len(good),first_AH_M=good[0]['time'] if good else None,first_removal_M=s['first_removal'],r50_initial=shell[0]['r50'],r50_last_pre_removal=shell[-1]['r50'],last_shell_time_M=shell[-1]['time'],core_lapse_final=h[-1]['core_lapse'],core_lapse_min=min(r['core_lapse'] for r in h),max_rest_mass_closure=max(abs(r['closure']) for r in m),final_particles=d['state']['latest']['particle_count'],final_Mirr_median=np.median([r['mirr'] for r in tail]) if tail else None,final_MCH_median=np.median([r['mass'] for r in tail]) if tail else None)
+        healthy=[r for r in h if s['first_removal'] is None or r['time']<s['first_removal']]
+        record.update(max_H_rms_r10_pre_removal=max(r['H_rms_r10'] for r in healthy),max_M_rms_r10_pre_removal=max(r['M_rms_r10'] for r in healthy),max_sampled_blocks=max(r['nblocks'] for r in m),minimum_sampled_dx_M=min(r['dx_min'] for r in m),minimum_completed_dt_M=min(r['dt_completed'] for r in h if r['dt_completed']>0))
+        states=[(d['source'],d['state'])]
+        if mode=='long':states.insert(0,(BASE,load(BASE/'runs/yc0500/state.json')))
+        logs=set()
+        for source,st in states:
+            for segment in st['segments']:
+                found=list((source/'runs/yc0500').glob(str(segment['job'])+'*.log'))
+                assert found,('Missing accepted native log',segment['job'])
+                logs.update(found)
+        fallbacks=0
+        for path in logs:
+            text=path.read_text(errors='replace')
+            assert '### FATAL' not in text and not re.search('search_fail=[1-9]',text),str(path)
+            fallbacks+=sum(int(v) for v in re.findall(r'cycle\s+\d+:\s+(\d+) of \d+ particles fell back',text))
+        record['fallback_particle_steps']=fallbacks
         if mode!='long':
             initial=load(d['source']/'runs/yc0500/INITIAL_OK.json')
+            assert initial['actual_full_particle_output_checked'] and initial['actual_fixed_ID_cohort_checked']
+
             record.update(initial_relative_mean_abs_L_change=initial['relative_mean_abs_L_change'],initial_particle_Killing_energy_change=initial['particle_Killing_energy_perturbed']-initial['particle_Killing_energy_initial'])
             reference=load(EXT/'evidence/INDEPENDENT_CONSTRAINT_REFERENCE_OK.json')
             U=-.02 if mode=='inward0020' else -.05
@@ -176,7 +194,27 @@ def main():
     job();data=assemble();results=numeric(data);figures(data);movies(data)
     lines=['# Session 8 extensions — scientific results','', 'All cases start from the same proper-volume stratified seed-1 realization with2,000,000 equal-rest-mass particles. M_ref=1 is the unperturbed equilibrium gravitational mass; perturbed cases intentionally change the initial energy and angular momentum slightly.','', '| Case | Endpoint [M_ref] | First accepted AH [M_ref] | Final surviving particles | Max rest-mass closure |','|---|---:|---:|---:|---:|']
     for r in results:lines.append(f"| {r['mode']} | {r['endpoint_M']:.3f} | {r['first_AH_M'] if r['first_AH_M'] is not None else 'none accepted'} | {r['final_particles']} | {r['max_rest_mass_closure']:.3e} |")
+    lines+=['','| Case | Final-five-M median M_irr / M_ref | Final-five-M median M_CH / M_ref |','|---|---:|---:|']
+    for r in results:
+        mi='unavailable' if r['final_Mirr_median'] is None else f"{r['final_Mirr_median']:.3f}"
+        mc='unavailable' if r['final_MCH_median'] is None else f"{r['final_MCH_median']:.3f}"
+        lines.append(f"| {r['mode']} | {mi} | {mc} |")
+    lines+=['','[Shells and lapse](../plots/s08_extension_shells_lapse.pdf), [particle rest-mass ledger](../plots/s08_extension_mass_conservation.pdf), [AH masses](../plots/s08_extension_AH_masses.pdf), and [outer-domain diagnostics](../plots/s08_extension_boundary_lapse.pdf).','', 'The accompanying extension_summary.csv records pre-removal constraint norms, sampled AMR resolution/timesteps, fallback particle-step counts, and deliberate initial energy/angular-momentum changes. No search failure or fatal native diagnostic is accepted.']
     lines+=['','Shells enclose10–90% of the rest mass about the instantaneous COM and are coordinate radii. Curves stop before the first particle removal. Each static column uses its own actual endpoint; synchronized movies share time and explicitly clear ended cases. The unperturbed300M boundary is marked. Alive+removed+escaped is a rest-mass bookkeeping check; AH mass is not added, and this is not ADM-energy conservation.','', 'AH masses use the unchanged on-grid/residual/resolution/three-search persistence gates. Missing or rejected surfaces are gaps. Final-five-M accepted-sample summaries are qualitative and do not assert settling.','', 'An accepted AH confirms black-hole formation. Without one, contraction/excision is not promoted to an AH-confirmed black hole. Finite-time survival/expansion does not establish stable migration. The known frozen particle-source coupling remains unchanged; the cause of the unperturbed expansion remains unresolved. These are controlled perturbation/long-time extensions, not a convergence study.','', 'The exact continuation retains the +/-512M box. Boundary diagnostics are assessed separately; a larger-domain control was not performed, so causal isolation of the full500M interval is not asserted.','', 'Native raw data remain under '+str(EXT)+'. Original baseline data remain under '+str(BASE)+'. All current raw data are retained; only verified superseded extension recovery checkpoints may have been rotated.']
     (ROOT/'reports/SCIENCE_REPORT.md').write_text('\n'.join(lines)+'\n')
+    (ROOT/'reports/FIGURES.md').write_text('''# Extension figure conventions
+
+All times/radii/AH masses use the unperturbed equilibrium gravitational mass M_ref=1. The inward initial constraint solve deliberately changes ADM mass slightly; no renormalization conceals that change. Each static column shows its own actual endpoint; compare the labeled time axes. Shells are rest-mass deciles about the instantaneous COM in coordinate radius, cut strictly before first removal. The lapse is the coordinate-volume mean within r<0.75M_ref, whose discrete integration changes with AMR. Dashed vertical lines mark first accepted AH; dotted lines mark first particle removal; the extended unperturbed panel marks300M.
+
+The mass figure shows alive+removed+escaped particle rest mass normalized by initial M0. Its residual is bookkeeping, not ADM-energy conservation; AH gravitational mass is never added. AH curves contain only finite, on-grid, resolved, residual-qualified, three-search-persistent surfaces. Rejected searches are gaps; absence is labeled explicitly. Final-five-M accepted-sample medians do not assert settling.
+
+The boundary/lapse figure uses equatorial annular coordinate-area means from retained native slices. No larger-domain control or causal-isolation proof is supplied. Source-time-coupling and finite-grid/particle limitations remain.
+''')
+    (ROOT/'reports/MOVIES.md').write_text('''# Extension movies
+
+Individual and synchronized15fps MP4s use the same20,000 initial IDs (tags divisible by100). Colors remain fixed at initial coordinate radius/r_iso_surface(0), with scale0–1. Only |z|<0.05 r_iso_surface(0) is shown. Each spatial window stays fixed over its whole movie and includes all displayed cohort particles with a5% margin; physical scales may differ and are labeled in M_ref. The dotted circle is the initial coordinate surface. Black contours are contemporaneous accepted AH equators from native harmonic coefficients; rejected or stale searches are not drawn.
+
+Frames use completed cohort samples and print actual sample time. Synchronized movies clear and label ended runs. The nominal comparison cadence is0.5M_ref, with the actual final endpoint appended when fractional. No interpolation invents particles or evolution beyond an endpoint. Every encoded frame is decoded, frame counts checked, and representative encoded frames are retained for actual visual review. Raw data and lossless PNG frames stay on the cluster.
+''')
     atomic(ROOT/'evidence/PRODUCTS_READY.json',dict(job=job(),utc=now(),science=results,numeric=True,figures=True,movies_full_decode=True,actual_visual_acceptance=False,accounting_and_thin_mirror_pending=True))
 if __name__=='__main__':main()
