@@ -19,7 +19,7 @@ def main():
         args=native_launcher()+[str(root/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-i',str(inp),'-d',str(work)]
         atomic(work/'launch.json',dict(utc=now(),job=job(),command=args,input=receipt(inp),executable=receipt(root/'protected/athena'),no_evolution=True))
         with (work/'native.log').open('w') as out:cmd(args,stdout=out,stderr=subprocess.STDOUT)
-        env=os.environ.copy();env.update(ROOT=str(root),ST8X_U=str(U))
+        env=os.environ.copy();env.update(ROOT=str(root),ST8X_U=str(U),ST8X_ZERO_PREFLIGHT='1')
         script="from common import *;from initial_validation import initial_check;initial_check(ROOT/'runs/yc0500',CASES[0])"
         cmd(['python3','-c',script],env=env)
         records.append(dict(U=U,initial=load(work/'INITIAL_OK.json'),history=receipt(work/'yc0500.user.hst'),global_history=receipt(work/'yc0500.z4c.user.hst')))
