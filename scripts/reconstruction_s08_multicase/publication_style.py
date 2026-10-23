@@ -34,4 +34,3 @@ def shell_limits(*datasets):
     assert values.size and np.isfinite(values).all() and (values>0).all()
     # Keep the historical reference range, expanding it to include every curve.
     return (min(.05,float(values.min())/1.08),max(30.,float(values.max())*1.08))
-
