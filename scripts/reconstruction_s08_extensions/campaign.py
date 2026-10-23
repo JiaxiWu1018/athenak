@@ -152,7 +152,10 @@ def inward(mode):
 
 if __name__=='__main__':
     job();mode=sys.argv[1]
-    if mode=='render_check':
+    if mode=='preflight':
+        from preflight import main
+        main()
+    elif mode=='render_check':
         from render_check import main
         main()
     elif mode=='review':

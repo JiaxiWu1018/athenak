@@ -2,7 +2,7 @@
 import json,re,shlex,subprocess,sys,datetime
 from pathlib import Path
 r=next(p for p in Path(__file__).resolve().parents if (p/'APPROVED_PLAN.md').is_file() and (p/'evidence/state.json').is_file());a='/work1/eliasmost/jiaxiwu/st_s08_yc0500_extensions_20261023'
-mode=sys.argv[1];assert mode in ['long','inward0020','inward0050','reference','review','render_check']
+mode=sys.argv[1];assert mode in ['long','inward0020','inward0050','reference','review','render_check','preflight']
 hours=int(sys.argv[2]) if len(sys.argv)>2 else (6 if mode=='long' else 8)
 partition=sys.argv[3] if len(sys.argv)>3 else 'mi2101x';assert partition in ['mi2101x','mi2104x','mi2508x']
 nodes=int(sys.argv[4]) if len(sys.argv)>4 else 1;assert nodes in [1,2]
