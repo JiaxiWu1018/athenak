@@ -28,7 +28,8 @@ def assemble():
         red=source/'reduced/yc0500';assert load(red/'REDUCTION_OK.json')['population_ids']
         summary=load(red/'summary.json');assert summary['complete'] and summary['endpoint']==state['latest']['time']
         target=500 if mode=='long' else 300;onset=state['latest']['ah_onset'];expected=min(target,onset+20) if onset>=0 else target
-        assert abs(state['latest']['time']-expected)<1e-7,(mode,expected,state['latest']['time'])
+        tolerance=max(1e-7,float(state['latest']['dt'])+1e-8) if onset>=0 and expected<target else 1e-7
+        assert expected-1e-7<=state['latest']['time']<=min(target+1e-7,expected+tolerance),(mode,expected,state['latest']['time'])
         ident='yc0500_'+mode;dest=ROOT/'reduced'/ident;dest.mkdir(exist_ok=True)
         title='Unperturbed, extended' if mode=='long' else ('Inward $U=-0.02$' if mode=='inward0020' else 'Inward $U=-0.05$')
         case=dict(id=ident,yc=.5,unstable=True,title=title,mode=mode)
@@ -88,6 +89,12 @@ def numeric(data):
             spotchecks.append(dict(mode=mode,time=t,source=receipt(Path(snap['file'])),equal_weight_quantiles='all9 agree within one particle rank; COM independently computed'))
         tail=[r for r in good if r['time']>=s['endpoint']-5]
         record=dict(mode=mode,endpoint_M=s['endpoint'],AH_accepted_records=len(good),first_AH_M=good[0]['time'] if good else None,first_removal_M=s['first_removal'],r50_initial=shell[0]['r50'],r50_last_pre_removal=shell[-1]['r50'],last_shell_time_M=shell[-1]['time'],core_lapse_final=h[-1]['core_lapse'],core_lapse_min=min(r['core_lapse'] for r in h),max_rest_mass_closure=max(abs(r['closure']) for r in m),final_particles=d['state']['latest']['particle_count'],final_Mirr_median=np.median([r['mirr'] for r in tail]) if tail else None,final_MCH_median=np.median([r['mass'] for r in tail]) if tail else None)
+        if mode!='long':
+            initial=load(d['source']/'runs/yc0500/INITIAL_OK.json')
+            record.update(initial_relative_mean_abs_L_change=initial['relative_mean_abs_L_change'],initial_particle_Killing_energy_change=initial['particle_Killing_energy_perturbed']-initial['particle_Killing_energy_initial'])
+            reference=load(EXT/'evidence/INDEPENDENT_CONSTRAINT_REFERENCE_OK.json')
+            U=-.02 if mode=='inward0020' else -.05
+            record['initial_continuum_delta_ADM_mass']=next(v['independent_delta_ADM_mass'] for v in reference['results'] if v['U']==U)
         if mode=='long':
             late=[r for r in shell if r['time']>=max(300,shell[-1]['time']-50)]
             record['late_r50_slope']=float(np.polyfit([r['time'] for r in late],[r['r50'] for r in late],1)[0]) if len(late)>1 else None

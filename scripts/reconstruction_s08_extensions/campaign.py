@@ -21,7 +21,7 @@ def setup(root,U,exe):
         if not dest.exists():dest.symlink_to(source)
     text=(BASE/'inputs/yc0500.athinput').read_text()
     text=section(text,'time',dict(tlim=500 if U==0 else 300))
-    text=section(text,'problem',dict(cluster_sample_file=root/'samples/yc0500.bin',cluster_t0_dump=root/'runs/yc0500/initial_particles.bin',cluster_radial_mode_u=U,cluster_solve_momentum_constraint='true' if U!=0 or root.name=='control' else 'false',cluster_solve_hamiltonian_constraint='true' if U!=0 or root.name=='control' else 'false'))
+    text=section(text,'problem',dict(cluster_sample_file=root/'samples/yc0500.bin',cluster_t0_dump=root/'runs/yc0500/initial_particles.bin',cluster_radial_mode_u=U,cluster_solve_momentum_constraint='true' if U!=0 or root.name.startswith('control') else 'false',cluster_solve_hamiltonian_constraint='true' if U!=0 or root.name.startswith('control') else 'false'))
     (root/'inputs/yc0500.athinput').write_text(text)
 
 
@@ -78,7 +78,7 @@ def constraint_gate(mode):
     U=-.02 if mode=='inward0020' else -.05
     checked=next(v for v in reference['results'] if v['U']==U)
     assert checked['source_profile']['sha256']==receipt(EXT/'evidence'/f'constraint_{abs(U):.3f}.txt')['sha256']
-    control=EXT/'control/runs/yc0500';work=EXT/mode/'runs/yc0500'
+    control=EXT/f"control_{os.environ['SLURM_NTASKS']}"/'runs/yc0500';work=EXT/mode/'runs/yc0500'
     a=np.atleast_2d(np.loadtxt(control/'yc0500.user.hst'))[0];b=np.atleast_2d(np.loadtxt(work/'yc0500.user.hst'))[0]
     ratios={name:float(np.sqrt(b[k]/a[k])) for name,k in [('H_r10',3),('M_r10',4),('H_r16',9),('M_r16',10)]}
     ga=np.atleast_2d(np.loadtxt(control/'yc0500.z4c.user.hst'))[0];gb=np.atleast_2d(np.loadtxt(work/'yc0500.z4c.user.hst'))[0]
@@ -135,7 +135,7 @@ def inward(mode):
             atomic(ROOT/'evidence/FALLBACK_NOT_REQUIRED.json',dict(utc=now(),job=job(),prior=prior['latest']));return
     build()
     if not (EXT/'evidence/constraint_0.020.txt').exists():constraint_reference()
-    initialize('control',0);initialize(mode,U);constraint_gate(mode)
+    initialize('control_'+os.environ['SLURM_NTASKS'],0);initialize(mode,U);constraint_gate(mode)
     work=ROOT/'runs/yc0500';state=load(work/'state.json')
     if not state['complete']:
         remain=int(os.environ['ST8X_WALL_SECONDS'])-(time.time()-float(os.environ['ST8X_START_EPOCH']))-600
