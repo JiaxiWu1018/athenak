@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+ulimit -c 0
 export ST8X_ROOT=/work1/eliasmost/jiaxiwu/st_s08_yc0500_extensions_20261023
 export ST8X_BASE=/work1/eliasmost/jiaxiwu/st_reconstruction_s08_production_20261021
 mode=$1

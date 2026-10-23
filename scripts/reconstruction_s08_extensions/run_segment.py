@@ -61,6 +61,7 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
     assert not (initialize and suppress_segment_3d)
     if not initialize:
         assert load(ROOT/'evidence/PRODUCTION_ADMISSION.json')['case']==c['id']
+    assert int(os.environ.get('SLURM_NTASKS','1'))>=2, 'Production mesh requires at least two MI210 GPUs; single-GPU memory gate failed before evolution'
     job();admission();work=ROOT/'runs'/c['id'];work.mkdir(parents=True,exist_ok=True)
     statefile=work/'state.json';state=load(statefile) if statefile.exists() else dict(segments=[])
     if initialize and state['segments']:

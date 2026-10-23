@@ -46,7 +46,15 @@ def watchdog():
             next_disk=t+300
         if t-last_disk>900:stop('storage_telemetry_stale')
         try:
-            gpu=json.loads(subprocess.check_output(['rocm-smi','--showmeminfo','vram','--json'],text=True,timeout=30))
+            nodes=int(os.environ.get('SLURM_NNODES','1'))
+            if nodes==1:
+                gpu=json.loads(subprocess.check_output(['rocm-smi','--showmeminfo','vram','--json'],text=True,timeout=30))
+            else:
+                probe="import json,socket,subprocess;d=json.loads(subprocess.check_output(['rocm-smi','--showmeminfo','vram','--json']));print(json.dumps({socket.gethostname()+':'+k:v for k,v in d.items()}))"
+                raw=subprocess.check_output(['srun','--overlap','-N',str(nodes),'-n',str(nodes),'--ntasks-per-node=1','python3','-c',probe],text=True,timeout=45)
+                gpu={}
+                for line in raw.splitlines():gpu.update(json.loads(line))
+                assert len(gpu)>=nodes
             ratios=[]
             for f in gpu.values():
                 if not isinstance(f,dict):continue
