@@ -152,7 +152,10 @@ def inward(mode):
 
 if __name__=='__main__':
     job();mode=sys.argv[1]
-    if mode=='review':
+    if mode=='render_check':
+        from render_check import main
+        main()
+    elif mode=='review':
         from products import main
         main()
         from boundary_review import main as boundary_main

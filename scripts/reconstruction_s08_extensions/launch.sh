@@ -8,7 +8,7 @@ export ROOT="$ST8X_ROOT/$mode"
 export ST8X_U=0
 if [ "$mode" = inward0020 ]; then export ST8X_U=-0.02; fi
 if [ "$mode" = inward0050 ]; then export ST8X_U=-0.05; fi
-export PYTHONPATH="$ST8X_ROOT/scripts:$ST8X_BASE/src/athenak/scripts/reconstruction_s05:$ST8X_BASE/src/athenak/vis/python:$ST8X_BASE/dependencies/site"
+export PYTHONPATH="$ST8X_ROOT/scripts:$ST8X_ROOT/dependencies/site:$ST8X_BASE/src/athenak/scripts/reconstruction_s05:$ST8X_BASE/src/athenak/vis/python:$ST8X_BASE/dependencies/site"
 export MPLBACKEND=Agg PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 TZ=UTC
 module purge
 module load gnu12/12.2.0 openmpi4/4.1.8 cmake/3.25.2 prun/2.3 rocm/6.4.1
