@@ -145,7 +145,8 @@ def inward(mode):
     initialize('control_'+control_ranks,0);initialize(mode,U);constraint_gate(mode)
     work=ROOT/'runs/yc0500';state=load(work/'state.json')
     registered={str(v['id']):v for v in load(EXT/'evidence/jobs.json')}
-    previous=state['segments'][-1];old_ranks=previous.get('ranks',registered[str(previous['job'])]['ranks'])
+    previous=state['segments'][-1];old_ranks=previous.get('ranks')
+    if old_ranks is None:old_ranks=registered[str(previous['job'])]['ranks']
     if not state['complete'] and old_ranks!=int(os.environ['SLURM_NTASKS']):
         from restart_identity import gate
         gate(state['latest']['path'])
@@ -180,6 +181,14 @@ if __name__=='__main__':
         main()
         from boundary_review import main as boundary_main
         boundary_main()
+        import pypdfium2
+        previews=[]
+        for path in sorted((ROOT/'plots').glob('*.pdf')):
+            doc=pypdfium2.PdfDocument(str(path));assert len(doc)==1
+            out=path.with_name(path.stem+'_PDF_preview.png')
+            doc[0].render(scale=1.7).to_pil().save(out)
+            previews.append(dict(pdf=receipt(path),preview=receipt(out)))
+        atomic(ROOT/'evidence/PDF_RASTERS.json',dict(utc=now(),job=job(),products=previews,actual_visual_review='pending'))
     elif mode=='reference':
         from reference_validation import main
         main()
