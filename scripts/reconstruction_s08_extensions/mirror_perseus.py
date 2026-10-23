@@ -48,7 +48,7 @@ def main():
                    '-o', 'JobIDRaw,State,ExitCode,ElapsedRaw,AllocNodes,Start,End,Partition,NodeList']).decode()
     rows = [line.split('|') for line in text.splitlines() if line.strip()]
     assert {r[0] for r in rows} == {str(r['id']) for r in jobs}
-    assert all(r[1].split('+')[0] in ['COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT',
+    assert all(r[1].split()[0].rstrip('+') in ['COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT',
                                       'OUT_OF_MEMORY', 'PREEMPTED', 'NODE_FAIL'] for r in rows), rows
     (record / 'amd_terminal_sacct.psv').write_text(text)
     total = sum(int(r[3] or 0) * int(r[4] or 0) / 3600 for r in rows)
