@@ -125,6 +125,9 @@ def long():
 
 
 def inward(mode):
+    existing=ROOT/'runs/yc0500/state.json'
+    if existing.exists() and load(existing).get('complete'):
+        atomic(ROOT/'evidence/jobs'/job()/'ALREADY_COMPLETE.json',dict(job=job(),utc=now(),state=load(existing)['latest']));return
     U=-.02 if mode=='inward0020' else -.05
     if mode=='inward0050':
         prior=load(EXT/'inward0020/runs/yc0500/state.json')

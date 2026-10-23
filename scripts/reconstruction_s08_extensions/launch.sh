@@ -15,6 +15,12 @@ module load gnu12/12.2.0 openmpi4/4.1.8 cmake/3.25.2 prun/2.3 rocm/6.4.1
 export OMPI_MCA_btl_vader_single_copy_mechanism=none
 mkdir -p "$ROOT/evidence/jobs/$SLURM_JOB_ID"
 record="$ROOT/evidence/jobs/$SLURM_JOB_ID"
+mkdir -p "$ST8X_ROOT/evidence/locks"
+exec 9>"$ST8X_ROOT/evidence/locks/$mode.lock"
+if ! flock -n 9; then
+ echo "duplicate candidate: another allocation owns $mode" > "$record/DUPLICATE_NOT_STARTED.txt"
+ exit 0
+fi
 start_epoch=$(date +%s)
 export ST8X_START_EPOCH=$start_epoch
 export ST8X_WALL_SECONDS=${ST8X_WALL_SECONDS:-21600}
