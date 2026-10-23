@@ -1,4 +1,4 @@
-"""Five fixed-ID movies and a synchronized comparison, from source-backed reductions."""
+"""Validated fixed-ID movie primitives reused for the Session8 extensions."""
 import argparse,csv,math,re
 import numpy as np
 import matplotlib
@@ -76,7 +76,7 @@ def spatial_window(d):
 def panel(fig,axes,d):
     if 'spatial_window' not in d:d['spatial_window']=spatial_window(d)
     xy,shell,lap=axes;c=d['case'];R=d['R'];limits=d['spatial_window']['half_width_M']
-    xy.set(xlim=(-limits,limits),ylim=(-limits,limits),aspect='equal',xlabel=r'$x/M$',ylabel=r'$y/M$',title=rf'$y_c={c["yc"]:.3f}$')
+    xy.set(xlim=(-limits,limits),ylim=(-limits,limits),aspect='equal',xlabel=r'$x/M_{\rm ref}$',ylabel=r'$y/M_{\rm ref}$',title=rf'$y_c={c["yc"]:.3f}$')
     ang=np.linspace(0,2*np.pi,257);xy.plot(R*np.cos(ang),R*np.sin(ang),color='.5',ls=':',lw=.7)
     scatter=xy.scatter([],[],s=1.8,c=[],cmap='viridis',norm=Normalize(0,1),alpha=.6,edgecolors='none',rasterized=True)
     ah,=xy.plot([],[],color='.12',lw=1.4)
@@ -84,9 +84,9 @@ def panel(fig,axes,d):
     ended=xy.text(.5,.5,'',transform=xy.transAxes,ha='center',va='center',fontsize=11)
     for q in range(10,100,10):shell.plot(array(d['shell'],'time'),array(d['shell'],f'r{q}'),color=plt.get_cmap('cividis')((q-10)/80),lw=.8)
     if 'shell_limits' not in d:d['shell_limits']=shell_limits(d['shell'])
-    shell.set(yscale='log',ylim=d['shell_limits'],xlim=(0,d['summary']['endpoint']),ylabel=r'$r_q/M$')
+    shell.set(yscale='log',ylim=d['shell_limits'],xlim=(0,d['summary']['endpoint']),ylabel=r'$r_q/M_{\rm ref}$')
     lap.plot(array(d['history'],'time'),array(d['history'],'core_lapse'),color='#275d7f',lw=1)
-    lap.set(ylim=(0,1),xlim=(0,d['summary']['endpoint']),xlabel=r'$t/M$',ylabel=r'$\langle\alpha\rangle_c$')
+    lap.set(ylim=(0,1),xlim=(0,d['summary']['endpoint']),xlabel=r'$t/M_{\rm ref}$',ylabel=r'$\langle\alpha\rangle_c$')
     lines=[ax.axvline(0,color='#b35c26',lw=1) for ax in [shell,lap]]
     for ax in [shell,lap]:ax.grid(alpha=.15,lw=.5)
     return dict(scatter=scatter,ah=ah,text=text,ended=ended,lines=lines,last=-1,phi=ang,basis=equator_basis(ang))
@@ -95,7 +95,7 @@ def update(d,p,t,synchronize=False):
     end=d['summary']['endpoint']
     if t>end+1e-8:
         p['scatter'].set_offsets(np.empty((0,2)));p['ah'].set_data([],[])
-        p['ended'].set_text(f'Run ended\nat t/M = {end:.2f}')
+        p['ended'].set_text(f'Run ended\nat t/Mref = {end:.2f}')
         p['text'].set_text('');[line.set_xdata([end,end]) for line in p['lines']];return
     i=max(0,np.searchsorted(d['times'],t+1e-10,side='right')-1)
     if i!=p['last']:
@@ -105,7 +105,7 @@ def update(d,p,t,synchronize=False):
         assert np.all(np.abs(v[visible,1:3])<=d['spatial_window']['half_width_M'])
         p['scatter'].set_offsets(v[visible,1:3]);p['scatter'].set_array(d['radius'][visible]/d['R'])
         x,y=outline(d,actual,p['phi'],p['basis']);p['ah'].set_data(x,y)
-        p['text'].set_text(f't/M = {actual:.2f}\n{int(mask.sum()):,} cohort particles alive')
+        p['text'].set_text(f't/Mref = {actual:.2f}\n{int(mask.sum()):,} cohort particles alive')
     p['ended'].set_text('');[line.set_xdata([t,t]) for line in p['lines']]
 
 def ffmpeg_exe():
@@ -129,7 +129,7 @@ def encode(name,fig,states,times,sync=False):
     import shutil
     for i,t in enumerate(times):
         for d,p in states:update(d,p,float(t),sync)
-        if sync:fig.suptitle(f'Session 8 • synchronized time t/M = {t:.1f}',fontsize=12)
+        if sync:fig.suptitle(f'Session 8 extensions • synchronized time t/Mref = {t:.1f}',fontsize=12)
         frame=frames/f'{i:06d}.png'
         fig.savefig(frame,dpi=120,facecolor='white')
         if i in previews:shutil.copyfile(frame,ROOT/'plots'/f'{name}_review_{i:04d}.png')
@@ -157,34 +157,3 @@ def encode(name,fig,states,times,sync=False):
                 shell_radius_limits_M={d['case']['id']:d['shell_limits'] for d,_ in states},
                 initial_radius_color_encoding='r0/R_iso(0), fixed per particle; common color range0..1',
                 visual_review='pending')
-
-def main():
-    job();style();(ROOT/'movies').mkdir(exist_ok=True);(ROOT/'plots').mkdir(exist_ok=True)
-    ds=[load_case(c) for c in CASES[::-1]];products=[]
-    radius_limits=shell_limits(*(d['shell'] for d in ds))
-    for d in ds:d['shell_limits']=radius_limits
-    for d in ds:
-        fig=plt.figure(figsize=(10,6),layout='constrained');grid=fig.add_gridspec(2,2,width_ratios=[1.1,1])
-        axes=[fig.add_subplot(grid[:,0]),fig.add_subplot(grid[0,1]),fig.add_subplot(grid[1,1])]
-        p=panel(fig,axes,d)
-        cb=fig.colorbar(p['scatter'],ax=axes[0],fraction=.035,pad=.025,ticks=[0,.5,1])
-        cb.set_label(r'Initial radius $r_0/R_{\rm iso}(0)$')
-        fig.suptitle('Fixed particle IDs • color = initial radius fraction • accepted AH at z=0',fontsize=11)
-        products.append(encode(d['case']['id'],fig,[(d,p)],d['times']))
-    fig=plt.figure(figsize=(16,7.5),layout='constrained');grid=fig.add_gridspec(3,5,height_ratios=[2,1,1]);states=[];spatial_axes=[]
-    for j,d in enumerate(ds):
-        axes=[fig.add_subplot(grid[k,j]) for k in range(3)];states.append((d,panel(fig,axes,d)));spatial_axes.append(axes[0])
-        if j:
-            for ax in axes:ax.set_ylabel('')
-    cb=fig.colorbar(states[0][1]['scatter'],ax=spatial_axes,fraction=.015,pad=.01,ticks=[0,.5,1])
-    cb.set_label(r'Initial radius $r_0/R_{\rm iso}(0)$')
-    times=np.arange(0,max(d['summary']['endpoint'] for d in ds)+1e-8,.5)
-    products.append(encode('s08_comparison',fig,states,times,True))
-    atomic(ROOT/'evidence/MOVIES_RENDERED.json',dict(utc=now(),job=job(),products=products))
-    (ROOT/'reports/MOVIES.md').write_text('''# Session 8 movies
-
-Five individual movies and one synchronized comparison, 15 fps. Each uses the same 20,000 initial particle IDs (tags divisible by100), with immutable initial-radius colors. The labeled color scale is the initial coordinate radius divided by that model's initial isotropic surface radius, r0/R_iso(0), with common bounds0–1. This makes the existing per-model normalization explicit; it is not a common physical radius in M across models. Only the slice |z|<0.05 R_iso(0) is shown. The spatial window and slice thickness remain fixed per model. The window encloses the central-slice cohort over all plotted times with a 5% margin and is at least 1.15 times the initial surface radius; it does not zoom during playback. Spatial scales differ between models and axes carry M units. The dotted circle is the initial isotropic surface radius. Black contours are accepted AH equatorial cross-sections reconstructed with the native real spherical-harmonic convention. Rejected searches and stale surfaces are not drawn. Shell curves stop at first removal. All final movie shell panels share a fixed radius range containing every audited shell radius across the five models. Synchronized panels use the latest completed cohort sample and print its actual time; completed runs are explicitly marked and cleared. No frames imply evolution beyond a run endpoint.
-
-All encoded frames were decoded for integrity. Final human-readable visual-review status is recorded separately in the session report.
-''')
-if __name__=='__main__':main()

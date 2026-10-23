@@ -141,12 +141,14 @@ def figures(data):
     ax[0,0].set_ylabel(r'Rest mass / initial $M_0$');ax[1,0].set_ylabel(r'$M_{0,{\rm accounted}}/M_0(0)-1$');ax[0,-1].legend(frameon=False,fontsize=8,loc='center')
     save(fig,'s08_extension_mass_conservation')
     fig,axes=plt.subplots(1,len(data),figsize=(5*len(data),3.6),squeeze=False,layout='constrained',sharey=True)
+    accepted_masses=[r[k] for d in data for r in d['ah'] if r['accepted']==1 for k in ['mirr','mass']]
+    ah_upper=max(1.15,1.08*max(accepted_masses)) if accepted_masses else 1.15
     for ax,d in zip(axes[0],data):
         ah=d['ah'];good=array(ah,'accepted')==1
         for key,c,ls,label in [('mirr','#275d7f','-',r'$M_{\rm irr}$'),('mass','#b35c26','--',r'$M_{\rm CH}$')]:
             values=array(ah,key);values[~good]=np.nan;ax.plot(array(ah,'time'),values,c=c,ls=ls,label=label)
         if not good.any():ax.text(.5,.5,'No accepted horizon',ha='center',transform=ax.transAxes)
-        ax.set(title=d['case']['title'],xlabel=r'$t/M_{\rm ref}$',xlim=(0,d['summary']['endpoint']),ylim=(0,1.15));events([ax],d['summary'])
+        ax.set(title=d['case']['title'],xlabel=r'$t/M_{\rm ref}$',xlim=(0,d['summary']['endpoint']),ylim=(0,ah_upper));events([ax],d['summary'])
     axes[0,0].set_ylabel(r'AH mass / $M_{\rm ref}$');axes[0,-1].legend(frameon=False)
     save(fig,'s08_extension_AH_masses')
     atomic(ROOT/'evidence/PLOTS_RENDERED.json',dict(job=job(),utc=now(),products=[receipt(p) for p in sorted((ROOT/'plots').glob('*.pdf'))],visual_review='pending actual inspection',x_axes='Each column uses its actual endpoint; time units common; do not compare column widths as durations'))
