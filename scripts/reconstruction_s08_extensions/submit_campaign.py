@@ -15,6 +15,14 @@ active=[line.split('|') for line in q.splitlines() if '|st8x_' in line]
 registered={str(v['id']):v for v in records}
 assert all(v[0] in registered for v in active),active
 candidate='--candidate' in sys.argv[5:]
+afterok_args=[arg.split('=',1)[1] for arg in sys.argv[5:] if arg.startswith('--afterok=')]
+assert len(afterok_args)<=1,afterok_args
+afterok=afterok_args[0] if afterok_args else None
+if afterok is not None:
+ assert mode=='review' and re.fullmatch(r'[0-9]+',afterok), 'Only the final review may wait for registered production success'
+ assert afterok in registered and registered[afterok]['mode'] in ['long','recover_long'],afterok
+ dependency='#SBATCH --dependency=afterok:'+afterok+'\n'
+else:dependency=''
 same=[registered[v[0]] for v in active if registered[v[0]]['mode']==mode]
 assert not same or (candidate and all(v['partition']!=partition for v in same)),('duplicate candidate partition',active)
 assert sum(int(v[2]) for v in active)+nodes<=4,active
@@ -36,14 +44,14 @@ f.write_text(f'''#!/bin/bash
 #SBATCH -c {cpus}
 #SBATCH --exclusive
 #SBATCH --no-requeue
-#SBATCH -t {hours:02d}:00:00
+{dependency}#SBATCH -t {hours:02d}:00:00
 #SBATCH -o {a}/logs/%x.%j.log
 export ST8X_WALL_SECONDS={hours*3600}
 bash {a}/scripts/launch.sh {mode}
 ''')
 subprocess.run(['rsync','-a',str(f),'hpcfund.amd.com:'+a+'/scripts/'],check=True)
 reply=remote(['sbatch','--parsable',a+'/scripts/'+f.name]);ids=re.findall(r'^([0-9]+)(?:;[^\n]*)?$',reply,re.M);assert len(ids)==1,reply
-record=dict(id=ids[0],host='amd',mode=mode,hours=hours,nodes=nodes,ranks=ranks,partition=partition,script=str(f),reply=reply,used_before=used,reserved_before=reserved,utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
+record=dict(id=ids[0],host='amd',mode=mode,hours=hours,nodes=nodes,ranks=ranks,partition=partition,afterok=afterok,script=str(f),reply=reply,used_before=used,reserved_before=reserved,utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
 records.append(record);state['status']='RUNNING_OR_QUEUED';statepath.write_text(json.dumps(state,indent=2)+'\n')
 (r/'evidence/jobs.json').write_text(json.dumps(records,indent=2)+'\n')
 (r/'evidence'/('SUBMITTED_'+ids[0]+'.json')).write_text(json.dumps(record,indent=2)+'\n')
