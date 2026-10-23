@@ -1,11 +1,13 @@
-"""One-shot, read-only AMD metadata inspection; persist the Perseus handoff.
+"""One-shot, read-only campaign metadata inspection; persist the Perseus handoff.
 
 This is an interactive status command, not a controller. It never submits,
 cancels, restarts or changes a simulation and does not read bulk particle data.
 """
 import datetime
 import json
+import os
 from pathlib import Path
+import re
 import subprocess
 
 E = Path('/data/jiaxiwu/NRPIC/reconstruction_ST/08_production_20261021/extensions/yc0500_long_and_inward_20261023')
@@ -57,11 +59,47 @@ print(json.dumps(dict(queue=queue,active_registered_jobs=active,cases=cases,acco
 '''
 
 
+def perseus_transfer():
+    state = json.loads((E / 'evidence/state.json').read_text())
+    jid = state.get('perseus_mirror_job')
+    if not jid:
+        return None
+    assert jid.isdigit()
+    result = subprocess.run(['scontrol', 'show', 'job', jid, '-o'],
+                            text=True, capture_output=True, timeout=30,
+                            env=dict(os.environ, TZ='UTC'))
+    saved = E / 'evidence' / ('PERSEUS_TERMINAL_' + jid + '.json')
+    if result.returncode:
+        if saved.exists():
+            return dict(json.loads(saved.read_text()), preserved_terminal_snapshot=True)
+        return dict(job=jid, terminal=None, handle_missing='Invalid job id' in result.stderr,
+                    error=result.stderr, action='No resubmission; inspect mirror and allocation receipts')
+    fields = dict(re.findall(r'(\w+)=(\S+)', result.stdout))
+    phase = fields['JobState'].rstrip('+')
+    terminal = phase in {'COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT', 'PREEMPTED', 'OUT_OF_MEMORY', 'NODE_FAIL'}
+    runtime = fields['RunTime']
+    days, clock = runtime.split('-') if '-' in runtime else ('0', runtime)
+    hour, minute, second = map(int, clock.split(':'))
+    elapsed = int(days) * 86400 + hour * 3600 + minute * 60 + second
+    nodes = int(fields['NumNodes']) if fields['NumNodes'].isdigit() else 0
+    snapshot = dict(job=jid, utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        Slurm_timestamp_timezone='UTC', phase=phase, terminal=terminal,
+        exit_code=fields.get('ExitCode'), runtime_seconds=elapsed, nodes=nodes,
+        scheduler_observed_node_hours=elapsed * nodes / 3600,
+        start=fields.get('StartTime'), end=fields.get('EndTime'), raw=result.stdout,
+        source='scontrol live or retained terminal record; accounting database is disabled',
+        mirror_verified_receipt_present=(E / 'evidence/MIRROR_VERIFIED.json').exists())
+    if terminal and not saved.exists():
+        saved.write_text(json.dumps(snapshot, indent=2) + '\n')
+    return snapshot
+
+
 def main():
     result = subprocess.run(['ssh', '-o', 'BatchMode=yes', 'hpcfund.amd.com', 'python3', '-'],
                             input=PROBE, text=True, capture_output=True, timeout=120)
     result.check_returncode()
     observation = json.loads(result.stdout)
+    observation['perseus_transfer'] = perseus_transfer()
     current = datetime.datetime.now(datetime.timezone.utc)
     observation.update(utc=current.isoformat(),
                        classification='verified wait' if observation['active_registered_jobs'] else 'terminal observation',
@@ -72,6 +110,8 @@ def main():
     path = E / 'evidence/state.json'
     state = json.loads(path.read_text())
     state.update(utc=observation['utc'], latest_observation=name)
+    if observation['perseus_transfer'] is not None:
+        state['perseus_transfer_observation'] = observation['perseus_transfer']
     for mode, case in observation['cases'].items():
         dest = state['observed_progress'].setdefault(mode, {})
         dest.update(validated_closed_time_M=case['closed_time'], complete=case['complete'],
@@ -90,7 +130,8 @@ def main():
                       final_fields=v['final_fields'],reduction=v.get('reduction')) for k,v in observation['cases'].items()},
         allocated_node_hours=observation['allocated_node_hours'],
         AMD_extension_GiB=observation['latest_disk']['extension']/1024**3,
-        latest_GPU_fraction=observation['latest_GPU_fraction'],record=name),indent=2))
+        latest_GPU_fraction=observation['latest_GPU_fraction'],
+        Perseus_transfer={k:v for k,v in (observation['perseus_transfer'] or {}).items() if k!='raw'},record=name),indent=2))
 
 
 if __name__ == '__main__':
