@@ -13,6 +13,9 @@ export MPLBACKEND=Agg PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREA
 module purge
 module load gnu12/12.2.0 openmpi4/4.1.8 cmake/3.25.2 prun/2.3 rocm/6.4.1
 export OMPI_MCA_btl_vader_single_copy_mechanism=none
+# 475604 aborted in UCX1.18.1 rocm_ipc_cache_map_memhandle. Retain GPU-aware
+# rocm_copy and other transports, excluding the failing ROCm IPC transport.
+export UCX_TLS='^rocm_ipc' UCX_MEMTYPE_CACHE=n UCX_LOG_LEVEL=info
 mkdir -p "$ROOT/evidence/jobs/$SLURM_JOB_ID"
 record="$ROOT/evidence/jobs/$SLURM_JOB_ID"
 mkdir -p "$ST8X_ROOT/evidence/locks"
@@ -34,7 +37,7 @@ atomic(Path(sys.argv[1])/'ALLOCATION_END.json',dict(utc=now(),job=job(),elapsed=
 END_RECEIPT
 }
 trap finish EXIT
-{ hostname; date -Is; module list 2>&1; hipcc --version; command -v prun; scontrol show job "$SLURM_JOB_ID"; rocm-smi --showproductname --showmeminfo vram; } > "$record/environment.txt" 2>&1
+{ hostname; date -Is; module list 2>&1; hipcc --version; command -v prun; printf 'UCX_TLS=%s\nUCX_MEMTYPE_CACHE=%s\nUCX_LOG_LEVEL=%s\n' "$UCX_TLS" "$UCX_MEMTYPE_CACHE" "$UCX_LOG_LEVEL"; scontrol show job "$SLURM_JOB_ID"; rocm-smi --showproductname --showmeminfo vram; } > "$record/environment.txt" 2>&1
 mkdir -p "$record/workflow"
 cp -p "$ST8X_ROOT"/scripts/*.py "$ST8X_ROOT"/scripts/*.sh "$record/workflow/"
 cp -p "$ST8X_ROOT/evidence/SOURCE_PIN.json" "$record/NATIVE_SOURCE_PIN.json"

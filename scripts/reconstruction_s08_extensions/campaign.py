@@ -105,7 +105,7 @@ def long():
         atomic(work/'INITIAL_OK.json',dict(inherited_original=True,source=receipt(source),utc=now(),job=job()))
         from restart_identity import gate
         gate(destination)
-    if not (ROOT/'evidence/PRODUCTION_ADMISSION.json').exists() or load(ROOT/'evidence/PRODUCTION_ADMISSION.json').get('ranks')!=int(os.environ['SLURM_NTASKS']):
+    if not (ROOT/'evidence/PRODUCTION_ADMISSION.json').exists() or load(ROOT/'evidence/PRODUCTION_ADMISSION.json').get('ranks')!=int(os.environ['SLURM_NTASKS']) or load(ROOT/'evidence/PRODUCTION_ADMISSION.json').get('transport_profile')!=transport_profile():
         from restart_identity import gate
         gate(load(state)['latest']['path'])
     benchmark=ROOT/'evidence/BENCHMARK.json'
@@ -147,9 +147,15 @@ def inward(mode):
     registered={str(v['id']):v for v in load(EXT/'evidence/jobs.json')}
     previous=state['segments'][-1];old_ranks=previous.get('ranks')
     if old_ranks is None:old_ranks=registered[str(previous['job'])]['ranks']
-    if not state['complete'] and old_ranks!=int(os.environ['SLURM_NTASKS']):
+    # Each new allocation verifies the actual host/rank/transport combination.
+    if not state['complete']:
         from restart_identity import gate
         gate(state['latest']['path'])
+        request=work/'REQUEST_STOP'
+        if request.exists() and request.read_text().strip()=='transport_review_after_475604_rocm_ipc_abort':
+            assert transport_profile()['UCX_TLS']=='^rocm_ipc' and transport_profile()['UCX_MEMTYPE_CACHE']=='n'
+            atomic(work/(job()+'.cleared_transport_stop.json'),dict(utc=now(),job=job(),request=request.read_text(),identity=load(ROOT/'evidence/PRODUCTION_ADMISSION.json')))
+            request.unlink()
     if not state['complete']:
         remain=int(os.environ['ST8X_WALL_SECONDS'])-(time.time()-float(os.environ['ST8X_START_EPOCH']))-600
         state=run(CASE,target=300,wall_seconds=max(120,int(remain)),suppress_segment_3d=True)

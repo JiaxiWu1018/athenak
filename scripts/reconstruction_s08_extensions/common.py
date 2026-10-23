@@ -31,6 +31,10 @@ def cmd(args,**kwargs):return subprocess.run(list(map(str,args)),check=True,**kw
 def receipt(path):
     p=Path(path);return dict(path=str(p),bytes=p.stat().st_size,sha256=sha(p))
 
+def transport_profile():
+    return {key:os.environ.get(key,'') for key in
+            ['UCX_TLS','UCX_MEMTYPE_CACHE','UCX_LOG_LEVEL','OMPI_MCA_btl_vader_single_copy_mechanism']}
+
 
 def native_launcher():
     """One MPI rank per allocated GPU; physics arguments stay unchanged."""

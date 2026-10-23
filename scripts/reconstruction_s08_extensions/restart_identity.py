@@ -32,7 +32,7 @@ def gate(source):
     err=max(float(np.max(abs(ga[k,:,4:-4,4:-4,4:-4]-gb[k,:,4:-4,4:-4,4:-4])/np.maximum(1,abs(ga[k,:,4:-4,4:-4,4:-4])))) for k in range(a[1]))
     assert err<1e-12,err
     before.pop('parameters');after.pop('parameters')
-    record=dict(job=job(),utc=now(),case='yc0500',source=before,destination=after,physical_fields_exact=True,interior_grid_max_scaled_error=err,ranks=ranks,zero_steps=True)
+    record=dict(job=job(),utc=now(),case='yc0500',source=before,destination=after,physical_fields_exact=True,interior_grid_max_scaled_error=err,ranks=ranks,zero_steps=True,transport_profile=transport_profile())
     atomic(ROOT/'evidence'/('RESTART_IDENTITY_'+job()+'.json'),record)
     path=ROOT/'evidence/PRODUCTION_ADMISSION.json'
     previous=load(path) if path.exists() else {}
