@@ -3,7 +3,7 @@ basename = os_ah
 <mesh>
 nghost = 4
 nx1 = 64
-x2 = 64
+nx2 = 64
 nx3 = 64
 x1min = -64
 x1max = 64

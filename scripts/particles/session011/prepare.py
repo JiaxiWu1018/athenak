@@ -62,13 +62,16 @@ def change(text,overrides,added=None):
 def generate():
  original=(HERE/'inputs/session010_reference.athinput').read_text()
  overrides={('job','basename'):'s11_orbit_gw',('time','tlim'):'150.0',
- ('time','nlim'):'-1',('z4c','nrad_wave_extraction'):'3',('fastflow','verbose'):'false'}
+ ('time','nlim'):'-1',('z4c','nrad_wave_extraction'):'3',('fastflow','verbose'):'false',
+ ('output7','last_time'):'-1.0'}
  for i in range(3):overrides['fastflow',f'stop_time_{i}']='150.0'
  for i in range(2):overrides['z4c',f'co_{i}_out_every']='1'
  for i in range(1,22):
   overrides[f'output{i}','dt']='0.025' if i in (1,8) else '0.5' if i==5 else '10.0' if i in (6,7,18,19,20,21) else '0.25'
  text=change(original,overrides,{'z4c':{'extraction_radius_1':'50.0','extraction_radius_2':'60.0'},
  'fastflow':{'diagnostic_dt':'0.025'},'particles':{'orbit_diagnostic_dt':'0.025'}})
+ text=text.replace('# Explicitly suppress the redundant t0 checkpoint; clean stops always save one.',
+                   '# Initial output is unconditional; -1 preserves the first periodic checkpoint at t=10.')
  text=text.replace('Session010 approved exploratory fresh t0','Session011 approved final fresh t0')
  text=text.replace('Resource/termination/output limits require explicit Vista discussion before production.','One 16-node 36h job; hard t=150; validation remains required.')
  text=text.replace('This input is a physics template; tlim400 is provisional, not Session010 authorization.','Prepared input, not permission to bypass GPU validation or submit automatically.')
@@ -85,7 +88,7 @@ def generate():
  (HERE/'inputs/compact_validation.athinput').write_text(compact)
  # Compact, static refinement OS fixture. Distinct from production; no old comments
  # claiming MPI feedback is unsupported are inherited from the historical example.
- common='''<job>\nbasename = os_ah\n<mesh>\nnghost = 4\nnx1 = 64\nx2 = 64\nnx3 = 64\nx1min = -64\nx1max = 64\nx2min = -64\nx2max = 64\nx3min = -64\nx3max = 64\nix1_bc = outflow\nox1_bc = outflow\nix2_bc = outflow\nox2_bc = outflow\nix3_bc = outflow\nox3_bc = outflow\n<meshblock>\nnx1 = 16\nnx2 = 16\nnx3 = 16\n<mesh_refinement>\nrefinement = static\nmax_nmb_per_rank = 400\n<time>\nevolution = dynamic\nintegrator = rk4\ncfl_number = 0.4\nnlim = -1\ntlim = 40\nndiag = 100\nstop_file = REQUEST_STOP\nstop_check_every = 16\n<z4c>\nlapse_harmonic = 0\nlapse_oplog = 2\nshift_eta = 2\ndiss = 0.1\nchi_div_floor = 0.00001\ndamp_kappa1 = 0.02\ndamp_kappa2 = 0\n'''
+ common='''<job>\nbasename = os_ah\n<mesh>\nnghost = 4\nnx1 = 64\nnx2 = 64\nnx3 = 64\nx1min = -64\nx1max = 64\nx2min = -64\nx2max = 64\nx3min = -64\nx3max = 64\nix1_bc = outflow\nox1_bc = outflow\nix2_bc = outflow\nox2_bc = outflow\nix3_bc = outflow\nox3_bc = outflow\n<meshblock>\nnx1 = 16\nnx2 = 16\nnx3 = 16\n<mesh_refinement>\nrefinement = static\nmax_nmb_per_rank = 400\n<time>\nevolution = dynamic\nintegrator = rk4\ncfl_number = 0.4\nnlim = -1\ntlim = 40\nndiag = 100\nstop_file = REQUEST_STOP\nstop_check_every = 16\n<z4c>\nlapse_harmonic = 0\nlapse_oplog = 2\nshift_eta = 2\ndiss = 0.1\nchi_div_floor = 0.00001\ndamp_kappa1 = 0.02\ndamp_kappa2 = 0\n'''
  for level,r in enumerate([32,16,8,4,2,1],1):
   common+=f'<refined_region{level}>\nlevel = {level}\n'+''.join(f'x{a}min = {-r}\nx{a}max = {r}\n' for a in (1,2,3))
  ff='''<fastflow>\nnpunct = 0\nnum_horizons = 1\nntheta = 10\nlmax = 6\nuse_puncture_0 = -1\ninitial_radius_0 = 1\nexpand_guess = 1\nreuse_last_surface_shape_0 = true\npersist_surface_shape_0 = true\nconsumer_rmin_0 = 0\nconsumer_rmin_cells_0 = 4\nconsumer_rmax_0 = 4\nconsumer_hrel_0 = 0.2\nconsumer_persist_0 = 3\nflow_iterations_0 = 400\nflow_alpha_beta_const_0 = 0.005\nhmean_tol_0 = 100\nmass_tol_0 = 0.0001\nstart_time_0 = 0\nstop_time_0 = 40\ndiagnostic_dt = 0.025\nverbose = false\noutput_ylm = true\noutput_grid = false\n'''

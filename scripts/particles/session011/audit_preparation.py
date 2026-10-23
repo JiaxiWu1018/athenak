@@ -40,6 +40,6 @@ def main():
                         'User-submitted single production job after readiness',
                         'Post-run scientific analysis and paper visual verification'])
  atomic(SESSION/'evidence/PREPARATION_FINAL.json',d)
- print('PASS: three native builds match final source; eight non-science tests pass. NO SCIENCE RUNS OR PUSH.')
+ print(f'PASS: three native builds match final source; {result.testsRun} non-science tests pass. NO SCIENCE RUNS OR PUSH.')
 
 if __name__=='__main__':main()

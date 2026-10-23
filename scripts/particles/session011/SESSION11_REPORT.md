@@ -5,7 +5,87 @@ Prepared 22 October 2026 CDT, allocated Vista GG job **1091077**, host
 new preparation. Latest instruction: **finish code and compilation only; launch
 all physics/science in a separate Codex chat opened in this folder.**
 
-## Status and authority
+## Submission launcher implementation (preparation only)
+
+Implemented the discussed `submit_s11.sh` launcher, backed by versioned tools in
+`code/scripts/particles/session011/`. Commands are `check` (also the default),
+`validation`, and `production`. Nothing has been submitted or simulated by this
+implementation chat; no GitHub push has been attempted. Current preparation uses
+allocated GG job **1091475** on `i614-064.vista.tacc.utexas.edu`.
+
+The OS/spin input and generator typo `x2` is corrected to `nx2`. Production keeps
+all frozen physical/mesh/removal settings; its checkpoint `last_time` changes
+from 0 to -1 to retain t0 and restore the first periodic checkpoint at t10. The
+native driver writes initial output unconditionally, so the old value advanced
+the next checkpoint target to t20. No native C++ source changed or rebuild was
+needed. All three executables retain their verified build hashes and native tree
+`d8d40c41cd60852058a9b3f39021ffd9c2dea8f1e90e618da09ecfda267a1fce`.
+Current production input SHA256: `b402a20c6ed7306286bd458418d79ffe212c5ed499c40d68a83d77f724e5ae8c`. The initial PREPARATION.json,
+PREPARATION_FINAL.json and SOURCE_TESTS.json remain historical evidence. Consult
+`evidence/SUBMISSION_PREPARATION.json` for this implementation's current manifest,
+check results and commit; neither record is a GPU validation receipt.
+
+Validation remains one four-node/two-hour gh-dev allocation. Every case must
+reach its native checkpoint endpoint. Its checks now require actual diagnostic
+contents/cohort identities, strict accepted-horizon quality, three fresh finds,
+bad-fallback restoration and exact-cycle uninterrupted/restart comparisons.
+Real future validation receipts bind the exact source, binaries, all input decks,
+workflow tools, command overrides and retained output/log/checkpoint checksums.
+The conditional fast-forward push and production readiness reject stale/legacy
+receipts, changed executables and a changed/unpushed/dirty checkout. Existing
+upstream commits are preserved.
+
+The launcher checks TACC's refreshed local project/membership/balance maps,
+current Slurm partition limits, existing Session 11 jobs, modules and storage.
+A controller-side test-only request precedes the single requested submission.
+It uses inherited S11_ROOT and plain sbatch. Submission is restricted to Vista
+login nodes. An intent is recorded before actual sbatch; ambiguous responses,
+previous attempts or existing runtime folders block another submission pending
+explicit review. Attempts/job IDs/Slurm log and output paths append here. There
+is no automatic retry, production chaining, deletion, transfer or push.
+
+Production remains one sixteen-node/36-hour fresh run to strict t150, with one
+rank/GPU, unchanged 85% host/GPU memory and 5,760-leaf guards, 150 GiB write reserve
+and forty-minute allocation reserve. Startup now checks the actual native t0
+particle states/weights/tags/GID ranges and component census, 4,936 blocks,
+retained model profile and all-node telemetry. Failure reasons remain latched.
+Completion requires runtime telemetry, unchanged hashes, finite native final
+fields/particles and an output-coverage audit. The audit checks native layouts,
+all prescribed output families/cadence, rank cohorts, removal ledger, wave
+state-time mapping and unique angular ownership of published AH quadrature.
+AH accepted gaps, conditional common-finder absence, sparse cohort rows and the
+measured waveform endpoint gap remain explicit. This is not an independent
+scientific validity or numerical convergence claim. Runtime output sizes/free
+space/rate are recorded; inside-allocation ACCOUNTING.json is provisional until
+final Slurm accounting is inspected after the job exits.
+
+The refreshed TACC maps inspected here show AST21006 membership and **2960.289 SU**
+available; submission rechecks the maps, dates and sufficient balance. The shared
+scratch filesystem still reports about 2.9 PiB available, not archival protection.
+Validation requests at most 8 and production at most 576 GH node-hours. Production
+preflight reserves 3 TiB output headroom plus the 150 GiB write reserve. Live
+scheduler access is blocked by this chat's network sandbox; existing jobs and live
+queue limits cannot be certified here. Recheck on the login node. No new job IDs
+or actual science accounting exist from this chat. Native GPU validation, remote
+push, full-size memory behavior, actual output coverage and scientific analysis
+remain pending; all failures and raw outputs must be retained when executed.
+
+Non-science verification: **37 tests passed**, covering the original eight checks,
+mocked scheduler submissions/ambiguity, malformed inputs, retained-artifact
+changes, native endpoint/persistence gates, finite particle/tag/weight/GID checks,
+partial diagnostics, truncated binary/VTK layouts, angular ownership, removal
+ledger and completion prerequisites. Python/shell syntax and git diff checks pass.
+Mocks and synthetic temporary files are not GPU validation evidence; no passing
+GPU/push receipt has been created. Detailed logs are retained under
+`evidence/preparation_checks/` and referenced by SUBMISSION_PREPARATION.json.
+
+## Original handoff status and authority
+
+Final local preparation commit: **356ea67c** on `project/GI-in-cluster`.
+All three binaries match the final native-tree hash and all eight non-science
+checks pass. The checkout is clean. This commit is deliberately **not pushed**:
+real native GPU/science validation belongs to the next chat and remains pending.
+No simulation/build process is intentionally left running after handoff.
 
 The independent checkout is `code/`, branch `project/GI-in-cluster`, based on
 GitHub tip `cb394a814e7a403a47f8c14cb7b35bf90a85ce0f`. Four upstream commits add

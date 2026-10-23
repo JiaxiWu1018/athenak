@@ -395,8 +395,8 @@ dt = 10.0
 <output7>
 file_type = rst
 dt = 10.0
-# Explicitly suppress the redundant t0 checkpoint; clean stops always save one.
-last_time = 0.0
+# Initial output is unconditional; -1 preserves the first periodic checkpoint at t=10.
+last_time = -1.0
 
 <output8>
 file_type = cbin

@@ -53,3 +53,22 @@ def checkpoint(path, hash_file=True, expected_root=3):
     if path.stat().st_size != st.st_size or path.stat().st_mtime_ns != st.st_mtime_ns:
         raise ValueError('checkpoint changed during verification')
     return row
+
+
+def audit_particles(cp):
+    """Inspect every native particle's finite state, identity, weight, and GID range."""
+    import numpy as np
+    n = cp['particles']
+    if not n:
+        return dict(particles=0, component_counts=[0, 0, 0], component_rest_masses=[0., 0., 0.])
+    data = np.memmap(cp['path'], mode='r', dtype='<f8', offset=cp['bytes'] - n * 80, shape=(10, n))
+    if (not np.isfinite(data).all() or len(np.unique(data[9])) != n or np.any(data[0] <= 0)
+            or not np.array_equal(data[9], data[9].astype(np.int64))
+            or np.any(data[9] < 0) or np.any(data[9] >= 5_000_000)
+            or not np.array_equal(data[8], data[8].astype(np.int64))
+            or np.any(data[8] < 0) or np.any(data[8] >= cp['blocks'])):
+        raise RuntimeError('Native particle finite-state/weight/tag/GID audit failed')
+    masks = [(data[9] >= lo) & (data[9] < hi)
+             for lo, hi in ((0, 3000000), (3000000, 4000000), (4000000, 5000000))]
+    return dict(particles=n, component_counts=[int(np.count_nonzero(m)) for m in masks],
+                component_rest_masses=[float(np.sum(data[0, m])) for m in masks])
