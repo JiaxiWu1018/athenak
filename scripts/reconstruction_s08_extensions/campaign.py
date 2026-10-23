@@ -186,11 +186,17 @@ if __name__=='__main__':
     elif mode=='render_check':
         from render_check import main
         main()
-    elif mode=='review':
-        from products import main
-        main()
-        from boundary_review import main as boundary_main
-        boundary_main()
+    elif mode in ['review','primary_review']:
+        if mode=='primary_review':
+            from products import assemble,numeric,figures
+            data=assemble(['inward0020']);results=numeric(data);figures(data)
+            atomic(ROOT/'evidence/PRIMARY_PRODUCTS_READY.json',dict(utc=now(),job=job(),results=results,actual_visual_acceptance=False,scope='Completed primary numerical validation and static figures; joint campaign review remains pending'))
+            (ROOT/'reports/PRIMARY_REVIEW.md').write_text('# Completed inward primary: numerical and static review\n\nThis packet covers only the completed U=-0.02 trajectory. The long500M replay and final joint review remain active. Exact results are in extension_summary.csv and the numerical/coverage/removal-geometry receipts.\n\nShells are coordinate COM rest-mass deciles and stop before the first removal. The mass ledger is particle rest-mass bookkeeping, not ADM energy; AH mass is separate. First convergence, persistent acceptance and lapse removal are distinct times. AH masses are qualitative; no settling or convergence claim is made. The inherited frozen particle-source coupling remains unchanged.\n\nActual PDF visual acceptance is recorded separately after inspecting the exported PDF rasters.\n')
+        else:
+            from products import main
+            main()
+            from boundary_review import main as boundary_main
+            boundary_main()
         import pypdfium2
         previews=[]
         for path in sorted((ROOT/'plots').glob('*.pdf')):
@@ -199,8 +205,9 @@ if __name__=='__main__':
             doc[0].render(scale=1.7).to_pil().save(out)
             previews.append(dict(pdf=receipt(path),preview=receipt(out)))
         atomic(ROOT/'evidence/PDF_RASTERS.json',dict(utc=now(),job=job(),products=previews,actual_visual_review='pending'))
-        from closeout import main as closeout_main
-        closeout_main()
+        if mode=='review':
+            from closeout import main as closeout_main
+            closeout_main()
     elif mode=='reference':
         from reference_validation import main
         main()

@@ -15,13 +15,14 @@ def merge(rows):
     for row in rows:out[round(row['time'],8)]=row
     return [out[t] for t in sorted(out)]
 
-def assemble():
+def assemble(modes=None):
     (ROOT/'reduced').mkdir(parents=True,exist_ok=True)
     for name in ['reports','plots','movies','inputs','evidence/samples','runs']:(ROOT/name).mkdir(parents=True,exist_ok=True)
-    modes=['long','inward0020']
     first=load(EXT/'inward0020/runs/yc0500/state.json')
     assert first['complete']
-    if first['latest']['ah_onset']<0 and first['latest']['time']>=300-1e-8:modes.append('inward0050')
+    if modes is None:
+        modes=['long','inward0020']
+        if first['latest']['ah_onset']<0 and first['latest']['time']>=300-1e-8:modes.append('inward0050')
     data=[];sources=[]
     for mode in modes:
         source=EXT/mode;state=load(source/'runs/yc0500/state.json');assert state['complete']
@@ -58,7 +59,7 @@ def assemble():
         shutil.copy2(source/'inputs/yc0500.athinput',ROOT/'inputs'/(ident+'.athinput'))
         table.update(summary=summary,case=case,state=state,source=source);data.append(table)
         sources.append(dict(mode=mode,raw_root=str(source/'runs/yc0500'),state=receipt(source/'runs/yc0500/state.json'),reduction=receipt(red/'REDUCTION_OK.json'),checkpoint=state['latest'],baseline_prefix=str(BASE/'runs/yc0500') if mode=='long' else None))
-    atomic(ROOT/'evidence/SOURCE_MAP.json',dict(job=job(),utc=now(),cases=sources,baseline_prefix_reused=True,raw_moved=False))
+    atomic(ROOT/'evidence/SOURCE_MAP.json',dict(job=job(),utc=now(),cases=sources,baseline_prefix_reused='long' in modes,raw_moved=False))
     return data
 
 def numeric(data):
@@ -117,7 +118,7 @@ def numeric(data):
                 k=int(np.ceil(n*q/100))-1
                 assert rr[max(0,k-1)]-1e-10<=row[f'r{q}']<=rr[min(n-1,k+1)]+1e-10,(mode,t,q)
             spotchecks.append(dict(mode=mode,time=t,source=receipt(Path(snap['file'])),equal_weight_quantiles='all9 agree within one particle rank; COM independently computed'))
-        tail=[r for r in good if r['time']>=s['endpoint']-5]
+        tail=[r for r in good if r['time']>=s['endpoint']-5-1e-8]
         record=dict(mode=mode,endpoint_M=s['endpoint'],AH_accepted_records=len(good),first_AH_M=good[0]['time'] if good else None,first_removal_M=s['first_removal'],r50_initial=shell[0]['r50'],r50_last_pre_removal=shell[-1]['r50'],last_shell_time_M=shell[-1]['time'],core_lapse_final=h[-1]['core_lapse'],core_lapse_min=min(r['core_lapse'] for r in h),max_rest_mass_closure=max(abs(r['closure']) for r in m),final_particles=d['state']['latest']['particle_count'],final_Mirr_median=np.median([r['mirr'] for r in tail]) if tail else None,final_MCH_median=np.median([r['mass'] for r in tail]) if tail else None)
         converged=[r for r in d['ah'] if r['converged']==1]
         record['first_converged_AH_M']=converged[0]['time'] if converged else None

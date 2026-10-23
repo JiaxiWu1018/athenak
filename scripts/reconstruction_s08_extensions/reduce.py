@@ -100,7 +100,7 @@ def reduce_case(c,require_complete=True):
             assert r['rmin']>=4*r['dx'] and r['area']>0 and np.isfinite([r['mass'],r['mirr']]).all()
             assert np.isclose(r['mirr'],np.sqrt(r['area']/(16*np.pi)),rtol=1e-12)
         if good:
-            summary['ah_first']=good[0]['time'];tail=[r for r in good if r['time']>=summary['endpoint']-5]
+            summary['ah_first']=good[0]['time'];tail=[r for r in good if r['time']>=summary['endpoint']-5-1e-8]
             if tail:
                 summary['ah_endpoint_window']={key:dict(median=float(np.median([r[key] for r in tail])),
                   min=min(r[key] for r in tail),max=max(r[key] for r in tail)) for key in ['mirr','mass']}
