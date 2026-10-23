@@ -117,10 +117,7 @@ def ffmpeg_exe():
         exe=imageio_ffmpeg.get_ffmpeg_exe()
     return exe
 
-def encode(name,fig,states,times,sync=False):
-    path=ROOT/'movies'/f'{name}.mp4';exe=ffmpeg_exe();plt.rcParams['animation.ffmpeg_path']=exe
-    frames=ROOT/'frames'/f'{name}_{datetime.datetime.now(datetime.timezone.utc):%Y%m%dT%H%M%S}'
-    frames.mkdir(parents=True,exist_ok=False)
+def review_indices(states,times,sync):
     previews={0,len(times)//2,len(times)-1}
     for i,t in enumerate(times):
         for d,_ in states:
@@ -130,6 +127,13 @@ def encode(name,fig,states,times,sync=False):
         if sync:landmarks.extend([d['summary']['endpoint'],d['summary']['endpoint']+.5])
         for t in landmarks:
             if times[0]<=t<=times[-1]:previews.add(int(np.argmin(abs(times-t))))
+    return previews
+
+def encode(name,fig,states,times,sync=False):
+    path=ROOT/'movies'/f'{name}.mp4';exe=ffmpeg_exe();plt.rcParams['animation.ffmpeg_path']=exe
+    frames=ROOT/'frames'/f'{name}_{datetime.datetime.now(datetime.timezone.utc):%Y%m%dT%H%M%S}'
+    frames.mkdir(parents=True,exist_ok=False)
+    previews=review_indices(states,times,sync)
     # Keep lossless PNG inputs available for direct encoder/decoder comparisons.
     # Retain these frames on the cluster; only representative review images are mirrored.
     import shutil
@@ -146,6 +150,10 @@ def encode(name,fig,states,times,sync=False):
     frame_manifest=frames/'INPUT_MANIFEST.json'
     atomic(frame_manifest,dict(job=job(),utc=now(),name=name,frames=input_frames,fps=15,
         scope='Lossless PNG encoder inputs with exact display times; retained on the cluster'))
+    return encode_frames(name,frames,states,times,previews,frame_manifest)
+
+def encode_frames(name,frames,states,times,previews,frame_manifest):
+    path=ROOT/'movies'/f'{name}.mp4';exe=ffmpeg_exe()
     threads=min(4,max(1,int(os.environ.get('SLURM_CPUS_PER_TASK','1'))*int(os.environ.get('SLURM_NTASKS','1'))))
     cmd([exe,'-y','-v','error','-xerror','-framerate','15','-i',frames/'%06d.png',
          '-c:v','libx264','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',

@@ -25,10 +25,11 @@ def verify(packet):
         p=packet/entry['relative'];assert p.stat().st_size==entry['bytes'] and sha(p)==entry['sha256']
     return manifest
 
-def assemble():
+def assemble(keys=None):
     job();data=[];bindings=[]
     for directory in ['reduced','plots','movies','reports','runs','evidence/samples']:(ROOT/directory).mkdir(parents=True,exist_ok=True)
     for raw in ALL_CASES:
+        if keys is not None and raw['id'] not in keys:continue
         c=case_config(raw['id']);key=c['key'];packet=EXT/'imported'/key
         if not packet.exists():packet=EXT/key/'review_packet'
         manifest=verify(packet);accept=load(packet/'numerical_acceptance.json')
@@ -114,4 +115,6 @@ def figures(data):
     save(fig,'s08_extension_AH_masses')
     atomic(ROOT/'evidence/PLOTS_RENDERED.json',dict(job=job(),utc=now(),products=[receipt(p) for p in sorted((ROOT/'plots').glob('*.pdf'))],visual_review='pending actual inspection',x_axes='Each column uses its actual endpoint; time units common; do not compare column widths as durations'))
 
-if __name__=='__main__':figures(assemble())
+if __name__=='__main__':
+    import sys
+    figures(assemble(sys.argv[1:] or None))

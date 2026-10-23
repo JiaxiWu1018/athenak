@@ -7,20 +7,10 @@ from common import *
 from movie_helpers import load_case,panel,encode
 from publication_style import style,time_axis
 
-def main():
-    job();style();assert load(ROOT/'evidence/ASSEMBLY_OK.json')['source_files_SHA256_verified']
-    mode=sys.argv[1];assert mode=='comparison' or mode in [c['id'] for c in ALL_CASES]
+def layout(mode):
+    style();assert load(ROOT/'evidence/ASSEMBLY_OK.json')['source_files_SHA256_verified']
+    assert mode=='comparison' or mode in [c['id'] for c in ALL_CASES]
     name='s08_extension_comparison' if mode=='comparison' else mode
-    marker=ROOT/'evidence'/f'MOVIE_{name}_OK.json'
-    if marker.exists():
-        prior=load(marker);assert sha(prior['path'])==prior['sha256'] and prior['full_decode'];return
-    # Preserve any failed encoded attempt and its representative PNGs before a
-    # rerender. Existing completed accepted movies are returned above unchanged.
-    prior=[p for p in [ROOT/'movies'/f'{name}.mp4',*list((ROOT/'plots').glob(name+'_*review_*.png')),*list((ROOT/'plots').glob(name+'_decoded_*.png'))] if p.exists()]
-    if prior:
-        archive=ROOT/'interrupted'/f'movie_{name}_{job()}_{time.time_ns()}';archive.mkdir(parents=True)
-        atomic(archive/'BEFORE.json',[receipt(p) for p in prior])
-        for p in prior:p.rename(archive/p.name)
     cases=[load(ROOT/'reduced'/r['id']/'summary.json')['case'] for r in ALL_CASES if mode=='comparison' or r['id']==mode]
     data=[load_case(c) for c in cases];states=[]
     if mode=='comparison':
@@ -36,6 +26,23 @@ def main():
         p=panel(fig,axes,d);axes[0].set_title(d['case']['title']);states=[(d,p)];times=d['times']
         fig.suptitle('Session 8 • fixed initial particle IDs • accepted AH contours',fontsize=11)
         fig.colorbar(p['scatter'],ax=axes[0],fraction=.035,pad=.025,label=r'Initial radius $r_0/R_{\rm iso}(0)$')
+    return name,fig,states,times
+
+def main():
+    job();style();assert load(ROOT/'evidence/ASSEMBLY_OK.json')['source_files_SHA256_verified']
+    mode=sys.argv[1];assert mode=='comparison' or mode in [c['id'] for c in ALL_CASES]
+    name='s08_extension_comparison' if mode=='comparison' else mode
+    marker=ROOT/'evidence'/f'MOVIE_{name}_OK.json'
+    if marker.exists():
+        prior=load(marker);assert sha(prior['path'])==prior['sha256'] and prior['full_decode'];return
+    # Preserve any failed encoded attempt and its representative PNGs before a
+    # rerender. Existing completed accepted movies are returned above unchanged.
+    prior=[p for p in [ROOT/'movies'/f'{name}.mp4',*list((ROOT/'plots').glob(name+'_*review_*.png')),*list((ROOT/'plots').glob(name+'_decoded_*.png'))] if p.exists()]
+    if prior:
+        archive=ROOT/'interrupted'/f'movie_{name}_{job()}_{time.time_ns()}';archive.mkdir(parents=True)
+        atomic(archive/'BEFORE.json',[receipt(p) for p in prior])
+        for p in prior:p.rename(archive/p.name)
+    name,fig,states,times=layout(mode)
     record=encode(name,fig,states,times,sync=mode=='comparison')
     record.update(utc=now(),job=job(),source_assembly=receipt(ROOT/'evidence/ASSEMBLY_OK.json'),actual_visual_acceptance=False)
     atomic(marker,record)
