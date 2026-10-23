@@ -35,6 +35,55 @@ def sha(path):
     return h.hexdigest()
 
 
+def wait_for_review(record):
+    expected = os.environ.get('ST8X_WAIT_REVIEW')
+    if not expected:
+        return
+    jobs = read_remote('evidence/jobs.json')
+    registered = {str(r['id']): r for r in jobs}
+    assert expected in registered and registered[expected]['mode'] == 'review', expected
+    parent = registered[expected].get('afterok')
+    assert parent in registered, 'Cross-cluster wait requires registered production dependency'
+    fields = ['JobIDRaw', 'State', 'ExitCode', 'ElapsedRaw', 'AllocNodes']
+    started = time.monotonic()
+    consecutive_errors = 0
+    while True:
+        try:
+            payload = remote(['sacct', '-X', '-j', expected + ',' + parent, '-n', '-P',
+                              '-o', ','.join(fields)]).decode()
+            consecutive_errors = 0
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+            consecutive_errors += 1
+            write(record / 'WAIT_REVIEW_ERROR.json', dict(
+                utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                consecutive_errors=consecutive_errors, error=repr(error),
+                scientific_job_terminal=None))
+            if consecutive_errors >= 3:
+                raise
+            time.sleep(30)
+            continue
+        rows = {v[0]: dict(zip(fields, v)) for v in
+                (line.split('|') for line in payload.splitlines() if line.strip())}
+        assert expected in rows and parent in rows, payload
+        status = rows[expected]['State'].split()[0].rstrip('+')
+        parent_status = rows[parent]['State'].split()[0].rstrip('+')
+        receipt = dict(utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                       review_job=expected, production_job=parent, scheduler_rows=rows,
+                       elapsed_wait_seconds=time.monotonic() - started,
+                       scope='Allocated one-CPU transfer job waits only for registered AMD review; no simulation or scheduler mutation')
+        write(record / 'WAIT_REVIEW_LATEST.json', receipt)
+        with (record / 'WAIT_REVIEW.jsonl').open('a') as f:
+            f.write(json.dumps(receipt) + '\n')
+        live = {'PENDING', 'RUNNING', 'CONFIGURING', 'COMPLETING', 'SUSPENDED'}
+        assert parent_status in live or (parent_status == 'COMPLETED' and rows[parent]['ExitCode'] == '0:0'), rows
+        if status == 'COMPLETED':
+            assert rows[expected]['ExitCode'] == '0:0', rows
+            return
+        assert status in live, rows
+        assert time.monotonic() - started < 2.5 * 3600, 'Review wait exceeded reserved transfer window'
+        time.sleep(30)
+
+
 def main():
     assert os.environ.get('SLURM_JOB_ID'), 'Compute allocation required'
     start = time.monotonic()
@@ -43,6 +92,7 @@ def main():
     (record / 'executed_mirror.py').write_bytes(Path(__file__).read_bytes())
     env = subprocess.check_output(['scontrol', 'show', 'job', os.environ['SLURM_JOB_ID']], text=True)
     (record / 'environment.txt').write_text(socket.gethostname() + '\n' + env)
+    wait_for_review(record)
     jobs = read_remote('evidence/jobs.json')
     text = remote(['sacct', '-X', '-j', ','.join(str(r['id']) for r in jobs), '-n', '-P',
                    '-o', 'JobIDRaw,State,ExitCode,ElapsedRaw,AllocNodes,Start,End,Partition,NodeList']).decode()
@@ -53,6 +103,7 @@ def main():
     (record / 'amd_terminal_sacct.psv').write_text(text)
     total = sum(int(r[3] or 0) * int(r[4] or 0) / 3600 for r in rows)
     assert total < 39, 'Keep finalization inside the 40-node-hour review allowance'
+    assert total + (time.monotonic() - start) * int(os.environ['SLURM_NNODES']) / 3600 < 40
     manifest = read_remote('review/evidence/REVIEW_PRODUCT_MANIFEST.json')
     files = {}
     for item in manifest['products']:
