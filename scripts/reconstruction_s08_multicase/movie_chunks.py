@@ -86,9 +86,11 @@ def encode(mode):
     if marker.exists():
         prior=load(marker);assert prior['fingerprint']==fingerprint and prior['full_decode'] and sha(prior['path'])==prior['sha256'];return prior
     path=ROOT/'movies'/f'{name}.mp4'
-    if path.exists():
+    partial=[p for p in [path,*list((ROOT/'plots').glob(name+'_decoded_*.png')),*list((ROOT/'plots').glob(name+'_review_*.png'))] if p.exists()]
+    if partial:
         archive=ROOT/'interrupted'/f'movie_{name}_{job()}_{time.time_ns()}';archive.mkdir(parents=True)
-        atomic(archive/'BEFORE.json',receipt(path));path.rename(archive/path.name)
+        atomic(archive/'BEFORE.json',[receipt(p) for p in partial])
+        for p in partial:p.rename(archive/p.name)
     previews=review_indices(states,times,mode=='comparison')
     record=encode_frames(name,frames,states,times,previews,frame_manifest)
     record.update(utc=now(),job=job(),fingerprint=fingerprint,source_assembly=receipt(ROOT/'evidence/ASSEMBLY_OK.json'),actual_visual_acceptance=False)
