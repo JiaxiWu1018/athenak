@@ -50,5 +50,9 @@ def setup(c,U=None,control=False):
             from st_migration_lib import cluster_profile
             p=cluster_profile(c['yc'],dx=1e-4)
             atomic(metadata,dict(yc=c['yc'],Riso=float(p['riso_over_m'][-1]),R=float(p['R_over_M']),M0=float(p['M0_over_M'])))
-    atomic(ROOT/'evidence/EXACT_SETUP.json',dict(utc=now(),job=job(),case=c,U=U,control=control,input=receipt(path),sample=receipt(sample),executable=receipt(exe)))
+    record=dict(utc=now(),job=job(),case=c,U=U,control=control,input=receipt(path),sample=receipt(sample),executable=receipt(exe))
+    import time
+    atomic(ROOT/'evidence/setup'/f'{job()}_{time.time_ns()}.json',record)
+    anchor=ROOT/'evidence/EXACT_SETUP.json'
+    if not anchor.exists():atomic(anchor,record)
     return ROOT/'runs'/c['id']
