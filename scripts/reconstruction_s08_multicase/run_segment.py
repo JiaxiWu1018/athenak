@@ -114,6 +114,10 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
             assert (predicted+ranks-1)//ranks<=reserve*per,('Insufficient upgraded capacity',reason,ranks,per,reserve)
             atomic(work/f'{job()}.cleared_capacity_stop.json',dict(reason=reason,utc=now(),checkpoint=latest,ranks=ranks,max_nmb_per_rank=per))
             if request.exists():request.unlink()
+        elif reason=='workflow_guard_review_before_continuation':
+            assert os.environ.get('ST8X_GUARDS_CORRECTED')=='1'
+            atomic(work/f'{job()}.cleared_guard_review.json',dict(utc=now(),reason=reason,source_checkpoint=latest))
+            if request.exists():request.unlink()
         elif request.exists():
             raise RuntimeError('Unresolved resource/user stop: '+reason)
         launch+=['-r',latest['path'],'time/nlim=100000000',f'time/tlim={target}']

@@ -5,6 +5,7 @@ batch=/data/jiaxiwu/NRPIC/reconstruction_ST/08_production_20261021/extensions/yc
 export S8_MACHINE=perseus ST8X_ROOT="$batch/perseus" ST8_CASE="$1" ROOT="$batch/perseus/$1"
 export ST8X_BASE=/data/jiaxiwu/NRPIC/reconstruction_ST/08_production_20261021
 export ST8X_U="$2" ST8X_START_EPOCH=$(date +%s)
+export S8_MAX_TIME=701 ST8X_GUARDS_CORRECTED=1
 export PATH=/home/emost/codes/openmpi/bin:/usr/local/cuda-12.9/bin:$PATH
 export LD_LIBRARY_PATH=/home/emost/codes/openmpi/lib:/usr/local/cuda-12.9/lib64:${LD_LIBRARY_PATH:-}
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 MPLBACKEND=Agg TZ=UTC

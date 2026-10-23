@@ -26,7 +26,7 @@ def validate(path,output=None):
         nmb,level=struct.unpack('<ii',f.read(8))
         assert 0<nmb<100000 and 0<=level<32
         f.seek(offset+232);t,dt,cycle=struct.unpack('<ddi',f.read(20))
-        assert np.isfinite([t,dt]).all() and 0<=t<=float(os.environ.get("S8_MAX_TIME", "501")) and 0<=dt<1 and 0<=cycle<100000000
+        assert np.isfinite([t,dt]).all() and 0<=t<=float(os.environ.get("S8_MAX_TIME", str(max(c['target'] for c in ALL_CASES)+1))) and 0<=dt<1 and 0<=cycle<100000000
         assert int(par['fastflow'].get('npunct','0'))==0
         assert par['output8'].get('single_file_per_rank','false') in ['false','0']
         f.seek(offset+252+nmb*20+8)

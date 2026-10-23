@@ -46,7 +46,9 @@ def watchdog():
         if t-last_disk>900:stop('storage_telemetry_stale')
         try:
             if MACHINE=='perseus':
-                ids=os.environ.get('SLURM_STEP_GPUS') or os.environ.get('SLURM_JOB_GPUS')
+                # Perseus device cgroups renumber the assigned devices; NVML
+                # sees precisely CUDA_VISIBLE_DEVICES, not physical Slurm IDs.
+                ids=os.environ.get('CUDA_VISIBLE_DEVICES')
                 assert ids,'Missing assigned-device list'
                 raw=subprocess.check_output(['nvidia-smi','-i',ids,'--query-gpu=uuid,memory.used,memory.total','--format=csv,noheader,nounits'],text=True,timeout=30)
                 rows=[r.split(',') for r in raw.splitlines() if r.strip()]
