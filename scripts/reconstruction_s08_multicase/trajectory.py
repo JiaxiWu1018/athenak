@@ -32,10 +32,11 @@ def main():
     prior=ROOT/'evidence/PRODUCTION_ADMISSION.json'
     compatible=False
     if prior.exists():
-        p=load(prior);compatible=p.get('ranks')==int(os.environ['SLURM_NTASKS']) and p.get('transport_profile')==transport_profile() and p.get('machine')==MACHINE and p.get('executable_sha256')==sha(ROOT/'protected/athena')
+        p=load(prior);compatible=p.get('ranks')==int(os.environ['SLURM_NTASKS']) and p.get('max_nmb_per_rank',max(128,512//int(os.environ['SLURM_NTASKS'])))==rank_capacity() and p.get('transport_profile')==transport_profile() and p.get('machine')==MACHINE and p.get('executable_sha256')==sha(ROOT/'protected/athena')
     if not compatible:
         record=gate(state['latest']['path']);record.update(machine=MACHINE,executable_sha256=sha(ROOT/'protected/athena'));atomic(prior,record)
     start=float(os.environ['ST8X_START_EPOCH']);limit=int(os.environ['ST8X_WALL_SECONDS'])
+    assert not (ROOT/'evidence/RESOURCE_STOP.json').exists(), 'Resolve resource guard stop before evolution'
     while not state.get('complete'):
         remaining=limit-(time.time()-start)-480
         if remaining<150:break

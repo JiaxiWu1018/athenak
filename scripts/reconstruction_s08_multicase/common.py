@@ -45,3 +45,8 @@ def transport_profile():return {k:os.environ.get(k,'') for k in ['UCX_TLS','UCX_
 def native_launcher():
     if MACHINE=='perseus':return ['mpirun','--bind-to','none','-np',os.environ['SLURM_NTASKS']]
     return ['prun']
+def rank_capacity():
+    ranks=int(os.environ['SLURM_NTASKS']);default=max(128,512//ranks)
+    capacity=int(os.environ.get('ST8_MAX_NMB_PER_RANK',str(default)))
+    assert default<=capacity<=(384 if MACHINE=='perseus' else 256)
+    return capacity

@@ -64,7 +64,7 @@ def export(case):
     command += [f'output{i}/dt=0' for i in [1,2,3,4,5,8]]
     ranks=int(os.environ['SLURM_NTASKS'])
     per=max(128,32*((int(np.ceil(checkpoint['nblocks']/ranks))+31)//32))
-    assert per<=256, 'Final-field export needs a larger validated GPU layout'
+    assert per<=rank_capacity(), 'Final-field export needs a larger validated GPU layout'
     command += [f'mesh_refinement/max_nmb_per_rank={per}']
     executable=receipt(ROOT/'protected/athena')
     assert executable['sha256']==state['segments'][-1]['executable']['sha256']

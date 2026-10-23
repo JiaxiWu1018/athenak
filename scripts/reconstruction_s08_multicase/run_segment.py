@@ -109,7 +109,7 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
         reason=request.read_text().strip() if request.exists() else (state['segments'][-1].get('stop_reason') if state['segments'] else None)
         if reason and reason.startswith('amr_capacity'):
             match=re.search(r'predicted=(\d+)',reason);assert match,reason
-            predicted=int(match[1]);ranks=int(os.environ['SLURM_NTASKS']);per=max(128,512//ranks)
+            predicted=int(match[1]);ranks=int(os.environ['SLURM_NTASKS']);per=rank_capacity()
             reserve=float(validate(latest['path'])['parameters']['mesh_refinement'].get('capacity_stop_fraction','0.9'))
             assert (predicted+ranks-1)//ranks<=reserve*per,('Insufficient upgraded capacity',reason,ranks,per,reserve)
             atomic(work/f'{job()}.cleared_capacity_stop.json',dict(reason=reason,utc=now(),checkpoint=latest,ranks=ranks,max_nmb_per_rank=per))
@@ -122,7 +122,7 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
             raise RuntimeError('Unresolved resource/user stop: '+reason)
         launch+=['-r',latest['path'],'time/nlim=100000000',f'time/tlim={target}']
     ranks=int(os.environ.get('SLURM_NTASKS','1'))
-    launch += [f'mesh_refinement/max_nmb_per_rank={max(128,512//ranks)}',
+    launch += [f'mesh_refinement/max_nmb_per_rank={rank_capacity()}',
                'problem/cluster_sample_file='+str(ROOT/'samples'/f"{CASES[0]['id']}.bin"),
                'problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
     if suppress_segment_3d:

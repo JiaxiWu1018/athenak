@@ -73,6 +73,9 @@ def review(c):
       accepted_native_logs=logs,fallback_particle_steps=fallbacks,initial_constraint_admission=initial,
       final_native_fields=receipt(work/'FINAL_FIELDS_OK.json'),numerical_checks_passed=True,actual_visual_review=False,
       scope='Completed trajectory segment only. Accepted AH confirms black-hole formation; survival/coordinate motion does not prove stable migration. Rest-mass closure is bookkeeping, not ADM-energy conservation. Inherited source-time coupling unchanged; no new convergence claim.')
+    if c.get('inherited_time'):
+        from boundary import tail
+        record['outer_annular_lapse_diagnostics']=tail(c)
     atomic(ROOT/'evidence/CASE_NUMERICAL_ACCEPTANCE.json',record)
     return record
 

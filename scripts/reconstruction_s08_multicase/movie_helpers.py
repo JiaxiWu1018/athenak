@@ -125,11 +125,17 @@ def encode(name,fig,states,times,sync=False):
     for i,t in enumerate(times):
         for d,_ in states:
             if d['summary']['ah_first'] is not None and abs(t-d['summary']['ah_first'])<.5:previews.add(i)
+    for d,_ in states:
+        landmarks=[300,500] if d['case'].get('inherited_time') else []
+        if sync:landmarks.extend([d['summary']['endpoint'],d['summary']['endpoint']+.5])
+        for t in landmarks:
+            if times[0]<=t<=times[-1]:previews.add(int(np.argmin(abs(times-t))))
     # Keep lossless PNG inputs available for direct encoder/decoder comparisons.
     # Retain these frames on the cluster; only representative review images are mirrored.
     import shutil
     input_frames=[]
     for i,t in enumerate(times):
+        if i%100==0:print(f'{name}: frame {i}/{len(times)} at {t:.3f}M',flush=True)
         for d,p in states:update(d,p,float(t),sync)
         if sync:fig.suptitle(f'Session 8 extensions • synchronized time t/Mref = {t:.1f}',fontsize=12)
         frame=frames/f'{i:06d}.png'

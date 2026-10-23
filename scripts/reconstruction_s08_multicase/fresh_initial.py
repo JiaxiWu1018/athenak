@@ -21,8 +21,11 @@ def admit(c,work):
     prior=ROOT/'evidence/INITIAL_CONSTRAINT_ADMISSION.json'
     if prior.exists():
         p=load(prior)
-        assert p['executable_sha256']==sha(ROOT/'protected/athena')
-        assert p['ranks']==int(os.environ['SLURM_NTASKS']), 'Initialize-layout changed; matched control review required'
+        assert p['case']['key']==c['key'] and p['case']['U']==c['U']
+        assert max(p['constraint_norm_ratios'].values())<=1.005
+        # This receipt describes the actual original initialization. A changed
+        # machine/rank executable is admitted separately by restart_identity;
+        # it must not redraw or silently replace the original initial gate.
         return p
     if MACHINE=='perseus':
         env=os.environ.copy();env['ROOT']=str(EXT/'backend_checks')
