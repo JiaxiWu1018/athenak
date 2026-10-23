@@ -3,7 +3,7 @@
 #SBATCH -p debug
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -c 4
+#SBATCH -c 2
 #SBATCH --gres=gpu:1
 #SBATCH --mem=24G
 #SBATCH -t 00:15:00
