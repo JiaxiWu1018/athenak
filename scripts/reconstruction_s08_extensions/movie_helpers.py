@@ -128,13 +128,18 @@ def encode(name,fig,states,times,sync=False):
     # Keep lossless PNG inputs available for direct encoder/decoder comparisons.
     # Retain these frames on the cluster; only representative review images are mirrored.
     import shutil
+    input_frames=[]
     for i,t in enumerate(times):
         for d,p in states:update(d,p,float(t),sync)
         if sync:fig.suptitle(f'Session 8 extensions • synchronized time t/Mref = {t:.1f}',fontsize=12)
         frame=frames/f'{i:06d}.png'
         fig.savefig(frame,dpi=120,facecolor='white')
+        input_frames.append(dict(frame=i,time=float(t),**receipt(frame)))
         if i in previews:shutil.copyfile(frame,ROOT/'plots'/f'{name}_review_{i:04d}.png')
     plt.close(fig)
+    frame_manifest=frames/'INPUT_MANIFEST.json'
+    atomic(frame_manifest,dict(job=job(),utc=now(),name=name,frames=input_frames,fps=15,
+        scope='Lossless PNG encoder inputs with exact display times; retained on the cluster'))
     cmd([exe,'-y','-v','error','-xerror','-framerate','15','-i',frames/'%06d.png',
          '-c:v','libx264','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',
          '-threads','4',path])
@@ -153,7 +158,7 @@ def encode(name,fig,states,times,sync=False):
         assert preview.exists() and preview.stat().st_size>0
         decoded_previews.append(dict(frame=frame,time=float(times[frame]),**receipt(preview)))
     return dict(**receipt(path),frames=decoded,duration=duration,full_decode=True,
-                decoded_previews=decoded_previews,frames_directory=str(frames),verification_decoder_threads=1,
+                decoded_previews=decoded_previews,frames_directory=str(frames),input_frames_manifest=receipt(frame_manifest),verification_decoder_threads=1,
                 spatial_windows={d['case']['id']:d['spatial_window'] for d,_ in states},
                 shell_radius_limits_M={d['case']['id']:d['shell_limits'] for d,_ in states},
                 initial_radius_color_encoding='r0/R_iso(0), fixed per particle; common color range0..1',

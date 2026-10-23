@@ -186,6 +186,9 @@ if __name__=='__main__':
     elif mode=='render_check':
         from render_check import main
         main()
+    elif mode=='primary_movie':
+        from movie_promotion import main
+        main()
     elif mode in ['review','primary_review']:
         if mode=='primary_review':
             from products import assemble,numeric,figures

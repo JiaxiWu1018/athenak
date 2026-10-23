@@ -101,7 +101,7 @@ def main():
                 for p in sorted((BASE / 'reduced/yc0500').glob('*')) if p.is_file()]
     archives = [receipt(EXT / name) for name in ['source.tar', 'kokkos.tar']]
     job_evidence = []
-    for mode in [s['mode'] for s in sources] + [ROOT.name]:
+    for mode in [s['mode'] for s in sources] + [ROOT.name, 'primary_movie']:
         for p in files_under(EXT / mode / 'evidence/jobs'):
             if p.name not in ['telemetry.jsonl', 'LATEST.json', 'watchdog.log']:
                 job_evidence.append(bound(p))
@@ -110,6 +110,15 @@ def main():
                     native_revision=load(EXT / 'evidence/NATIVE_REVISION.json'),
                     archives=archives, baseline_reduced_prefix=baseline,
                     cases=closed, job_evidence=job_evidence)
+    versions['movies']=[]
+    for movie in load(ROOT/'evidence/MOVIES_RENDERED.json')['products']:
+        frames=movie['input_frames_manifest']
+        assert sha(Path(frames['path']))==frames['sha256']
+        manifest=load(Path(frames['path']))
+        assert len(manifest['frames'])==movie['frames']
+        versions['movies'].append(dict(encoded=receipt(Path(movie['path'])),
+            lossless_inputs=receipt(Path(frames['path'])),
+            source_ready=movie.get('source_ready'),full_decode=movie['full_decode']))
     atomic(ROOT / 'evidence/PROVENANCE.json', versions)
     account = scheduler()
     disk = storage()

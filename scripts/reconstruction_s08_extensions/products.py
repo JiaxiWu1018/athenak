@@ -221,14 +221,20 @@ def figures(data):
     save(fig,'s08_extension_AH_masses')
     atomic(ROOT/'evidence/PLOTS_RENDERED.json',dict(job=job(),utc=now(),products=[receipt(p) for p in sorted((ROOT/'plots').glob('*.pdf'))],visual_review='pending actual inspection',x_axes='Each column uses its actual endpoint; time units common; do not compare column widths as durations'))
 
-def movies(data):
+def movies(data,comparison=True,allow_promotion=True):
     from movie_helpers import load_case,panel,encode
+    from movie_promotion import promote
     products=[];states=[];spatial=[]
     for d in data:
+        promoted=promote(d) if allow_promotion else None
+        if promoted is not None:
+            products.append(promoted);continue
         case=load_case(d['case']);fig=plt.figure(figsize=(10,6),layout='constrained');g=fig.add_gridspec(2,2,width_ratios=[1.1,1]);axes=[fig.add_subplot(g[:,0]),fig.add_subplot(g[0,1]),fig.add_subplot(g[1,1])]
         p=panel(fig,axes,case);axes[0].set_title(d['case']['title']);fig.suptitle(r'$y_c=0.500$ • fixed particle IDs • accepted AH contours',fontsize=11)
         fig.colorbar(p['scatter'],ax=axes[0],fraction=.035,pad=.025,label=r'Initial radius $r_0/R_{\rm iso}(0)$')
         products.append(encode(d['case']['id'],fig,[(case,p)],case['times']))
+    if not comparison:
+        return products
     fig=plt.figure(figsize=(5*len(data),8),layout='constrained');g=fig.add_gridspec(3,len(data),height_ratios=[2,1,1])
     for j,d in enumerate(data):
         case=load_case(d['case']);axes=[fig.add_subplot(g[k,j]) for k in range(3)];p=panel(fig,axes,case);axes[0].set_title(d['case']['title'])
@@ -239,6 +245,7 @@ def movies(data):
     if times[-1]<end-1e-8:times=np.r_[times,end]
     products.append(encode('s08_extension_comparison',fig,states,times,True))
     atomic(ROOT/'evidence/MOVIES_RENDERED.json',dict(job=job(),utc=now(),products=products,visual_review='pending encoded-frame inspection'))
+    return products
 
 def main():
     job();data=assemble();results=numeric(data);figures(data);movies(data)
