@@ -1,5 +1,14 @@
 # Session 11 job preparation and manual submission
 
+**Current user override:** the session-root launcher now selects
+`../session011_early/`, allowing one explicitly unvalidated manual production
+attempt before these GPU tests and verified push, alongside validation 1091645.
+Its readiness gate still binds the approved native/executable/input hashes and
+preserves every production resource/output guard. No validation/push PASS is
+manufactured. Read the session011_early README for the current production route.
+The original strict route documented below remains available in this directory;
+its scripts are unchanged to preserve the queued validation manifest.
+
 Read the session-root REPORT.md and AGENTS.md first. This chat prepares scripts
 only. Native science execution requires explicit direction in a new chat. Unit
 checks and matching compilations do not validate the AH repair or full-size run.

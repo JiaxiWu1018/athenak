@@ -5,6 +5,56 @@ Prepared 22 October 2026 CDT, allocated Vista GG job **1091077**, host
 new preparation. Latest instruction: **finish code and compilation only; launch
 all physics/science in a separate Codex chat opened in this folder.**
 
+## Latest user override: manual unvalidated production
+
+The user explicitly requested revising the pre-launch policy and supplying the
+production command, prioritizing completion time and accepting later manual
+repair/requeue. One fresh sixteen-node GH, 36-hour, strict t150 production attempt
+may now be manually submitted and started while validation job **1091645** is
+pending/running, without GPU PASS or verified push receipts. This supersedes the
+older before-production validation/push requirements below. It does not waive
+native GPU validation before push or authorize this assistant to submit science,
+retry/cancel jobs, transfer data, change physics, or fabricate passing receipts.
+
+The root `submit_s11.sh production` now uses versioned tools in
+`code/scripts/particles/session011_early/`. They leave every original
+validation-manifest file unchanged, so the already submitted validation remains
+bound to its original preflight snapshot. The new adapter reuses the original
+production function, injecting only the user-approved readiness policy and its
+extended manifest in that separate production process. Native C++ source, three
+binaries, production input b402a20c6ed7306286bd458418d79ffe212c5ed499c40d68a83d77f724e5ae8c,
+all particle/mesh/gauge/removal settings and all runtime/output/final guards are
+unchanged. No recompilation is needed.
+
+The committed early-production policy pins the native source, GI executable and
+production input. The manual submission records its full manifest and commit,
+which must still match at job startup. `RUN_MODE.json`, the submission receipt and
+COMMAND/FINAL manifests explicitly say **user_authorized_unvalidated**, with GPU
+validation/push unverified. Technical completion is not a scientific validation
+claim. No VALIDATION_PASS.json or PUSH_VERIFIED.json is created by this path.
+
+Production preflight permits the separate validation job but still blocks another
+production or prior production attempt, and retains live account/queue/module/
+storage checks. The new helper parses Vista's successful terminal job ID after
+its banner while retaining the entire raw response. Ambiguous responses and all
+failures remain recorded without automatic retry. The job is submitted normally,
+without a hold or validation dependency. Production retains one rank/GPU, memory
+85%, 5,760-leaf capacity proxy, 150 GiB write reserve, forty-minute allocation
+reserve, native startup/final audits and output-coverage checks.
+
+This chat modifies/prepares scripts and runs non-science unit checks only. It
+has not submitted production or invoked any simulation. The queued validation
+and all Session 10 originals are left untouched. Current tests, hashes, local
+commit and remaining coverage gaps are in `evidence/EARLY_PRODUCTION_PREPARATION.json`.
+
+Verification for the override: **50 non-science tests pass** (37 original plus
+13 early-production tests). They exercise the actual Vista banner response,
+parallel validation/production admission, duplicate/timeout retention, submitted
+hash/commit binding and unvalidated provenance. The validation manifest still
+exactly matches job 1091645's original submission snapshot. Python/shell syntax
+and git diff checks pass. These checks launch neither Slurm jobs nor native
+simulations and do not assert GPU/scientific validation.
+
 ## Submission launcher implementation (preparation only)
 
 Implemented the discussed `submit_s11.sh` launcher, backed by versioned tools in
@@ -277,3 +327,9 @@ The actual defect-boundary checkpoint is under
 in that ORIGINAL workspace (98.2M; not copied here). The final221.95 checkpoint
 is not a substitute for reproducing the 98.2 boundary. Session10 raw data and
 its summary are not modified, deleted or copied in bulk by this preparation.
+
+Submission preparation local commit: `23a4fa1a543ab91fc6a8ab8d4c41c27c30ec66db` (not pushed). Check-only launcher output: `evidence/preparation_checks/launcher_check_20261023T014331Z.log`. No job was submitted; live Slurm access remains unverified in the sandbox.
+
+Manual validation submission attempt: `/scratch/10222/jiaxiwu1018/jeans_s11_20261022/evidence/submissions/validation_20261023T014715Z_97d0cd0bc5.json`; state=ambiguous, job=unknown. No automatic retry or chained submission.
+
+Validation submission reconciled: **job 1091645** was accepted from login2; user squeue reports gh-dev, four nodes, PD (Priority). Saved sbatch returncode is 0; its stdout ends in 1091645 after a Vista site banner, which the whole-output job-ID parser rejected. Original ambiguous attempt is retained unchanged; reconciliation: `evidence/submissions/reconciliations/validation_1091645.json`. Slurm log: `slurm-1091645.out`; outputs: `runtime/validation_1091645/`. Current native/executable/input/tool manifest matches the submitted preflight snapshot. Code remains frozen during this validation; defer the parser correction until its result is retained. No resubmission, cancellation, production, push or science invocation was performed by this chat. Validation results and final Slurm accounting remain pending.
