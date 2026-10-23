@@ -103,6 +103,41 @@ class RepairTests(unittest.TestCase):
              self.assertRaisesRegex(RuntimeError, 'no longer pending'):
             update_production.pending_job('1234')
 
+    def pending_fields(self):
+        return dict(JobId='1234', JobState='PENDING', Account='AST21006', Partition='gh',
+                    NumNodes='16-16', NumTasks='16', TimeLimit='1-12:00:00',
+                    WorkDir=str(update_production.SESSION), JobName='s11-final-150M',
+                    UserId='unituser('+str(os.getuid())+')')
+
+    def test_exact_sixteen_node_range_is_accepted_and_other_ranges_rejected(self):
+        fields = self.pending_fields()
+        for nodes in ('16', '16-16'):
+            with patch.object(update_production, 'job_info', return_value=(fields | {'NumNodes': nodes}, 'unit')):
+                self.assertEqual(update_production.pending_job('1234')[0]['NumNodes'], nodes)
+        for nodes in ('0', '15-16', '16-17', '8', '', '16-16-16'):
+            with patch.object(update_production, 'job_info', return_value=(fields | {'NumNodes': nodes}, 'unit')), \
+                 self.assertRaisesRegex(RuntimeError, 'NumNodes='):
+                update_production.pending_job('1234')
+
+    def test_user_captured_pending_job_survives_full_cli_parsing(self):
+        raw = (Path(__file__).parent/'fixtures/production_pending_1091797.txt').read_text()
+        with patch.object(queued_binding.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, raw, '')), \
+             patch.object(update_production.os, 'getuid', return_value=896508), \
+             patch.object(update_production, 'SESSION', Path('/scratch/10222/jiaxiwu1018/jeans_s11_20261022')):
+            fields, actual = update_production.pending_job('1091797')
+        self.assertEqual(actual, raw)
+        self.assertEqual(fields['NumNodes'], '16-16')
+        self.assertEqual(fields['TimeLimit'], '1-12:00:00')
+
+    def test_pending_job_still_rejects_changed_owner_resources_and_output_path(self):
+        fields = self.pending_fields()
+        for key, value in [('UserId', 'otheruser(-1)'), ('Account', 'OTHER'),
+                           ('Partition', 'gh-dev'), ('NumTasks', '15'),
+                           ('TimeLimit', '2-00:00:00'), ('WorkDir', '/tmp'), ('JobName', 'other')]:
+            with patch.object(update_production, 'job_info', return_value=(fields | {key: value}, 'unit')), \
+                 self.assertRaisesRegex(RuntimeError, key+'='):
+                update_production.pending_job('1234')
+
     def test_update_changes_only_comment_and_keeps_original_submission(self):
         for kind in ('gi', 'os', 'spin'):
             p = self.root/f'evidence/build/{kind}.json'; p.parent.mkdir(exist_ok=True)
@@ -133,7 +168,7 @@ class RepairTests(unittest.TestCase):
         p = self.folder/'validation_unit.json'
         p.write_text(json.dumps(dict(epoch=1, returncode=0, stdout='Vista banner\n4321\n')))
         with patch.object(early_submit, 'SESSION', self.root):
-            with patch.object(early_submit.legacy, 'command', return_value='PENDING'), \
+            with patch.object(early_submit.legacy, 'command', return_value='4321'), \
                  self.assertRaisesRegex(RuntimeError, 'still in the queue'):
                 early_submit.reviewed_retry('validation', '4321')
             with patch.object(early_submit.legacy, 'command', side_effect=['', '4321|FAILED|1:0|00:00:19|4|76|']):
@@ -145,6 +180,27 @@ class RepairTests(unittest.TestCase):
             p2 = self.folder/'validation_newer.json'; p2.write_text(json.dumps(dict(epoch=2, state='prepared')))
             with self.assertRaisesRegex(RuntimeError, 'latest'):
                 early_submit.reviewed_retry('validation', '4321')
+
+    def test_retired_retry_job_is_absent_from_user_queue_and_sacct_is_required(self):
+        p = self.folder/'validation_unit.json'
+        p.write_text(json.dumps(dict(epoch=1, job_id='4321', state='accepted')))
+        with patch.object(early_submit, 'SESSION', self.root), \
+             patch.object(early_submit.legacy, 'command', side_effect=['1234\n9999', '4321|FAILED|1:0|00:00:19|4|76|']) as cli:
+            self.assertEqual(early_submit.reviewed_retry('validation', '4321')['terminal_state'], 'FAILED')
+        queue = cli.call_args_list[0].args[0]
+        self.assertEqual(queue[0], 'squeue'); self.assertIn('-u', queue); self.assertNotIn('-j', queue)
+        with patch.object(early_submit, 'SESSION', self.root), \
+             patch.object(early_submit.legacy, 'command', side_effect=['', '']), \
+             self.assertRaisesRegex(RuntimeError, 'accounting is unavailable'):
+            early_submit.reviewed_retry('validation', '4321')
+
+    def test_retry_queue_query_errors_still_block(self):
+        p = self.folder/'validation_unit.json'
+        p.write_text(json.dumps(dict(epoch=1, job_id='4321', state='accepted')))
+        with patch.object(early_submit, 'SESSION', self.root), \
+             patch.object(early_submit.legacy, 'command', side_effect=RuntimeError('controller unavailable')), \
+             self.assertRaisesRegex(RuntimeError, 'controller unavailable'):
+            early_submit.reviewed_retry('validation', '4321')
 
     def test_native_startup_uses_output_directory_as_cwd(self):
         with patch.object(launch, 'job_end', return_value=10**12), \

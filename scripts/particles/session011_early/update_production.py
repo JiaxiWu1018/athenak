@@ -19,14 +19,22 @@ def pending_job(job):
     fields, raw = job_info(job)
     if fields.get('JobState') != 'PENDING':
         raise RuntimeError('Job is no longer pending; executable updates are refused')
-    if (fields.get('Account', '').upper() != legacy.ACCOUNT
-            or fields.get('Partition') != 'gh'
-            or fields.get('NumNodes') != '16' or fields.get('NumTasks') != '16'
-            or legacy.duration(fields.get('TimeLimit', '00:00:00')) != 36*3600
-            or fields.get('WorkDir') != str(SESSION)
-            or not fields.get('JobName', '').startswith('s11-final-')
-            or not fields.get('UserId', '').endswith('('+str(os.getuid())+')')):
-        raise RuntimeError('Queued job does not match the approved owner, resource and output contract')
+    # Pending requests can use an explicit min-max range even for a fixed size.
+    nodes = fields.get('NumNodes', '')
+    checks = {
+        'Account': fields.get('Account', '').upper() == legacy.ACCOUNT,
+        'Partition': fields.get('Partition') == 'gh',
+        'NumNodes': nodes in ('16', '16-16'),
+        'NumTasks': fields.get('NumTasks') == '16',
+        'TimeLimit': legacy.duration(fields.get('TimeLimit', '00:00:00')) == 36*3600,
+        'WorkDir': fields.get('WorkDir') == str(SESSION),
+        'JobName': fields.get('JobName', '').startswith('s11-final-'),
+        'UserId': fields.get('UserId', '').endswith('('+str(os.getuid())+')'),
+    }
+    failed = [key+'='+repr(fields.get(key)) for key, ok in checks.items() if not ok]
+    if failed:
+        raise RuntimeError('Queued job does not match the approved owner, resource and output contract: '
+                           + ', '.join(failed))
     return fields, raw
 
 

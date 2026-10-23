@@ -97,7 +97,10 @@ def reviewed_retry(stage, retry_of=None):
         previous_job = job_id(previous.get('stdout', ''))
     if previous_job != retry_of:
         raise RuntimeError('--retry-of must identify the latest retained attempt; ambiguous later attempts block repeats')
-    if legacy.command(['squeue', '-h', '-j', retry_of, '-o', '%T']):
+    # Retired jobs make squeue -j fail with "Invalid job id specified".
+    # Query this user's live queue instead; controller errors still fail closed.
+    active = legacy.command(['squeue', '-h', '-u', getpass.getuser(), '-o', '%i'])
+    if retry_of in active.split():
         raise RuntimeError('Previous job is still in the queue; no retry submitted')
     accounting = legacy.command(['sacct', '-X', '-n', '-P', '-j', retry_of,
                                  '-o', 'JobID,State,ExitCode,Elapsed,AllocNodes,CPUTimeRAW'])
