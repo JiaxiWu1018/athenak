@@ -151,10 +151,12 @@ def encode(name,fig,states,times,sync=False):
          '-c:v','libx264','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',
          '-threads',str(threads),path])
     # Decode every frame; fail on any decoder error, then verify the actual frame count.
-    verify=subprocess.run([exe,'-v','error','-xerror','-threads','1','-i',str(path),'-f','null','-'],capture_output=True,text=True)
+    verify=subprocess.run([exe,'-v','error','-xerror','-threads','1','-i',str(path),'-progress','pipe:1','-nostats','-f','null','-'],capture_output=True,text=True)
     assert verify.returncode==0 and not verify.stderr,verify.stderr
-    import imageio_ffmpeg
-    decoded,duration=imageio_ffmpeg.count_frames_and_secs(str(path))
+    progress=dict(line.split('=',1) for line in verify.stdout.splitlines() if '=' in line)
+    assert progress.get('progress')=='end',verify.stdout
+    decoded=int(progress['frame'])
+    hours,minutes,seconds=map(float,progress['out_time'].split(':'));duration=3600*hours+60*minutes+seconds
     assert decoded==len(times) and abs(duration-len(times)/15)<.15,(decoded,duration,len(times))
     # Inspect the encoded artifact itself, not just pre-encoding canvas captures.
     decoded_previews=[]
