@@ -1140,9 +1140,19 @@ Real MeanPerturbedRadialUhat(Real y, Real q) {
   return sum/static_cast<Real>(2*nmu_half);
 }
 
+// Normalized proper enclosed-rest-mass derivative, matching the external sample.
+// Keep the historical CDF and default solver path unchanged for archived runs.
+Real ProperRestMassPDF(const ClusterProfile &profile, std::size_t i) {
+  if (i == 0) { return 0.0; }
+  ClusterState state{profile.y[i], profile.v[i], profile.v0[i], profile.h[i]};
+  Real yc = profile.y.front();
+  return EvaluateRHS(profile.x[i], state, yc, (1.0-yc)/3.0).dv0/profile.v0s;
+}
+
 CTTMomentumProfile ConstructCTTMomentumProfile(const ClusterProfile &profile,
                                                 Real total_mass,
-                                                Real radial_mode_u) {
+                                                Real radial_mode_u,
+                                                bool proper_measure = false) {
   CTTMomentumProfile correction;
   std::size_t nprof = profile.x.size();
   correction.a.assign(nprof, 0.0);
@@ -1162,7 +1172,8 @@ CTTMomentumProfile ConstructCTTMomentumProfile(const ClusterProfile &profile,
     Real inv_y_minus_one = std::max(static_cast<Real>(1.0)/profile.y[i] - 1.0,
                                     static_cast<Real>(0.0));
     Real cdf_weight = x*x/profile.y[i]*std::sqrt(inv_y_minus_one);
-    Real dprob_dx = cdf_weight/profile.cdf_normalization;
+    Real dprob_dx = proper_measure ? ProperRestMassPDF(profile, i)
+                                    : cdf_weight/profile.cdf_normalization;
     Real x_areal = x/profile.xs;
     Real q = 0.5*radial_mode_u*(3.0*x_areal - x_areal*x_areal*x_areal);
     Real mean_uhat_r = MeanPerturbedRadialUhat(profile.y[i], q);
@@ -1250,7 +1261,8 @@ struct IncrementalConstraintProfile {
 };
 
 IncrementalConstraintProfile ConstructIncrementalConstraintProfile(
-    const ClusterProfile &profile, Real total_mass, Real radial_mode_u) {
+    const ClusterProfile &profile, Real total_mass, Real radial_mode_u,
+    bool proper_measure = false) {
   constexpr int n_outer = 2048;
   constexpr int max_iterations = 10000;
   constexpr Real relaxation = 0.35;
@@ -1297,7 +1309,8 @@ IncrementalConstraintProfile ConstructIncrementalConstraintProfile(
       Real inv_y_minus_one = std::max(1.0/profile.y[i] - 1.0,
                                       static_cast<Real>(0.0));
       Real cdf_weight = x*x/profile.y[i]*std::sqrt(inv_y_minus_one);
-      Real dprob_dx = cdf_weight/profile.cdf_normalization;
+      Real dprob_dx = proper_measure ? ProperRestMassPDF(profile, i)
+                                    : cdf_weight/profile.cdf_normalization;
       Real denom = 4.0*M_PI*r*r*driso_dx;
       dcoord[i] = (denom > 0.0) ? rest_mass*dprob_dx/denom : 0.0;
     }
@@ -1579,8 +1592,8 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
       (sample_path.empty() && (sampling != "random" || radial != "legacy" ||
                              velocity != "random")) ||
       (!sample_path.empty() && (lambda_tan != 0.0 || eps_out != 0.0 ||
-         radial_mode_u != 0.0 || scpd_eps != 0.0 || solve_momentum_constraint ||
-         solve_hamiltonian_constraint))) {
+         scpd_eps != 0.0 || ((radial_mode_u != 0.0 || solve_momentum_constraint ||
+         solve_hamiltonian_constraint) && radial != "proper")))) {
     std::cerr << "### FATAL ERROR incompatible ST sampling configuration" << std::endl;
     std::exit(EXIT_FAILURE);
   }
@@ -1667,9 +1680,10 @@ void ProblemGenerator::UserProblem(ParameterInput *pin, const bool restart) {
   IncrementalConstraintProfile constraint_correction;
   if (solve_hamiltonian_constraint) {
     constraint_correction = ConstructIncrementalConstraintProfile(
-        profile, total_mass, radial_mode_u);
+        profile, total_mass, radial_mode_u, radial == "proper");
   } else if (solve_momentum_constraint) {
-    momentum_correction = ConstructCTTMomentumProfile(profile, total_mass, radial_mode_u);
+    momentum_correction = ConstructCTTMomentumProfile(
+        profile, total_mass, radial_mode_u, radial == "proper");
   }
   // Preserve the historical U=0 initialization bit for bit even when both opt-in solver
   // flags are enabled as a regression test. The incremental solution is exactly zero.
