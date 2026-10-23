@@ -84,6 +84,11 @@ def main():
         raw.extend(bound(p) for p in files_under(EXT / mode / 'runs/yc0500'))
     raw.extend(bound(p) for p in files_under(ROOT / 'reduced'))
     assert len({p['relative_path'] for p in raw}) == len(raw)
+    current_files = {p['path']: p for p in raw}
+    for case in closed:
+        for expected in case['final_fields']['files']:
+            actual = current_files[expected['path']]
+            assert actual['sha256'] == expected['sha256'] and actual['bytes'] == expected['bytes'], expected['path']
     atomic(ROOT / 'evidence/CLOSED_DATA_MANIFEST.json', dict(
         utc=now(), job=job(), files=raw, files_count=len(raw),
         logical_bytes=sum(p['bytes'] for p in raw),
