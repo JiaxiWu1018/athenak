@@ -9,6 +9,26 @@ from restart_identity import gate
 from run_segment import run
 from extension_resources import admission
 
+def already_accepted(c):
+    """A queued successor must preserve a published immutable review packet."""
+    work=ROOT/'runs'/c['id'];statefile=work/'state.json';marker=ROOT/'review_packet/MANIFEST.json'
+    if not statefile.exists() or not marker.exists():return False
+    state=load(statefile);assert state.get('complete'),'Published packet requires a complete state'
+    manifest=load(marker);accept=load(ROOT/'evidence/CASE_NUMERICAL_ACCEPTANCE.json')
+    final=load(work/'FINAL_FIELDS_OK.json')
+    assert manifest['case']==c and accept['numerical_checks_passed'] and final['no_evolution']
+    latest=validate(state['latest']['path']);digest=latest['sha256']
+    assert digest==state['latest']['sha256']==manifest['checkpoint']['sha256']==accept['checkpoint']['sha256']==final['checkpoint']['sha256']
+    expected=min(c['target'],latest['ah_onset']+20) if latest['ah_onset']>=0 else c['target']
+    assert expected-1e-7<=latest['time']<=min(c['target']+1e-7,expected+latest['dt']+1e-7)
+    for entry in manifest['files']:
+        path=marker.parent/entry['relative']
+        assert path.stat().st_size==entry['bytes'] and sha(path)==entry['sha256'],str(path)
+    atomic(ROOT/'evidence/jobs'/job()/'CASE_RESULT.json',dict(utc=now(),job=job(),case=c,
+      state=state['latest'],complete=True,already_accepted=True,immutable_packet=receipt(marker),
+      no_native_evolution_or_republication=True))
+    return True
+
 def inherited_start(c,work):
     statefile=work/'state.json'
     if statefile.exists():return
@@ -21,6 +41,7 @@ def inherited_start(c,work):
 
 def main():
     job();c=CASE;admission()
+    if already_accepted(c):return
     if os.environ.get('ST8_IMPORT_SNAPSHOT'):
         from import_snapshot import materialize
         materialize(os.environ['ST8_IMPORT_SNAPSHOT'])
