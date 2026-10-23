@@ -18,6 +18,7 @@ export ST8X_WALL_SECONDS=14400
 # performs the actual eight-rank HIP zero-step gate before any evolution.
 for attempt in $(seq 1 60); do
   if [ -f "$ST8_IMPORT_SNAPSHOT/SNAPSHOT_MANIFEST.json" ]; then
+    export ST8X_WALL_SECONDS=$((14400-SECONDS))
     bash "$batch/scripts/launch_amd.sh" yc0500_long700 0
     exit 0
   fi
