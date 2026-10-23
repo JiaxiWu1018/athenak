@@ -5,6 +5,20 @@ batch=/work1/eliasmost/jiaxiwu/st_s08_scan_20261023
 export S8_MACHINE=amd ST8X_ROOT="$batch" ST8_CASE="$1" ROOT="$batch/$1"
 export ST8X_BASE=/work1/eliasmost/jiaxiwu/st_reconstruction_s08_production_20261021
 export ST8X_U="$2" ST8X_START_EPOCH=$(date +%s)
+export ST8X_WALL_SECONDS=$(python3 - <<'LIMIT'
+import os,re,subprocess
+text=subprocess.check_output(['scontrol','show','job','-o',os.environ['SLURM_JOB_ID']],text=True)
+value=re.search(r'\bTimeLimit=(\S+)',text)[1]
+requested=int(os.environ.get('ST8X_WALL_SECONDS','21600'))
+if value=='UNLIMITED':print(requested)
+else:
+    days,clock=value.split('-',1) if '-' in value else ('0',value)
+    hours,minutes,seconds=map(int,clock.split(':'))
+    actual=int(days)*86400+hours*3600+minutes*60+seconds
+    assert actual>120
+    print(min(requested,actual))
+LIMIT
+)
 export S8_MAX_TIME=701 ST8X_GUARDS_CORRECTED=1
 module purge
 module load gnu12/12.2.0 openmpi4/4.1.8 cmake/3.25.2 prun/2.3 rocm/6.4.1
