@@ -29,6 +29,11 @@ END_RECEIPT
 }
 trap finish EXIT
 { hostname; date -Is; module list 2>&1; hipcc --version; command -v prun; scontrol show job "$SLURM_JOB_ID"; rocm-smi --showproductname --showmeminfo vram; } > "$record/environment.txt" 2>&1
-python3 "$ST8X_ROOT/scripts/extension_resources.py" > "$record/watchdog.log" 2>&1 &
+mkdir -p "$record/workflow"
+cp -p "$ST8X_ROOT"/scripts/*.py "$ST8X_ROOT"/scripts/*.sh "$record/workflow/"
+cp -p "$ST8X_ROOT/evidence/SOURCE_PIN.json" "$record/NATIVE_SOURCE_PIN.json"
+sha256sum "$record"/workflow/* > "$record/workflow.sha256"
+export PYTHONPATH="$record/workflow:$PYTHONPATH"
+python3 "$record/workflow/extension_resources.py" > "$record/watchdog.log" 2>&1 &
 guard_pid=$!
-python3 "$ST8X_ROOT/scripts/campaign.py" "$mode" > "$record/campaign.log" 2>&1
+python3 "$record/workflow/campaign.py" "$mode" > "$record/campaign.log" 2>&1

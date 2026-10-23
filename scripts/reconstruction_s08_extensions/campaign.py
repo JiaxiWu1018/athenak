@@ -70,10 +70,14 @@ def initialize(mode,U):
     root=EXT/mode;exe=EXT/'protected/athena';setup(root,U,exe)
     if (root/'runs/yc0500/INITIAL_OK.json').exists():return
     env=os.environ.copy();env.update(ROOT=str(root),ST8X_U=str(U))
-    cmd(['python3',EXT/'scripts/run_segment.py','yc0500','--initialize','--target','300','--wall-seconds','900'],env=env)
+    cmd(['python3',Path(__file__).resolve().parent/'run_segment.py','yc0500','--initialize','--target','300','--wall-seconds','900'],env=env)
 
 
 def constraint_gate(mode):
+    reference=load(EXT/'evidence/INDEPENDENT_CONSTRAINT_REFERENCE_OK.json')
+    U=-.02 if mode=='inward0020' else -.05
+    checked=next(v for v in reference['results'] if v['U']==U)
+    assert checked['source_profile']['sha256']==receipt(EXT/'evidence'/f'constraint_{abs(U):.3f}.txt')['sha256']
     control=EXT/'control/runs/yc0500';work=EXT/mode/'runs/yc0500'
     a=np.atleast_2d(np.loadtxt(control/'yc0500.user.hst'))[0];b=np.atleast_2d(np.loadtxt(work/'yc0500.user.hst'))[0]
     ratios={name:float(np.sqrt(b[k]/a[k])) for name,k in [('H_r10',3),('M_r10',4),('H_r16',9),('M_r16',10)]}
