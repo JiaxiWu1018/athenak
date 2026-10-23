@@ -42,11 +42,18 @@ for mode in ['long','inward0020','inward0050']:
     for path in (X/mode/'evidence/jobs').glob('*/telemetry.jsonl'):
         with path.open() as f:telemetry.extend(json.loads(v) for v in collections.deque(f,maxlen=40))
 disk=max((v for v in telemetry if 'extension' in v),key=lambda r:r['utc'])
-memory=max((v for v in telemetry if 'vram_max_fraction' in v),key=lambda r:r['utc'])
 active=[r.split('|') for r in queue.splitlines() if r.split('|')[0] in {j['id'] for j in jobs}]
+latest_memory={}
+for v in telemetry:
+    if 'vram_max_fraction' in v and v['utc']>latest_memory.get(v['job'],{}).get('utc',''):
+        latest_memory[v['job']]=v
+active_ids={r[0] for r in active}
+current_memory=[v for jid,v in latest_memory.items() if jid in active_ids]
+memory=max(current_memory,key=lambda r:r['vram_max_fraction']) if current_memory else max(latest_memory.values(),key=lambda r:r['utc'])
 print(json.dumps(dict(queue=queue,active_registered_jobs=active,cases=cases,accounting_rows=rows,
     allocated_node_hours=sum(int(r[2] or 0)*int(r[3] or 0)/3600 for r in rows),
-    latest_disk=disk,latest_GPU_fraction=memory['vram_max_fraction'],latest_GPU_utc=memory['utc'])))
+    latest_disk=disk,latest_GPU_fraction=memory['vram_max_fraction'],latest_GPU_utc=memory['utc'],
+    latest_GPU_job=memory['job'],active_GPU_telemetry=current_memory)))
 '''
 
 
