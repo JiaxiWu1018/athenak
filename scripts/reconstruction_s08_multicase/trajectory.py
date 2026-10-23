@@ -49,6 +49,11 @@ def main():
         export(c['id'])
         from case_review import review
         review(c)
+        from review_packet import export as packet
+        packet(c)
+        if MACHINE=='amd':
+            from legacy_packet import main as legacy
+            legacy()
     atomic(ROOT/'evidence/jobs'/job()/'CASE_RESULT.json',dict(utc=now(),job=job(),case=c,state=state['latest'],complete=state.get('complete',False),reduction=summary))
 
 if __name__=='__main__':main()

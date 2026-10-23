@@ -14,12 +14,18 @@ def main():
             assert load(marker)['executable']['sha256']==sha(exe)
             return
         for name in ['inputs','samples','protected','tests','evidence']:(ROOT/name).mkdir(exist_ok=True)
-        (ROOT/'protected/athena').symlink_to(exe)
+        target=ROOT/'protected/athena'
+        if target.exists():assert target.resolve()==exe.resolve()
+        else:target.symlink_to(exe)
         source=SESSION/'perseus/samples/frozen_ah.bin'
-        (ROOT/'samples/frozen_ah.bin').symlink_to(source)
+        target=ROOT/'samples/frozen_ah.bin'
+        if target.exists():assert target.resolve()==source.resolve()
+        else:target.symlink_to(source)
         text=(SESSION/'perseus/inputs/frozen_ah.athinput').read_text()
         text=section(text,'problem',dict(cluster_sample_file=ROOT/'samples/frozen_ah.bin'))
-        inp=ROOT/'inputs/frozen_ah.athinput';inp.write_text(text)
+        inp=ROOT/'inputs/frozen_ah.athinput'
+        if inp.exists():assert inp.read_text()==text
+        else:inp.write_text(text)
         work=ROOT/'tests'/('frozen_'+job());work.mkdir()
         args=native_launcher()+[str(exe),'--kokkos-map-device-id-by=mpi_rank','-i',str(inp),'-d',str(work),'problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
         atomic(work/'launch.json',dict(command=args,utc=now(),job=job(),executable=receipt(exe)))

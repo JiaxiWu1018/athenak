@@ -140,9 +140,10 @@ def encode(name,fig,states,times,sync=False):
     frame_manifest=frames/'INPUT_MANIFEST.json'
     atomic(frame_manifest,dict(job=job(),utc=now(),name=name,frames=input_frames,fps=15,
         scope='Lossless PNG encoder inputs with exact display times; retained on the cluster'))
+    threads=min(4,max(1,int(os.environ.get('SLURM_CPUS_PER_TASK','1'))*int(os.environ.get('SLURM_NTASKS','1'))))
     cmd([exe,'-y','-v','error','-xerror','-framerate','15','-i',frames/'%06d.png',
          '-c:v','libx264','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',
-         '-threads','4',path])
+         '-threads',str(threads),path])
     # Decode every frame; fail on any decoder error, then verify the actual frame count.
     verify=subprocess.run([exe,'-v','error','-xerror','-threads','1','-i',str(path),'-f','null','-'],capture_output=True,text=True)
     assert verify.returncode==0 and not verify.stderr,verify.stderr
