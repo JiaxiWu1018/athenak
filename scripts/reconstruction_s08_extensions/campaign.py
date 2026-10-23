@@ -186,6 +186,9 @@ if __name__=='__main__':
     elif mode=='render_check':
         from render_check import main
         main()
+    elif mode=='thin_verify':
+        from thin_verify import main
+        main()
     elif mode=='primary_movie':
         from movie_promotion import main
         main()
