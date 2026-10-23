@@ -15,6 +15,8 @@ def layout(path):
 
 def gate(source):
     before=validate(source);ranks=int(os.environ['SLURM_NTASKS'])
+    from extension_resources import storage
+    disk=storage();assert disk['own']+1.2*before['bytes']+2*GIB<disk['limit'],'Restart identity copy storage forecast'
     work=ROOT/'tests'/('restart_'+job());work.mkdir(parents=True)
     args=native_launcher()+[str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-r',str(source),'-d',str(work),f'time/nlim={before["cycle"]}',f'mesh_refinement/max_nmb_per_rank={max(128,512//ranks)}','problem/cluster_sample_file='+str(ROOT/'samples'/f"{CASES[0]['id']}.bin"),'problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
     atomic(work/'launch.json',dict(command=args,executable=receipt(ROOT/'protected/athena'),job=job()))

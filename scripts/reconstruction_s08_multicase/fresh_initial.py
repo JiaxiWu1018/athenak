@@ -8,6 +8,8 @@ from run_segment import run
 def initialize(c,control=False):
     work=setup(c,U=0 if control else c['U'],control=control)
     if not (work/'state.json').exists():
+        from extension_resources import storage
+        disk=storage();assert disk['own']+8*GIB<disk['limit'],'Full initial outputs storage forecast'
         run(c,initialize=True,target=c['target'],wall_seconds=900)
     state=load(work/'state.json');initial=load(work/'INITIAL_OK.json')
     assert state['latest']['time']==0 or not control
