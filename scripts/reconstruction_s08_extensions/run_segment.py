@@ -98,6 +98,12 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
     else:
         assert (work/'INITIAL_OK.json').exists()
         latest=promote(work);assert latest['time']<target
+        ledger=work/f"{c['id']}.mass.csv"
+        if ledger.exists():
+            from collections import deque
+            with ledger.open() as stream:last=deque(stream,maxlen=1)[0]
+            if not last.startswith('time'):
+                assert float(last.split(',')[0])<=latest['time']+1e-7, 'Uncheckpointed output tail: inventory and preserve the interrupted attempt before restarting'
         start_time=latest['time']
         if (work/'REQUEST_STOP').exists():
             reason=(work/'REQUEST_STOP').read_text().strip()
