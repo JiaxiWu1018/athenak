@@ -40,6 +40,7 @@ def main():
     start = time.monotonic()
     record = E / 'evidence/perseus_jobs' / os.environ['SLURM_JOB_ID']
     record.mkdir(parents=True, exist_ok=False)
+    (record / 'executed_mirror.py').write_bytes(Path(__file__).read_bytes())
     env = subprocess.check_output(['scontrol', 'show', 'job', os.environ['SLURM_JOB_ID']], text=True)
     (record / 'environment.txt').write_text(socket.gethostname() + '\n' + env)
     jobs = read_remote('evidence/jobs.json')
