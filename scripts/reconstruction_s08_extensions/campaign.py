@@ -209,5 +209,8 @@ if __name__=='__main__':
         from recover_long import main as recover_main
         recover_main()
         long()
+    elif mode=='prepare_long':
+        from recover_long import main as recover_main
+        recover_main()
     elif mode=='initialize':initialize(sys.argv[2],float(sys.argv[3]))
     else:inward(mode)

@@ -54,6 +54,8 @@ def main():
     job();assert ROOT.name=='long'
     marker=ROOT/'evidence/RECOVERY_475604_OK.json'
     if marker.exists():return load(marker)
+    from extension_resources import admission
+    resources=admission()
     work=ROOT/'runs/yc0500';archive=ROOT/'interrupted/475604'
     assert work.is_dir() and not archive.exists(),'Do not overwrite an interrupted archive'
     original_state=load(work/'state.json')
@@ -72,6 +74,9 @@ def main():
               for p in sorted((work/name).glob('*')) if p.is_file() and output_time(p)<=cut+1e-8]
     assert all(any(p.startswith(name+'/') for p in selected) for name in ['pvtk','cohort','bin'])
     files=[receipt(p) for p in sorted(work.rglob('*')) if p.is_file()]
+    indexed={str(Path(r['path']).relative_to(work)):r for r in files}
+    copied_forecast=sum(indexed[p]['bytes'] for p in selected)+latest['bytes']+GIB
+    assert resources['extension']+copied_forecast<199*GIB,('Recovery copy storage review',resources,copied_forecast)
     inventory=ROOT/'evidence/INTERRUPTED_475604_MANIFEST.json'
     atomic(inventory,dict(utc=now(),job=job(),original_root=str(work),archive_root=str(archive),
           failed_job='475604',scheduler=scheduler,files=files,

@@ -19,7 +19,7 @@ DISPATCH
 fi
 export ROOT="$ST8X_ROOT/$mode"
 lock_mode=$mode
-if [ "$mode" = recover_long ]; then export ROOT="$ST8X_ROOT/long"; lock_mode=long; fi
+if [ "$mode" = recover_long ] || [ "$mode" = prepare_long ]; then export ROOT="$ST8X_ROOT/long"; lock_mode=long; fi
 export ST8X_U=0
 if [ "$mode" = inward0020 ]; then export ST8X_U=-0.02; fi
 if [ "$mode" = inward0050 ]; then export ST8X_U=-0.05; fi
