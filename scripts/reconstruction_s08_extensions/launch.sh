@@ -4,7 +4,22 @@ ulimit -c 0
 export ST8X_ROOT=/work1/eliasmost/jiaxiwu/st_s08_yc0500_extensions_20261023
 export ST8X_BASE=/work1/eliasmost/jiaxiwu/st_reconstruction_s08_production_20261021
 mode=$1
+submitted_mode=$mode
+dispatch="$ST8X_ROOT/evidence/pending_dispatch.json"
+if [ -f "$dispatch" ]; then
+ mode=$(python3 - "$dispatch" "$SLURM_JOB_ID" "$mode" <<'DISPATCH'
+import json,sys
+record=json.load(open(sys.argv[1])).get(sys.argv[2])
+if record:
+ assert record['submitted_mode']==sys.argv[3] and record['run_mode']=='recover_long'
+ print(record['run_mode'])
+else:print(sys.argv[3])
+DISPATCH
+)
+fi
 export ROOT="$ST8X_ROOT/$mode"
+lock_mode=$mode
+if [ "$mode" = recover_long ]; then export ROOT="$ST8X_ROOT/long"; lock_mode=long; fi
 export ST8X_U=0
 if [ "$mode" = inward0020 ]; then export ST8X_U=-0.02; fi
 if [ "$mode" = inward0050 ]; then export ST8X_U=-0.05; fi
@@ -19,7 +34,7 @@ export UCX_TLS='^rocm_ipc' UCX_MEMTYPE_CACHE=n UCX_LOG_LEVEL=info
 mkdir -p "$ROOT/evidence/jobs/$SLURM_JOB_ID"
 record="$ROOT/evidence/jobs/$SLURM_JOB_ID"
 mkdir -p "$ST8X_ROOT/evidence/locks"
-exec 9>"$ST8X_ROOT/evidence/locks/$mode.lock"
+exec 9>"$ST8X_ROOT/evidence/locks/$lock_mode.lock"
 if ! flock -n 9; then
  echo "duplicate candidate: another allocation owns $mode" > "$record/DUPLICATE_NOT_STARTED.txt"
  exit 0
@@ -41,6 +56,8 @@ trap finish EXIT
 mkdir -p "$record/workflow"
 cp -p "$ST8X_ROOT"/scripts/*.py "$ST8X_ROOT"/scripts/*.sh "$record/workflow/"
 cp -p "$ST8X_ROOT/evidence/SOURCE_PIN.json" "$record/NATIVE_SOURCE_PIN.json"
+if [ -f "$dispatch" ]; then cp -p "$dispatch" "$record/pending_dispatch.json"; fi
+printf 'submitted_mode=%s\nexecution_mode=%s\n' "$submitted_mode" "$mode" > "$record/dispatch.txt"
 if [ -f "$ST8X_ROOT/evidence/NATIVE_ACTIVE.json" ]; then cp -p "$ST8X_ROOT/evidence/NATIVE_ACTIVE.json" "$record/NATIVE_ACTIVE.json"; fi
 sha256sum "$record"/workflow/* > "$record/workflow.sha256"
 export PYTHONPATH="$record/workflow:$PYTHONPATH"
