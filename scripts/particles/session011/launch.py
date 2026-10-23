@@ -74,9 +74,9 @@ def run_case(root,label,kind,deck=None,restart=None,extra=(),limit=3300,
  args+=['-r',str(restart)] if restart else ['-i',str(deck)]
  args+=['-d',str(out),'-t',f'{seconds//3600:02d}:{seconds//60%60:02d}:{seconds%60:02d}',
         'time/stop_file='+str(out/'REQUEST_STOP'),*extra]
- atomic(case/'COMMAND.json',dict(command=args,job_id=os.environ['SLURM_JOB_ID'],manifest=manifest()))
+ atomic(case/'COMMAND.json',dict(command=args,cwd=str(out),job_id=os.environ['SLURM_JOB_ID'],manifest=manifest()))
  with (case/'athena.log').open('w') as f:
-  p=subprocess.Popen(args,stdout=f,stderr=subprocess.STDOUT,start_new_session=True)
+  p=subprocess.Popen(args,cwd=out,stdout=f,stderr=subprocess.STDOUT,start_new_session=True)
   try:code=p.wait(timeout=seconds+90)
   except subprocess.TimeoutExpired:
    (out/'REQUEST_STOP').touch()
@@ -185,7 +185,7 @@ def production():
  args=['ibrun','-n','16',str(SESSION/'build/gi/src/athena'),'--kokkos-map-device-id-by=mpi_rank',
   '-i',str(HERE/'inputs/production.athinput'),'-d',str(out),'-t',f'{seconds//3600:02d}:{seconds//60%60:02d}:{seconds%60:02d}',
   'time/stop_file='+str(out/'REQUEST_STOP')]
- atomic(root/'COMMAND.json',dict(command=args,job_id=os.environ['SLURM_JOB_ID'],manifest=frozen,fresh_t0=True,no_planned_restarts=True))
+ atomic(root/'COMMAND.json',dict(command=args,cwd=str(out),job_id=os.environ['SLURM_JOB_ID'],manifest=frozen,fresh_t0=True,no_planned_restarts=True))
  sampling=['srun','--overlap','--nodes=16','--ntasks=16','--ntasks-per-node=1','--cpus-per-task=1',sys.executable,str(HERE/'launch.py'),'sampler',str(root)]
  reader=StableSamplerReader();cfg={'telemetry_stale_seconds':120};reason=None;p=None
  telemetry_samples=0;startup_checked=False;startup_passed=False
@@ -205,7 +205,7 @@ def production():
      if any(g['used_mib']/g['total_mib']>=0.85 for g in m['gpus']):return 'GPU_memory_85pct'
     return None
    if guard(measures):raise RuntimeError('Startup resource guard failed')
-   p=subprocess.Popen(args,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+   p=subprocess.Popen(args,cwd=out,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
    bad_since=None; stop_sent=None; startup_deadline=time.time()+1800
    last_output_epoch=time.time();last_output_bytes=0
    while p.poll() is None:

@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -44,10 +45,17 @@ def digest(current):
 def readiness():
     """Used only by the early production process; never changes validation or push."""
     current = manifest()
+    expected_commit = os.environ.get('S11_PRODUCTION_COMMIT')
+    amendment = None
     if os.environ.get('S11_PRODUCTION_MANIFEST_SHA256') != digest(current):
-        raise RuntimeError('Production hashes changed after submission, or launch did not use submit_s11.sh production')
+        from queued_binding import verify
+        try:
+            amendment = verify(current, digest(current))
+        except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as exc:
+            raise RuntimeError('Production hashes changed without a verified Slurm submission update: '+str(exc)) from exc
+        expected_commit = amendment['replacement_commit']
     if (git('branch', '--show-current') != BRANCH or git('status', '--porcelain')
-            or git('rev-parse', 'HEAD') != os.environ.get('S11_PRODUCTION_COMMIT')):
+            or git('rev-parse', 'HEAD') != expected_commit):
         raise RuntimeError('Production checkout changed after submission')
     job = os.environ.get('SLURM_JOB_ID', '')
     if not job.isdigit():
@@ -62,5 +70,6 @@ def readiness():
         validation_requirement_waived_by_user=True, push_requirement_waived_for_launch=True,
         validation_receipt_present=(SESSION / 'evidence/VALIDATION_PASS.json').exists(),
         push_receipt_present=(SESSION / 'evidence/PUSH_VERIFIED.json').exists(),
-        scientifically_validated=False, resource_guards_retained=True, automatic_retry=False))
+        scientifically_validated=False, resource_guards_retained=True, automatic_retry=False,
+        submission_update=amendment))
     return current

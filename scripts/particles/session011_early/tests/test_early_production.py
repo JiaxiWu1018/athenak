@@ -35,10 +35,11 @@ class EarlyProductionTests(unittest.TestCase):
         return {'native_inputs_and_tools': {'passed': True, 'details': self.current},
                 'checkout': {'passed': True, 'details': {'commit': 'unit-commit'}}}
 
-    def test_queued_validation_manifest_is_unchanged(self):
+    def test_failed_validation_retains_its_original_submitted_manifest(self):
         path = early_gate.SESSION / 'evidence/submissions/validation_20261023T014715Z_97d0cd0bc5.json'
         submitted = json.loads(path.read_text())['preflight']['native_inputs_and_tools']['details']
-        self.assertEqual(workflow.manifest(), submitted)
+        command = json.loads((early_gate.SESSION / 'runtime/validation_1091645/compact_gi/COMMAND.json').read_text())
+        self.assertEqual(command['manifest'], submitted)
 
     def test_actual_policy_binds_native_model_and_declares_unvalidated(self):
         current = early_gate.manifest()

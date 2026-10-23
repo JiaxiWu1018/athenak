@@ -1,11 +1,14 @@
 {
   "schema_version": 1,
   "mode": "user_authorized_unvalidated",
-  "authorization": "User explicitly requested revising the gate and providing the production launch command before GPU validation and verified push.",
-  "waived_prerequisites": ["gpu_validation_before_production", "verified_push_before_production"],
+  "authorization": "User approved early production and requested repairing the failed build; a same-pending-job update must explicitly rebind the replacement hashes in Slurm.",
+  "waived_prerequisites": [
+    "gpu_validation_before_production",
+    "verified_push_before_production"
+  ],
   "scope": "One manually submitted fresh t0 production attempt: 16 GH nodes, one rank/GPU, at most 36 hours, strict t=150.",
   "native_source_sha256": "d8d40c41cd60852058a9b3f39021ffd9c2dea8f1e90e618da09ecfda267a1fce",
-  "gi_executable_sha256": "9d1b398488c39b5a54b496a1b1e88dc78b7dc84b52081f34f60d2275b8ac2d8b",
+  "gi_executable_sha256": "8e3d58b1578c9fbcbdd582457f00173bd8eb0d1fee694e465379c9a666bc1204",
   "production_input_sha256": "b402a20c6ed7306286bd458418d79ffe212c5ed499c40d68a83d77f724e5ae8c",
   "physics_and_resource_guards_changed": false,
   "automatic_submission": false,

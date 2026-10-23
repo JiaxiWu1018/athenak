@@ -13,7 +13,7 @@ import uuid
 
 from early_gate import HERE, MODE, SESSION, digest, manifest
 import submit as legacy
-from prepare import atomic
+from prepare import atomic, sha
 
 
 def job_id(stdout):
@@ -26,7 +26,7 @@ def job_id(stdout):
     return match[1]
 
 
-def existing_jobs(stage):
+def existing_jobs(stage, *, updating_job=None):
     raw = legacy.command(['squeue', '-h', '-u', getpass.getuser(), '-o', '%i|%80j|%T'])
     companion, duplicate = [], []
     own = 's11-final-' if stage == 'production' else 's11-ah-validation'
@@ -36,6 +36,9 @@ def existing_jobs(stage):
         if len(fields) != 3:
             raise RuntimeError('Unexpected squeue response; cannot rule out a duplicate job')
         name = fields[1].strip()
+        if (stage == 'production' and fields[0].strip() == updating_job
+                and name.startswith('s11-final-')):
+            continue
         if name.startswith(own) or (name.startswith('s11-') and not name.startswith(other)):
             duplicate.append(line)
         elif name.startswith(other):
@@ -45,14 +48,14 @@ def existing_jobs(stage):
     return dict(checked=True, same_stage_jobs=[], other_stage_jobs_allowed=companion)
 
 
-def preflight(stage):
+def preflight(stage, *, updating_job=None):
     checks = {}
     for label, fn in [
         ('submission_location', legacy.submission_location),
         ('native_inputs_and_tools', manifest if stage == 'production' else legacy.manifest),
         ('checkout', legacy.checkout), ('allocation', lambda: legacy.allocation(stage)),
         ('queue_limits', lambda: legacy.partition(stage)),
-        ('existing_jobs', lambda: existing_jobs(stage)), ('modules', legacy.modules),
+        ('existing_jobs', lambda: existing_jobs(stage, updating_job=updating_job)), ('modules', legacy.modules),
         ('storage', lambda: legacy.storage(stage)),
     ]:
         try:
@@ -78,7 +81,40 @@ def show_checks(stage, checks):
               + (': ' + result['error'] if not result['passed'] else ''))
 
 
-def submit_job(stage):
+def reviewed_retry(stage, retry_of=None):
+    if retry_of is None:
+        legacy.pending_attempts(stage)
+        return None
+    if not re.fullmatch(r'\d+', retry_of):
+        raise RuntimeError('--retry-of requires the previous job ID')
+    paths = list((SESSION / 'evidence/submissions').glob(stage + '_*.json'))
+    if not paths:
+        raise RuntimeError('No retained attempt to review for this stage')
+    latest = max(paths, key=lambda p: json.loads(p.read_text())['epoch'])
+    previous = json.loads(latest.read_text())
+    previous_job = previous.get('job_id')
+    if not previous_job and previous.get('returncode') == 0:
+        previous_job = job_id(previous.get('stdout', ''))
+    if previous_job != retry_of:
+        raise RuntimeError('--retry-of must identify the latest retained attempt; ambiguous later attempts block repeats')
+    if legacy.command(['squeue', '-h', '-j', retry_of, '-o', '%T']):
+        raise RuntimeError('Previous job is still in the queue; no retry submitted')
+    accounting = legacy.command(['sacct', '-X', '-n', '-P', '-j', retry_of,
+                                 '-o', 'JobID,State,ExitCode,Elapsed,AllocNodes,CPUTimeRAW'])
+    rows = [line.split('|') for line in accounting.splitlines()
+            if line.split('|')[0] == retry_of]
+    if len(rows) != 1 or len(rows[0]) < 6:
+        raise RuntimeError('Final accounting is unavailable; no retry submitted')
+    state = rows[0][1].split()[0].rstrip('+')
+    if state not in {'FAILED', 'CANCELLED', 'TIMEOUT', 'OUT_OF_MEMORY', 'NODE_FAIL',
+                     'PREEMPTED', 'BOOT_FAIL', 'DEADLINE'}:
+        raise RuntimeError('Previous attempt is not a confirmed failed/cancelled job: ' + state)
+    return dict(retry_of=retry_of, previous_attempt=str(latest),
+                previous_attempt_sha256=sha(latest), terminal_state=state,
+                sacct=accounting, observed_epoch=time.time(), automatic_retry=False)
+
+
+def submit_job(stage, retry_of=None):
     legacy.submission_location()
     folder = SESSION / 'evidence/submissions'; folder.mkdir(parents=True, exist_ok=True)
     with (folder / '.lock').open('a') as lock:
@@ -86,7 +122,7 @@ def submit_job(stage):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise RuntimeError('Another submission is in progress; no job submitted') from exc
-        legacy.pending_attempts(stage)
+        retry = reviewed_retry(stage, retry_of)
         checks = preflight(stage)
         show_checks(stage, checks)
         if not all(c['passed'] for c in checks.values()):
@@ -107,6 +143,8 @@ def submit_job(stage):
                       preflight=checks, automatic_retry=False,
                       mode=MODE if stage == 'production' else 'validation',
                       log_pattern=str(SESSION / 'slurm-%j.out'))
+        if retry is not None:
+            record['reviewed_retry'] = retry
         if stage == 'production':
             record.update(gpu_validation_verified=False, push_verified=False,
                           submitted_manifest_sha256=env['S11_PRODUCTION_MANIFEST_SHA256'],
@@ -141,19 +179,20 @@ def submit_job(stage):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['check', 'validation', 'production'], nargs='?', default='check')
+    parser.add_argument('--retry-of', metavar='JOBID', help='Explicit manual retry of the latest failed/cancelled attempt')
     args = parser.parse_args()
     try:
         if args.action == 'check':
             for stage in legacy.JOBS:
                 checks = preflight(stage)
                 try:
-                    legacy.pending_attempts(stage)
+                    reviewed_retry(stage, args.retry_of)
                 except RuntimeError as exc:
                     checks['previous_attempt'] = dict(passed=False, error=str(exc))
                 show_checks(stage, checks)
             print('No job submitted. Production may be submitted manually while validation is pending.')
         else:
-            submit_job(args.action)
+            submit_job(args.action, args.retry_of)
     except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
