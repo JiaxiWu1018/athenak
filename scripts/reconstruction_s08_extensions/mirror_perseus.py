@@ -16,7 +16,7 @@ HOST = 'hpcfund.amd.com'
 
 def remote(args):
     return subprocess.check_output(['ssh', '-o', 'BatchMode=yes', HOST,
-                                    shlex.join(list(map(str, args)))], timeout=180)
+                                    shlex.join(["env", "TZ=UTC", *map(str, args)])], timeout=180)
 
 
 def read_remote(relative):
@@ -144,7 +144,7 @@ def main():
     assert amdbytes + localbytes < 200 * 1024 ** 3
     write(E / 'evidence/AMD_FINAL_ACCOUNTING.json', dict(
         utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        terminal=True, allocated_node_hours=total,
+        terminal=True, allocated_node_hours=total, Slurm_timestamp_timezone='UTC',
         scheduler_rows=rows, fields=['JobIDRaw', 'State', 'ExitCode', 'ElapsedRaw',
                                     'AllocNodes', 'Start', 'End', 'Partition', 'NodeList'],
         scope='All registered extension AMD jobs, including failed and unstarted cancelled allocations. Excludes the separate Perseus mirror allocation, whose terminal accounting follows.'))
