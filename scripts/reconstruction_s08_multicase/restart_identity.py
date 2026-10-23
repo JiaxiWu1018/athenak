@@ -20,8 +20,8 @@ def gate(source):
     work=ROOT/'tests'/('restart_'+job());work.mkdir(parents=True)
     atomic(ROOT/'evidence/active.json',dict(job=job(),work=str(work),case=CASES[0]['id'],phase='restart_identity'))
     args=native_launcher()+[str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-r',str(source),'-d',str(work),f'time/nlim={before["cycle"]}',f'mesh_refinement/max_nmb_per_rank={rank_capacity()}','problem/cluster_sample_file='+str(ROOT/'samples'/f"{CASES[0]['id']}.bin"),'problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
-    atomic(work/'launch.json',dict(command=args,executable=receipt(ROOT/'protected/athena'),job=job()))
-    with (work/'native.log').open('w') as out:cmd(args,stdout=out,stderr=subprocess.STDOUT)
+    atomic(work/'launch.json',dict(command=args,cwd=str(work),executable=receipt(ROOT/'protected/athena'),job=job()))
+    with (work/'native.log').open('w') as out:cmd(args,cwd=work,stdout=out,stderr=subprocess.STDOUT)
     dest=sorted((work/'rst').glob('*.rst'))[-1];after=validate(dest)
     for key in ['time','cycle','particle_count','removal_counts','nblocks','ah_onset']:assert before[key]==after[key],key
     a=layout(source);b=layout(dest);assert a[1:3]==b[1:3] and a[4]==b[4]

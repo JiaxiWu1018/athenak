@@ -53,7 +53,11 @@ def main():
     assert parent in live or any(p.exists() for p in [N/'evidence'/f'SLURM_{parent}_TERMINAL.txt',N/'evidence'/f'SLURM_{parent}_COMPLETED.txt'])
     used,detail=budget(state,live);assert used+count/3<state['node_hour_review']-1,(used,count,state['node_hour_review'])
     repo=N/'src/athenak';script=repo/'scripts/reconstruction_s08_multicase'/('run_long.sbatch' if lane=='long' else 'run_weak.sbatch')
-    assert not subprocess.check_output(['git','-C',str(repo),'status','--porcelain'],text=True).strip()
+    changes=subprocess.check_output(['git','-C',str(repo),'status','--porcelain'],text=True).splitlines()
+    diagnostics=[]
+    for change in changes:
+        assert change.startswith('?? ') and re.fullmatch(r'(yc\d{4}|frozen_ah)\.horizon_summary_\d+\.txt',change[3:]),change
+        p=repo/change[3:];diagnostics.append(dict(path=str(p),bytes=p.stat().st_size,scope='Legacy native pre-chdir diagnostic, retained; excluded from source staging'))
     head=subprocess.check_output(['git','-C',str(repo),'rev-parse','HEAD'],text=True).strip()
     created=[]
     for _ in range(count):
@@ -61,6 +65,7 @@ def main():
         r=dict(id=jid,host='perseus',mode=mode,nodes=1,gpus=2,cpus=2,hours=1/3,afterany=parent,
           script=str(script),script_sha256=hashlib.sha256(script.read_bytes()).hexdigest(),source_head=head,
           utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),reply=reply,
+          retained_untracked_native_diagnostics=diagnostics,
           concurrency_proof='One serial dependency chain per PS lane; at most two PS allocations/four GPUs, plus at most two registered AMD trajectories. No new scientific realization.',
           node_hour_upper_before=used,budget_evidence=detail)
         state['Perseus_jobs'].append(r);state.setdefault('continuation_chains',{}).setdefault(lane,[]).append(jid)

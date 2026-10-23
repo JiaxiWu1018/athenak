@@ -68,12 +68,12 @@ def export(case):
     command += [f'mesh_refinement/max_nmb_per_rank={per}']
     executable=receipt(ROOT/'protected/athena')
     assert executable['sha256']==state['segments'][-1]['executable']['sha256']
-    atomic(destination/'launch.json',dict(utc=now(),job=jid,command=command,
+    atomic(destination/'launch.json',dict(utc=now(),job=jid,command=command,cwd=str(destination),
            checkpoint=checkpoint,executable=executable,no_evolution_requested=True))
     atomic(ROOT/'evidence/active.json',dict(job=jid,work=str(destination),case=case,
            phase='final_field_export'))
     with (destination/'native.log').open('w') as stream:
-        result=subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT)
+        result=subprocess.run(command,cwd=destination,stdout=stream,stderr=subprocess.STDOUT)
     assert result.returncode==0
     log=(destination/'native.log').read_text()
     assert '### FATAL' not in log and not re.search(r'search_fail=[1-9]',log)

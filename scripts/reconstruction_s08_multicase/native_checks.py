@@ -10,8 +10,8 @@ def main():
     results=[]
     def launch(label,args):
         command=native_launcher()+[str(ROOT/'protected/athena'),'--kokkos-map-device-id-by=mpi_rank','-d',str(work)]+args+['problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
-        atomic(work/f'{label}.launch.json',dict(command=command,utc=now(),job=job()))
-        with (work/f'{label}.log').open('w') as f:r=subprocess.run(command,stdout=f,stderr=subprocess.STDOUT)
+        atomic(work/f'{label}.launch.json',dict(command=command,cwd=str(work),utc=now(),job=job()))
+        with (work/f'{label}.log').open('w') as f:r=subprocess.run(command,cwd=work,stdout=f,stderr=subprocess.STDOUT)
         assert r.returncode==0,(label,r.returncode)
         text=(work/f'{label}.log').read_text();assert '### FATAL' not in text
         checkpoints=sorted((work/'rst').glob('*.rst'))

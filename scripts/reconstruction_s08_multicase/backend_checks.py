@@ -28,8 +28,8 @@ def main():
         else:inp.write_text(text)
         work=ROOT/'tests'/('frozen_'+job());work.mkdir()
         args=native_launcher()+[str(exe),'--kokkos-map-device-id-by=mpi_rank','-i',str(inp),'-d',str(work),'problem/cluster_t0_dump='+str(work/'initial_particles.bin')]
-        atomic(work/'launch.json',dict(command=args,utc=now(),job=job(),executable=receipt(exe)))
-        with (work/'native.log').open('w') as log:cmd(args,stdout=log,stderr=subprocess.STDOUT)
+        atomic(work/'launch.json',dict(command=args,cwd=str(work),utc=now(),job=job(),executable=receipt(exe)))
+        with (work/'native.log').open('w') as log:cmd(args,cwd=work,stdout=log,stderr=subprocess.STDOUT)
         assert (work/'FROZEN_AH_OK').exists()
         from native_checks import main as checks
         checks()

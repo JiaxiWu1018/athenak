@@ -133,11 +133,11 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
         # final_fields.py exports full 3D data at the true endpoint without evolution.
         launch+=['output6/dt=0','output7/dt=0']
     launch+=['-t',f'{wall_seconds//3600:02d}:{wall_seconds//60%60:02d}:{wall_seconds%60:02d}']
-    record=dict(**active,utc=now(),launch=launch,log=str(log),nodes=int(os.environ['SLURM_NNODES']),ranks=ranks,executable=receipt(ROOT/'protected/athena'),transport_profile=transport_profile())
+    record=dict(**active,utc=now(),launch=launch,log=str(log),cwd=str(work),nodes=int(os.environ['SLURM_NNODES']),ranks=ranks,executable=receipt(ROOT/'protected/athena'),transport_profile=transport_profile())
     record['segment_3d_suppressed']=suppress_segment_3d
     atomic(work/f'{segment}.launch.json',record)
     start=time.monotonic()
-    with log.open('w') as out:result=subprocess.run(launch,stdout=out,stderr=subprocess.STDOUT)
+    with log.open('w') as out:result=subprocess.run(launch,cwd=work,stdout=out,stderr=subprocess.STDOUT)
     record.update(returncode=result.returncode,elapsed=time.monotonic()-start,end=now())
     atomic(work/f'{segment}.result.json',record)
     assert result.returncode==0, f'Native failure: {log}'
