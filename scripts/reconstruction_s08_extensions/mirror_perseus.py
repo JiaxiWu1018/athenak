@@ -70,7 +70,7 @@ def wait_for_review(record):
         receipt = dict(utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
                        review_job=expected, production_job=parent, scheduler_rows=rows,
                        elapsed_wait_seconds=time.monotonic() - started,
-                       scope='Allocated one-CPU transfer job waits only for registered AMD review; no simulation or scheduler mutation')
+                       scope='Allocated transfer job (two CPUs and one site-required GPU) waits only for registered AMD review; no simulation or scheduler mutation')
         write(record / 'WAIT_REVIEW_LATEST.json', receipt)
         with (record / 'WAIT_REVIEW.jsonl').open('a') as f:
             f.write(json.dumps(receipt) + '\n')
