@@ -47,6 +47,10 @@ def native_launcher():
     return ['prun']
 def rank_capacity():
     ranks=int(os.environ['SLURM_NTASKS']);default=max(128,512//ranks)
+    # The doubled .819 box needs three additional central levels: its minimum
+    # nested .0625M layout has512 blocks. Reserve640 globally so the unchanged
+    # .9 clean-stop margin can admit that layout (4ranks=>160,2ranks=>320).
+    if CASE['key']=='yc0819_u0020':default=max(default,32*((640+32*ranks-1)//(32*ranks)))
     capacity=int(os.environ.get('ST8_MAX_NMB_PER_RANK',str(default)))
     assert default<=capacity<=(384 if MACHINE=='perseus' else 256)
     return capacity
