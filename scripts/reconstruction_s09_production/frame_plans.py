@@ -8,8 +8,9 @@ def main():
     job()
     assembly = load(ROOT/'evidence/ASSEMBLY_OK.json')
     assert assembly['source_files_SHA256_verified']
-    modes = [r['case'] for r in assembly['sources']]
-    if set(modes) == {c['id'] for c in PLOT_CASES}:
+    source_modes = [r['case'] for r in assembly['sources']]
+    modes = [mode for mode in source_modes if mode != 'yc0500_u0005']
+    if set(source_modes) == {c['id'] for c in PLOT_CASES}:
         modes.append('comparison')
     plans = []
     for mode in modes:
