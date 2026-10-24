@@ -11,7 +11,9 @@ from publication_style import style,save,array,shell_limits,time_axis
 def merged(rows):
     out={}
     for row in rows:
-        key=round(float(row['time']),8)
+        # A final tiny timestep can create distinct native records only a few
+        # ulps apart. Keep their actual times, cycles and dt values intact.
+        key=float(row['time'])
         if key in out:
             for column,value in row.items():
                 if isinstance(value,(int,float)) and column in out[key]:
