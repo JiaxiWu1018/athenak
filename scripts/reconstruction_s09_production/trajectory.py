@@ -21,12 +21,15 @@ def main():
         compatible=p.get('ranks')==int(os.environ['SLURM_NTASKS']) and p.get('max_nmb_per_rank')==rank_capacity() and p.get('transport_profile')==transport_profile() and p.get('machine')==MACHINE and p.get('executable_sha256')==sha(ROOT/'protected/athena')
         if not compatible:
             record=gate(state['latest']['path']);record.update(machine=MACHINE,executable_sha256=sha(ROOT/'protected/athena'));atomic(prior,record)
+        from runtime_forecast import refresh as forecast
+        forecast()
         assert not (ROOT/'evidence/RESOURCE_STOP.json').exists(),'Resolve resource stop before evolution'
         start=float(os.environ['ST8X_START_EPOCH']);limit=int(os.environ['ST8X_WALL_SECONDS'])
         while not state.get('complete'):
             remaining=limit-(time.time()-start)-180
             if remaining<150:break
             state=run(c,target=c['target'],wall_seconds=int(min(300,remaining)),suppress_segment_3d=True)
+            forecast()
             if state['segments'][-1].get('stop_reason') not in [None,'ah_tail_complete']:break
             if (ROOT/'evidence/RESOURCE_STOP.json').exists():break
     state=load(work/'state.json')
