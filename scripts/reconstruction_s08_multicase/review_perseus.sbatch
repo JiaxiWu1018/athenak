@@ -39,7 +39,17 @@ python3 "$record/workflow/extension_resources.py" > "$record/resource_guard.log"
 guard_pid=$!
 case "$mode" in
  import) python3 "$record/workflow/import_packets.py" ;;
- figures) shift; python3 "$record/workflow/products.py" "$@"; python3 "$record/workflow/pdf_previews.py" ;;
+ figures)
+   shift
+   python3 "$record/workflow/products.py" "$@"
+   python3 "$record/workflow/pdf_previews.py"
+   source_head=$(git -C "$batch/src/athenak" rev-parse HEAD)
+   for case_key in "$@"; do
+     source_case="$ST8X_ROOT/$case_key"
+     if [ -f "$source_case/review_packet/MANIFEST.json" ] && [ ! -f "$source_case/evidence/CLOSED_OUTPUT_MANIFEST.json" ]; then
+       python3 "$record/workflow/closed_output_manifest.py" --root "$source_case" --source-commit "$source_head"
+     fi
+   done ;;
  boundary) python3 "$record/workflow/boundary.py"; python3 "$record/workflow/pdf_previews.py" ;;
  movie) python3 "$record/workflow/movies.py" "$2" ;;
  movie_chunk) python3 "$record/workflow/movie_chunks.py" render "$2" "${SLURM_ARRAY_TASK_ID:-${3:-0}}" ;;
