@@ -49,6 +49,8 @@ def main():
                   destination_SHA256_verified=True, files=rows,
                   allocated_destination_bytes=int(subprocess.check_output(
                       ['du', '-s', '-B1', str(root)], text=True).split()[0]),
+                  allocated_Perseus_session_bytes=int(subprocess.check_output(
+                      ['du', '-s', '-B1', str(root.parent)], text=True).split()[0]),
                   publisher_terminal_addendum_required=True,
                   scope='Actual destination bytes checked against the fixed AMD product manifest. No raw data/source/frames mirrored; no Mac delivery claimed.')
     path = root / 'evidence/THIN_REVIEW_VERIFIED.json'
