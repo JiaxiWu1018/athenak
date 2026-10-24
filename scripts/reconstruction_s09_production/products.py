@@ -84,7 +84,7 @@ def figures(data):
         for q in range(10,100,10):ax[0,j].plot(t,array(d['shells'],f'r{q}'),c=cm(norm(q/100)),lw=1)
         ax[0,j].set(yscale='log',ylim=lim,title=d['case']['title']);ax[1,j].plot(array(d['history'],'time'),array(d['history'],'core_lapse'),c='#275d7f',lw=1.2)
         ax[1,j].set(ylim=(0,1),xlabel=r'$t/M_{\rm ref}$')
-        for a in ax[:,j]:time_axis(a,s['endpoint'])
+        for a in ax[:,j]:time_axis(a,300.)
         if d['case'].get('inherited_time'):
             for a in ax[:,j]:
                 a.axvline(300,c='.55',ls='-.',lw=.8);a.axvline(500,c='.55',ls=':',lw=.8)
@@ -102,7 +102,7 @@ def figures(data):
         ax[0,j].plot(t,1+array(m,'closure'),c='.1',ls='--',lw=.9,label='Accounted total')
         ax[0,j].set(title=d['case']['title'],ylim=(-.03,1.04));ax[1,j].plot(t,array(m,'closure'),c='#275d7f',lw=.9)
         ax[1,j].set(ylim=(-extent,extent),xlabel=r'$t/M_{\rm ref}$');ax[1,j].ticklabel_format(axis='y',style='sci',scilimits=(0,0))
-        for a in ax[:,j]:time_axis(a,d['summary']['endpoint'])
+        for a in ax[:,j]:time_axis(a,300.)
         events(ax[:,j],d['summary'])
     ax[0,0].set_ylabel(r'Rest mass / initial $M_0$');ax[1,0].set_ylabel(r'$M_{0,{\rm accounted}}/M_0(0)-1$');ax[0,-1].legend(frameon=False,fontsize=8,loc='center')
     save(fig,'s09_mass_conservation')
@@ -114,10 +114,10 @@ def figures(data):
         for key,c,ls,label in [('mirr','#275d7f','-',r'$M_{\rm irr}$'),('mass','#b35c26','--',r'$M_{\rm CH}$')]:
             values=array(ah,key);values[~good]=np.nan;ax.plot(array(ah,'time'),values,c=c,ls=ls,label=label)
         if not good.any():ax.text(.5,.5,'No accepted horizon',ha='center',transform=ax.transAxes)
-        ax.set(title=d['case']['title'],xlabel=r'$t/M_{\rm ref}$',ylim=(0,ah_upper));time_axis(ax,d['summary']['endpoint']);events([ax],d['summary'])
+        ax.set(title=d['case']['title'],xlabel=r'$t/M_{\rm ref}$',ylim=(0,ah_upper));time_axis(ax,300.);events([ax],d['summary'])
     axes[0,0].set_ylabel(r'AH mass / $M_{\rm ref}$');axes[0,-1].legend(frameon=False)
     save(fig,'s09_AH_masses')
-    atomic(ROOT/'evidence/PLOTS_RENDERED.json',dict(job=job(),utc=now(),products=[receipt(p) for p in sorted((ROOT/'plots').glob('*.pdf'))],visual_review='pending actual inspection',x_axes='Each column uses its actual endpoint; time units common; do not compare column widths as durations'))
+    atomic(ROOT/'evidence/PLOTS_RENDERED.json',dict(job=job(),utc=now(),products=[receipt(p) for p in sorted((ROOT/'plots').glob('*.pdf'))],visual_review='pending actual inspection',x_axes='Common0..300M_ref across five columns; each curve ends at its actual audited endpoint'))
 
 if __name__=='__main__':
     import sys

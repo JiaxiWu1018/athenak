@@ -20,7 +20,8 @@ def finish(c):
     assert state['complete'] and accept['numerical_checks_passed'] and final['no_evolution']
     assert expected == accept['checkpoint']['sha256'] == packet['checkpoint']['sha256'] == final['checkpoint']['sha256']
     record = ROOT / 'evidence/jobs' / job()
-    deployment = load(EXT / 'evidence/ENDPOINT_MANIFEST_DEPLOYMENT.json')
+    deployment_file=record/'DEPLOYMENT.json'
+    deployment=load(deployment_file if deployment_file.exists() else EXT/'evidence/ENDPOINT_MANIFEST_DEPLOYMENT.json')
     assert re.fullmatch('[0-9a-f]{40}', deployment['source_commit'])
     for name, digest in deployment['python_files'].items():
         assert Path(name).name == name

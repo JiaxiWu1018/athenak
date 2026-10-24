@@ -44,6 +44,13 @@ END
 trap finish EXIT
 { hostname; date -u; module list; hipcc --version; scontrol show job "$SLURM_JOB_ID"; mpirun --version; rocm-smi --showproductname --showmeminfo vram; } > "$record/environment.txt" 2>&1
 sha256sum "$record/workflow/"* > "$record/workflow.sha256"
+python3 - "$record" <<'PROVENANCE'
+from common import *
+import sys
+record=Path(sys.argv[1]);repo=EXT/'src/athenak'
+assert not subprocess.check_output(['git','-C',str(repo),'diff','2d1f2525','--','src','CMakeLists.txt','cmake','kokkos'],text=True)
+atomic(record/'DEPLOYMENT.json',dict(source_commit=subprocess.check_output(['git','-C',str(repo),'rev-parse','HEAD'],text=True).strip(),python_files={p.name:sha(p) for p in (record/'workflow').glob('*.py')},native_source_unchanged=True))
+PROVENANCE
 python3 "$record/workflow/extension_resources.py" > "$record/watchdog.log" 2>&1 &
 guard_pid=$!
 python3 "$record/workflow/trajectory.py" > "$record/campaign.log" 2>&1

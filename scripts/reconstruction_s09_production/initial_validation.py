@@ -5,6 +5,28 @@ from common import *
 
 def initial_check(work,c):
     job()
+    import struct
+    from checkpoint import parameters
+    checkpoints=sorted((work/'rst').glob('*.rst'))
+    assert checkpoints
+    with checkpoints[-1].open('rb') as f:
+        header=b''
+        while not header.endswith(b'<par_end>\n'):
+            line=f.readline();assert line
+            header+=line
+        nblocks=struct.unpack('<i',f.read(4))[0]
+    actual=parameters(header.decode())
+    baseline=parameters((Path(os.environ['ST8X_BASE'])/'inputs'/f"{c['id']}.athinput").read_text())
+    assert nblocks==344
+    for block in ['mesh','meshblock']+[k for k in baseline if k.startswith('refined_region')]:
+        for key,value in baseline[block].items():
+            assert actual[block][key]==value,(block,key,actual[block].get(key),value)
+    assert int(actual['mesh_refinement']['num_levels'])==8
+    assert abs((2*c['L']/128)/2**7-c['finest_dx'])<1e-12
+    assert int(actual['mesh_refinement']['max_nmb_per_rank'])==rank_capacity()
+    assert float(actual['problem']['cluster_radial_mode_u'])==float(os.environ.get('ST8X_U','0'))
+    assert actual['particles']['excise_ah']=='false' and float(actual['particles']['excise_lapse'])==.1
+    assert int(actual['fastflow']['num_horizons'])==1
     with (ROOT/'samples'/f"{CASES[0]['id']}.bin").open('rb') as f:
         f.readline();base=np.fromfile(f,dtype='<f8').reshape(-1,8)
     with (work/'initial_particles.bin').open('rb') as f:
@@ -59,6 +81,6 @@ def initial_check(work,c):
     else:
         assert os.environ.get('ST8X_ZERO_PREFLIGHT')=='1', 'Production initialization must verify its actual full-particle output'
         result.update(actual_full_particle_output_checked=False,scope='Zero-step preflight generation dump plus actual deposited-field constraints; production actual-particle output gate still required')
-    result.update(utc=now(),job=job(),ranks=int(os.environ['SLURM_NTASKS']),count=len(base),positions_ids_weights_exact=True,executable=receipt(ROOT/'protected/athena'))
+    result.update(utc=now(),job=job(),ranks=int(os.environ['SLURM_NTASKS']),count=len(base),positions_ids_weights_exact=True,actual_mesh_checked=True,initial_nblocks=nblocks,finest_allowed_dx_M=c['finest_dx'],initial_hierarchy_unchanged=True,executable=receipt(ROOT/'protected/athena'))
     atomic(work/'INITIAL_OK.json',result)
     return result
