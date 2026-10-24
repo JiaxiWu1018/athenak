@@ -8,6 +8,18 @@ def size(path):
     return allocated_bytes(path) if path.exists() else 0
 
 
+def file_sizes(paths):
+    values = []
+    for path in paths:
+        try:
+            values.append(path.stat().st_size)
+        except FileNotFoundError:
+            # The other trajectory may rotate a recovery or preserve an
+            # interrupted tail while this metadata-only estimate is collected.
+            continue
+    return values
+
+
 def refresh():
     job()
     disk = storage()
@@ -22,15 +34,15 @@ def refresh():
         onset = state['latest']['ah_onset'] if state else -1.
         target = min(300., onset + 20.) if onset >= 0 else 300.
         remaining = max(0., target - current)
-        full = max([p.stat().st_size for p in (work / 'pvtk').glob('*.vtk')] + [80_000_000])
+        full = max(file_sizes((work / 'pvtk').glob('*.vtk')) + [80_000_000])
         fields = 0
         for name in ['z4c2d', 'tme2d', 'con2d']:
-            fields += max([p.stat().st_size for p in (work / 'bin').glob('*.' + name + '.*.bin')] + [5_000_000])
-        cohort = max([p.stat().st_size for p in (work / 'cohort').glob('*.s8c')] + [1_360_000])
+            fields += max(file_sizes((work / 'bin').glob('*.' + name + '.*.bin')) + [5_000_000])
+        cohort = max(file_sizes((work / 'cohort').glob('*.s8c')) + [1_360_000])
         rate = full + 1.2 * fields + 2 * cohort + 1_000_000
         streams = rate * (math.ceil(remaining) + 1) if remaining else 0
         checkpoints = list((work / 'rst').glob('*.rst'))
-        largest = max([p.stat().st_size for p in checkpoints] + [6 * GIB])
+        largest = max(file_sizes(checkpoints) + [6 * GIB])
         checkpoint_reservation = max(24 * GIB, 4 * largest * 1.1)
         checkpoint_add = max(0., checkpoint_reservation - size(work / 'rst'))
         tests_add = max(0., 6 * GIB - size(root / 'tests'))

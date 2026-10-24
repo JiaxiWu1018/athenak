@@ -28,6 +28,9 @@ def reference():
 def main():
     job();admission();mode=sys.argv[1]
     if mode=='reference':reference()
+    elif mode=='provenance':
+        from build_provenance import main as provenance
+        provenance()
     elif mode=='plots':
         from products import assemble,figures
         reference();figures(assemble(sys.argv[2:] or None))

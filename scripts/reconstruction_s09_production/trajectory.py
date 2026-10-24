@@ -10,6 +10,8 @@ def main():
     job();c=CASE;admission()
     assert not c.get('reused_session8'),'Reference must never be evolved'
     assert load(EXT/'evidence/PREPARATION_OK.json')['native_source_unchanged']
+    provenance=load(EXT/'evidence/NATIVE_BUILD_PROVENANCE.json')
+    assert provenance['pgen_source_matches'] and provenance['executable']['sha256']==sha(EXT/'protected/athena')
     assert load(EXT/'evidence/INDEPENDENT_CONSTRAINT_REFERENCE_OK.json')['results']
     work=setup(c)
     if not (work/'state.json').exists() or not load(work/'state.json').get('complete'):
