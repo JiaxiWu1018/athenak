@@ -1,5 +1,6 @@
 """Final comparison figures, fixed-ID movies and source-bound Markdown/PDF."""
 import csv
+import shutil
 import textwrap
 import numpy as np
 from common import *
@@ -145,7 +146,10 @@ def figures(data, out):
 
 def movie(data, out, name, targets=None):
     import matplotlib.pyplot as plt
-    from matplotlib.animation import FFMpegWriter
+    exe=shutil.which('ffmpeg')
+    if not exe:
+        import imageio_ffmpeg
+        exe=imageio_ffmpeg.get_ffmpeg_exe()
     endpoint = max(d['summary']['endpoint'] for d in data)
     targets = np.unique(np.r_[np.arange(0, endpoint+1e-8, 2.), endpoint]) if targets is None else np.asarray(targets,dtype=float)
     selected = []
@@ -177,41 +181,46 @@ def movie(data, out, name, targets=None):
         artists.append(ax.scatter([], [], c=[], s=.8, cmap='viridis', vmin=0, vmax=float(radius0.max()), linewidths=0))
         labels.append(ax.text(.02, .98, '', transform=ax.transAxes, va='top', fontsize=9))
         ax.set_title(f"U={d['case']['U']:+g}: 20,000 fixed original IDs")
-    writer = FFMpegWriter(fps=15, codec='libx264', extra_args=['-pix_fmt', 'yuv420p', '-crf', '20'])
     frame_manifest = []
     previews = out/(name+'_previews')
     previews.mkdir(exist_ok=True)
-    with writer.saving(fig, str(out/(name+'.mp4')), dpi=130):
-        for i, t in enumerate(targets):
-            sources = []
-            for ax, d, rows, artist, label in zip(axes, data, selected, artists, labels):
-                row = rows[i]
-                actual, cycle, mask, values = cohort(row['file'])
-                active = mask == 1
-                artist.set_offsets(values[active, 1:3])
-                artist.set_array(radius0[active])
-                ended = t > d['summary']['endpoint']+1e-8
-                ah = d['summary']['ah_first']
-                label.set_text(f'target {t:g}M; native {actual:g}M\n'+
-                    ('ENDED; last state held\n' if ended else '')+
-                    (f'Accepted AH at {ah:g}M\n' if ah is not None and actual >= ah else '')+
-                    f'alive cohort {int(active.sum())}/20000')
-                sources.append(dict(file=row['file'], time=actual, cycle=cycle, ended=ended))
-            writer.grab_frame()
-            if i in {0, len(targets)//2, len(targets)-1}:
-                fig.savefig(previews/f'frame_{i:05d}.png', dpi=130)
-            frame_manifest.append(dict(frame=i, target_time=float(t), sources=sources))
+    frames=out/(name+'_frames')
+    frames.mkdir(exist_ok=False)
+    for i, t in enumerate(targets):
+        sources = []
+        for ax, d, rows, artist, label in zip(axes, data, selected, artists, labels):
+            row = rows[i]
+            actual, cycle, mask, values = cohort(row['file'])
+            active = mask == 1
+            artist.set_offsets(values[active, 1:3])
+            artist.set_array(radius0[active])
+            ended = t > d['summary']['endpoint']+1e-8
+            ah = d['summary']['ah_first']
+            label.set_text(f'target {t:g}M; native {actual:g}M\n'+
+                ('ENDED; last state held\n' if ended else '')+
+                (f'Accepted AH at {ah:g}M\n' if ah is not None and actual >= ah else '')+
+                f'alive cohort {int(active.sum())}/20000')
+            sources.append(dict(file=row['file'], time=actual, cycle=cycle, ended=ended))
+        frame=frames/f'{i:06d}.png'
+        fig.savefig(frame,dpi=130,facecolor='white')
+        if i in {0, len(targets)//2, len(targets)-1}:
+            shutil.copy2(frame,previews/f'frame_{i:05d}.png')
+        frame_manifest.append(dict(frame=i, target_time=float(t), sources=sources,encoder_input=receipt(frame)))
     plt.close(fig)
     path = out/(name+'.mp4')
-    cmd(['ffmpeg', '-v', 'error', '-i', path, '-f', 'null', '-'], stdout=subprocess.DEVNULL)
-    probe = json.loads(subprocess.check_output(['ffprobe', '-v', 'error', '-count_frames',
-        '-show_entries', 'stream=nb_read_frames,width,height,codec_name,pix_fmt', '-of', 'json', str(path)], text=True))
-    assert int(probe['streams'][0]['nb_read_frames']) == len(targets)
+    encode=[exe,'-v','error','-xerror','-framerate','15','-i',frames/'%06d.png',
+        '-c:v','libx264','-crf','20','-pix_fmt','yuv420p','-movflags','+faststart','-threads','4',path]
+    cmd(encode)
+    decoded=subprocess.run([exe,'-v','error','-xerror','-threads','1','-i',str(path),
+        '-progress','pipe:1','-nostats','-f','null','-'],capture_output=True,text=True)
+    assert decoded.returncode==0 and not decoded.stderr,decoded.stderr
+    probe=dict(line.split('=',1) for line in decoded.stdout.splitlines() if '=' in line)
+    assert probe.get('progress')=='end' and int(probe['frame'])==len(targets),probe
     selection = '+'.join(r'eq(n\,'+str(i)+')' for i in sorted({0, len(targets)//2, len(targets)-1}))
-    cmd(['ffmpeg', '-v', 'error', '-i', path, '-vf', 'select='+selection,
-         '-vsync', 'vfr', previews/'encoded_%03d.png'], stdout=subprocess.DEVNULL)
+    cmd([exe, '-v', 'error','-xerror','-threads','1', '-i', path, '-vf', 'select='+selection,
+         '-vsync', 'vfr','-threads','1', previews/'encoded_%03d.png'], stdout=subprocess.DEVNULL)
     atomic(out/(name+'_manifest.json'), dict(utc=now(), job=job(), movie=receipt(path), frames=frame_manifest,
-        full_decode_passed=True, probe=probe, xy_limit=limit, color='Initial coordinate radius; fixed across all frames',
+        full_decode_passed=True, probe=probe,encoder=receipt(exe),encode_command=list(map(str,encode)),xy_limit=limit, color='Initial coordinate radius; fixed across all frames',
         actual_encoded_frame_visual_review=False, scope='Fixed-ID cohort projection; not a full-population density movie'))
     return path
 
@@ -274,7 +283,11 @@ def main():
         sources=[d['acceptance'] for d in data], products=[receipt(p) for p in sorted(out.iterdir()) if p.is_file()],
         final_visual_review_pending=True, final_accounting_and_storage_pending=True,
         final_thin_mirror_pending=True))
-    cmd(['pdftoppm', '-png', '-r', '90', out/'REPORT_migration10.pdf', out/'report_page'], stdout=subprocess.DEVNULL)
+    if shutil.which('pdftoppm'):
+        cmd(['pdftoppm', '-png', '-r', '90', out/'REPORT_migration10.pdf', out/'report_page'], stdout=subprocess.DEVNULL)
+    else:
+        atomic(out/'PDF_RASTER_REVIEW_PENDING.json',dict(reason='pdftoppm absent from AMD PATH',
+            required_next_step='Render this exact PDF in an allocated Perseus review job and inspect every exported page',pdf=receipt(out/'REPORT_migration10.pdf')))
 
 if __name__ == '__main__':
     main()

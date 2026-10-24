@@ -32,6 +32,14 @@ print(json.dumps(out))
         'hpcfund.amd.com', 'python3 -'], input=program, capture_output=True, text=True, timeout=60)
     assert q.returncode == 0, q.stderr
     value = json.loads(q.stdout)
+    receipts=LOCAL/'evidence/scheduler_receipts'
+    receipts.mkdir(exist_ok=True)
+    for row in value['jobs']:
+        path=receipts/(row['id']+'.json')
+        if any('JobState='+state in row['scheduler'] for state in ['COMPLETED','FAILED','CANCELLED','TIMEOUT','NODE_FAIL','OUT_OF_MEMORY']):
+            atomic(path,row)
+        elif path.exists():
+            row['last_terminal_scheduler_receipt']=json.loads(path.read_text())
     atomic(LOCAL/'evidence/remote_status.json', value)
     return value
 
