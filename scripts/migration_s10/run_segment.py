@@ -20,6 +20,20 @@ def admission():
     from extension_resources import admission
     return admission()
 
+def protected_checkpoint_paths(ordered):
+    protected=set()
+    for x in ordered:
+        t=x['time']
+        if x.get('final') or t==0 or abs(t-20)<1e-7 or (t>=100 and abs(t-100*round(t/100))<=max(x['dt'],.1)+1e-7):
+            protected.add(x['path'])
+    onset=[x for x in ordered if x.get('ah_onset',-1)>=0]
+    if onset:protected.add(onset[0]['path'])
+    # Count intermediate recoveries separately from scientific/final anchors.
+    intermediates=[x for x in ordered if x['path'] not in protected]
+    protected.update(x['path'] for x in intermediates[-2:])
+    if ordered:protected.add(ordered[-1]['path'])
+    return protected
+
 def promote(work):
     index=work/'checkpoints.json'
     previous=load(index) if index.exists() else []
@@ -35,16 +49,7 @@ def promote(work):
     latest=present[-1]
     # Re-read/hash the proposed restart even when its old receipt exists.
     checked=validate(latest['path']);assert checked['sha256']==latest['sha256']
-    protected={x['path'] for x in present[-2:]}
-    onset=[x for x in ordered if x['ah_onset']>=0]
-    if onset:protected.add(onset[0]['path'])
-    finals=[x for x in ordered if x.get('final')]
-    protected.update(x['path'] for x in finals)
-    # Keep every scientific100M checkpoint and both initial/pilot anchors.
-    for x in present:
-        t=x['time']
-        if t==0 or abs(t-20)<1e-7 or (t>=100 and abs(t-100*round(t/100))<=max(x['dt'],.1)+1e-7):
-            protected.add(x['path'])
+    protected=protected_checkpoint_paths(present)
     rotations=[]
     for d in present[:-2]:
         if d['path'] in protected:continue

@@ -9,8 +9,12 @@ def main():
     from products import resolve_prefix, movie
     from analysis import plot_case
     from run_segment import cohort
+    from run_segment import protected_checkpoint_paths
     from reduce import csv_rows
     prefix = resolve_prefix()
+    fixture=[dict(path=f'fixture_{t}.rst',time=t,dt=.1,ah_onset=95.5 if t>=95.5 else -1,final=t==300)
+             for t in [0,10,20,40,95.5,100,200,210,220,300]]
+    assert protected_checkpoint_paths(fixture)=={f'fixture_{t}.rst' for t in [0,20,95.5,100,200,210,220,300]}
     with (prefix/'cohort_index_resolved.csv').open() as f:
         rows = list(csv.DictReader(f))
     for t in [0, 350, 700]:
