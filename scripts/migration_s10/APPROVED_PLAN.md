@@ -1,0 +1,15 @@
+# Session 10 approved execution contract
+
+Authorized 2026-10-24 PDT by the user's explicit request to implement the discussed plan.
+
+Two corrected-profile yc=0.500 trajectories: outward U=+0.005 from 0 to1500M and exact original unperturbed700M continuation to1500M. Original +/-512M mesh, root128^3/block32^3, initial finest0.25M, allowable0.0625M (8physical levels), original SMR regions/AMRcriterion/gauge/Z4c/RK4/CFL0.4/deposition/pusher/source-timecoupling unchanged. Original proper-volume stratified seed1,2,000,000 equal-rest-mass particles, original positions/IDs/weights. Fixed M_ref=1; do not renormalize the kick. Coherent Eulerian radial velocity increment U(3x-x^3)/2 with x initial areal radius/surface radius; validated incremental spherical momentum+Hamiltonian corrections enabled for fresh outward data. No parameter scan or solver change.
+
+Full-population initialization, independent192-point angular/Green reference, same-executable U0 constraint norm ratios<=1.005, actual20M U0 check and same-trajectory outward20M check before promotion. Exact accepted700M checkpoint SHA942230e4315b18e7850ab24e4ba2bf02d296cc324797b1cf50fdf2a6a5ad1624 with preserved executable; full payload/zero-step identity before continuation. Preserve old anchors and evidence.
+
+AMD mi2508x/eightMPI ranks, preserved ROCm6.4.1/GFX90A toolchain and transport; one Session10 production trajectory at a time. Hard50allocatednodehours and350GiBnewstorage including gates/failures/analysis/products. Five-minute whole-userdu watchdog: warn1.5TiB,stopgrowth1.7TiB/projected1.9TiB, tolerate transientduerrors. Enforce assignedGPUmemory and AMRcapacity guards. Resource stops are incomplete outcomes, not scientific endpoints.
+
+Histories0.25M,cohorts0.5M,stride100; fullparticles/equatorialZ4c/Tmunu/constraints2M;scientificcheckpoints100M plusinitial/final/AHonset andlatesttwointermediaterecoveries. Only obsoleteSession10recoveries may be rotated after inventory/checksum/replacementverification; preserve100Mscientific/AH/initial/final anchors. All other/earlier/unrelateddata untouched.
+
+Review outward100/500/1000/1500M andcontrol1000/1500M. QualifiedpersistentAH+20M capped1500M is collapseendpoint;no automaticextension. CompareCOMrestmassdeciles,profiledrift/radialflow/retainedmass/lapse,localconstraints/activegrid/fallbacks/AH. No exactSTendpointrequired. Dampingtrends reported continuously; survival alone isnotstability; boundary/sourcecoupling/convergence limits explicit.
+
+All heavywork inSlurm;raw/reduced/logs/source/frames/finalproductsstayAMD. DeliverPNG/PDFfigures,individual/synchronizedmovies,numericaltables andMarkdown/PDF science/technical/resource report. Reuseacceptedcontrol0-700M withprovenance; no historic rerun. One-waySHAverifiedthinPerseusreviewcopy. Commit/pushnewworkflowtomatchingbranch. Durable same-chatcontinuation withjobIDs/logs/nextsteps.

@@ -1,0 +1,25 @@
+[
+  {
+    "id": "yc0500_outward",
+    "yc": 0.5,
+    "U": 0.005,
+    "L": 512,
+    "target": 1500.0,
+    "initial_dx": 0.25,
+    "finest_dx": 0.0625,
+    "num_levels": 8,
+    "start": 0.0
+  },
+  {
+    "id": "yc0500_control",
+    "yc": 0.5,
+    "U": 0.0,
+    "L": 512,
+    "target": 1500.0,
+    "initial_dx": 0.25,
+    "finest_dx": 0.0625,
+    "num_levels": 8,
+    "start": 700.0,
+    "inherited_time": 700.0
+  }
+]

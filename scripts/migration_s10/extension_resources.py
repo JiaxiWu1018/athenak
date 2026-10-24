@@ -1,0 +1,113 @@
+"""Allocation-only storage, GPU and whole-session cost guards."""
+import shutil
+import time
+from common import *
+
+def allocated_bytes(path):
+    failures = []
+    for attempt in range(5):
+        try:
+            r = subprocess.run(['du', '-s', '-B1', str(path)], capture_output=True, text=True, timeout=180)
+            if r.returncode == 0:
+                return int(r.stdout.split()[0])
+            failures.append(r.stderr[-2000:])
+        except Exception as error:
+            failures.append(repr(error))
+        time.sleep(.2*(attempt+1))
+    raise RuntimeError('Storage checks unavailable: '+repr(failures))
+
+def storage():
+    own = allocated_bytes(EXT)
+    whole = allocated_bytes('/work1/eliasmost/jiaxiwu')
+    return dict(own=own, limit=350*GIB, checkpoint_reserve=48*GIB, whole=whole,
+        forecast=whole+max(0, 350*GIB-own), whole_storage_warning=whole >= 1.5*TIB,
+        filesystem_free=shutil.disk_usage(EXT).free)
+
+def cost_seconds():
+    """Use a bounded receipt; absent terminal evidence reserves the full allocation."""
+    registry = EXT/'evidence/job_registry.json'
+    rows = load(registry) if registry.exists() else []
+    total = 0.
+    for row in rows:
+        end = EXT/'evidence/allocations'/str(row['id'])/'ALLOCATION_END.json'
+        total += min(row['requested_seconds'], load(end)['elapsed_seconds']+60) if end.exists() else row['requested_seconds']
+    return total
+
+def admission():
+    job()
+    d = storage()
+    d.update(job=job(), utc=now(), conservative_reserved_node_seconds=cost_seconds())
+    assert d['own'] < d['limit']-d['checkpoint_reserve'], d
+    assert d['whole'] < 1.7*TIB and d['forecast'] < 1.9*TIB, d
+    assert d['filesystem_free'] > d['checkpoint_reserve'], d
+    assert d['conservative_reserved_node_seconds'] <= 50*3600, d
+    atomic(ROOT/'evidence/jobs'/job()/'admission.json', d)
+    return d
+
+def stop(reason):
+    atomic(ROOT/'evidence/RESOURCE_STOP.json', dict(job=job(), utc=now(), reason=reason))
+    active = ROOT/'evidence/active.json'
+    if active.exists():
+        a = load(active)
+        w = Path(a['work'])
+        if a['job'] == job() and ROOT in w.parents:
+            (w/'REQUEST_STOP').write_text(reason+'\n')
+
+def watchdog():
+    out = ROOT/'evidence/jobs'/job()
+    out.mkdir(parents=True, exist_ok=True)
+    last_disk = last_gpu = time.monotonic()
+    previous = None
+    next_disk = 0
+    while True:
+        t = time.monotonic()
+        d = dict(job=job(), utc=now())
+        if t >= next_disk:
+            try:
+                disk = storage()
+                if previous:
+                    elapsed = max(t-previous[0], 1)
+                    disk['ten_minute_projected_whole'] = disk['whole']+max(0, disk['whole']-previous[1])*600/elapsed
+                previous = (t, disk['whole'])
+                d.update(disk)
+                last_disk = t
+                if disk['own'] >= disk['limit']-disk['checkpoint_reserve']:
+                    stop('session_storage_checkpoint_reserve')
+                if disk['whole'] >= 1.7*TIB or max(disk['forecast'], disk.get('ten_minute_projected_whole', 0)) >= 1.9*TIB:
+                    stop('whole_AMD_storage_limit')
+                if disk['filesystem_free'] < disk['checkpoint_reserve']:
+                    stop('filesystem_checkpoint_reserve')
+                if cost_seconds() > 50*3600:
+                    stop('session_cost_limit')
+            except Exception as error:
+                d['storage_error'] = repr(error)
+            next_disk = t+300
+        if t-last_disk > 900:
+            stop('storage_telemetry_stale')
+        if os.environ.get('S10_CPU_ONLY') != '1':
+            try:
+                raw = json.loads(subprocess.check_output(['rocm-smi', '--showmeminfo', 'vram', '--json'], text=True, timeout=30))
+                ratios = []
+                for row in raw.values():
+                    if not isinstance(row, dict):
+                        continue
+                    total = [int(v) for k, v in row.items() if 'Total Memory' in k]
+                    used = [int(v) for k, v in row.items() if 'Used Memory' in k]
+                    if total and used:
+                        ratios.append(used[0]/total[0])
+                assert len(ratios) >= int(os.environ['SLURM_NTASKS'])
+                d.update(assigned_GPU_memory=raw, vram_max_fraction=max(ratios), memory_warning=max(ratios) >= .8)
+                last_gpu = t
+                if max(ratios) >= .85:
+                    stop('gpu_memory_85_percent')
+            except Exception as error:
+                d['memory_error'] = repr(error)
+            if t-last_gpu > 300:
+                stop('memory_telemetry_stale')
+        atomic(out/'LATEST.json', d)
+        with (out/'telemetry.jsonl').open('a') as f:
+            f.write(json.dumps(d)+'\n')
+        time.sleep(10)
+
+if __name__ == '__main__':
+    watchdog()
