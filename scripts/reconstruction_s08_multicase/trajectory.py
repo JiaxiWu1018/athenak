@@ -41,7 +41,10 @@ def inherited_start(c,work):
 
 def main():
     job();c=CASE;admission()
-    if already_accepted(c):return
+    if already_accepted(c):
+        from endpoint_manifest import finish
+        finish(c)
+        return
     if os.environ.get('ST8_IMPORT_SNAPSHOT'):
         from import_snapshot import materialize
         materialize(os.environ['ST8_IMPORT_SNAPSHOT'])
@@ -84,6 +87,8 @@ def main():
         if MACHINE=='amd':
             from legacy_packet import main as legacy
             legacy()
+            from endpoint_manifest import finish
+            finish(c)
     atomic(ROOT/'evidence/jobs'/job()/'CASE_RESULT.json',dict(utc=now(),job=job(),case=c,state=state['latest'],complete=state.get('complete',False),reduction=summary))
 
 if __name__=='__main__':main()
