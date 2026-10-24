@@ -143,11 +143,11 @@ def figures(data, out):
     plt.close(fig)
     return files
 
-def movie(data, out, name):
+def movie(data, out, name, targets=None):
     import matplotlib.pyplot as plt
     from matplotlib.animation import FFMpegWriter
     endpoint = max(d['summary']['endpoint'] for d in data)
-    targets = np.unique(np.r_[np.arange(0, endpoint+1e-8, 2.), endpoint])
+    targets = np.unique(np.r_[np.arange(0, endpoint+1e-8, 2.), endpoint]) if targets is None else np.asarray(targets,dtype=float)
     selected = []
     max_xy = 0.
     for d in data:

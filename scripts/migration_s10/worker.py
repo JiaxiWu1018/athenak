@@ -29,6 +29,9 @@ def main():
         elif role == 'products':
             from products import main as products
             products()
+        elif role == 'qa':
+            from qa_workflow import main as qa
+            qa()
         else:
             raise ValueError(role)
         atomic(out/'WORKER_OK.json', dict(utc=now(), job=job(), role=role, case=CASE))

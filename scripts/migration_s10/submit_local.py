@@ -17,14 +17,14 @@ def atomic(path, value):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('role', choices=['reference', 'production', 'analysis', 'products'])
+    p.add_argument('role', choices=['reference', 'production', 'analysis', 'products', 'qa'])
     p.add_argument('--case', choices=['yc0500_outward', 'yc0500_control'], default='yc0500_outward')
     p.add_argument('--target', type=float, default=20.)
     p.add_argument('--minutes', type=int)
     p.add_argument('--after', default='')
     a = p.parse_args()
     assert 0 < a.target <= 1500
-    seconds = 60*(a.minutes or dict(reference=30, production=120, analysis=60, products=120)[a.role])
+    seconds = 60*(a.minutes or dict(reference=30, production=120, analysis=60, products=120, qa=20)[a.role])
     assert 0 < seconds <= 7200
     registry = LOCAL/'evidence/job_registry.json'
     with (LOCAL/'evidence/submission.lock').open('a') as lock:
