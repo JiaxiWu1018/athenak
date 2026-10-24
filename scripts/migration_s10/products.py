@@ -201,7 +201,7 @@ def movie(data, out, name, targets=None):
             active = mask == 1
             artist.set_offsets(values[active, 1:3])
             artist.set_array(radius0[active])
-            ended = t > d['summary']['endpoint']+1e-8
+            ended = bool(t > d['summary']['endpoint']+1e-8)
             ah = d['summary']['ah_first']
             label.set_text(f'target {t:g}M; native {actual:g}M\n'+
                 ('ENDED; last state held\n' if ended else '')+
