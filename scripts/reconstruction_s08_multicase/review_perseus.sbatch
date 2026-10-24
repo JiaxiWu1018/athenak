@@ -14,11 +14,12 @@ batch=/data/jiaxiwu/NRPIC/reconstruction_ST/08_production_20261021/extensions/yc
 export S8_MACHINE=perseus ST8X_ROOT="$batch/perseus" ST8_CASE=yc0500_long700
 export ST8X_BASE=/data/jiaxiwu/NRPIC/reconstruction_ST/08_production_20261021
 mode=$1
+workflow=${ST8_REVIEW_WORKFLOW_DIR:-$batch/src/athenak/scripts/reconstruction_s08_multicase}
 export ROOT="$ST8X_ROOT/${ST8_REVIEW_SUBDIR:-final}"
 record="$ROOT/evidence/jobs/$SLURM_JOB_ID"
 mkdir -p "$record/workflow"
 cp -p "$0" "$record/executed.sbatch"
-cp -p "$batch/src/athenak/scripts/reconstruction_s08_multicase/"*.py "$record/workflow/"
+cp -p "$workflow/"*.py "$record/workflow/"
 export PYTHONPATH="$record/workflow:$ST8X_BASE/src/athenak/scripts/reconstruction_s05:$ST8X_BASE/src/athenak/vis/python"
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONDONTWRITEBYTECODE=1 MPLBACKEND=Agg PYTHONUNBUFFERED=1 TZ=UTC
 export ST8X_START_EPOCH=$(date +%s)
@@ -43,7 +44,7 @@ case "$mode" in
    shift
    python3 "$record/workflow/products.py" "$@"
    python3 "$record/workflow/pdf_previews.py"
-   source_head=$(git -C "$batch/src/athenak" rev-parse HEAD)
+   source_head=$(git -C "$(realpath "$workflow/../..")" rev-parse HEAD)
    for case_key in "$@"; do
      source_case="$ST8X_ROOT/$case_key"
      if [ -f "$source_case/review_packet/MANIFEST.json" ] && [ ! -f "$source_case/evidence/CLOSED_OUTPUT_MANIFEST.json" ]; then
