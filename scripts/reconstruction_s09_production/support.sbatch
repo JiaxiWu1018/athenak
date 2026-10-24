@@ -18,7 +18,7 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg
 module purge
 module load gnu12/12.2.0 openmpi4/4.1.8 cmake/3.25.2 prun/2.3 rocm/6.4.1
 record="$ROOT/evidence/jobs/$SLURM_JOB_ID"
-mkdir -p "$record/workflow"
+mkdir -p "$record/workflow" "$batch/evidence/locks"
 cp -p "$batch/scripts/"*.py "$record/workflow/"
 cp -p "$0" "$record/executed.sbatch"
 export PYTHONPATH="$record/workflow:$ST8X_BASE/dependencies/site:$ST8X_BASE/src/athenak/scripts/reconstruction_s05:$ST8X_BASE/src/athenak/vis/python"
