@@ -2,6 +2,7 @@
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 path = Path(__file__).resolve().parents[1]/'final_delivery.py'
 spec = importlib.util.spec_from_file_location('final_delivery', path)
@@ -46,6 +47,22 @@ class DeliveryScopeTests(unittest.TestCase):
         c = dict(id='example', target=300)
         a = dict(numerical_checks_passed=True, checkpoint=dict(initial_count=2_000_000,dt=.025), first_accepted_AH_M=None, endpoint_M=200, case=dict(key='example'))
         with self.assertRaises(AssertionError):delivery.endpoint(c,a)
+
+    def test_probe_uses_movie_and_rejects_decoded_preview(self):
+        response = '{"streams":[{"avg_frame_rate":"15/1","nb_frames":"178"}]}'
+        movie = Path('/review/movies/case.mp4')
+        with patch.object(delivery, 'run', return_value=response) as probe:
+            delivery.probe_movie(movie, 178)
+            self.assertEqual(probe.call_args.args[0][-1], movie)
+            with self.assertRaises(AssertionError):
+                delivery.probe_movie('/review/plots/case_decoded_0.png', 178)
+            self.assertEqual(probe.call_count, 1)
+
+    def test_probe_refuses_wrong_encoded_cadence_or_count(self):
+        for response in ['{"streams":[{"avg_frame_rate":"30/1","nb_frames":"178"}]}',
+                         '{"streams":[{"avg_frame_rate":"15/1","nb_frames":"177"}]}']:
+            with patch.object(delivery, 'run', return_value=response):
+                with self.assertRaises(AssertionError):delivery.probe_movie('/review/movies/case.mp4', 178)
 
 
 if __name__ == '__main__':

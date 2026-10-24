@@ -57,6 +57,14 @@ def run(args):
     return subprocess.check_output(list(map(str, args)), text=True, timeout=180)
 
 
+def probe_movie(movie_path, expected_frames):
+    movie_path = Path(movie_path)
+    assert movie_path.suffix == '.mp4'
+    stream = json.loads(run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=nb_frames,avg_frame_rate,width,height', '-of', 'json', movie_path]))['streams'][0]
+    assert stream['avg_frame_rate'] == '15/1' and int(stream['nb_frames']) == expected_frames
+    return stream
+
+
 def endpoint(c, a):
     assert a['numerical_checks_passed'] and a['checkpoint']['initial_count'] == 2_000_000
     ah = a['first_accepted_AH_M']
@@ -156,8 +164,8 @@ def main():
         plot_assets.add(Path(row['preview']['path']))
     for name in names:
         m = load(root/'evidence'/('MOVIE_'+name+'_OK.json'))
-        p = root/'movies'/(name+'.mp4')
-        assert m['full_decode'] and sha(p) == m['sha256'] == v['movie_source_sha256'][name]
+        movie_path = root/'movies'/(name+'.mp4')
+        assert m['full_decode'] and sha(movie_path) == m['sha256'] == v['movie_source_sha256'][name]
         assert m['source_assembly']['sha256'] == sha(root/'evidence/ASSEMBLY_OK.json')
         fm = m['input_frames_manifest']
         assert sha(fm['path']) == fm['sha256']
@@ -168,8 +176,7 @@ def main():
             p = Path(preview['path'])
             assert p.resolve().is_relative_to(root/'plots') and sha(p) == preview['sha256']
             plot_assets.add(p)
-        stream = json.loads(run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=nb_frames,avg_frame_rate,width,height', '-of', 'json', p]))['streams'][0]
-        assert stream['avg_frame_rate'] == '15/1' and int(stream['nb_frames']) == m['frames']
+        probe_movie(movie_path, m['frames'])
     state = load(BATCH/'evidence/state.json')
     ps_raw = run(['squeue', '-u', 'jiaxiwu', '-h', '-o', '%i|%T'])
     ps_live = dict(line.split('|') for line in ps_raw.splitlines())
