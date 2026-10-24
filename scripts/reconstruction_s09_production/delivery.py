@@ -60,6 +60,8 @@ def main():
     job()
     assert load(ROOT / 'evidence/ASSEMBLY_OK.json')['source_files_SHA256_verified']
     bindings = load(ROOT / 'evidence/REPORT_SOURCE_BINDINGS.json')
+    transport = load(ROOT / 'evidence/TRANSPORT_DIAGNOSTICS.json')
+    assert transport['no_unclassified_runtime_error']
     assert [row['case'] for row in bindings['outcomes']] == [c['id'] for c in PLOT_CASES]
     numerical, retention = [], []
     for raw in PLOT_CASES:
@@ -168,6 +170,7 @@ def main():
     products += [ROOT / 'evidence' / name for name in
                  ['FINAL_ACCOUNTING.json', 'RAW_RETENTION_SUMMARY.json', 'VISUAL_ACCEPTANCE.json',
                   'ASSEMBLY_OK.json', 'REPORT_SOURCE_BINDINGS.json', 'NATIVE_BUILD_PROVENANCE.json',
+                  'TRANSPORT_DIAGNOSTICS.json',
                   'REFERENCE_PACKET_OK.json', 'INDEPENDENT_CONSTRAINT_REFERENCE_OK.json', 'SOURCE_RECEIPT.json']]
     entries = [dict(relative=str(path.relative_to(ROOT)), **receipt(path)) for path in products]
     manifest = dict(utc=now(), job=job(), files=entries, file_count=len(entries),

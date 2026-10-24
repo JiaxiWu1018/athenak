@@ -10,6 +10,8 @@ def main():
     assembly = load(ROOT / 'evidence/ASSEMBLY_OK.json')
     assert assembly['source_files_SHA256_verified']
     assert [r['case'] for r in assembly['sources']] == [c['id'] for c in PLOT_CASES]
+    from transport_diagnostics import audit as transport_audit
+    transport_audit()
     rows, sources, retention = [], [], []
     (ROOT / 'inputs').mkdir(exist_ok=True)
     for raw in PLOT_CASES:
@@ -35,7 +37,8 @@ def main():
                          late_Mirr_median=window['mirr']['median'] if window else None,
                          late_MCH_median=window['mass']['median'] if window else None,
                          late_AH_samples=window['samples'] if window else 0,
-                         removals_before_first_converged_AH=geometry['events_before_first_converged'] if geometry else 0,
+                         removals_before_first_converged_AH=(geometry['events_before_first_converged'] if geometry
+                                                            else None if sum(summary['removals'].values()) else 0),
                          max_initial_constraint_norm_ratio=max(initial['constraint_norm_ratios'].values()),
                          reused_session8=reused))
         sources.append(dict(case=key, manifest=receipt(packet / 'MANIFEST.json'),
@@ -77,12 +80,14 @@ def main():
         mirr = '—' if row['late_Mirr_median'] is None else f"{row['late_Mirr_median']:.6f}"
         mch = '—' if row['late_MCH_median'] is None else f"{row['late_MCH_median']:.6f}"
         early = row['removals_before_first_converged_AH']
-        text += f"| {row['yc']:.3f} | {mirr} | {mch} | {row['late_AH_samples']} | {early:,} |\n"
+        early_text = '—' if early is None else f'{early:,}'
+        text += f"| {row['yc']:.3f} | {mirr} | {mch} | {row['late_AH_samples']} | {early_text} |\n"
     text += ('\nLate masses are medians of available accepted samples in the final five '
              'M_ref of each trajectory; counts and exact windows remain in the source audits. '
              'Displayed digits identify these numerical measurements and do not imply '
              'physical accuracy or settling. A converged surface and persistence acceptance '
-             'are distinct; early removals have no contemporaneous AH assigned.\n')
+             'are distinct; early removals have no contemporaneous AH assigned. '
+             'An unavailable qualified-surface audit is shown as an em dash, not zero removals.\n')
     text += (
         '\nA persistent qualified apparent horizon establishes black-hole formation. '
         'Absence of an accepted horizon through a finite endpoint does not '
@@ -140,6 +145,9 @@ def main():
         'cadence/endpoint coverage, constraints/native health, AH geometry/masses '
         'and independent full-population COM quantiles. Actual PDF and encoded '
         'frame inspection is recorded separately from automated validation.\n'
+        '\n[Transport diagnostics](TRANSPORT_DIAGNOSTICS.md) retains and counts the '
+        'inherited UCX null-pointer message, with an exact accepted-reference match. '
+        'Other classified runtime errors must be absent.\n'
     )
     columns = ['case', 'yc', 'U', 'endpoint_M', 'first_accepted_AH_M',
                'final_alive', 'first_removal_M', 'rest_mass_closure',

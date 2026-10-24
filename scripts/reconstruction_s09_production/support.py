@@ -57,5 +57,9 @@ def main():
     elif mode=='test-final-gates':
         from test_final_gates import main as tests
         tests()
+    elif mode=='transport-reference':
+        from transport_diagnostics import check_reference
+        result=check_reference()
+        print(json.dumps(dict(known_null_messages=result['known_null_pointer_diagnostic_count'],other_runtime_errors=len(result['other_runtime_errors']),source=result['source'])))
     else:raise ValueError(mode)
 if __name__=='__main__':main()
