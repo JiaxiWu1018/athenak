@@ -1,0 +1,42 @@
+[
+  {
+    "id": "yc0283_u0005",
+    "yc": 0.283,
+    "U": -0.005,
+    "L": 512,
+    "target": 300.0,
+    "initial_dx": 0.25,
+    "finest_dx": 0.0625,
+    "num_levels": 8
+  },
+  {
+    "id": "yc0605_u0005",
+    "yc": 0.605,
+    "U": -0.005,
+    "L": 512,
+    "target": 300.0,
+    "initial_dx": 0.25,
+    "finest_dx": 0.0625,
+    "num_levels": 8
+  },
+  {
+    "id": "yc0819_u0005",
+    "yc": 0.819,
+    "U": -0.005,
+    "L": 1024,
+    "target": 300.0,
+    "initial_dx": 0.5,
+    "finest_dx": 0.125,
+    "num_levels": 8
+  },
+  {
+    "id": "yc0900_u0005",
+    "yc": 0.9,
+    "U": -0.005,
+    "L": 1024,
+    "target": 300.0,
+    "initial_dx": 0.5,
+    "finest_dx": 0.125,
+    "num_levels": 8
+  }
+]
