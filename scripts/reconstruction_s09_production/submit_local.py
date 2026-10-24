@@ -23,7 +23,10 @@ def main():
         registry = json.loads(path.read_text())
         seconds = 1800 if args.kind == 'support' else int(args.hours * 3600)
         assert 0 < seconds <= 28800
-        assert snapshot['committed_node_hour_upper'] + seconds / 3600 <= 40
+        # Preserve room for destination verification and scheduler teardown;
+        # production also leaves one node-hour for final review work.
+        reserve = 1.5 if args.kind == 'production' else .55
+        assert snapshot['committed_node_hour_upper'] + seconds / 3600 + reserve <= 40
         if args.kind == 'support':
             partition, script = 'devel', 'support.sbatch'
             previous = [j for j in registry['jobs'] if j['kind'] != 'production']

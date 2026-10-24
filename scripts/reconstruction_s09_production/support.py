@@ -51,5 +51,11 @@ def main():
     elif mode=='reports':
         from reports import main as reports
         reports()
+    elif mode=='delivery':
+        from delivery import main as delivery
+        delivery()
+    elif mode=='test-final-gates':
+        from test_final_gates import main as tests
+        tests()
     else:raise ValueError(mode)
 if __name__=='__main__':main()
