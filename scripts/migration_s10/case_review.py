@@ -34,7 +34,7 @@ def review(c):
     checks=[]
     for snap in [eligible[0],eligible[len(eligible)//2],eligible[-1]]:
         t,cycle,n,fields=read_pvtk(snap['file']);assert n==2000000
-        pos=np.column_stack([fields[k] for k in 'xyz']);rr=np.sort(np.linalg.norm(pos-pos.mean(axis=0),axis=1))
+        pos=np.column_stack([fields[k] for k in 'xyz']).astype(np.float64);rr=np.sort(np.linalg.norm(pos-pos.mean(axis=0),axis=1))
         row=min(shell,key=lambda v:abs(v['time']-t));assert abs(row['time']-t)<1e-7
         for q in range(10,100,10):
             rank=int(np.ceil(n*q/100))-1

@@ -23,7 +23,7 @@ def main():
     records = {}
     records['original_executable'] = preserve(DONOR/'protected/athena', protected/'athena_original', OLD_EXE_SHA)
     perturbation = Path('/work1/eliasmost/jiaxiwu/st_s08_yc0500_extensions_20261023/protected/athena_db942607bd25')
-    records['perturbation_executable'] = preserve(perturbation, protected/'athena_perturbation')
+    records['perturbation_executable'] = preserve(perturbation, protected/'athena_perturbation', PERTURBED_EXE_SHA)
     meta = load(BASE/'evidence/samples/yc0500.json')
     records['sample'] = preserve(DONOR/'samples/yc0500.bin', protected/'yc0500.bin')
     old = validate(DONOR/'runs/yc0500/rst/yc0500.00058.rst')

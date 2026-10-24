@@ -44,23 +44,29 @@ def reduce_case(c,require_complete=True):
         for i,name in enumerate(names,1):assert row['n_'+name]==int(np.sum(dead&(reason==i)))
         assert abs(row['closure'])<1e-10 and row['weight_error']<1e-10
     write_csv(dest/'mass.csv',ledger)
-    shells=[];snapshots=[]
+    shells=[];snapshots=[];profile_times=[];profiles=[]
+    profile_edges=np.r_[0.,np.geomspace(.03125,1000.,161)]
     for file in sorted((work/'pvtk').glob('*.vtk')):
         t,cycle,n,fields=read_pvtk(str(file));tags=fields['ptag'].astype(np.int64)
         assert np.array_equal(tags,fields['ptag']) and len(np.unique(tags))==n
         expected=np.flatnonzero(death_cycle>=cycle);assert np.array_equal(np.sort(tags),expected)
         assert all(np.isfinite(v).all() for v in fields.values())
-        mass=fields['prtcl_mass'];m0=ledger[0]['m_initial'];weight=m0/n0
+        mass=np.asarray(fields['prtcl_mass'],dtype=np.float64);m0=ledger[0]['m_initial'];weight=m0/n0
         assert n==0 or np.all(mass==np.float32(weight))
         snapshots.append(dict(file=str(file),time=t,cycle=cycle,n=n,bytes=file.stat().st_size))
         if t>=first_removal or n==0:continue
-        pos=np.column_stack([fields[a] for a in 'xyz']);com=np.average(pos,axis=0,weights=mass)
+        pos=np.column_stack([fields[a] for a in 'xyz']).astype(np.float64);com=np.average(pos,axis=0,weights=mass)
         rad=np.linalg.norm(pos-com,axis=1);order=np.argsort(rad)
         cumulative=np.cumsum(mass[order]);cumulative/=cumulative[-1]
         q=rad[order[np.searchsorted(cumulative,np.arange(1,10)/10)]]
         row=dict(time=t,cycle=cycle,n=n,com_x=com[0],com_y=com[1],com_z=com[2])
         row.update({f'r{i*10}':v for i,v in enumerate(q,1)});shells.append(row)
+        counts=np.histogram(rad,bins=profile_edges)[0];assert counts.sum()==n
+        profiles.append(counts*weight);profile_times.append(t)
     shells=unique_rows(shells);write_csv(dest/'shells.csv',shells)
+    np.savez_compressed(dest/'coordinate_rest_mass_profiles.npz',time=profile_times,
+        edges=profile_edges,mass_per_bin=profiles,
+        definition='Full-population COM coordinate shells; rest mass per bin, not proper-volume energy density')
     hist=np.atleast_2d(np.loadtxt(work/f"{c['id']}.user.hst"));assert hist.shape[1]==19
     histories=[]
     for row in hist:
@@ -75,7 +81,7 @@ def reduce_case(c,require_complete=True):
         if row['time'] in hmap:assert abs(row['core_lapse']-hmap[row['time']]['core_lapse'])<1e-9
         hmap[row['time']]=row
     histories=[hmap[t] for t in sorted(hmap)];write_csv(dest/'history.csv',histories)
-    cohort_index=[]
+    cohort_index=[];flow=[];prior=None
     for file in sorted((work/'cohort').glob('*.s8c')):
         t,cycle,mask,values=cohort(file)
         assert np.array_equal(mask.astype(bool),death_cycle[::100]>=cycle)
@@ -86,7 +92,18 @@ def reduce_case(c,require_complete=True):
             for k,col in [('x',1),('y',2),('z',3),('ux',4),('uy',5),('uz',6),('prtcl_mass',7)]:
                 assert np.array_equal(fields[k][order][use],values[ids//100,col].astype(np.float32))
         cohort_index.append(dict(time=t,cycle=cycle,file=str(file),alive=int(mask.sum())))
+        if t<first_removal and shells[0]['time']<=t<=shells[-1]['time']:
+            center=np.array([np.interp(t,[v['time'] for v in shells],[v['com_'+axis] for v in shells]) for axis in 'xyz'])
+            rr=np.linalg.norm(values[:,1:4]-center,axis=1)
+            if prior is not None and t>prior[0]:
+                common=(mask==1)&prior[1];velocity=(rr[common]-prior[2][common])/(t-prior[0])
+                assert len(velocity)>0
+                flow.append(dict(time=(t+prior[0])/2,mean_coordinate_dr_dt=float(velocity.mean()),
+                    rms_coordinate_dr_dt=float(np.sqrt(np.mean(velocity**2))),outgoing_fraction=float(np.mean(velocity>0)),
+                    fixed_ids=int(common.sum()),delta_time=t-prior[0]))
+            prior=(t,mask.astype(bool),rr)
     write_csv(dest/'cohort_index.csv',cohort_index)
+    if flow:write_csv(dest/'coordinate_radial_flow.csv',flow)
     summary=dict(case=c,endpoint=state['latest']['time'],complete=state['complete'],
        first_removal=None if not np.isfinite(first_removal) else first_removal,
        removals=dict(zip(names,counts)),rest_mass_initial=ledger[0]['m_initial'],

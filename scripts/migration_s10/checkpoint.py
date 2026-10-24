@@ -28,6 +28,14 @@ def validate(path,output=None):
         f.seek(offset+232);t,dt,cycle=struct.unpack('<ddi',f.read(20))
         assert np.isfinite([t,dt]).all() and 0<=t<=float(os.environ.get("S8_MAX_TIME", str(max(c['target'] for c in ALL_CASES)+1))) and 0<=dt<1 and 0<=cycle<100000000
         assert int(par['fastflow'].get('npunct','0'))==0
+        f.seek(offset+252)
+        locations=np.fromfile(f,dtype='<i4',count=nmb*4).reshape(nmb,4)
+        physical=locations[:,3]-level
+        assert (physical>=0).all() and (physical<int(par['mesh_refinement']['num_levels'])).all()
+        dx0=(float(par['mesh']['x1max'])-float(par['mesh']['x1min']))/int(par['mesh']['nx1'])
+        levels,counts=np.unique(physical,return_counts=True)
+        active_levels={str(int(k)):int(v) for k,v in zip(levels,counts)}
+        finest_active_dx=dx0/2**int(physical.max())
         assert par['output8'].get('single_file_per_rank','false') in ['false','0']
         f.seek(offset+252+nmb*20+8)
         data_size=struct.unpack('<Q',f.read(8))[0];grid_start=f.tell()
@@ -57,7 +65,8 @@ def validate(path,output=None):
     d=dict(utc=now(),job=job(),**receipt(p),time=t,dt=dt,cycle=cycle,nblocks=nmb,
            particle_count=n,initial_count=initial,removal_counts=hdr[1:].astype(int).tolist()+[horizon],
            rest_mass_initial=m0,rest_mass_alive=float(mass.sum()),payload_verified=True,
-           ah_onset=float(par['problem'].get('production_ah_onset','-1')),parameters=par)
+           ah_onset=float(par['problem'].get('production_ah_onset','-1')),parameters=par,
+           active_level_block_counts=active_levels,finest_active_dx=finest_active_dx)
     assert abs((d['rest_mass_alive']+(initial-n)*weight)/m0-1)<1e-10
     if output:atomic(output,d)
     return d

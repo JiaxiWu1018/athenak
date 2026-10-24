@@ -3,7 +3,7 @@ import numpy as np
 from common import *
 
 def tail(c):
-    job();assert c.get('inherited_time')==500 and c['L']==512
+    job();assert c['L']==512
     from st_migration_lib import read_binary,bin_cell_coords
     edges=np.geomspace(16,512,65);rows={};sources=[]
     for path in sorted((ROOT/'runs'/c['id']/'bin').glob('*.z4c2d.*.bin')):
@@ -16,7 +16,7 @@ def tail(c):
             sums+=np.bincount(index[valid],weights=v[valid]*dx*dy,minlength=64)
             areas+=np.bincount(index[valid],weights=np.full(int(valid.sum()),dx*dy),minlength=64)
         rows[round(t,8)]=np.divide(sums,areas,out=np.full(64,np.nan),where=areas>0);sources.append(dict(time=t,source=receipt(path)))
-    times=np.array(sorted(rows));assert len(times)>1 and times[0]>=500-1e-7
+    times=np.array(sorted(rows));assert len(times)>1 and times[0]>=c.get('inherited_time',0)-1e-7
     destination=ROOT/'reduced'/c['id']/'boundary_tail.npz'
     np.savez_compressed(destination,time=times,radius_edges=edges,radius_centers=np.sqrt(edges[1:]*edges[:-1]),lapse=np.stack([rows[t] for t in times]))
     record=dict(utc=now(),job=job(),case=c,annular_arrays=receipt(destination),sources=sources,scope='Coordinate-area weighted mean of equatorial lapse within each of64 logarithmic annuli16<=r<512M; missing bins masked. Diagnostic only; no larger-box or causal-isolation proof.')

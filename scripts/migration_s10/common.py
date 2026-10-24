@@ -15,6 +15,7 @@ BASE = Path('/work1/eliasmost/jiaxiwu/st_reconstruction_s08_production_20261021'
 DONOR = Path('/work1/eliasmost/jiaxiwu/st_s08_scan_20261023/yc0500_long700')
 ANCHOR_SHA = '942230e4315b18e7850ab24e4ba2bf02d296cc324797b1cf50fdf2a6a5ad1624'
 OLD_EXE_SHA = '41411a2e024cb910d2313e9b30ec4370fb37cc9a9dea60cc015c3df3682f1e71'
+PERTURBED_EXE_SHA = 'fa261c0bd46ea96cc57e8df593946a05f2ea72ffc53863c7d55f902f69c0cafc'
 GIB = 1024**3
 TIB = 1024**4
 ALL_CASES = json.loads((Path(__file__).parent/'cases.json').read_text())

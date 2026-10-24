@@ -67,6 +67,8 @@ def import_control():
 def main():
     job()
     admission()
+    from artifact_provenance import audit
+    audit()
     mode = os.environ.get('S10_MODE', 'production')
     if mode == 'short_control':
         state = control_gate()
@@ -94,11 +96,19 @@ def main():
             atomic(prior, record)
         assert not (ROOT/'evidence/RESOURCE_STOP.json').exists()
         target = float(os.environ['S10_TARGET'])
+        required = [1000] if CASE.get('inherited_time') else [20, 100, 500, 1000]
+        for milestone in required:
+            if target > milestone:
+                review = load(ROOT/'evidence'/f'MILESTONE_{milestone:05d}_NUMERICAL.json')
+                assert review['numerical_passed'] and abs(review['endpoint']-milestone)<1e-7
         state = advance(CASE, work, target)
         if state['latest']['time'] >= 20-1e-8 and not CASE.get('inherited_time'):
             atomic(ROOT/'evidence/OUTWARD_20M_OK.json', dict(utc=now(), job=job(),
                 checkpoint=state['latest'], same_trajectory=True,
                 initial_constraint_admission=load(ROOT/'evidence/INITIAL_CONSTRAINT_ADMISSION.json')))
+        if state.get('complete'):
+            from final_fields import export
+            export(CASE['id'])
     atomic(ROOT/'evidence/jobs'/job()/'CASE_RESULT.json', dict(utc=now(), job=job(), case=CASE,
         latest=state['latest'], complete=state.get('complete', False), mode=mode))
 
