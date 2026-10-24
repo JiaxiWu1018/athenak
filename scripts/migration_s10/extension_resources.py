@@ -1,6 +1,8 @@
 """Allocation-only storage, GPU and whole-session cost guards."""
 import shutil
 import time
+import csv
+import math
 from common import *
 
 def allocated_bytes(path):
@@ -53,6 +55,34 @@ def stop(reason):
         if a['job'] == job() and ROOT in w.parents:
             (w/'REQUEST_STOP').write_text(reason+'\n')
 
+def request_horizon_checkpoint(root=ROOT):
+    """Checkpoint promptly after the first qualified AH, without changing evolution."""
+    active=root/'evidence/active.json'
+    marker=root/'evidence/AH_CHECKPOINT_REQUEST.json'
+    if marker.exists() or not active.exists():return None
+    a=load(active)
+    work=Path(a['work'])
+    if a['job']!=job() or a['phase']!='evolution' or root not in work.parents:return None
+    path=work/(a['case']+'.ah_quality_0.csv')
+    if not path.exists():return None
+    with path.open() as f:
+        header=f.readline()
+        f.seek(max(f.tell(),path.stat().st_size-8192))
+        lines=f.read().splitlines()
+    if not lines:return None
+    row=next(csv.DictReader([header,lines[-1]]))
+    if any(v is None for v in row.values()) or float(row['accepted'])!=1:return None
+    assert float(row['missing'])==0 and float(row['streak'])>=3
+    assert float(row['hrel'])<=.05 and float(row['rmin'])>=4*float(row['dx'])
+    assert all(math.isfinite(float(row[k])) and float(row[k])>0 for k in ['mass','mirr','area'])
+    request=work/'REQUEST_STOP'
+    if request.exists():return None  # A resource/user stop always takes precedence.
+    event=dict(utc=now(),job=job(),accepted_native_time=float(row['time']),quality=row,
+        source=str(path),scope='First qualified-AH clean-checkpoint request; actual checkpoint time recorded separately')
+    atomic(marker,event)
+    request.write_text('qualified_AH_checkpoint\n')
+    return event
+
 def watchdog():
     out = ROOT/'evidence/jobs'/job()
     out.mkdir(parents=True, exist_ok=True)
@@ -85,6 +115,12 @@ def watchdog():
         if t-last_disk > 900:
             stop('storage_telemetry_stale')
         if os.environ.get('S10_CPU_ONLY') != '1':
+            try:
+                event=request_horizon_checkpoint()
+                if event:d['horizon_checkpoint_request']=event
+            except Exception as error:
+                d['horizon_metadata_error']=repr(error)
+                stop('AH_quality_metadata_error')
             try:
                 raw = json.loads(subprocess.check_output(['rocm-smi', '--showmeminfo', 'vram', '--json'], text=True, timeout=30))
                 ratios = []

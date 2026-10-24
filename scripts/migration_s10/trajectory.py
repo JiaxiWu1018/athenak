@@ -18,7 +18,7 @@ def advance(c, work, target):
         if remaining < 180:
             break
         state = run(c, target=target, wall_seconds=int(min(1200, remaining)), suppress_segment_3d=True)
-        if state['segments'][-1].get('stop_reason') not in [None, 'ah_tail_complete']:
+        if state['segments'][-1].get('stop_reason') not in [None, 'ah_tail_complete', 'qualified_AH_checkpoint']:
             break
         assert not (ROOT/'evidence/RESOURCE_STOP.json').exists()
     return state

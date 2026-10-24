@@ -12,7 +12,14 @@ def resolve_prefix():
     """Resolve accepted old cohorts by exact native time/cycle, never redraw them."""
     prefix = EXT/'reference/control_0_700'
     marker = prefix/'RESOLVED.json'
+    manifest=load(prefix/'SOURCE_MANIFEST.json')
+    for entry in manifest['files']:
+        p=prefix/Path(entry['copy']).name
+        assert p.stat().st_size==entry['bytes'] and sha(p)==entry['sha256']
     if marker.exists():
+        for entry in load(marker)['original_cohorts']:
+            p=Path(entry['source']['path'])
+            assert p.stat().st_size==entry['source']['bytes'] and sha(p)==entry['source']['sha256']
         return prefix
     with (prefix/'cohort_index.csv').open() as f:
         rows = list(csv.DictReader(f))
@@ -128,7 +135,7 @@ def figures(data, out):
         z = np.load(d['red']/'coordinate_rest_mass_profiles.npz')
         centers = (z['edges'][1:]+z['edges'][:-1])/2
         volumes = 4*np.pi/3*np.diff(z['edges']**3)
-        for lo, hi, color in [(500, 1000, '#245d88'), (1000, 1500, '#bd5e28')]:
+        for lo, hi, color in [(700, 1000, '#245d88'), (1000, 1500, '#bd5e28')]:
             use = (z['time'] >= lo) & (z['time'] <= hi)
             if use.any():
                 density = z['mass_per_bin'][use].mean(axis=0)/volumes
@@ -230,7 +237,7 @@ def main():
     admission()
     style()
     data = source_data()
-    out = EXT/'delivery/generated'
+    out = EXT/'delivery'/('generated_'+job())
     assert not out.exists(), 'Preserve prior products; use a new reviewed generation directory for a retry'
     out.mkdir(parents=True)
     files = figures(data, out)
