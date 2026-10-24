@@ -19,7 +19,7 @@ def main():
             atomic(archive/(pdf.stem+'_'+stamp+'.json'),receipt(output))
             output.rename(archive/(pdf.stem+'_'+stamp+'.png'))
             if marker.exists():marker.rename(archive/(pdf.stem+'_'+stamp+'_prior.json'))
-        cmd(['pdftoppm','-singlefile','-png','-scale-to','1800',pdf,output.with_suffix('')])
+        cmd(['pdftoppm','-singlefile','-png','-scale-to','3200',pdf,output.with_suffix('')])
         row=dict(utc=now(),job=job(),source=source,preview=receipt(output),actual_visual_acceptance=False)
         atomic(marker,row);rows.append(row)
     assert rows

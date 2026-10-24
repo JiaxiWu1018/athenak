@@ -18,6 +18,9 @@ def main():
     for row in result['jobs'][3:]:
         assert row['upper_node_hours'] == 2 and row['exact_node_hours'] is None
     assert result['unresolved_job_ids'] == ['4', '5', '6']
+    archived = summarize(registry, scheduler, {'6': ['6', 'COMPLETED', '0:0', '30', '1', 'start', 'end']})
+    assert archived['jobs'][5]['exact_node_hours'] == 1 / 120
+    assert archived['jobs'][5]['basis'] == 'preserved terminal scheduler receipt'
     pdfs, movies = {'figure.pdf': 'pdfhash'}, {'movie': 'moviehash'}
     good = dict(actual_visual_acceptance=True, reviewer='fixture', findings=['fixture'],
                 pdf_sha256=pdfs, movie_sha256=movies,

@@ -1,6 +1,7 @@
 """Fail-closed final audit and thin-product manifest; no automatic visual claims."""
 import csv
 import shutil
+import time
 from common import *
 from accounting import summarize
 from products import verify
@@ -20,13 +21,20 @@ def checked_visual(visual, pdfs, movies):
 
 
 def scheduler_accounting():
-    registry = load(EXT / 'evidence/job_registry.json')
+    for attempt in range(15):
+        registry = load(EXT / 'evidence/job_registry.json')
+        if job() in {row['job_id'] for row in registry['jobs']}:
+            break
+        time.sleep(1)
+    assert job() in {row['job_id'] for row in registry['jobs']}, 'Publisher must be registered'
     identifiers = ','.join(row['job_id'] for row in registry['jobs'])
     command = ['sacct', '-X', '-n', '-P', '-j', identifiers, '-o',
                'JobIDRaw,State,ExitCode,ElapsedRaw,AllocNodes,Start,End']
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
-    account = summarize(registry, result.stdout)
+    preserved = {p.stem: load(p)['scheduler_fields']
+                 for p in (EXT / 'evidence/scheduler_receipts/amd').glob('*.json')}
+    account = summarize(registry, result.stdout, preserved)
     mirror_reserve = .5
     assert account['allocated_node_hour_upper'] + mirror_reserve <= 40
     queued = subprocess.run(['squeue', '-u', 'jiaxiwu', '-h', '-o', '%i|%T|%D'],

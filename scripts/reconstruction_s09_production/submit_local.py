@@ -59,6 +59,8 @@ def main():
         temporary.replace(path)
         subprocess.run(['rsync', '-a', str(path),
                         'hpcfund.amd.com:' + AMD + '/evidence/'], check=True)
+        subprocess.run(['rsync', '-a', str(SESSION / 'evidence/scheduler_receipts'),
+                        'hpcfund.amd.com:' + AMD + '/evidence/'], check=True)
         print('REGISTERED', ident, shlex.join(command))
 
 

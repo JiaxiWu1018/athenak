@@ -3,7 +3,8 @@ TERMINAL = {'COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT', 'PREEMPTED',
             'OUT_OF_MEMORY', 'NODE_FAIL', 'BOOT_FAIL', 'DEADLINE', 'REVOKED'}
 
 
-def summarize(registry, scheduler_text):
+def summarize(registry, scheduler_text, preserved_terminal=None):
+    preserved_terminal = preserved_terminal or {}
     records = {}
     for line in scheduler_text.splitlines():
         values = line.split('|')
@@ -12,6 +13,11 @@ def summarize(registry, scheduler_text):
     rows = []
     for entry in registry['jobs']:
         fields = records.get(entry['job_id'])
+        archived = False
+        if fields is None and entry['job_id'] in preserved_terminal:
+            fields = preserved_terminal[entry['job_id']]
+            assert fields[1].split()[0].rstrip('+') in TERMINAL
+            archived = True
         upper = entry['nodes'] * entry['requested_seconds'] / 3600
         status = 'UNKNOWN'
         basis = 'requested allocation upper bound; terminal evidence unavailable'
@@ -23,7 +29,8 @@ def summarize(registry, scheduler_text):
                 assert elapsed >= 0 and nodes >= 0
                 assert elapsed == 0 or nodes > 0
                 exact = elapsed * nodes / 3600
-                upper, basis = exact, 'terminal scheduler'
+                upper = exact
+                basis = 'preserved terminal scheduler receipt' if archived else 'terminal scheduler'
             elif status == 'PENDING':
                 basis = 'pending requested allocation reservation'
             else:

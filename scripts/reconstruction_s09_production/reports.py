@@ -21,6 +21,9 @@ def main():
         manifest = load(packet / 'MANIFEST.json')
         assert acceptance['numerical_checks_passed'] and summary['complete']
         assert manifest['checkpoint']['sha256'] == acceptance['checkpoint']['sha256']
+        window = summary['ah_endpoint_window']
+        geometry = acceptance.get('removal_geometry')
+        initial = acceptance['initial_constraint_admission']
         rows.append(dict(case=key, yc=raw['yc'], U=raw['U'],
                          endpoint_M=summary['endpoint'],
                          first_accepted_AH_M=summary['ah_first'],
@@ -29,6 +32,11 @@ def main():
                          rest_mass_closure=summary['max_closure'],
                          removals=summary['removals'],
                          late_AH_window=summary['ah_endpoint_window'],
+                         late_Mirr_median=window['mirr']['median'] if window else None,
+                         late_MCH_median=window['mass']['median'] if window else None,
+                         late_AH_samples=window['samples'] if window else 0,
+                         removals_before_first_converged_AH=geometry['events_before_first_converged'] if geometry else 0,
+                         max_initial_constraint_norm_ratio=max(initial['constraint_norm_ratios'].values()),
                          reused_session8=reused))
         sources.append(dict(case=key, manifest=receipt(packet / 'MANIFEST.json'),
                             acceptance=receipt(packet / 'numerical_acceptance.json'),
@@ -62,6 +70,19 @@ def main():
         origin = 'Session 8 reference' if row['reused_session8'] else 'Session 9 AMD'
         text += (f"| {row['yc']:.3f} | {row['endpoint_M']:.6g} | {onset_text} | "
                  f"{row['final_alive']:,} | {origin} |\n")
+    text += ('\n| yc | Late accepted Mirr/M_ref | Late accepted MCH/M_ref | Samples | '
+             'Removals before first qualified converged AH |\n'
+             '|---|---:|---:|---:|---:|\n')
+    for row in rows:
+        mirr = '—' if row['late_Mirr_median'] is None else f"{row['late_Mirr_median']:.6f}"
+        mch = '—' if row['late_MCH_median'] is None else f"{row['late_MCH_median']:.6f}"
+        early = row['removals_before_first_converged_AH']
+        text += f"| {row['yc']:.3f} | {mirr} | {mch} | {row['late_AH_samples']} | {early:,} |\n"
+    text += ('\nLate masses are medians of available accepted samples in the final five '
+             'M_ref of each trajectory; counts and exact windows remain in the source audits. '
+             'Displayed digits identify these numerical measurements and do not imply '
+             'physical accuracy or settling. A converged surface and persistence acceptance '
+             'are distinct; early removals have no contemporaneous AH assigned.\n')
     text += (
         '\nA persistent qualified apparent horizon establishes black-hole formation. '
         'Absence of an accepted horizon through a finite endpoint does not '
@@ -106,6 +127,10 @@ def main():
         'zero-step restart identity. Independent 192-point angular/Green '
         'references check continuum corrections. Preserved Kokkos and '
         'ROCm 6.4.1/GFX90A backends are fixed.\n\n'
+        'The four new cases use the preserved HIP executable; the reused 0.500 '
+        'reference retains its original validated two-rank CUDA provenance. '
+        'Its numerical and visual receipts are bound to the copied reference '
+        'packet and unchanged encoded movie. No reference evolution is repeated.\n\n'
         'Histories at 0.25M, full particles/equatorial fields at 1M and fixed '
         '20,000-ID cohorts/AH searches at 0.5M retain actual times. AH acceptance '
         'requires positive, on-grid geometry, hrel≤0.05, minimum radius of four '
@@ -117,7 +142,10 @@ def main():
         'frame inspection is recorded separately from automated validation.\n'
     )
     columns = ['case', 'yc', 'U', 'endpoint_M', 'first_accepted_AH_M',
-               'final_alive', 'first_removal_M', 'rest_mass_closure', 'reused_session8']
+               'final_alive', 'first_removal_M', 'rest_mass_closure',
+               'late_Mirr_median', 'late_MCH_median', 'late_AH_samples',
+               'removals_before_first_converged_AH', 'max_initial_constraint_norm_ratio',
+               'reused_session8']
     with (ROOT / 'reports/OUTCOMES.csv').open('w') as stream:
         writer = csv.DictWriter(stream, fieldnames=columns)
         writer.writeheader()
