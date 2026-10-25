@@ -37,7 +37,7 @@ def reduce_case(c,require_complete=True):
                 if line.startswith('#'):continue
                 r=line.split(',');tag=int(r[2]);assert 0<=tag<n0 and not reason[tag]
                 death_cycle[tag]=int(r[0]);death_time[tag]=float(r[1]);reason[tag]=names.index(r[3])+1
-    first_removal=float(death_time.min());counts=[int(np.sum(reason==i)) for i in range(1,5)]
+    first_removal=float(death_time.min());removal_counts=[int(np.sum(reason==i)) for i in range(1,5)]
     ledger=unique_rows(csv_rows(work/f"{c['id']}.mass.csv"))
     for row in ledger:
         dead=death_cycle<int(row['cycle']);assert row['n_alive']==n0-int(dead.sum())
@@ -61,8 +61,8 @@ def reduce_case(c,require_complete=True):
         q=rad[order[np.searchsorted(cumulative,np.arange(1,10)/10)]]
         row=dict(time=t,cycle=cycle,n=n,com_x=com[0],com_y=com[1],com_z=com[2])
         row.update({f'r{i*10}':v for i,v in enumerate(q,1)});shells.append(row)
-        counts=np.histogram(rad,bins=profile_edges)[0];assert counts.sum()==n
-        profiles.append(counts*weight);profile_times.append(t)
+        bin_counts=np.histogram(rad,bins=profile_edges)[0];assert bin_counts.sum()==n
+        profiles.append(bin_counts*weight);profile_times.append(t)
     shells=unique_rows(shells);write_csv(dest/'shells.csv',shells)
     np.savez_compressed(dest/'coordinate_rest_mass_profiles.npz',time=profile_times,
         edges=profile_edges,mass_per_bin=profiles,
@@ -106,7 +106,7 @@ def reduce_case(c,require_complete=True):
     if flow:write_csv(dest/'coordinate_radial_flow.csv',flow)
     summary=dict(case=c,endpoint=state['latest']['time'],complete=state['complete'],
        first_removal=None if not np.isfinite(first_removal) else first_removal,
-       removals=dict(zip(names,counts)),rest_mass_initial=ledger[0]['m_initial'],
+       removals=dict(zip(names,removal_counts)),rest_mass_initial=ledger[0]['m_initial'],
        max_closure=max(abs(r['closure']) for r in ledger),snapshots=len(snapshots),
        cohorts=len(cohort_index),ah_first=None,ah_endpoint_window=None)
     if c['unstable']:

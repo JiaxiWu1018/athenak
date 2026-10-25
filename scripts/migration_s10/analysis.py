@@ -1,6 +1,7 @@
 """Allocated milestone audit and source-backed diagnostic figures."""
 import csv
 import re
+import shutil
 import numpy as np
 from common import *
 from reduce import reduce_case, csv_rows, write_csv
@@ -43,8 +44,14 @@ def main():
     state = load(work/'state.json')
     end = state['latest']['time']
     assert state.get('complete') or end >= float(os.environ['S10_TARGET'])-1e-8
-    summary = reduce_case(CASE, require_complete=state.get('complete', False))
     red = ROOT/'reduced/yc0500'
+    if red.exists() and not (red/'REDUCTION_OK.json').exists():
+        preserved = EXT/'evidence/allocations'/job()/'prior_incomplete_reduction'
+        shutil.copytree(red, preserved)
+        atomic(preserved/'PRESERVATION.json', dict(utc=now(), job=job(),
+            source=str(red), files=[receipt(p) for p in sorted(preserved.rglob('*')) if p.is_file()],
+            reason='Retain failed/partial analysis outputs before a registered retry'))
+    summary = reduce_case(CASE, require_complete=state.get('complete', False))
     checks = []
     from reduce_run import read_pvtk
     shells = csv_rows(red/'shells.csv')
