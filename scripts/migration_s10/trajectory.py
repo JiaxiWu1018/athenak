@@ -1,12 +1,18 @@
 """One serial production allocation, with explicit pilot and milestone gates."""
 import shutil
 import time
+import math
 from common import *
 from checkpoint import validate
 from setup_case import setup
 from restart_identity import gate
 from run_segment import run
 from extension_resources import admission
+
+def next_science_target(current, target):
+    # Native recovery writes reset restart last_time. Explicit boundaries keep
+    # the scientific 100M cadence independent of the wall-clock chunk length.
+    return min(target, 100*(math.floor((current+1e-7)/100)+1))
 
 def advance(c, work, target):
     from recover import recover
@@ -17,7 +23,8 @@ def advance(c, work, target):
         remaining = limit-(time.time()-start)-240
         if remaining < 180:
             break
-        state = run(c, target=target, wall_seconds=int(min(1200, remaining)), suppress_segment_3d=True)
+        checkpoint_target = next_science_target(state['latest']['time'], target)
+        state = run(c, target=checkpoint_target, wall_seconds=int(min(1200, remaining)), suppress_segment_3d=True)
         if state['segments'][-1].get('stop_reason') not in [None, 'ah_tail_complete', 'qualified_AH_checkpoint']:
             break
         assert not (ROOT/'evidence/RESOURCE_STOP.json').exists()
@@ -101,6 +108,11 @@ def main():
             if target > milestone:
                 review = load(ROOT/'evidence'/f'MILESTONE_{milestone:05d}_NUMERICAL.json')
                 assert review['numerical_passed'] and abs(review['endpoint']-milestone)<1e-7
+                visual = load(ROOT/'evidence'/f'MILESTONE_{milestone:05d}_VISUAL.json')
+                assert visual['actual_visual_review'] and abs(visual['endpoint']-milestone)<1e-7
+                forecast = review.get('milestone_forecast')
+                if forecast:
+                    assert forecast['cost_projection_within_cap'] and forecast['storage_projection_within_cap'], forecast
         state = advance(CASE, work, target)
         if state['latest']['time'] >= 20-1e-8 and not CASE.get('inherited_time'):
             atomic(ROOT/'evidence/OUTWARD_20M_OK.json', dict(utc=now(), job=job(),

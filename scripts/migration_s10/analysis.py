@@ -68,6 +68,7 @@ def main():
     logs = []
     fallbacks = 0
     rejected = 0
+    transport_pointer_errors = 0
     for segment in state['segments']:
         if not segment.get('log'):
             continue
@@ -76,6 +77,7 @@ def main():
         assert '### FATAL' not in text and not re.search(r'search_fail=[1-9]', text)
         fallbacks += sum(map(int, re.findall(r'cycle\s+\d+:\s+(\d+) of \d+ particles fell back', text)))
         rejected += sum(map(int, re.findall(r'rejected(?:_updates)?=(\d+)', text)))
+        transport_pointer_errors += text.count('UCX  ERROR get pointer info fail (nil)')
         logs.append(receipt(p))
     grids = []
     for p in sorted((work/'checkpoint_receipts').glob('*.json')):
@@ -92,6 +94,9 @@ def main():
         final = review(CASE)
     destination = ROOT/'reviews'/f'milestone_{round(end):05d}_{job()}'
     plot_case(CASE, red, destination)
+    from milestone_review import science_trends, forecast
+    trends = science_trends(CASE, red, destination)
+    milestone_forecast = forecast(destination)
     matched_pilot = None
     if abs(end-20) < 1e-8 and not CASE.get('inherited_time'):
         from pilot_review import review as pilot_review
@@ -101,9 +106,12 @@ def main():
     marker = dict(utc=now(), job=job(), case=CASE, endpoint=end, complete=state.get('complete', False),
         summary=summary, quantile_checks=checks, native_logs=logs, fallback_particle_steps=fallbacks,
         rejected_updates_from_recognized_counters=rejected, boundary=boundary,
+        transport_pointer_info_error_lines=transport_pointer_errors,
+        transport_note='These diagnostics also appear at successful20M pilot finalization. Native return codes, particle checks and constraints are assessed separately; no transport-correctness proof is implied.',
         native_node_hours=native_cost, native_node_hours_per_M=native_cost/advanced if advanced > 0 else None,
         final_numerical_acceptance=final, matched_pilot=matched_pilot,
-        figures=[receipt(p) for p in sorted(destination.glob('diagnostics.*'))],
+        science_trends=trends, milestone_forecast=milestone_forecast,
+        figures=[receipt(p) for p in sorted(destination.iterdir()) if p.suffix in ['.png', '.pdf']],
         actual_visual_review=False, numerical_passed=True)
     atomic(destination/'NUMERICAL_ACCEPTANCE.json', marker)
     atomic(ROOT/'evidence'/f'MILESTONE_{round(end):05d}_NUMERICAL.json', marker)
