@@ -53,14 +53,20 @@ print(json.dumps(dict(account=account,scheduler_stdout=query.stdout,scheduler_st
     query = subprocess.run(['sacct', '-X', '-n', '-P', '-j', args.Perseus_job, '-o',
                             'JobIDRaw,State,ExitCode,ElapsedRaw,AllocNodes,Start,End'],
                            capture_output=True, text=True, env=env)
-    assert query.returncode == 0, query.stderr
+    accounting_disabled = query.returncode != 0
+    if accounting_disabled:
+        assert 'Slurm accounting storage is disabled' in query.stderr, query.stderr
     queued = subprocess.run(['squeue', '-u', 'jiaxiwu', '-h', '-o', '%i|%T|%D'],
                             capture_output=True, text=True, env=env)
     assert queued.returncode == 0, queued.stderr
     assert not [row for row in queued.stdout.splitlines() if row.split('|')[0] == args.Perseus_job]
-    ps_registry = dict(jobs=[dict(job_id=args.Perseus_job, kind='Perseus destination verification',
-                                  partition='debug', nodes=1, requested_seconds=900)])
-    ps = summarize(ps_registry, query.stdout)
+    ps_registry = json.loads((SESSION / 'evidence/perseus_jobs.json').read_text())
+    assert [row['job_id'] for row in ps_registry['jobs']] == [args.Perseus_job]
+    preserved_ps = {p.stem: json.loads(p.read_text())['scheduler_fields']
+                    for p in (SESSION / 'evidence/scheduler_receipts/perseus').glob('*.json')}
+    ps = summarize(ps_registry, '' if accounting_disabled else query.stdout, preserved_ps)
+    if accounting_disabled:
+        assert ps['all_terminal_evidence'], 'Preserved terminal Perseus receipt required'
     combined = amd['account']['allocated_node_hour_upper'] + ps['allocated_node_hour_upper']
     assert combined <= 40
     raw = json.loads((mirror / 'evidence/RAW_RETENTION_SUMMARY.json').read_text())
@@ -71,7 +77,11 @@ print(json.dumps(dict(account=account,scheduler_stdout=query.stdout,scheduler_st
     assert publisher in {row['job_id'] for row in amd['account']['jobs']}
     post = dict(UTC=datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 AMD_accounting=amd, Perseus_accounting=ps,
-                Perseus_scheduler_stdout=query.stdout, Perseus_queue_stdout=queued.stdout,
+                Perseus_scheduler_stdout=query.stdout, Perseus_scheduler_stderr=query.stderr,
+                Perseus_accounting_storage_disabled=accounting_disabled,
+                Perseus_preserved_terminal_receipts=preserved_ps,
+                Perseus_queue_stdout=queued.stdout,
+                finalizer_source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                 allocated_node_hour_upper=combined, combined_storage_upper_bytes=storage_upper,
                 closing_reserve_bytes=acceptance['closing_reserve_bytes'],
                 publisher_job=publisher, destination_verification_job=args.Perseus_job,
