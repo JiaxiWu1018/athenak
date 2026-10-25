@@ -38,7 +38,18 @@ def setup(c,U=None,control=False):
     if control:
         for index in [6,7]:text=section(text,'output'+str(index),dict(dt=0))
     path=ROOT/'inputs'/f"{c['id']}.athinput"
-    if path.exists():assert path.read_text()==text,'Existing exact input differs'
+    if path.exists():
+        original=path.read_text()
+        if original!=text:
+            # Preserve the initialization deck. A topology continuation changes
+            # only the runtime capacity, explicitly passed on every native CLI.
+            anchor=load(ROOT/'evidence/EXACT_SETUP.json')
+            assert sha(path)==anchor['input']['sha256'],'Original input changed'
+            assert section(original,'mesh_refinement',dict(max_nmb_per_rank=rank_capacity()))==text,'Existing exact input differs beyond runtime capacity'
+            atomic(ROOT/'evidence'/f'INPUT_CAPACITY_OVERRIDE_{job()}.json',dict(
+                utc=now(),job=job(),unchanged_initial_input=receipt(path),
+                runtime_max_nmb_per_rank=rank_capacity(),
+                reason='Allocated topology changed; original deck retained, capacity overridden explicitly in zero-step gate and evolution CLI.'))
     else:path.write_text(text)
     metadata=ROOT/'evidence/samples'/f"{c['id']}.json";metadata.parent.mkdir(exist_ok=True)
     old=base/'evidence/samples'/f"{c['id']}.json"
