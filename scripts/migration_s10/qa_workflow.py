@@ -1,4 +1,4 @@
-"""Allocated end-to-end reader/render test using accepted historical control only."""
+"""Allocated reader/render and accepted-movie reuse checks; no evolution."""
 import csv
 import numpy as np
 from common import *
@@ -46,6 +46,33 @@ def parallel_scheduling_check(out):
     atomic(out/'PARALLEL_SCHEDULING_OK.json', record)
     return receipt(out/'PARALLEL_SCHEDULING_OK.json')
 
+
+def accepted_movie_reuse_check(out):
+    from products import source_data, individual_movie
+    index = EXT/'delivery/accepted_case_movies/yc0500_outward.json'
+    if not index.exists():
+        return None
+    accepted = load(index)
+    assert accepted['actual_encoded_frame_visual_review'] and accepted['full_decode_passed']
+    destination = out/'accepted_movie_reuse'
+    destination.mkdir()
+    datum, = source_data(['yc0500_outward'])
+    copied = individual_movie(datum, destination)
+    result = receipt(copied)
+    assert result['sha256'] == accepted['movie']['sha256']
+    assert result['bytes'] == accepted['movie']['bytes']
+    assert not list(destination.glob('*_frames')), 'Accepted movie must be copied without rendering'
+    reused = destination/'yc0500_outward_REUSED.json'
+    assert load(reused)['no_rerender']
+    record = dict(utc=now(), job=job(), accepted_index=receipt(index),
+        copied_movie=result, reuse_provenance=receipt(reused),
+        source_matched_encoded_bytes=True, no_new_frame_directory=True,
+        no_evolution=True, no_new_visual_acceptance_claim=True,
+        scope='Actual final-workflow reuse function exercised on the already inspected movie; '
+              'combined final generation and synchronized movie remain pending.')
+    atomic(out/'ACCEPTED_MOVIE_REUSE_OK.json', record)
+    return receipt(out/'ACCEPTED_MOVIE_REUSE_OK.json')
+
 def main():
     from extension_resources import admission
     from extension_resources import request_horizon_checkpoint
@@ -69,6 +96,7 @@ def main():
     out=EXT/'qa'/job()
     out.mkdir(parents=True)
     parallel = parallel_scheduling_check(out)
+    reused_movie = accepted_movie_reuse_check(out)
     from resource_projection import analytic_checks as projection_checks
     projection = projection_checks()
     from milestone_review import forecast
@@ -119,7 +147,9 @@ def main():
         window_metrics=receipt(out/'WINDOW_METRICS_OK.json'),
         parallel_scheduling=parallel,
         resource_projection=receipt(out/'RESOURCE_PROJECTION_OK.json'),
-        fixtures_only=True,no_new_evolution=True,no_session10_scientific_result=True,
+        accepted_movie_reuse=reused_movie,
+        validation_only=True,fixtures_only=reused_movie is None,
+        no_new_evolution=True,no_session10_scientific_result=True,
         actual_encoded_visual_review_pending=True))
     print(out)
 
