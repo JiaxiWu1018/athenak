@@ -9,6 +9,26 @@ from status_local import refresh
 
 THREAD = '01a1700d-9f0a-7801-98d4-0d700ff3c413'
 
+
+def production_start_notice(row):
+    """Request actual launch review once a registered production is running."""
+    started = row.get('STARTED')
+    if (row.get('role') != 'production' or not started
+            or started.get('job') != row['id']
+            or 'JobState=RUNNING' not in row.get('scheduler', '')
+            or row.get('WORKER_OK') or row.get('ALLOCATION_END') or row.get('FAILURE')):
+        return None
+    return ('start_'+row['id'],
+        f"Continue approved migration Session10: AMD production job{row['id']} "
+        f"({row['case']}, target{row['target']}M) has actually started on{started.get('host', 'unknown')}, "
+        f"source{started.get('source_commit', 'unknown')}. Read {LOCAL}/HANDOFF.md, APPROVED_PLAN.md "
+        'and evidence/remote_status.json. Verify and preserve actual STARTED, eightMPI/exclusiveMI2508x, '
+        'ROCm6.4.1, effective wall budget, workflow/input/executable hashes, restart lineage, '
+        'admission and whole-user storage/GPU telemetry. Keep the approved trajectory moving; '
+        'no duplicate production, solver changes or original-data cleanup. Shared50nodeh/350GiB. '
+        'Final scientific/actual visual delivery remains required; supervisor stays open.')
+
+
 def main():
     lock = (LOCAL/'evidence/supervisor.lock').open('a')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -28,6 +48,9 @@ def main():
         try:
             s = refresh()
             for row in s['jobs']:
+                notice = production_start_notice(row)
+                if notice:
+                    wake(*notice)
                 if row.get('ALLOCATION_END') or row.get('FAILURE') or ('JobState=' in row['scheduler'] and any('JobState='+v in row['scheduler'] for v in ['FAILED','CANCELLED','TIMEOUT','NODE_FAIL','OUT_OF_MEMORY','COMPLETED'])):
                     wake('job_'+row['id'], 'Continue the approved migration Session10 implementation and campaign. '
                         f"AMD job{row['id']} ({row['role']}, {row['case']}, target{row['target']}M) ended or needs review. "
