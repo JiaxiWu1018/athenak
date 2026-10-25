@@ -175,6 +175,9 @@ def main():
     timing_test = ROOT / 'evidence/CLOSEOUT_TIMING_TEST_OK.json'
     if timing_test.exists():
         products.append(timing_test)
+    cpu_test = ROOT / 'evidence/CPU_CLOSEOUT_TEST_OK.json'
+    if cpu_test.exists():
+        products.append(cpu_test)
     entries = [dict(relative=str(path.relative_to(ROOT)), **receipt(path)) for path in products]
     manifest = dict(utc=now(), job=job(), files=entries, file_count=len(entries),
                     logical_bytes=sum(row['bytes'] for row in entries),

@@ -51,6 +51,9 @@ def main():
     elif mode=='reports':
         from reports import main as reports
         reports()
+    elif mode=='closeout':
+        from closeout_cpu import main as closeout
+        closeout(sys.argv[2])
     elif mode=='delivery':
         from delivery import main as delivery
         delivery()

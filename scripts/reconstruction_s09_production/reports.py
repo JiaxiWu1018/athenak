@@ -173,6 +173,24 @@ def main():
                          'retain the original reserve. This changes allocation planning '
                          'and preserves every acceptance check. The forecast test uses '
                          'a synthetic endpoint and supplies no scientific acceptance.\n')
+    cpu_test=EXT/'evidence/CPU_CLOSEOUT_TEST_OK.json'
+    if cpu_test.exists():
+        checked=load(cpu_test)
+        assert checked['real_closed_endpoint_and_full_field_hashes_verified'] and checked['actual_unfinished_endpoint_rejected']
+        recovery.append(receipt(cpu_test))
+        shutil.copy2(cpu_test,ROOT/'evidence/CPU_CLOSEOUT_TEST_OK.json')
+        with (ROOT/'reports/TECHNICAL_REPORT.md').open('a') as stream:
+            stream.write('\nFor the final0.819 tail, GPU work and CPU audits are '
+                         'separated to fit a shorter GPU window. The GPU allocation '
+                         'saves the physical endpoint and exports/validates native '
+                         'final3D fields. Its successful exit does not confer '
+                         'numerical acceptance. A separate registered serialCPU '
+                         'allocation rechecks field hashes and runs the unchanged '
+                         'full-population reductions, independent numerical audits, '
+                         'review packet and closed raw inventory. Final plots wait '
+                         'for this CPU allocation to succeed. A Slurm integration '
+                         'test verified real completed fields and rejected the '
+                         'actual unfinished0.819 state.\n')
     replay=EXT/'yc0283_u0005/evidence/RANK_REPLAY_READY.json'
     if replay.exists():
         evidence=load(replay)

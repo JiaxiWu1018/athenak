@@ -1,5 +1,5 @@
 """Session-wide quota and assigned GPU guards, only in compute allocations."""
-import time, shutil
+import time, shutil, sys
 from common import *
 def allocated_bytes(path):
     for attempt in range(5):
@@ -51,4 +51,23 @@ def watchdog():
         atomic(out/'LATEST.json',d)
         with (out/'telemetry.jsonl').open('a') as f:f.write(json.dumps(d)+'\n')
         time.sleep(10)
-if __name__=='__main__':watchdog()
+def cpu_watchdog(once=False):
+    out=ROOT/'evidence/jobs'/job();out.mkdir(parents=True,exist_ok=True)
+    last_disk=time.monotonic()
+    while True:
+        started=time.monotonic();d=dict(job=job(),utc=now(),phase='CPU support storage watchdog')
+        try:
+            disk=storage();d.update(disk);last_disk=time.monotonic()
+            if disk['own']>=disk['limit']-disk['checkpoint_reserve']:stop('session_storage_checkpoint_reserve')
+            if disk['whole']>=1.7*TIB or disk['forecast']>=1.9*TIB:stop('whole_AMD_storage_limit')
+            if disk['filesystem_free']<disk['checkpoint_reserve']:stop('filesystem_checkpoint_reserve')
+        except Exception as error:d['storage_error']=repr(error)
+        if time.monotonic()-last_disk>900:stop('storage_telemetry_stale')
+        atomic(out/'CPU_STORAGE_LATEST.json',d)
+        with (out/'cpu_storage_telemetry.jsonl').open('a') as stream:stream.write(json.dumps(d)+'\n')
+        if once:return d
+        time.sleep(max(1,300-(time.monotonic()-started)))
+
+if __name__=='__main__':
+    if '--cpu' in sys.argv:cpu_watchdog()
+    else:watchdog()

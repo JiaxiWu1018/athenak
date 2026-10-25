@@ -38,6 +38,19 @@ def main():
     if state.get('complete'):
         if not (ROOT/'review_packet/MANIFEST.json').exists():
             remaining=int(os.environ['ST8X_WALL_SECONDS'])-(time.time()-float(os.environ['ST8X_START_EPOCH']))
+            if c['key']=='yc0819_u0005':
+                if remaining<180:
+                    atomic(ROOT/'evidence/jobs'/job()/'CLOSEOUT_DEFERRED.json',dict(
+                        utc=now(),job=job(),checkpoint=state['latest'],physical_endpoint_saved=True,
+                        numerical_acceptance_complete=False,reason='Fresh GPU allocation needed for final3D export.'))
+                    return
+                from final_fields import export
+                export(c['id'])
+                atomic(ROOT/'evidence/jobs'/job()/'CPU_CLOSEOUT_REQUIRED.json',dict(
+                    utc=now(),job=job(),checkpoint=state['latest'],physical_endpoint_saved=True,
+                    native_fields=receipt(work/'FINAL_FIELDS_OK.json'),numerical_acceptance_complete=False,
+                    reason='Run all existing reductions, independent audits, packet and raw inventory in the registered serialCPU allocation.'))
+                return
             from closeout_reserve import estimate
             timing=estimate(c,work,state,int(os.environ['SLURM_NTASKS']))
             atomic(ROOT/'evidence/jobs'/job()/'CLOSEOUT_RESERVE.json',timing)
