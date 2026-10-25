@@ -85,13 +85,18 @@ def main():
         final = review(CASE)
     destination = ROOT/'reviews'/f'milestone_{round(end):05d}_{job()}'
     plot_case(CASE, red, destination)
+    matched_pilot = None
+    if abs(end-20) < 1e-8 and not CASE.get('inherited_time'):
+        from pilot_review import review as pilot_review
+        matched_pilot = pilot_review(CASE, destination)
     native_cost = sum(s['elapsed'] for s in state['segments'] if s.get('simulation_advanced', 0) > 0 and s.get('elapsed'))/3600
     advanced = end-CASE.get('inherited_time', 0)
     marker = dict(utc=now(), job=job(), case=CASE, endpoint=end, complete=state.get('complete', False),
         summary=summary, quantile_checks=checks, native_logs=logs, fallback_particle_steps=fallbacks,
         rejected_updates_from_recognized_counters=rejected, boundary=boundary,
         native_node_hours=native_cost, native_node_hours_per_M=native_cost/advanced if advanced > 0 else None,
-        final_numerical_acceptance=final, figures=[receipt(p) for p in sorted(destination.glob('diagnostics.*'))],
+        final_numerical_acceptance=final, matched_pilot=matched_pilot,
+        figures=[receipt(p) for p in sorted(destination.glob('diagnostics.*'))],
         actual_visual_review=False, numerical_passed=True)
     atomic(destination/'NUMERICAL_ACCEPTANCE.json', marker)
     atomic(ROOT/'evidence'/f'MILESTONE_{round(end):05d}_NUMERICAL.json', marker)
