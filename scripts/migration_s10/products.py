@@ -1,7 +1,6 @@
 """Final comparison figures, fixed-ID movies and source-bound Markdown/PDF."""
 import csv
 import shutil
-import textwrap
 import numpy as np
 from common import *
 from reduce import csv_rows, write_csv
@@ -301,19 +300,7 @@ def individual_movie(datum, out):
         scope='Identical encoded bytes with matching accepted numerical source and checkpoint.'))
     return destination
 
-def main():
-    job()
-    from extension_resources import admission
-    admission()
-    style()
-    if os.environ.get('S10_CASE_ONLY') == '1':
-        case_movie_only()
-        return
-    data = source_data()
-    out = EXT/'delivery'/('generated_'+job())
-    assert not out.exists(), 'Preserve prior products; use a new reviewed generation directory for a retry'
-    out.mkdir(parents=True)
-    files = figures(data, out)
+def window_tables(data, out):
     statistics = []
     profile_coverage = []
     profile_drift = []
@@ -332,42 +319,28 @@ def main():
     write_csv(out/'window_statistics.csv', statistics)
     write_csv(out/'profile_window_coverage.csv', profile_coverage)
     write_csv(out/'profile_drift.csv', profile_drift)
-    lines = ['# Migration Session10: corrected yc=0.500', '',
-        'Original +/-512M mesh; initial dx=0.25M, allowable dx=0.0625M; 2,000,000 equal-rest-mass particles.',
-        'Outward velocity U=+0.005; original unperturbed control continued from700M. Fixed M_ref=1.', '',
-        '| Case | Endpoint [M] | Accepted AH [M] | Final alive particles | Max rest-mass closure |',
-        '|---|---:|---:|---:|---:|']
-    for d in data:
-        s = d['summary']
-        lines.append(f"| {d['case']['id']} | {s['endpoint']:g} | {s['ah_first'] if s['ah_first'] is not None else 'none'} | {d['acceptance']['final_population']} | {s['max_closure']:.3e} |")
-    lines += ['', 'Shell means and peak-to-peak excursions for 500-1000M and 1000-1500M are in window_statistics.csv. Means integrate piecewise-linear native snapshots over time; extrema include interpolated window boundaries.',
-        'Profile means use equal 750-1000M, 1000-1250M and 1250-1500M windows. profile_window_coverage.csv records actual coverage and maximum native sampling gaps; incomplete requested windows have blank means/drift rather than zeros.',
-        'profile_drift.csv compares consecutive time-mean mass-bin profiles: total variation = sum(abs(delta bin mass))/(2 M0_initial); maximum enclosed-mass change = max(abs(cumulative delta bin mass))/M0_initial.',
-        'No extrapolation is used. Profiles and shell radii are censored from the first particle removal. Window excursions and profile changes mix oscillation phase with secular drift; they do not isolate damping or establish asymptotic stability.',
-        'Coordinate rest-mass profiles and finite-difference fixed-ID radial flow are distinct from proper-volume energy density and locally measured radial velocity.',
-        'The control reuses the accepted0-700M history; new evolution begins only at700M. Its profile/flow/mesh companions cover the new segment.',
-        'Both cases retain the original boundary and source-time coupling limitations. There is no larger-box or convergence control.',
-        'Rest-mass closure is bookkeeping, not ADM-energy conservation. Initial kick ADM increase is approximately1.42e-5M; no post-kick renormalization.',
-        'Movies show20,000 fixed original IDs with fixed initial-radius colors, actual native times and ended-case labels.',
-        'Numerical acceptance and complete movie decoding passed before generation. Actual exported-PDF/encoded-frame inspection and final accounting/storage/transfer acceptance remain separate required records.', '']
+    return statistics, profile_coverage, profile_drift
+
+
+def main():
+    job()
+    from extension_resources import admission
+    admission()
+    style()
+    if os.environ.get('S10_CASE_ONLY') == '1':
+        case_movie_only()
+        return
+    data = source_data()
+    out = EXT/'delivery'/('generated_'+job())
+    assert not out.exists(), 'Preserve prior products; use a new reviewed generation directory for a retry'
+    out.mkdir(parents=True)
+    files = figures(data, out)
+    statistics, profile_coverage, profile_drift = window_tables(data, out)
+    from scientific_report import build_lines, render_pdf
+    lines = build_lines(data, statistics, profile_coverage, profile_drift, out)
     report = out/'REPORT_migration10.md'
-    report.write_text('\n'.join(lines))
-    from matplotlib.backends.backend_pdf import PdfPages
-    import matplotlib.pyplot as plt
-    with PdfPages(out/'REPORT_migration10.pdf') as pdf:
-        text = '\n'.join('\n'.join(textwrap.wrap(line, 95)) if not line.startswith('|') else line for line in lines)
-        report_lines = text.splitlines()
-        for start in range(0, len(report_lines), 62):
-            fig = plt.figure(figsize=(8.3, 11.7))
-            fig.text(.06, .95, '\n'.join(report_lines[start:start+62]), va='top', fontsize=8, family='monospace')
-            pdf.savefig(fig)
-            plt.close(fig)
-        for filename in [p.name for p in files if p.suffix == '.png']:
-            fig, ax = plt.subplots(figsize=(11.7, 8.3))
-            ax.imshow(plt.imread(out/filename))
-            ax.axis('off')
-            pdf.savefig(fig, bbox_inches='tight')
-            plt.close(fig)
+    report.write_text('\n'.join(lines)+'\n')
+    render_pdf(lines, out/'REPORT_migration10.pdf', [p for p in files if p.suffix == '.png'])
     for d in data:
         individual_movie(d, out)
     movie(data, out, 'comparison')

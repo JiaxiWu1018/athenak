@@ -73,6 +73,40 @@ def accepted_movie_reuse_check(out):
     atomic(out/'ACCEPTED_MOVIE_REUSE_OK.json', record)
     return receipt(out/'ACCEPTED_MOVIE_REUSE_OK.json')
 
+
+def scientific_report_check(out):
+    from products import source_data, window_tables
+    from scientific_report import build_lines, render_pdf
+    datum, = source_data(['yc0500_outward'])
+    destination = out/'scientific_report_validation'
+    destination.mkdir()
+    statistics, profiles, drift = window_tables([datum], destination)
+    assert all(not r['complete'] and r['mean'] is None and r['peak_to_peak'] is None for r in statistics)
+    assert all(not r['complete'] and r['total_variation_M0'] is None for r in drift)
+    lines = build_lines([datum], statistics, profiles, drift, destination, validation_only=True)
+    text = '\n'.join(lines)+'\n'
+    report = destination/'REPORT_migration10.md'
+    report.write_text(text)
+    # Exercise actual figure inclusion using the already accepted, immutable PNGs.
+    marker = load(datum['root']/'evidence'/f"MILESTONE_{round(datum['summary']['endpoint']):05d}_NUMERICAL.json")
+    figures = [Path(entry['path']) for entry in marker['figures'] if entry['path'].endswith('.png')]
+    assert len(figures) >= 3
+    render_pdf(lines, destination/'REPORT_migration10.pdf', figures)
+    layout = load(destination/'REPORT_LAYOUT.json')
+    assert sum(p['kind']=='figure' for p in layout['pages'])==len(figures)
+    assert all(p.get('lines', 0)<=62 for p in layout['pages'])
+    for required in ['REPORT WORKFLOW VALIDATION ONLY', 'Removal geometry:', 'not an escaped/unbound mass fraction',
+                     'not a convergence result', 'unavailable', 'Original donor SHA256', 'Boundary effects']:
+        assert required in text, required
+    record = dict(utc=now(), job=job(), validation_only=True, actual_accepted_outward_data=True,
+        actual_final_report_and_table_functions=True, censored_windows_unavailable_not_zero=True,
+        numerical_visual_sources_verified=True, report=receipt(report),
+        layout=receipt(destination/'REPORT_LAYOUT.json'), sources=receipt(destination/'REPORT_SOURCES.json'),
+        pdf=receipt(destination/'REPORT_migration10.pdf'), figure_pages=len(figures),
+        actual_PDF_raster_review_pending=True, no_evolution=True, final_campaign_delivery_complete=False)
+    atomic(out/'SCIENTIFIC_REPORT_OK.json', record)
+    return receipt(out/'SCIENTIFIC_REPORT_OK.json')
+
 def main():
     from extension_resources import admission
     from extension_resources import request_horizon_checkpoint
@@ -97,6 +131,7 @@ def main():
     out.mkdir(parents=True)
     parallel = parallel_scheduling_check(out)
     reused_movie = accepted_movie_reuse_check(out)
+    scientific_report = scientific_report_check(out)
     from resource_projection import analytic_checks as projection_checks
     projection = projection_checks()
     from milestone_review import forecast
@@ -148,6 +183,7 @@ def main():
         parallel_scheduling=parallel,
         resource_projection=receipt(out/'RESOURCE_PROJECTION_OK.json'),
         accepted_movie_reuse=reused_movie,
+        scientific_report=scientific_report,
         validation_only=True,fixtures_only=reused_movie is None,
         no_new_evolution=True,no_session10_scientific_result=True,
         actual_encoded_visual_review_pending=True))
