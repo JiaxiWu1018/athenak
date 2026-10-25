@@ -32,6 +32,8 @@ END
 trap finish EXIT
 { hostname; date -u; module list; hipcc --version; scontrol show job "$SLURM_JOB_ID"; mpirun --version; } > "$record/environment.txt" 2>&1
 sha256sum "$record/workflow/"* > "$record/workflow.sha256"
+actual_wall_seconds=$(python3 "$record/workflow/allocation_budget.py")
+export ST8X_WALL_SECONDS="$actual_wall_seconds"
 python3 "$record/workflow/extension_resources.py" > "$record/watchdog.log" 2>&1 &
 guard_pid=$!
 python3 "$record/workflow/worker.py" > "$record/campaign.log" 2>&1
