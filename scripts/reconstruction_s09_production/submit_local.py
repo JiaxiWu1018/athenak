@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--case', choices=['yc0283', 'yc0605', 'yc0819', 'yc0900'])
     parser.add_argument('--hours', type=float, default=2)
     parser.add_argument('--review-root')
+    parser.add_argument('--continuation-after', help='Same-case parent; require successful exit before continuation')
     parser.add_argument('args', nargs='*')
     args = parser.parse_args()
     path = SESSION / 'evidence/job_registry.json'
@@ -40,7 +41,13 @@ def main():
         command = ['sbatch', '--parsable', f'--time={seconds // 60}']
         if args.kind == 'production':
             command.append('--time-min=' + str(min(30, seconds // 60)))
-        if previous:
+        if args.continuation_after:
+            assert args.kind == 'production'
+            parent = next(row for row in registry['jobs'] if row['job_id'] == args.continuation_after)
+            assert parent['kind'] == 'production' and parent['case'].startswith(args.case)
+            assert parent['partition'] == partition
+            command.append('--dependency=afterok:' + parent['job_id'])
+        elif previous:
             command.append('--dependency=afterany:' + previous[-1]['job_id'])
         if args.review_root:
             assert args.review_root.startswith(AMD + '/')
@@ -56,6 +63,7 @@ def main():
         registry['jobs'].append(dict(job_id=ident, kind=args.kind, partition=partition,
                                      nodes=1, requested_seconds=seconds, script=script,
                                      command=command, case=args.case,
+                                     continuation_parent=args.continuation_after,
                                      submitted_UTC=stamp))
         temporary = path.with_suffix('.tmp')
         temporary.write_text(json.dumps(registry, indent=2) + '\n')
