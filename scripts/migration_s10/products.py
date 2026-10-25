@@ -57,10 +57,12 @@ def joined(prefix, tail, field):
     result.update({r['time']: r for r in newer})
     return [result[t] for t in sorted(result)]
 
-def source_data():
-    prefix = resolve_prefix()
+def source_data(case_keys=None):
+    selected = [c for c in ALL_CASES if case_keys is None or c['id'] in case_keys]
+    assert selected
+    prefix = resolve_prefix() if any(c['start'] for c in selected) else None
     data = []
-    for raw in ALL_CASES:
+    for raw in selected:
         key = raw['id']
         root = EXT/key
         red = root/'reduced/yc0500'
@@ -240,11 +242,73 @@ def movie(data, out, name, targets=None):
         actual_encoded_frame_visual_review=False, scope='Fixed-ID cohort projection; not a full-population density movie'))
     return path
 
+
+def case_movie_only():
+    """Create an independently reviewable movie after that case is accepted."""
+    datum, = source_data([CASE['key']])
+    state = load(datum['root']/'runs/yc0500/state.json')
+    assert state['complete'] and state['latest']['payload_verified']
+    assert state['latest']['sha256'] == datum['acceptance']['checkpoint']['sha256']
+    assert abs(float(os.environ['S10_TARGET'])-datum['summary']['endpoint']) < 1e-7
+    visual_path = datum['root']/'evidence/CASE_VISUAL_ACCEPTANCE.json'
+    visual = load(visual_path)
+    assert visual['actual_visual_review']
+    assert abs(visual['endpoint']-datum['summary']['endpoint']) < 1e-7
+    out = EXT/'delivery'/f"case_movie_{CASE['key']}_{job()}"
+    assert not out.exists(), 'Preserve earlier product attempts'
+    out.mkdir(parents=True)
+    path = movie([datum], out, CASE['key'])
+    manifest_path = out/(CASE['key']+'_manifest.json')
+    manifest = load(manifest_path)
+    assert manifest['full_decode_passed']
+    used = sorted({row['file'] for frame in manifest['frames'] for row in frame['sources']})
+    atomic(out/'CASE_MOVIE_GENERATION_OK.json', dict(utc=now(), job=job(),
+        case=CASE['key'], endpoint=datum['summary']['endpoint'],
+        checkpoint_sha256=datum['acceptance']['checkpoint']['sha256'],
+        numerical_source=receipt(datum['root']/'evidence/CASE_NUMERICAL_ACCEPTANCE.json'),
+        accepted_case_visual_source=receipt(visual_path), movie=receipt(path),
+        manifest=receipt(manifest_path), cohort_sources=[receipt(Path(p)) for p in used],
+        full_decode_passed=True, actual_encoded_frame_visual_review_pending=True,
+        final_campaign_delivery_complete=False,
+        scope='One accepted case movie only. Other case evolution and final comparisons remain separate.'))
+    print(out)
+
+
+def individual_movie(datum, out):
+    """Reuse a source-matched, actually inspected case movie when available."""
+    key = datum['case']['id']
+    accepted_path = EXT/'delivery/accepted_case_movies'/(key+'.json')
+    if not accepted_path.exists():
+        return movie([datum], out, key)
+    accepted = load(accepted_path)
+    assert accepted['actual_encoded_frame_visual_review'] and accepted['full_decode_passed']
+    assert accepted['checkpoint_sha256'] == datum['acceptance']['checkpoint']['sha256']
+    current = receipt(datum['root']/'evidence/CASE_NUMERICAL_ACCEPTANCE.json')
+    assert current['sha256'] == accepted['numerical_source']['sha256']
+    for entry in [accepted['movie'], accepted['manifest']]:
+        assert receipt(Path(entry['path']))['sha256'] == entry['sha256']
+    manifest = load(Path(accepted['manifest']['path']))
+    assert manifest['full_decode_passed']
+    assert manifest['movie']['sha256'] == accepted['movie']['sha256']
+    destination = out/(key+'.mp4')
+    assert not destination.exists()
+    shutil.copy2(accepted['movie']['path'], destination)
+    assert receipt(destination)['sha256'] == accepted['movie']['sha256']
+    shutil.copy2(accepted['manifest']['path'], out/(key+'_manifest.json'))
+    atomic(out/(key+'_REUSED.json'), dict(utc=now(), job=job(),
+        acceptance=receipt(accepted_path), copied_movie=receipt(destination),
+        original_generation=accepted, no_rerender=True,
+        scope='Identical encoded bytes with matching accepted numerical source and checkpoint.'))
+    return destination
+
 def main():
     job()
     from extension_resources import admission
     admission()
     style()
+    if os.environ.get('S10_CASE_ONLY') == '1':
+        case_movie_only()
+        return
     data = source_data()
     out = EXT/'delivery'/('generated_'+job())
     assert not out.exists(), 'Preserve prior products; use a new reviewed generation directory for a retry'
@@ -305,7 +369,7 @@ def main():
             pdf.savefig(fig, bbox_inches='tight')
             plt.close(fig)
     for d in data:
-        movie([d], out, d['case']['id'])
+        individual_movie(d, out)
     movie(data, out, 'comparison')
     atomic(out/'GENERATION_OK.json', dict(utc=now(), job=job(),
         sources=[d['acceptance'] for d in data], products=[receipt(p) for p in sorted(out.iterdir()) if p.is_file()],
