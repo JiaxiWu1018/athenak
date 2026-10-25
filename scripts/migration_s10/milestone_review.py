@@ -65,8 +65,9 @@ def science_trends(c, red, destination):
         if rows:
             axes[1, 1].plot([r['end'] for r in rows], [100*r['fractional_peak_to_peak'] for r in rows],
                 marker='o', color=color, ls=line, label=f'{q}% shell')
+    excursion_max = max([100*r['fractional_peak_to_peak'] for r in windows]+[1.])
     axes[1, 1].set(ylabel='100M window shell excursion [%]',
-        xlim=(0, max(1., summary['endpoint'])*1.02), ylim=(0, None))
+        xlim=(0, max(1., summary['endpoint'])*1.02), ylim=(0, excursion_max*1.12))
     if not windows:
         axes[1, 1].text(.5, .5, 'No complete 100M window', ha='center', transform=axes[1, 1].transAxes)
     for ax in axes.flat:
