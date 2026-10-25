@@ -45,6 +45,29 @@ def main():
     end = state['latest']['time']
     assert state.get('complete') or end >= float(os.environ['S10_TARGET'])-1e-8
     red = ROOT/'reduced/yc0500'
+    if os.environ.get('S10_FIGURES_ONLY') == '1':
+        prior_path = ROOT/'evidence'/f'MILESTONE_{round(end):05d}_NUMERICAL.json'
+        prior = load(prior_path)
+        assert prior['numerical_passed'] and abs(prior['endpoint']-end) < 1e-8
+        source_review = Path(prior['figures'][0]['path']).parent/'NUMERICAL_ACCEPTANCE.json'
+        source_receipt = receipt(source_review)
+        assert load(source_review) == prior
+        for entry in prior['science_trends']['source_inputs']:
+            path = red/Path(entry['path']).name
+            assert path.stat().st_size == entry['bytes'] and sha(path) == entry['sha256']
+        destination = ROOT/'reviews'/f'milestone_{round(end):05d}_figures_{job()}'
+        assert not destination.exists()
+        plot_case(CASE, red, destination)
+        from milestone_review import science_trends, forecast
+        marker = dict(prior, utc=now(), job=job(), figures_only=True,
+            numerical_checks_reused_from=source_receipt,
+            science_trends=science_trends(CASE, red, destination),
+            milestone_forecast=forecast(destination),
+            figures=[receipt(p) for p in sorted(destination.iterdir()) if p.suffix in ['.png', '.pdf']],
+            actual_visual_review=False)
+        atomic(destination/'NUMERICAL_ACCEPTANCE.json', marker)
+        atomic(prior_path, marker)
+        return
     if red.exists() and not (red/'REDUCTION_OK.json').exists():
         preserved = EXT/'evidence/allocations'/job()/'prior_incomplete_reduction'
         shutil.copytree(red, preserved)

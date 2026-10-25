@@ -50,10 +50,10 @@ def science_trends(c, red, destination):
             color=color, ls=line, label=f'Native {times[k]:g}M')
     occupied = np.flatnonzero(bins.sum(axis=0) > 0)
     axes[0, 0].set(xlabel='COM coordinate radius [M]',
-        ylabel='Rest mass / coordinate shell volume [M^-2]',
+        ylabel='Rest mass / coordinate shell volume\n[M^-2]',
         xlim=(.03, max(8., float(centers[occupied[-1]])*1.1)))
     axes[0, 1].plot(times, 100*drift, color=colors[0])
-    axes[0, 1].set(ylabel=f'Binned rest-mass redistribution from {times[0]:g}M [%]')
+    axes[0, 1].set(ylabel=f'Binned rest-mass redistribution\nfrom {times[0]:g}M [%]')
     if flow:
         for name, label, color, line in [('mean_coordinate_dr_dt', 'Mean', colors[0], '-'),
                 ('rms_coordinate_dr_dt', 'RMS', colors[1], '--')]:
@@ -65,7 +65,8 @@ def science_trends(c, red, destination):
         if rows:
             axes[1, 1].plot([r['end'] for r in rows], [100*r['fractional_peak_to_peak'] for r in rows],
                 marker='o', color=color, ls=line, label=f'{q}% shell')
-    axes[1, 1].set(ylabel='100M window shell excursion [%]')
+    axes[1, 1].set(ylabel='100M window shell excursion [%]',
+        xlim=(0, max(1., summary['endpoint'])*1.02), ylim=(0, None))
     if not windows:
         axes[1, 1].text(.5, .5, 'No complete 100M window', ha='center', transform=axes[1, 1].transAxes)
     for ax in axes.flat:

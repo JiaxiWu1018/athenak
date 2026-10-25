@@ -42,7 +42,9 @@ def main():
     p.add_argument('--target', type=float, default=20.)
     p.add_argument('--minutes', type=int)
     p.add_argument('--after', default='')
+    p.add_argument('--figures-only', action='store_true')
     a = p.parse_args()
+    assert not a.figures_only or a.role == 'analysis'
     assert 0 < a.target <= 1500
     seconds = 60*(a.minutes or dict(reference=30, production=120, analysis=60, products=120, qa=20)[a.role])
     assert 0 < seconds <= 7200
@@ -64,12 +66,13 @@ def main():
         dependency, dependency_evidence = resolve_dependencies(dependency, current)
         comment = f'st10:20261024:{a.role}:{len(rows)+1:03d}'
         command = ['sbatch', '--parsable', f'--time={seconds//60}', '--comment='+comment,
-            '--export=ALL,S10_CASE='+a.case+',S10_ENDPOINT='+str(a.target)+',S10_U='+('0' if a.case.endswith('control') else '0.005')]
+            '--export=ALL,S10_CASE='+a.case+',S10_ENDPOINT='+str(a.target)+',S10_U='+('0' if a.case.endswith('control') else '0.005')+',S10_FIGURES_ONLY='+str(int(a.figures_only))]
         if dependency:
             command.append('--dependency=afterok:'+dependency)
         command.append(REMOTE+'/scripts/'+a.role+'.sbatch')
         ticket = dict(role=a.role, case=a.case, target=a.target, requested_seconds=seconds,
             nodes=1, comment=comment, command=command, dependency_resolution=dependency_evidence,
+            figures_only=a.figures_only,
             utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
         ticket_path = LOCAL/'evidence'/f'submission_{len(rows)+1:03d}.json'
         assert not ticket_path.exists(), 'Unresolved prior submission ticket; check scheduler before retry'
