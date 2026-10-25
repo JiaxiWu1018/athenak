@@ -48,7 +48,7 @@ def main():
             assert parent['partition'] == partition
             command.append('--dependency=afterok:' + parent['job_id'])
         elif previous:
-            command.append('--dependency=afterany:' + previous[-1]['job_id'])
+            command.append('--dependency=afterok:' + previous[-1]['job_id'])
         if args.review_root:
             assert args.review_root.startswith(AMD + '/')
             command.append('--export=ALL,ST9_REVIEW_ROOT=' + args.review_root)
