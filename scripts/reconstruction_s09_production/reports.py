@@ -156,6 +156,23 @@ def main():
         'Other classified runtime errors must be absent.\n'
     )
     recovery=[]
+    timing=EXT/'evidence/CLOSEOUT_TIMING_TEST_OK.json'
+    if timing.exists():
+        tested=load(timing)
+        assert tested['arithmetic_and_rejection_checks_passed'] and tested['actual_incomplete_state_falls_back']
+        recovery.append(receipt(timing))
+        shutil.copy2(timing,ROOT/'evidence/CLOSEOUT_TIMING_TEST_OK.json')
+        with (ROOT/'reports/TECHNICAL_REPORT.md').open('a') as stream:
+            stream.write('\nThe matching0.900 endpoint measured413.745898seconds '
+                         'from the final checkpoint to completed audits, final fields, '
+                         'review packet and raw inventory. A Slurm-tested timing forecast '
+                         'uses1.5times this duration plus120seconds, scaled upward by '
+                         'snapshot count. It applies only to a matching eight-rank, '
+                         '344-block, unremoved2M-particle0.819 endpoint at300M, with '
+                         'identical audit source hashes and executable; other states '
+                         'retain the original reserve. This changes allocation planning '
+                         'and preserves every acceptance check. The forecast test uses '
+                         'a synthetic endpoint and supplies no scientific acceptance.\n')
     replay=EXT/'yc0283_u0005/evidence/RANK_REPLAY_READY.json'
     if replay.exists():
         evidence=load(replay)

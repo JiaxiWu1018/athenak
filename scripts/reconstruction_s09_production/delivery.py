@@ -172,6 +172,9 @@ def main():
                   'ASSEMBLY_OK.json', 'REPORT_SOURCE_BINDINGS.json', 'NATIVE_BUILD_PROVENANCE.json',
                   'TRANSPORT_DIAGNOSTICS.json',
                   'REFERENCE_PACKET_OK.json', 'INDEPENDENT_CONSTRAINT_REFERENCE_OK.json', 'SOURCE_RECEIPT.json']]
+    timing_test = ROOT / 'evidence/CLOSEOUT_TIMING_TEST_OK.json'
+    if timing_test.exists():
+        products.append(timing_test)
     entries = [dict(relative=str(path.relative_to(ROOT)), **receipt(path)) for path in products]
     manifest = dict(utc=now(), job=job(), files=entries, file_count=len(entries),
                     logical_bytes=sum(row['bytes'] for row in entries),

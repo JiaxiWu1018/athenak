@@ -38,10 +38,11 @@ def main():
     if state.get('complete'):
         if not (ROOT/'review_packet/MANIFEST.json').exists():
             remaining=int(os.environ['ST8X_WALL_SECONDS'])-(time.time()-float(os.environ['ST8X_START_EPOCH']))
-            full_snapshots=len(list((work/'pvtk').glob('*.vtk')))
-            # Full-population sorting, cohort cross-checks and final fields need
-            # more than the native segment's three-minute shutdown allowance.
-            reserve=max(300,180+3*full_snapshots)
+            from closeout_reserve import estimate
+            timing=estimate(c,work,state,int(os.environ['SLURM_NTASKS']))
+            atomic(ROOT/'evidence/jobs'/job()/'CLOSEOUT_RESERVE.json',timing)
+            full_snapshots=timing['full_particle_snapshots']
+            reserve=timing['seconds']
             if remaining<reserve:
                 record=dict(utc=now(),job=job(),case=c,checkpoint=state['latest'],
                     remaining_seconds=remaining,full_particle_snapshots=full_snapshots,
