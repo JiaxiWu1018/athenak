@@ -176,6 +176,23 @@ def main():
     plot_case(raw,prefix,out)
     datum=dict(case=raw,summary=dict(endpoint=700.,ah_first=None),cohorts=rows)
     path=movie([datum],out,'historical_control_3frame_smoke',targets=[0.,350.,700.])
+    manifest_path=out/'historical_control_3frame_smoke_manifest.json'
+    manifest=load(manifest_path)
+    sources={entry['source']['path']: entry for entry in manifest['cohort_sources']}
+    assert len(sources)==3 and manifest['inputs_unchanged_through_encoding']
+    assert manifest['native_headers_match_index'] and manifest['full_decode_passed']
+    for frame in manifest['frames']:
+        for source in frame['sources']:
+            original=sources[source['file']]
+            assert source['cohort_sha256']==original['source']['sha256']
+            assert source['time']==original['time'] and source['cycle']==original['cycle']
+    assert manifest['initial_color_source']==receipt(EXT/'protected/yc0500.bin')
+    provenance_path=out/'MOVIE_INPUT_PROVENANCE_OK.json'
+    atomic(provenance_path,dict(utc=now(),job=job(),manifest=receipt(manifest_path),
+        actual_native_cohort_files=len(sources),encoded_frames=len(manifest['frames']),
+        every_frame_source_bound_to_SHA=True,native_time_cycle_matches_index=True,
+        cohort_and_color_inputs_unchanged_through_encoding=True,full_decode_passed=True,
+        validation_only=True,no_evolution=True,no_new_Session10_scientific_result=True))
     h=csv_rows(prefix/'history.csv');assert h[0]['time']==0 and abs(h[-1]['time']-700)<1e-7
     atomic(out/'QA_OK.json',dict(utc=now(),job=job(),original_history=receipt(prefix/'SOURCE_MANIFEST.json'),
         resolved_cohorts=receipt(prefix/'RESOLVED.json'),movie=receipt(path),
@@ -184,6 +201,7 @@ def main():
         resource_projection=receipt(out/'RESOURCE_PROJECTION_OK.json'),
         accepted_movie_reuse=reused_movie,
         scientific_report=scientific_report,
+        movie_input_provenance=receipt(provenance_path),
         validation_only=True,fixtures_only=reused_movie is None,
         no_new_evolution=True,no_session10_scientific_result=True,
         actual_encoded_visual_review_pending=True))

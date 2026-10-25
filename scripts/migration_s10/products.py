@@ -170,6 +170,7 @@ def movie(data, out, name, targets=None):
     endpoint = max(d['summary']['endpoint'] for d in data)
     targets = np.unique(np.r_[np.arange(0, endpoint+1e-8, 2.), endpoint]) if targets is None else np.asarray(targets,dtype=float)
     selected = []
+    cohort_sources = {}
     max_xy = 0.
     for d in data:
         times = np.array([float(v['time']) for v in d['cohorts']])
@@ -182,10 +183,15 @@ def movie(data, out, name, targets=None):
         selected.append(chosen)
         for row in {r['file']: r for r in chosen}.values():
             t, cycle, mask, values = cohort(row['file'])
+            assert abs(t-float(row['time'])) < 1e-7 and cycle == int(float(row['cycle']))
+            filename = str(row['file'])
+            if filename not in cohort_sources:
+                cohort_sources[filename] = dict(source=receipt(Path(filename)), time=t, cycle=cycle)
             if mask.any():
                 max_xy = max(max_xy, float(abs(values[mask == 1, 1:3]).max()))
     limit = max(6., max_xy*1.05)
-    with (EXT/'protected/yc0500.bin').open('rb') as f:
+    color_source = receipt(EXT/'protected/yc0500.bin')
+    with Path(color_source['path']).open('rb') as f:
         f.readline()
         initial = np.fromfile(f, dtype='<f8').reshape(-1, 8)[::100]
     radius0 = np.linalg.norm(initial[:, 1:4], axis=1)
@@ -208,6 +214,7 @@ def movie(data, out, name, targets=None):
         for ax, d, rows, artist, label in zip(axes, data, selected, artists, labels):
             row = rows[i]
             actual, cycle, mask, values = cohort(row['file'])
+            assert abs(actual-float(row['time'])) < 1e-7 and cycle == int(float(row['cycle']))
             active = mask == 1
             artist.set_offsets(values[active, 1:3])
             artist.set_array(radius0[active])
@@ -217,7 +224,8 @@ def movie(data, out, name, targets=None):
                 ('ENDED; last state held\n' if ended else '')+
                 (f'Accepted AH at {ah:g}M\n' if ah is not None and actual >= ah else '')+
                 f'alive cohort {int(active.sum())}/20000')
-            sources.append(dict(file=row['file'], time=actual, cycle=cycle, ended=ended))
+            sources.append(dict(file=row['file'], time=actual, cycle=cycle, ended=ended,
+                cohort_sha256=cohort_sources[str(row['file'])]['source']['sha256']))
         frame=frames/f'{i:06d}.png'
         fig.savefig(frame,dpi=130,facecolor='white')
         if i in {0, len(targets)//2, len(targets)-1}:
@@ -236,7 +244,11 @@ def movie(data, out, name, targets=None):
     selection = '+'.join(r'eq(n\,'+str(i)+')' for i in sorted({0, len(targets)//2, len(targets)-1}))
     cmd([exe, '-v', 'error','-xerror','-threads','1', '-i', path, '-vf', 'select='+selection,
          '-vsync', 'vfr','-threads','1', previews/'encoded_%03d.png'], stdout=subprocess.DEVNULL)
+    for entry in [color_source]+[v['source'] for v in cohort_sources.values()]:
+        assert receipt(Path(entry['path'])) == entry, 'Movie input changed during generation'
     atomic(out/(name+'_manifest.json'), dict(utc=now(), job=job(), movie=receipt(path), frames=frame_manifest,
+        cohort_sources=list(cohort_sources.values()), initial_color_source=color_source,
+        native_headers_match_index=True, inputs_unchanged_through_encoding=True,
         full_decode_passed=True, probe=probe,encoder=receipt(exe),encode_command=list(map(str,encode)),xy_limit=limit, color='Initial coordinate radius; fixed across all frames',
         actual_encoded_frame_visual_review=False, scope='Fixed-ID cohort projection; not a full-population density movie'))
     return path
