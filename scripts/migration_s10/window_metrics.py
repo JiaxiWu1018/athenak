@@ -13,7 +13,14 @@ def time_window(times, values, lo, hi):
     values = np.asarray(values, dtype=float)
     assert hi > lo and times.ndim == 1 and len(times) == len(values)
     assert np.isfinite(times).all() and np.isfinite(values).all()
-    assert len(times) < 2 or (np.diff(times) > 0).all(), 'Use unique ordered native times'
+    # Native output counters can restart; filename order is not time order.
+    # Verify equal-time payloads before keeping one, rather than silently replacing.
+    order = np.argsort(times, kind='stable')
+    times, values = times[order], values[order]
+    unique = np.r_[True, np.diff(times) > 0] if len(times) else np.array([], dtype=bool)
+    for i in np.flatnonzero(~unique):
+        assert np.allclose(values[i], values[i-1], rtol=1e-10, atol=1e-12), 'Conflicting duplicate native profiles'
+    times, values = times[unique], values[unique]
     result = dict(start=float(lo), end=float(hi), complete=False, samples=0,
         covered_start=None, covered_end=None, covered_duration=0., coverage_fraction=0.,
         max_native_gap=None, mean=None, peak_to_peak=None)
@@ -83,6 +90,14 @@ def analytic_checks():
     assert not partial['complete'] and partial['mean'] is None and partial['coverage_fraction'] == .5
     missing = time_window([1., 2.], [3., 4.], 3., 4.)
     assert not missing['complete'] and missing['covered_duration'] == 0 and missing['mean'] is None
+    unsorted = time_window([2., 0., 1., 1.], [4., 2., 3., 3.], 0., 2.)
+    assert unsorted['complete'] and np.isclose(unsorted['mean'], 3.) and unsorted['samples'] == 3
+    try:
+        time_window([0., 1., 1., 2.], [2., 3., 9., 4.], 0., 2.)
+    except AssertionError as e:
+        assert 'Conflicting duplicate' in str(e)
+    else:
+        raise AssertionError('Conflicting duplicate was not rejected')
     t = np.array([750., 1000., 1250., 1500.])
     x = (t-750)/750
     profiles, drift = profile_windows(t, np.column_stack([1-x, x]), 1.)
@@ -91,4 +106,4 @@ def analytic_checks():
                and np.isclose(r['max_enclosed_mass_change_M0'], 1/3) for r in drift)
     return dict(linear_profiles=True, irregular_sampling_invariance=True,
         scalar_mean_and_excursion=True, partial_and_missing_coverage=True,
-        adjacent_profile_window_drift=True)
+        adjacent_profile_window_drift=True, verified_duplicate_and_unordered_inputs=True)
