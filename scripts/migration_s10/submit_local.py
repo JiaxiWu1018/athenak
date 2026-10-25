@@ -15,6 +15,26 @@ def atomic(path, value):
     temp.write_text(json.dumps(value, indent=2)+'\n')
     temp.replace(path)
 
+def resolve_dependencies(dependency, rows):
+    """AMD purges completed jobs quickly; keep their verified terminal receipts."""
+    live = []
+    evidence = []
+    for ident in filter(None, dependency.split(':')):
+        row = next(r for r in rows if r['id'] == ident)
+        scheduler = row['scheduler']
+        terminal = row if 'JobState=COMPLETED' in scheduler else row.get('last_terminal_scheduler_receipt', {})
+        if terminal and 'JobState=COMPLETED' in terminal.get('scheduler', ''):
+            assert 'ExitCode=0:0' in terminal['scheduler'], terminal
+            assert row.get('WORKER_OK') and not row.get('FAILURE'), row
+            assert row.get('ALLOCATION_END', {}).get('exit_status') == 0, row
+            evidence.append(dict(id=ident, action='completed dependency satisfied; omit purged-job risk',
+                terminal_scheduler=terminal['scheduler'], allocation_end=row['ALLOCATION_END']))
+        else:
+            assert any('JobState='+state in scheduler for state in ['PENDING', 'RUNNING', 'CONFIGURING', 'COMPLETING', 'SUSPENDED']), row
+            live.append(ident)
+            evidence.append(dict(id=ident, action='scheduler afterok dependency retained', scheduler=scheduler))
+    return ':'.join(live), evidence
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('role', choices=['reference', 'production', 'analysis', 'products', 'qa'])
@@ -36,6 +56,12 @@ def main():
             assert all(i.isdigit() for i in a.after.split(':'))
         serial = [r for r in rows if r['role'] == 'production'] if a.role == 'production' else []
         dependency = a.after or (serial[-1]['id'] if serial else '')
+        from status_local import refresh
+        current = refresh()['jobs']
+        for row in current:
+            if row['role'] == a.role and row['case'] == a.case and row['target'] == a.target:
+                assert not any('JobState='+state in row['scheduler'] for state in ['PENDING', 'RUNNING', 'CONFIGURING', 'COMPLETING', 'SUSPENDED']), 'Matching registered job is still active: '+row['id']
+        dependency, dependency_evidence = resolve_dependencies(dependency, current)
         comment = f'st10:20261024:{a.role}:{len(rows)+1:03d}'
         command = ['sbatch', '--parsable', f'--time={seconds//60}', '--comment='+comment,
             '--export=ALL,S10_CASE='+a.case+',S10_ENDPOINT='+str(a.target)+',S10_U='+('0' if a.case.endswith('control') else '0.005')]
@@ -43,7 +69,7 @@ def main():
             command.append('--dependency=afterok:'+dependency)
         command.append(REMOTE+'/scripts/'+a.role+'.sbatch')
         ticket = dict(role=a.role, case=a.case, target=a.target, requested_seconds=seconds,
-            nodes=1, comment=comment, command=command,
+            nodes=1, comment=comment, command=command, dependency_resolution=dependency_evidence,
             utc=datetime.datetime.now(datetime.timezone.utc).isoformat())
         ticket_path = LOCAL/'evidence'/f'submission_{len(rows)+1:03d}.json'
         assert not ticket_path.exists(), 'Unresolved prior submission ticket; check scheduler before retry'
