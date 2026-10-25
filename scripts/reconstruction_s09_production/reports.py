@@ -151,6 +151,39 @@ def main():
         'inherited UCX null-pointer message, with an exact accepted-reference match. '
         'Other classified runtime errors must be absent.\n'
     )
+    recovery=[]
+    replay=EXT/'yc0283_u0005/evidence/RANK_REPLAY_READY.json'
+    if replay.exists():
+        evidence=load(replay)
+        assert evidence['original_bytes_checksum_verified'] and evidence['original_state_restored']
+        recovery.append(receipt(replay))
+        with (ROOT/'reports/TECHNICAL_REPORT.md').open('a') as stream:
+            stream.write(
+                '\nA scheduler amendment in allocation478544 launched eight MPI ranks '
+                'while its inherited batch rank variable remained four. This skipped '
+                'the required topology gate. The attempt was clean-stopped, excluded '
+                'from production, and all34 original files were preserved and '
+                'checksum-verified in '+evidence['archive']+'. Evolution was replayed '
+                'from the admitted8.675M checkpoint. The launcher now derives ranks '
+                'and capacity from actual scheduler metadata before admission. '
+                'Startup retry478613 then stopped before native evolution because '
+                'the immutable input retained capacity160; the corrected workflow '
+                'keeps that original input checksum-bound and permits only an '
+                'explicit runtime capacity128 override. The accepted replay requires '
+                'its actual eight-rank zero-step identity result. These allocations '
+                'remain in resource accounting; preserved attempts are separate '
+                'from accepted scientific trajectories.\n')
+    movie=EXT/'preview_yc0605/evidence/MOVIE_yc0605_u0005_OK.json'
+    if movie.exists() and load(movie).get('visual_revision'):
+        revision=load(movie)
+        recovery.append(receipt(movie))
+        with (ROOT/'reports/TECHNICAL_REPORT.md').open('a') as stream:
+            stream.write('\nActual encoded-frame inspection found crowded120/129M '
+                         'endpoint tick labels in an initial0.605 movie. The renderer '
+                         'spacing was corrected and the movie fully rebuilt/decoded. '
+                         'The previous movie and its evidence remain at '+
+                         revision['preserved_previous_version']+'. Final encoded '
+                         'bytes require their separate actual visual acceptance.\n')
     columns = ['case', 'yc', 'U', 'endpoint_M', 'first_accepted_AH_M',
                'final_alive', 'first_removal_M', 'rest_mass_closure',
                'late_Mirr_median', 'late_MCH_median', 'late_AH_samples',
@@ -162,7 +195,8 @@ def main():
         writer.writerows([{key: row[key] for key in columns} for row in rows])
     atomic(ROOT / 'evidence/REPORT_SOURCE_BINDINGS.json',
            dict(utc=now(), job=job(), outcomes=rows, sources=sources,
-                raw_retention=retention, storage=storage(), actual_visual_acceptance=False))
+                raw_retention=retention, execution_recovery=recovery,
+                storage=storage(), actual_visual_acceptance=False))
     (ROOT / 'reports/CAPTIONS.md').write_text(
         '# Figure and movie captions\n\n'
         'Shell/lapse: five seed-1, proper-volume stratified 2M-particle realizations '
