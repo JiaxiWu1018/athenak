@@ -10,6 +10,15 @@ from pathlib import Path
 LOCAL = Path('/data/jiaxiwu/NRPIC/ST_migration/session_10_yc0500_outward_20261024')
 REMOTE = '/work1/eliasmost/jiaxiwu/st_migration_s10_20261024'
 
+def production_predecessor(rows, role, case):
+    """Serialize segments within each trajectory; independent cases can overlap."""
+    serial = [r for r in rows if r['role'] == 'production' and r['case'] == case] if role == 'production' else []
+    return serial[-1]['id'] if serial else ''
+
+def active_conflict(row, role, case, target):
+    same = row['role'] == role and row['case'] == case and (role == 'production' or row['target'] == target)
+    return same and any('JobState='+state in row['scheduler'] for state in ['PENDING', 'RUNNING', 'CONFIGURING', 'COMPLETING', 'SUSPENDED'])
+
 def atomic(path, value):
     temp = path.with_suffix('.tmp')
     temp.write_text(json.dumps(value, indent=2)+'\n')
@@ -56,13 +65,11 @@ def main():
         assert sum(row['requested_seconds'] for row in rows)+seconds <= 50*3600, 'Hard50h reservation exhausted'
         if a.after:
             assert all(i.isdigit() for i in a.after.split(':'))
-        serial = [r for r in rows if r['role'] == 'production'] if a.role == 'production' else []
-        dependency = a.after or (serial[-1]['id'] if serial else '')
+        dependency = a.after or production_predecessor(rows, a.role, a.case)
         from status_local import refresh
         current = refresh()['jobs']
         for row in current:
-            if row['role'] == a.role and row['case'] == a.case and row['target'] == a.target:
-                assert not any('JobState='+state in row['scheduler'] for state in ['PENDING', 'RUNNING', 'CONFIGURING', 'COMPLETING', 'SUSPENDED']), 'Matching registered job is still active: '+row['id']
+            assert not active_conflict(row, a.role, a.case, a.target), 'Matching case already has an active registered job: '+row['id']
         dependency, dependency_evidence = resolve_dependencies(dependency, current)
         comment = f'st10:20261024:{a.role}:{len(rows)+1:03d}'
         command = ['sbatch', '--parsable', f'--time={seconds//60}', '--comment='+comment,

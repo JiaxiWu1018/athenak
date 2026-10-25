@@ -1,4 +1,4 @@
-"""One serial production allocation, with explicit pilot and milestone gates."""
+"""One case's production allocation, with explicit pilot and milestone gates."""
 import shutil
 import time
 import math

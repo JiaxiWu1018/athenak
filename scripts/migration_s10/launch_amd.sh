@@ -14,8 +14,8 @@ export UCX_TLS='^rocm_ipc' UCX_MEMTYPE_CACHE=n UCX_LOG_LEVEL=info
 record="$batch/evidence/allocations/$SLURM_JOB_ID"
 mkdir -p "$record/workflow" "$batch/evidence/locks"
 if [ "$S10_CPU_ONLY" != 1 ]; then
-  exec 9>"$batch/evidence/locks/production.lock"
-  flock -n 9 || { echo 'Another Session10 production allocation is active'; exit 1; }
+  exec 9>"$batch/evidence/locks/production_${ST8_CASE}.lock"
+  flock -n 9 || { echo "Another Session10 allocation for $ST8_CASE is active"; exit 1; }
 fi
 cp -p "$batch/scripts/"*.py "$batch/scripts/cases.json" "$record/workflow/"
 cp -p "$0" "$record/launch_amd.sh"

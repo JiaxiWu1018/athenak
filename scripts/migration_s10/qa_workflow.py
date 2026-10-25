@@ -3,6 +3,49 @@ import csv
 import numpy as np
 from common import *
 
+def parallel_scheduling_check(out):
+    from submit_local import production_predecessor, active_conflict
+    outward = dict(id='fixture_outward', role='production', case='yc0500_outward',
+        target=500., scheduler='JobState=RUNNING')
+    control = dict(id='fixture_control', role='production', case='yc0500_control',
+        target=1000., scheduler='JobState=PENDING')
+    assert production_predecessor([outward], 'production', 'yc0500_control') == ''
+    assert production_predecessor([outward, control], 'production', 'yc0500_outward') == outward['id']
+    assert production_predecessor([outward, control], 'production', 'yc0500_control') == control['id']
+    assert not active_conflict(outward, 'production', 'yc0500_control', 1000.)
+    assert active_conflict(control, 'production', 'yc0500_control', 1500.)
+    # Exercise the exact frozen launcher lock commands in a disposable QA tree.
+    # Never acquire or modify the live production lock files in this fixture.
+    launch = EXT/'evidence/allocations'/job()/'launch_amd.sh'
+    block = launch.read_text().split('if [ "$S10_CPU_ONLY" != 1 ]; then\n', 1)[1].split('\nfi', 1)[0]
+    fixture = out/'concurrent_lock_fixture'
+    (fixture/'evidence/locks').mkdir(parents=True)
+    script = 'set -euo pipefail\nbatch="$1"\nST8_CASE="$2"\n'+block+'\nprintf "LOCKED\\n"\nread -r token\n'
+    children = []
+    try:
+        import select
+        for case in ['yc0500_outward', 'yc0500_control']:
+            child = subprocess.Popen(['bash', '-c', script, 'lock_fixture', str(fixture), case],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            children.append(child)
+            assert select.select([child.stdout], [], [], 10)[0], 'Lock fixture did not respond'
+            assert child.stdout.readline().strip() == 'LOCKED'
+        assert all(child.poll() is None for child in children), 'Both case locks must coexist'
+        duplicate = subprocess.run(['bash', '-c', script, 'lock_fixture', str(fixture), 'yc0500_outward'],
+            input='done\n', capture_output=True, text=True, timeout=10)
+        assert duplicate.returncode == 1 and 'Another Session10 allocation' in duplicate.stdout
+    finally:
+        for child in children:
+            child.communicate('done\n', timeout=10)
+    assert all(child.returncode == 0 for child in children)
+    record = dict(utc=now(), job=job(), frozen_launcher=receipt(launch),
+        independent_case_dependencies=True, simultaneous_distinct_case_locks=True,
+        duplicate_same_case_lock_rejected=True, same_case_active_job_any_target_rejected=True,
+        fixture_only=True, no_production_lock_files_touched=True,
+        actual_concurrent_production_not_established_by_this_fixture=True)
+    atomic(out/'PARALLEL_SCHEDULING_OK.json', record)
+    return receipt(out/'PARALLEL_SCHEDULING_OK.json')
+
 def main():
     from extension_resources import admission
     from extension_resources import request_horizon_checkpoint
@@ -25,6 +68,7 @@ def main():
         assert np.array_equal(values[mask==1,0],np.arange(20000)*100)
     out=EXT/'qa'/job()
     out.mkdir(parents=True)
+    parallel = parallel_scheduling_check(out)
     from window_metrics import analytic_checks, time_window, coverage, profile_windows
     checks = analytic_checks()
     accepted = EXT/'yc0500_outward/reviews/milestone_00100_figures_478742'
@@ -62,6 +106,7 @@ def main():
     atomic(out/'QA_OK.json',dict(utc=now(),job=job(),original_history=receipt(prefix/'SOURCE_MANIFEST.json'),
         resolved_cohorts=receipt(prefix/'RESOLVED.json'),movie=receipt(path),
         window_metrics=receipt(out/'WINDOW_METRICS_OK.json'),
+        parallel_scheduling=parallel,
         fixtures_only=True,no_new_evolution=True,no_session10_scientific_result=True,
         actual_encoded_visual_review_pending=True))
     print(out)
