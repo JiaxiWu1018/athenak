@@ -177,4 +177,3 @@ def render_pdf(lines, path, figures=()):
     atomic(path.with_name('REPORT_LAYOUT.json'), dict(utc=now(), job=job(),
         pdf=receipt(path), pages=pages, maximum_text_columns=94,
         maximum_text_lines_per_page=62, actual_PDF_raster_review_pending=True))
-
