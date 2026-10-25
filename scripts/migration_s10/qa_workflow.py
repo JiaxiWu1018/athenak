@@ -25,6 +25,28 @@ def main():
         assert np.array_equal(values[mask==1,0],np.arange(20000)*100)
     out=EXT/'qa'/job()
     out.mkdir(parents=True)
+    from window_metrics import analytic_checks, time_window, coverage, profile_windows
+    checks = analytic_checks()
+    accepted = EXT/'yc0500_outward/reviews/milestone_00100_figures_478742'
+    inputs = load(accepted/'SCIENCE_TRENDS.json')['source_inputs']
+    for entry in inputs:
+        p = accepted/'data'/Path(entry['path']).name
+        assert p.stat().st_size == entry['bytes'] and sha(p) == entry['sha256']
+    profile_file = accepted/'data/coordinate_rest_mass_profiles.npz'
+    z = np.load(profile_file)
+    m0 = load(accepted/'data/summary.json')['rest_mass_initial']
+    measured = []
+    for lo, hi in [(10., 40.), (40., 70.), (70., 100.)]:
+        result = time_window(z['time'], z['mass_per_bin'], lo, hi)
+        assert result['complete'] and np.isclose(result['mean'].sum(), m0, rtol=1e-12)
+        measured.append(dict(**coverage(result), mean_mass=float(result['mean'].sum())))
+    unavailable, drift = profile_windows(z['time'], z['mass_per_bin'], m0)
+    assert all(not r['complete'] and r['mean'] is None for r in unavailable)
+    assert all(not r['complete'] and r['total_variation_M0'] is None for r in drift)
+    atomic(out/'WINDOW_METRICS_OK.json', dict(utc=now(), job=job(), analytic=checks,
+        accepted_100M_fixture=True, sources=[receipt(profile_file), receipt(accepted/'SCIENCE_TRENDS.json')],
+        complete_test_windows=measured, missing_late_windows_remain_blank=True,
+        no_new_evolution=True, no_new_scientific_endpoint=True))
     fixture_root=out/'horizon_checkpoint_fixture';work=fixture_root/'runs/yc0500'
     work.mkdir(parents=True)
     atomic(fixture_root/'evidence/active.json',dict(job=job(),work=str(work),case='yc0500',phase='evolution'))
@@ -39,6 +61,7 @@ def main():
     h=csv_rows(prefix/'history.csv');assert h[0]['time']==0 and abs(h[-1]['time']-700)<1e-7
     atomic(out/'QA_OK.json',dict(utc=now(),job=job(),original_history=receipt(prefix/'SOURCE_MANIFEST.json'),
         resolved_cohorts=receipt(prefix/'RESOLVED.json'),movie=receipt(path),
+        window_metrics=receipt(out/'WINDOW_METRICS_OK.json'),
         fixtures_only=True,no_new_evolution=True,no_session10_scientific_result=True,
         actual_encoded_visual_review_pending=True))
     print(out)

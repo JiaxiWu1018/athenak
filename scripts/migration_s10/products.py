@@ -7,6 +7,7 @@ from common import *
 from reduce import csv_rows, write_csv
 from run_segment import cohort
 from publication_style import style
+from window_metrics import time_window, coverage, profile_windows
 
 def resolve_prefix():
     """Resolve accepted old cohorts by exact native time/cycle, never redraw them."""
@@ -135,15 +136,18 @@ def figures(data, out):
         z = np.load(d['red']/'coordinate_rest_mass_profiles.npz')
         centers = (z['edges'][1:]+z['edges'][:-1])/2
         volumes = 4*np.pi/3*np.diff(z['edges']**3)
-        for lo, hi, color in [(700, 1000, '#245d88'), (1000, 1500, '#bd5e28')]:
-            use = (z['time'] >= lo) & (z['time'] <= hi)
-            if use.any():
-                density = z['mass_per_bin'][use].mean(axis=0)/volumes
+        profiles, drift = profile_windows(z['time'], z['mass_per_bin'], d['summary']['rest_mass_initial'])
+        for result, color in zip(profiles, ['#245d88', '#bd5e28', '#38815b']):
+            if result['complete']:
+                density = result['mean']/volumes
                 ax.loglog(centers, np.where(density > 0, density, np.nan), c=color,
-                    label=f'{max(lo, int(d["case"]["start"]))}–{hi}M sampled mean')
+                    label=f'{result["start"]:g}–{result["end"]:g}M time mean')
         ax.set(xlim=(.05, 512), xlabel='COM coordinate radius [M]',
             ylabel='dM0 / coordinate shell volume [M^-2]', title=f"U={d['case']['U']:+g}")
-        ax.legend(fontsize=8)
+        if any(result['complete'] for result in profiles):
+            ax.legend(fontsize=8)
+        else:
+            ax.text(.5, .5, 'No complete late profile window', ha='center', transform=ax.transAxes)
     for ext in ['png', 'pdf']:
         p = out/f'late_profiles.{ext}'
         fig.savefig(p, dpi=200, bbox_inches='tight')
@@ -242,16 +246,23 @@ def main():
     out.mkdir(parents=True)
     files = figures(data, out)
     statistics = []
+    profile_coverage = []
+    profile_drift = []
     for d in data:
         for lo, hi in [(500, 1000), (1000, 1500)]:
-            rows = [r for r in d['curves']['shells'] if lo <= r['time'] <= hi]
-            if not rows:
-                continue
+            rows = d['curves']['shells']
             for q in [10, 50, 90]:
-                values = np.array([r[f'r{q}'] for r in rows])
-                statistics.append(dict(case=d['case']['id'], start=lo, end=hi, shell=q,
-                    samples=len(rows), mean=float(values.mean()), peak_to_peak=float(np.ptp(values))))
+                result = time_window([r['time'] for r in rows], [r[f'r{q}'] for r in rows], lo, hi)
+                statistics.append(dict(case=d['case']['id'], shell=q, **coverage(result),
+                    mean=float(result['mean']) if result['complete'] else None,
+                    peak_to_peak=float(result['peak_to_peak']) if result['complete'] else None))
+        z = np.load(d['red']/'coordinate_rest_mass_profiles.npz')
+        profiles, drift = profile_windows(z['time'], z['mass_per_bin'], d['summary']['rest_mass_initial'])
+        profile_coverage.extend(dict(case=d['case']['id'], **coverage(r)) for r in profiles)
+        profile_drift.extend(dict(case=d['case']['id'], **r) for r in drift)
     write_csv(out/'window_statistics.csv', statistics)
+    write_csv(out/'profile_window_coverage.csv', profile_coverage)
+    write_csv(out/'profile_drift.csv', profile_drift)
     lines = ['# Migration Session10: corrected yc=0.500', '',
         'Original +/-512M mesh; initial dx=0.25M, allowable dx=0.0625M; 2,000,000 equal-rest-mass particles.',
         'Outward velocity U=+0.005; original unperturbed control continued from700M. Fixed M_ref=1.', '',
@@ -260,7 +271,10 @@ def main():
     for d in data:
         s = d['summary']
         lines.append(f"| {d['case']['id']} | {s['endpoint']:g} | {s['ah_first'] if s['ah_first'] is not None else 'none'} | {d['acceptance']['final_population']} | {s['max_closure']:.3e} |")
-    lines += ['', 'Window statistics are in window_statistics.csv. They describe sampled coordinate-shell motion; no threshold is used to declare asymptotic stability.',
+    lines += ['', 'Shell means and peak-to-peak excursions for 500-1000M and 1000-1500M are in window_statistics.csv. Means integrate piecewise-linear native snapshots over time; extrema include interpolated window boundaries.',
+        'Profile means use equal 750-1000M, 1000-1250M and 1250-1500M windows. profile_window_coverage.csv records actual coverage and maximum native sampling gaps; incomplete requested windows have blank means/drift rather than zeros.',
+        'profile_drift.csv compares consecutive time-mean mass-bin profiles: total variation = sum(abs(delta bin mass))/(2 M0_initial); maximum enclosed-mass change = max(abs(cumulative delta bin mass))/M0_initial.',
+        'No extrapolation is used. Profiles and shell radii are censored from the first particle removal. Window excursions and profile changes mix oscillation phase with secular drift; they do not isolate damping or establish asymptotic stability.',
         'Coordinate rest-mass profiles and finite-difference fixed-ID radial flow are distinct from proper-volume energy density and locally measured radial velocity.',
         'The control reuses the accepted0-700M history; new evolution begins only at700M. Its profile/flow/mesh companions cover the new segment.',
         'Both cases retain the original boundary and source-time coupling limitations. There is no larger-box or convergence control.',
@@ -272,11 +286,13 @@ def main():
     from matplotlib.backends.backend_pdf import PdfPages
     import matplotlib.pyplot as plt
     with PdfPages(out/'REPORT_migration10.pdf') as pdf:
-        fig = plt.figure(figsize=(8.3, 11.7))
         text = '\n'.join('\n'.join(textwrap.wrap(line, 95)) if not line.startswith('|') else line for line in lines)
-        fig.text(.06, .95, text, va='top', fontsize=8, family='monospace')
-        pdf.savefig(fig)
-        plt.close(fig)
+        report_lines = text.splitlines()
+        for start in range(0, len(report_lines), 62):
+            fig = plt.figure(figsize=(8.3, 11.7))
+            fig.text(.06, .95, '\n'.join(report_lines[start:start+62]), va='top', fontsize=8, family='monospace')
+            pdf.savefig(fig)
+            plt.close(fig)
         for filename in ['shells_lapse.png', 'health_flow_mesh.png', 'late_profiles.png']:
             fig, ax = plt.subplots(figsize=(11.7, 8.3))
             ax.imshow(plt.imread(out/filename))
