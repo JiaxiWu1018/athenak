@@ -37,6 +37,20 @@ def main():
     state=load(work/'state.json')
     if state.get('complete'):
         if not (ROOT/'review_packet/MANIFEST.json').exists():
+            remaining=int(os.environ['ST8X_WALL_SECONDS'])-(time.time()-float(os.environ['ST8X_START_EPOCH']))
+            full_snapshots=len(list((work/'pvtk').glob('*.vtk')))
+            # Full-population sorting, cohort cross-checks and final fields need
+            # more than the native segment's three-minute shutdown allowance.
+            reserve=max(300,180+3*full_snapshots)
+            if remaining<reserve:
+                record=dict(utc=now(),job=job(),case=c,checkpoint=state['latest'],
+                    remaining_seconds=remaining,full_particle_snapshots=full_snapshots,
+                    required_closeout_reserve_seconds=reserve,physical_endpoint_saved=True,
+                    numerical_acceptance_complete=False,
+                    reason='Preserve the physical endpoint and close it in a fresh allocation; no further evolution is requested.')
+                atomic(ROOT/'evidence/jobs'/job()/'CLOSEOUT_DEFERRED.json',record)
+                atomic(ROOT/'evidence/jobs'/job()/'CASE_RESULT.json',record)
+                return
             from reduce import reduce_case
             reduce_case(c)
             from final_fields import export
