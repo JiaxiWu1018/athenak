@@ -83,17 +83,25 @@ def encode(mode):
     if not frame_manifest.exists():atomic(frame_manifest,dict(utc=now(),job=job(),name=name,fingerprint=fingerprint,frames=rows,fps=15))
     else:assert load(frame_manifest)['fingerprint']==fingerprint
     marker=ROOT/'evidence'/f'MOVIE_{name}_OK.json'
+    revision=None
     if marker.exists():
-        prior=load(marker);assert prior['fingerprint']==fingerprint and prior['full_decode'] and sha(prior['path'])==prior['sha256'];return prior
+        prior=load(marker)
+        assert prior['full_decode'] and sha(prior['path'])==prior['sha256']
+        if prior['fingerprint']==fingerprint:return prior
+        revision=load(ROOT/'evidence'/f'REVISE_MOVIE_{name}.json')
+        assert revision['actual_visual_issue_identified'] and revision['reason']
+        assert revision['old_movie_sha256']==prior['sha256'] and revision['new_fingerprint']==fingerprint
     path=ROOT/'movies'/f'{name}.mp4'
-    partial=[p for p in [path,*list((ROOT/'plots').glob(name+'_decoded_*.png')),*list((ROOT/'plots').glob(name+'_review_*.png'))] if p.exists()]
+    partial=[p for p in [marker,path,*list((ROOT/'plots').glob(name+'_decoded_*.png')),*list((ROOT/'plots').glob(name+'_review_*.png'))] if p.exists()]
     if partial:
         archive=ROOT/'interrupted'/f'movie_{name}_{job()}_{time.time_ns()}';archive.mkdir(parents=True)
         atomic(archive/'BEFORE.json',[receipt(p) for p in partial])
+        if revision:atomic(archive/'VISUAL_REVISION.json',revision)
         for p in partial:p.rename(archive/p.name)
     previews=review_indices(states,times,mode=='comparison')
     record=encode_frames(name,frames,states,times,previews,frame_manifest)
     record.update(utc=now(),job=job(),fingerprint=fingerprint,source_assembly=receipt(ROOT/'evidence/ASSEMBLY_OK.json'),actual_visual_acceptance=False)
+    if revision:record.update(visual_revision=revision,preserved_previous_version=str(archive))
     atomic(marker,record)
     return record
 
