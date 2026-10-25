@@ -61,5 +61,8 @@ def main():
         from transport_diagnostics import check_reference
         result=check_reference()
         print(json.dumps(dict(known_null_messages=result['known_null_pointer_diagnostic_count'],other_runtime_errors=len(result['other_runtime_errors']),source=result['source'])))
+    elif mode=='quarantine-rank-attempt':
+        from quarantine_rank_attempt import main as quarantine
+        quarantine()
     else:raise ValueError(mode)
 if __name__=='__main__':main()

@@ -25,7 +25,7 @@ def time_axis(ax,end):
     """Keep the actual fractional endpoint explicit without crowded edge ticks."""
     ax.set_xlim(0,end);ax.xaxis.set_major_locator(AutoLocator())
     ticks=ax.get_xticks();step=float(np.median(np.diff(ticks))) if len(ticks)>1 else end
-    inside=ticks[(ticks>0)&(ticks<end-.45*step)]
+    inside=ticks[(ticks>0)&(ticks<end-.75*step)]
     ax.set_xticks(np.r_[0,inside,end]);ax.xaxis.set_major_formatter(StrMethodFormatter('{x:g}'))
 
 def shell_limits(*datasets):

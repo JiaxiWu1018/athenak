@@ -35,12 +35,19 @@ def main():
         else:
             assert args.case
             partition = 'mi2104x' if args.case in ['yc0283', 'yc0819'] else 'mi2508x'
+            if args.continuation_after:
+                parent = next(row for row in registry['jobs'] if row['job_id'] == args.continuation_after)
+                assert parent['kind'] == 'production' and parent['case'].startswith(args.case)
+                partition = parent['partition']
+            assert partition in ['mi2104x', 'mi2508x']
             script = args.case + '.sbatch'
             previous = [j for j in registry['jobs']
                         if j['kind'] == 'production' and j['partition'] == partition]
         command = ['sbatch', '--parsable', f'--time={seconds // 60}']
         if args.kind == 'production':
             command.append('--time-min=' + str(min(30, seconds // 60)))
+            ranks = 4 if partition == 'mi2104x' else 8
+            command += [f'--partition={partition}', '--nodes=1', f'--ntasks={ranks}', '--cpus-per-task=2']
         if args.continuation_after:
             assert args.kind == 'production'
             parent = next(row for row in registry['jobs'] if row['job_id'] == args.continuation_after)
