@@ -59,10 +59,15 @@ def main():
         assert not destination.exists()
         plot_case(CASE, red, destination)
         from milestone_review import science_trends, forecast
+        collapse = None
+        if state.get('complete'):
+            from collapse_figure import render
+            collapse = render(ROOT, CASE['key'], destination)
         marker = dict(prior, utc=now(), job=job(), figures_only=True,
             numerical_checks_reused_from=source_receipt,
             science_trends=science_trends(CASE, red, destination),
             milestone_forecast=forecast(destination),
+            collapse_diagnostics=collapse,
             figures=[receipt(p) for p in sorted(destination.iterdir()) if p.suffix in ['.png', '.pdf']],
             actual_visual_review=False)
         atomic(destination/'NUMERICAL_ACCEPTANCE.json', marker)
@@ -117,6 +122,10 @@ def main():
         final = review(CASE)
     destination = ROOT/'reviews'/f'milestone_{round(end):05d}_{job()}'
     plot_case(CASE, red, destination)
+    collapse = None
+    if state.get('complete'):
+        from collapse_figure import render
+        collapse = render(ROOT, CASE['key'], destination)
     from milestone_review import science_trends, forecast
     trends = science_trends(CASE, red, destination)
     milestone_forecast = forecast(destination)
@@ -134,6 +143,7 @@ def main():
         native_node_hours=native_cost, native_node_hours_per_M=native_cost/advanced if advanced > 0 else None,
         final_numerical_acceptance=final, matched_pilot=matched_pilot,
         science_trends=trends, milestone_forecast=milestone_forecast,
+        collapse_diagnostics=collapse,
         figures=[receipt(p) for p in sorted(destination.iterdir()) if p.suffix in ['.png', '.pdf']],
         actual_visual_review=False, numerical_passed=True)
     atomic(destination/'NUMERICAL_ACCEPTANCE.json', marker)

@@ -153,6 +153,11 @@ def figures(data, out):
         fig.savefig(p, dpi=200, bbox_inches='tight')
         files.append(p)
     plt.close(fig)
+    from collapse_figure import render
+    for d in data:
+        record = render(d['root'], d['case']['id'], out)
+        if record:
+            files.extend(Path(entry['path']) for entry in record['plots'])
     return files
 
 def movie(data, out, name, targets=None):
@@ -293,7 +298,7 @@ def main():
             fig.text(.06, .95, '\n'.join(report_lines[start:start+62]), va='top', fontsize=8, family='monospace')
             pdf.savefig(fig)
             plt.close(fig)
-        for filename in ['shells_lapse.png', 'health_flow_mesh.png', 'late_profiles.png']:
+        for filename in [p.name for p in files if p.suffix == '.png']:
             fig, ax = plt.subplots(figsize=(11.7, 8.3))
             ax.imshow(plt.imread(out/filename))
             ax.axis('off')
