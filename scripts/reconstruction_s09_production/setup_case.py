@@ -45,7 +45,11 @@ def setup(c,U=None,control=False):
             # only the runtime capacity, explicitly passed on every native CLI.
             anchor=load(ROOT/'evidence/EXACT_SETUP.json')
             assert sha(path)==anchor['input']['sha256'],'Original input changed'
-            assert section(original,'mesh_refinement',dict(max_nmb_per_rank=rank_capacity()))==text,'Existing exact input differs beyond runtime capacity'
+            normalized=section(original,'mesh_refinement',dict(max_nmb_per_rank=rank_capacity()))
+            # section() can add empty lines when called on an already rendered
+            # deck. Every nonempty line must still match exactly and the stored
+            # original bytes must retain the initialization checksum above.
+            assert [line for line in normalized.splitlines() if line.strip()]==[line for line in text.splitlines() if line.strip()],'Existing exact input differs beyond runtime capacity and empty lines'
             atomic(ROOT/'evidence'/f'INPUT_CAPACITY_OVERRIDE_{job()}.json',dict(
                 utc=now(),job=job(),unchanged_initial_input=receipt(path),
                 runtime_max_nmb_per_rank=rank_capacity(),
