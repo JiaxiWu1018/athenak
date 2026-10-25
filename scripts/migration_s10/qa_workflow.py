@@ -69,6 +69,17 @@ def main():
     out=EXT/'qa'/job()
     out.mkdir(parents=True)
     parallel = parallel_scheduling_check(out)
+    from resource_projection import analytic_checks as projection_checks
+    projection = projection_checks()
+    from milestone_review import forecast
+    projection_dir = out/'resource_forecast'
+    projection_dir.mkdir()
+    actual_forecast = forecast(projection_dir)
+    atomic(out/'RESOURCE_PROJECTION_OK.json', dict(utc=now(), job=job(), analytic=projection,
+        actual_metadata_forecast=receipt(projection_dir/'RESOURCE_FORECAST.json'),
+        cost_projection_within_cap=actual_forecast['cost_projection_within_cap'],
+        storage_projection_within_cap=actual_forecast['storage_projection_within_cap'],
+        conditional_not_a_guarantee=True, shared_caps_unchanged=True, no_new_evolution=True))
     from window_metrics import analytic_checks, time_window, coverage, profile_windows
     checks = analytic_checks()
     accepted = EXT/'yc0500_outward/reviews/milestone_00100_figures_478742'
@@ -107,6 +118,7 @@ def main():
         resolved_cohorts=receipt(prefix/'RESOLVED.json'),movie=receipt(path),
         window_metrics=receipt(out/'WINDOW_METRICS_OK.json'),
         parallel_scheduling=parallel,
+        resource_projection=receipt(out/'RESOURCE_PROJECTION_OK.json'),
         fixtures_only=True,no_new_evolution=True,no_session10_scientific_result=True,
         actual_encoded_visual_review_pending=True))
     print(out)

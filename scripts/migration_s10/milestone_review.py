@@ -104,17 +104,25 @@ def science_trends(c, red, destination):
 def forecast(destination):
     job()
     from extension_resources import storage, cost_seconds
+    from resource_projection import project
     disk = storage()
-    remaining = 0.
-    anchors = 0
-    rates = []
-    particle_bytes = cohort_bytes = checkpoint_bytes = 0
-    slice_sizes = {name: 0 for name in ['z4c2d', 'tme2d', 'con2d']}
+    spent = cost_seconds()
+    snapshots = destination/'projection_inputs'
+    snapshots.mkdir()
     cases = []
     for c in ALL_CASES:
         root = EXT/c['id']
         work = root/'runs/yc0500'
-        state = load(work/'state.json') if (work/'state.json').exists() else None
+        state_path = work/'state.json'
+        state = None
+        source = None
+        if state_path.exists():
+            # Copy the bytes read once: another case can advance concurrently.
+            data = state_path.read_bytes()
+            frozen = snapshots/(c['id']+'_state.json')
+            frozen.write_bytes(data)
+            state = json.loads(data)
+            source = dict(native_path=str(state_path), frozen=receipt(frozen))
         t = float(state['latest']['time']) if state else float(c['start'])
         complete = bool(state and state.get('complete'))
         future = 0. if complete else max(0., 1500-t)
@@ -122,45 +130,31 @@ def forecast(destination):
         if not state:
             assert c['start'] == 700, 'Fresh outward pilot must already exist'
             new_anchors += 1  # Exact inherited700M copy.
-        remaining += future
-        anchors += new_anchors
-        cases.append(dict(case=c['id'], latest=t, complete=complete, remaining=future,
-            future_scientific_anchors=new_anchors))
+        row = dict(case=c['id'], latest=t, complete=complete, remaining=future,
+            future_scientific_anchors=new_anchors, source_state=source,
+            observed_native_seconds_per_M=None, particle_bytes=0, cohort_bytes=0,
+            checkpoint_bytes=0, slice_bytes={name: 0 for name in ['z4c2d', 'tme2d', 'con2d']})
+        cases.append(row)
         if not state:
             continue
-        segments = [s for s in state['segments'] if s.get('simulation_advanced', 0) > 0]
+        advanced = [s for s in state['segments'] if s.get('simulation_advanced', 0) > 0]
+        segments = [s for s in advanced if s.get('elapsed') is not None
+                    and math.isfinite(s['elapsed']) and s['elapsed'] > 0]
+        row['segments_without_valid_elapsed'] = len(advanced)-len(segments)
         if segments:
-            rates.append(sum(s['elapsed'] for s in segments)/sum(s['simulation_advanced'] for s in segments))
+            rates = [sum(s['elapsed'] for s in segments)/sum(s['simulation_advanced'] for s in segments)]
             rates.extend(s['elapsed']/s['simulation_advanced'] for s in segments if s['simulation_advanced'] >= 5)
+            row['observed_native_seconds_per_M'] = max(rates)
         for p in (work/'pvtk').glob('*.vtk'):
-            particle_bytes = max(particle_bytes, p.stat().st_size)
+            row['particle_bytes'] = max(row['particle_bytes'], p.stat().st_size)
         for p in (work/'cohort').glob('*.s8c'):
-            cohort_bytes = max(cohort_bytes, p.stat().st_size)
+            row['cohort_bytes'] = max(row['cohort_bytes'], p.stat().st_size)
         for p in (work/'checkpoint_receipts').glob('*.json'):
-            checkpoint_bytes = max(checkpoint_bytes, load(p)['bytes'])
-        for name in slice_sizes:
+            row['checkpoint_bytes'] = max(row['checkpoint_bytes'], load(p)['bytes'])
+        for name in row['slice_bytes']:
             for p in (work/'bin').glob('*.'+name+'.*.bin'):
-                slice_sizes[name] = max(slice_sizes[name], p.stat().st_size)
-    assert rates and min(particle_bytes, cohort_bytes, checkpoint_bytes, *slice_sizes.values()) > 0
-    rate = max(rates)
-    cadence_bytes = math.ceil(remaining/2)*(particle_bytes+sum(slice_sizes.values()))
-    cadence_bytes += math.ceil(remaining/.5)*cohort_bytes
-    # Four future intermediate recoveries, plus one control restart-identity
-    # checkpoint, deliberately retained in addition to all current bytes.
-    checkpoint_allowance = (anchors+5)*checkpoint_bytes
-    overhead = 20*GIB
-    projected = disk['own']+cadence_bytes+checkpoint_allowance+overhead
-    cost = cost_seconds()/3600+rate*remaining/3600+4
-    record = dict(utc=now(), job=job(), cases=cases, storage=disk,
-        measured_particle_bytes=particle_bytes, measured_slice_bytes=slice_sizes,
-        measured_cohort_bytes=cohort_bytes, measured_checkpoint_bytes=checkpoint_bytes,
-        future_scientific_anchors=anchors, remaining_long_evolution_M=remaining,
-        future_cadence_bytes=cadence_bytes, checkpoint_allowance_bytes=checkpoint_allowance,
-        product_and_overhead_allowance_bytes=overhead, conservative_projected_new_bytes=projected,
-        native_seconds_per_M=rate, projected_remaining_native_node_hours=rate*remaining/3600,
-        spent_or_reserved_node_hours=cost_seconds()/3600, cost_overhead_allowance_node_hours=4,
-        conditional_projected_total_node_hours=cost,
-        cost_projection_within_cap=bool(cost <= 50), storage_projection_within_cap=bool(projected <= 350*GIB),
-        projection_scope='Conditional on the maximum observed output/checkpoint sizes and native rates. Rates include aggregate accepted evolution and chunks advancing at least5M. Current bytes, all future scientific anchors, five extra checkpoint allowances and20GiB products/overhead remain included. Finer future AMR or slower throughput can change this forecast; hard guards remain independent.')
+                row['slice_bytes'][name] = max(row['slice_bytes'][name], p.stat().st_size)
+    record = dict(utc=now(), job=job(), storage=disk, **project(cases, disk['own'], spent),
+        projection_scope='Conditional per-case maxima of observed output/checkpoint sizes and native rates. Rates include aggregate accepted evolution and chunks advancing at least5M; unobserved case measurements fall back to the global observed maximum. Current bytes, all future science anchors, two extra recoveries per case, one additional maximum-sized identity checkpoint,20GiB products and4nodeh overhead remain included. Future AMR or throughput changes can invalidate the forecast; shared50h/350GiB and live guards remain unchanged.')
     atomic(destination/'RESOURCE_FORECAST.json', record)
     return record
