@@ -89,7 +89,7 @@ def figures(data):
             for a in ax[:,j]:
                 a.axvline(300,c='.55',ls='-.',lw=.8);a.axvline(500,c='.55',ls=':',lw=.8)
         events(ax[:,j],s)
-    ax[0,0].set_ylabel(r'COM rest-mass shell radius $r_q/M_{\rm ref}$');ax[1,0].set_ylabel(r'Core lapse $\langle\alpha\rangle_{r<0.75M}$')
+    ax[0,0].set_ylabel(r'COM coordinate shell radius $r_q/M_{\rm ref}$');ax[1,0].set_ylabel(r'Core lapse $\langle\alpha\rangle_{r<0.75M}$')
     fig.colorbar(ScalarMappable(norm=norm,cmap=cm),ax=ax[0,:],fraction=.025,pad=.02,ticks=[.1,.5,.9],label='Enclosed rest-mass fraction')
     save(fig,'s09_shells_lapse')
     fig,ax=plt.subplots(2,len(data),figsize=(5*len(data),5.5),squeeze=False,layout='constrained',sharey='row')
