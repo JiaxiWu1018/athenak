@@ -3,6 +3,7 @@ import argparse
 import datetime
 import fcntl
 import json
+import math
 import shlex
 import subprocess
 from status_local import SESSION, AMD, refresh
@@ -21,7 +22,7 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX)
         snapshot = refresh()
         registry = json.loads(path.read_text())
-        seconds = 1800 if args.kind == 'support' else int(args.hours * 3600)
+        seconds = 1800 if args.kind == 'support' else 60 * math.ceil(args.hours * 60)
         assert 0 < seconds <= 28800
         # Preserve room for destination verification and scheduler teardown;
         # production also leaves one node-hour for final review work.
@@ -37,6 +38,8 @@ def main():
             previous = [j for j in registry['jobs']
                         if j['kind'] == 'production' and j['partition'] == partition]
         command = ['sbatch', '--parsable', f'--time={seconds // 60}']
+        if args.kind == 'production':
+            command.append('--time-min=' + str(min(30, seconds // 60)))
         if previous:
             command.append('--dependency=afterany:' + previous[-1]['job_id'])
         if args.review_root:
