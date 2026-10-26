@@ -33,9 +33,11 @@ def scheduler_limit(text, ident):
 
 
 def main():
-    from common import atomic, job, now, EXT, os, subprocess
+    from common import atomic, job, now, EXT, os, subprocess, load
     ident = job()
-    requested = int(os.environ.get('ST8X_WALL_SECONDS', '7200'))
+    inherited_environment_seconds = int(os.environ.get('ST8X_WALL_SECONDS', '7200'))
+    ticket = next(x for x in load(EXT/'evidence/job_registry.json') if x['id'] == ident)
+    requested = int(ticket['requested_seconds'])
     assert 0 < requested <= 43200
     raw = subprocess.check_output(['scontrol', 'show', 'job', '-o', ident],
         text=True, timeout=15)
@@ -43,6 +45,8 @@ def main():
     effective = min(requested, allocated)
     atomic(EXT/'evidence/allocations'/ident/'WALL_BUDGET.json', dict(
         utc=now(), job=ident, configured_seconds=requested,
+        inherited_environment_seconds=inherited_environment_seconds,
+        configuration_source='Registered request, including explicit pending-job wall updates',
         actual_slurm_limit_seconds=allocated, effective_workflow_seconds=effective,
         clean_stop_reserve_seconds=240,
         scheduler=raw.strip(),
