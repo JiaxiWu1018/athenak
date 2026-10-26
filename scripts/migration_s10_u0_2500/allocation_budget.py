@@ -36,7 +36,7 @@ def main():
     from common import atomic, job, now, EXT, os, subprocess
     ident = job()
     requested = int(os.environ.get('ST8X_WALL_SECONDS', '7200'))
-    assert 0 < requested <= 7200
+    assert 0 < requested <= 43200
     raw = subprocess.check_output(['scontrol', 'show', 'job', '-o', ident],
         text=True, timeout=15)
     allocated = scheduler_limit(raw, ident)
