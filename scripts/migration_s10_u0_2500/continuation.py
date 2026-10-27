@@ -57,7 +57,10 @@ def main():
     if not prior.exists():
         identity=gate(state['latest']['path']);identity.update(executable_sha256=sha(ROOT/'protected/athena'),machine='amd');atomic(prior,identity)
     from recover import recover
-    state=recover(CASE,work);start=float(os.environ['ST8X_START_EPOCH']);limit=int(os.environ['ST8X_WALL_SECONDS'])
+    state=recover(CASE,work)
+    from performance_repair import admit
+    state=admit(state,run)
+    start=float(os.environ['ST8X_START_EPOCH']);limit=int(os.environ['ST8X_WALL_SECONDS'])
     while not state['complete'] and state['latest']['time']<2500-1e-8:
         remaining=limit-(time.time()-start)-240
         if remaining<180:break

@@ -47,4 +47,22 @@ def main():
     plt.close(fig)
     from extension_resources import storage
     disk=storage();record=dict(utc=now(),job=job(),case=CASE,summary=summary,checkpoint=state['latest'],numerical_acceptance=receipt(ROOT/'evidence/CASE_NUMERICAL_ACCEPTANCE.json'),plots=[receipt(p) for p in sorted(out.glob('*')) if p.suffix in ['.png','.pdf']],tables=[receipt(p) for p in sorted(out.glob('*.csv'))],central_lapse_sources=receipt(out/'CENTRAL_LAPSE_SOURCES.json'),final_storage=disk,actual_visual_review_pending=True,history_reused_through_M=1500,original700M_and1500M_preserved=True,limitations='Coordinates and gauge diagnostics. Native core average is coordinate-volume weighted r<0.75M, not alpha(0) or proper-volume weighting. Historical local constraint history likewise uses coordinate volume; inherited solver unchanged. Boundary effects and absent convergence control remain unresolved. No stability claim.')
+    cp=state['latest'];last=shell[-1]
+    text=['# Unperturbed corrected yc=0.500 continuation', '',
+        f"The accepted1500M trajectory reached {summary['endpoint']:.9g}M. Numerical particle, mass, stream and constraint checks passed; actual visual review is pending.", '',
+        f"Final particles: {cp['particle_count']:,}; removal counts: {cp['removal_counts']}; maximum mass-ledger closure: {summary['max_closure']:.6g}.",
+        f"Qualified apparent-horizon onset: {summary['ah_first']}. Active finest spacing: {cp['finest_active_dx']:g}M.", '',
+        f"At the last full-particle snapshot ({last['time']:.9g}M), r50={last['r50']:.9g}M and r90={last['r90']:.9g}M.",
+        f"At the final scientific checkpoint, coordinate-origin lapse={centers[-1]['central_lapse']:.12g}; dense native core-average lapse at {history[-1]['time']:.9g}M is {history[-1]['core_lapse']:.12g}.", '',
+        'The core history is a coordinate-volume average inside r<0.75M. Origin lapse is trilinearly interpolated from8native3D cell centres; source hashes and weights are in CENTRAL_LAPSE_SOURCES.json.', '',
+        '| Time window [M] | r50 peak-to-peak / median |', '| --- | --- |']
+    for lo,hi in [(1000,1500),(1500,2000),(2000,2500)]:
+        values=[v['r50'] for v in shell if lo<=v['time']<=hi]
+        if len(values)>1:text.append(f'| {lo}–{hi} | {(max(values)-min(values))/np.median(values):.6g} |')
+    text += ['', 'These finite-window excursions do not establish asymptotic stability. Boundary effects, gauge dependence, inherited source coupling and absent convergence controls remain limitations.', '',
+        f"Final checkpoint: `{cp['path']}`; SHA256 `{cp['sha256']}`.",
+        f"Native delivery: `{out}`. Original700M/1500M anchors and accepted0–1500M products are preserved.",
+        f"Combined AMD-session storage plus reserved Perseus allowance: {disk['own']/GIB:.6f}GiB, against350GiB. Final allocated-node accounting and verified review-copy locations are recorded after this allocation terminates.", '',
+        'Products: mass_shells_to2500.png/.pdf; central_lapse_to2500.png/.pdf; shell/lapse CSV tables; numerical acceptance and source manifests.', '']
+    report=out/'REPORT_continuation.md';report.write_text('\n'.join(text));record['report']=receipt(report)
     atomic(out/'GENERATION_OK.json',record);atomic(EXT/'evidence/FINAL_PRODUCTS_READY.json',dict(utc=now(),job=job(),delivery=str(out),generation=receipt(out/'GENERATION_OK.json'),actual_visual_review_pending=True));print('UPDATED_PLOTS_READY',out)

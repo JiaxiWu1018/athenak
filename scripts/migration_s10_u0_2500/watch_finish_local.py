@@ -21,7 +21,7 @@ for x in rows:
   if any('JobState='+s in d['scheduler'] for s in ['COMPLETED','FAILED','CANCELLED','TIMEOUT','OUT_OF_MEMORY','NODE_FAIL']):p.write_text(json.dumps(dict(utc=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(),scheduler=d['scheduler']),indent=2)+'\n')
  result.append(d)
 out=dict(jobs=result)
-for name in ['FINAL_PRODUCTS_READY','PIPELINE_DONE','DISPATCH_FAILURE','CONTINUATION_PREPARATION_OK']:
+for name in ['FINAL_PRODUCTS_READY','PIPELINE_DONE','DISPATCH_FAILURE','CONTINUATION_PREPARATION_OK','PERFORMANCE_REPAIR_PLAN']:
  p=r/'evidence'/(name+'.json');out[name]=json.loads(p.read_text()) if p.exists() else None
 p=r/'yc0500_control/evidence/RESOURCE_STOP.json';out['RESOURCE_STOP']=json.loads(p.read_text()) if p.exists() else None
 p=r/'yc0500_control/runs/yc0500/state.json';out['latest']=json.loads(p.read_text())['latest'] if p.exists() else None
@@ -30,10 +30,20 @@ print(json.dumps(out))
 def check():
  q=subprocess.run(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=15','hpcfund.amd.com','python3 -c '+shlex.quote(program)],capture_output=True,text=True,timeout=55);assert q.returncode==0,q.stderr;d=json.loads(q.stdout);d['observed_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat();save(LOCAL/'evidence/remote_status.json',d);save(LOCAL/'evidence/job_registry.json',[{k:v for k,v in x.items() if k not in ['scheduler','STARTED','WORKER_OK','FAILURE','ALLOCATION_END']} for x in d['jobs']]);return d
 
+def reviewed_failure(x,d):
+ p=d.get('PERFORMANCE_REPAIR_PLAN')
+ return bool(p and x['id']==p['stopped_job'] and x.get('FAILURE')==p['acknowledged_failure'] and x.get('ALLOCATION_END')==p['acknowledged_allocation_end'] and 'JobState=FAILED' in x['scheduler'] and 'ExitCode=1:0' in x['scheduler'])
+
+def needs_repair(d):
+ failed=any(not reviewed_failure(x,d) and (x.get('FAILURE') or (x.get('ALLOCATION_END') and x['ALLOCATION_END']['exit_status']!=0) or any('JobState='+s in x['scheduler'] for s in ['FAILED','CANCELLED','TIMEOUT','OUT_OF_MEMORY','NODE_FAIL'])) for x in d['jobs'])
+ resource=d['RESOURCE_STOP'];p=d.get('PERFORMANCE_REPAIR_PLAN')
+ reviewed_resource=bool(resource and p and resource.get('job')==p['stopped_job'] and resource.get('reason')==p['stop_reason'])
+ return bool(failed or d['DISPATCH_FAILURE'] or (resource and not reviewed_resource))
+
 def main():
  while not (LOCAL/'evidence/EXTENSION_CLOSED.json').exists():
   try:
-   d=check();failed=any(x.get('FAILURE') or (x.get('ALLOCATION_END') and x['ALLOCATION_END']['exit_status']!=0) or any('JobState='+s in x['scheduler'] for s in ['FAILED','CANCELLED','TIMEOUT','OUT_OF_MEMORY','NODE_FAIL']) for x in d['jobs']);error=failed or d['DISPATCH_FAILURE'] or d['RESOURCE_STOP']
+   d=check();error=needs_repair(d)
    latest=d['jobs'][-1];terminal='JobState=COMPLETED' in latest['scheduler'] and 'ExitCode=0:0' in latest['scheduler'] and latest['WORKER_OK'] and latest['ALLOCATION_END'] and latest['ALLOCATION_END']['exit_status']==0
    ready=d['PIPELINE_DONE'] and d['FINAL_PRODUCTS_READY'] and terminal
    if ready or error:

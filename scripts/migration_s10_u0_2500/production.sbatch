@@ -6,6 +6,7 @@
 #SBATCH -n 8
 #SBATCH -c 2
 #SBATCH --exclusive
+#SBATCH --nodelist=k004-004
 #SBATCH --no-requeue
 #SBATCH -t 12:00:00
 #SBATCH -o /work1/eliasmost/jiaxiwu/st_migration_s10_u0_2500_20261026/logs/%x.%j.log
