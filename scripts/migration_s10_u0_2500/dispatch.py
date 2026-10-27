@@ -22,7 +22,12 @@ def submit(role,after=''):
         if role=='production' and pending():
             plan=load(EXT/'evidence/PERFORMANCE_REPAIR_PLAN.json')
             ticket['repair_of']=plan['stopped_job']
-            assert not any(x.get('repair_of')==plan['stopped_job'] for x in rows),'Repair allocation already registered'
+            related=[x for x in rows if x.get('repair_of')==plan['stopped_job']]
+            acknowledgments=load(EXT/'evidence/REVIEWED_FAILURES.json') if (EXT/'evidence/REVIEWED_FAILURES.json').exists() else []
+            for previous in related:
+                ack=next((v for v in acknowledgments if v['job']==previous['id']),None)
+                assert ack and ack['may_retry'] and load(EXT/'evidence/allocations'/previous['id']/'FAILURE.json')==ack['failure'] and load(EXT/'evidence/allocations'/previous['id']/'ALLOCATION_END.json')==ack['allocation_end'],'Unreviewed existing repair allocation'
+            if related:ticket['retry_after']=related[-1]['id']
             ticket['restart_checkpoint']=plan['checkpoint']
         p=EXT/'evidence'/f'submission_{index:03d}.json';assert not p.exists(),'Ambiguous prior submission: reconcile exact comment before retry';atomic(p,ticket)
         q=subprocess.run(command,capture_output=True,text=True);(EXT/'logs'/f'submission_{index:03d}.log').write_text(q.stdout+q.stderr);assert q.returncode==0,q.stderr;ident=q.stdout.strip().splitlines()[-1].split(';')[0];assert ident.isdigit();ticket['id']=ident;rows.append(ticket);atomic(p,ticket);atomic(registry,rows);return ticket

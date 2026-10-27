@@ -21,7 +21,7 @@ for x in rows:
   if any('JobState='+s in d['scheduler'] for s in ['COMPLETED','FAILED','CANCELLED','TIMEOUT','OUT_OF_MEMORY','NODE_FAIL']):p.write_text(json.dumps(dict(utc=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(),scheduler=d['scheduler']),indent=2)+'\n')
  result.append(d)
 out=dict(jobs=result)
-for name in ['FINAL_PRODUCTS_READY','PIPELINE_DONE','DISPATCH_FAILURE','CONTINUATION_PREPARATION_OK','PERFORMANCE_REPAIR_PLAN']:
+for name in ['FINAL_PRODUCTS_READY','PIPELINE_DONE','DISPATCH_FAILURE','CONTINUATION_PREPARATION_OK','PERFORMANCE_REPAIR_PLAN','REVIEWED_FAILURES']:
  p=r/'evidence'/(name+'.json');out[name]=json.loads(p.read_text()) if p.exists() else None
 p=r/'yc0500_control/evidence/RESOURCE_STOP.json';out['RESOURCE_STOP']=json.loads(p.read_text()) if p.exists() else None
 p=r/'yc0500_control/runs/yc0500/state.json';out['latest']=json.loads(p.read_text())['latest'] if p.exists() else None
@@ -32,7 +32,9 @@ def check():
 
 def reviewed_failure(x,d):
  p=d.get('PERFORMANCE_REPAIR_PLAN')
- return bool(p and x['id']==p['stopped_job'] and x.get('FAILURE')==p['acknowledged_failure'] and x.get('ALLOCATION_END')==p['acknowledged_allocation_end'] and 'JobState=FAILED' in x['scheduler'] and 'ExitCode=1:0' in x['scheduler'])
+ initial=bool(p and x['id']==p['stopped_job'] and x.get('FAILURE')==p['acknowledged_failure'] and x.get('ALLOCATION_END')==p['acknowledged_allocation_end'])
+ additional=any(x['id']==v['job'] and x.get('FAILURE')==v['failure'] and x.get('ALLOCATION_END')==v['allocation_end'] for v in d.get('REVIEWED_FAILURES') or [])
+ return bool((initial or additional) and 'JobState=FAILED' in x['scheduler'] and 'ExitCode=1:0' in x['scheduler'])
 
 def needs_repair(d):
  failed=any(not reviewed_failure(x,d) and (x.get('FAILURE') or (x.get('ALLOCATION_END') and x['ALLOCATION_END']['exit_status']!=0) or any('JobState='+s in x['scheduler'] for s in ['FAILED','CANCELLED','TIMEOUT','OUT_OF_MEMORY','NODE_FAIL'])) for x in d['jobs'])

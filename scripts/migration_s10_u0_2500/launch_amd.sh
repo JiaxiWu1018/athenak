@@ -31,6 +31,11 @@ END
   if [ "$status" = 0 ]; then python3 "$record/workflow/dispatch.py" "$SLURM_JOB_ID"; fi
 }
 trap finish EXIT
+if [ "$S10_ROLE" = production ]; then
+  actual_tasks=$(python3 "$record/workflow/allocation_layout.py")
+  export SLURM_NTASKS="$actual_tasks" SLURM_NPROCS="$actual_tasks"
+  export SLURM_TASKS_PER_NODE="$actual_tasks" SLURM_NTASKS_PER_NODE="$actual_tasks"
+fi
 { hostname; date -u; module list; hipcc --version; scontrol show job "$SLURM_JOB_ID"; mpirun --version; } > "$record/environment.txt" 2>&1
 if [ "$S10_ROLE" = production ]; then
   rocm-smi --showproductname --showdriverversion --json > "$record/gpu_hardware.json"
