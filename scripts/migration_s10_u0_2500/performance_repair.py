@@ -28,9 +28,11 @@ def admit(state, run):
     from extension_resources import admission, stop
     from restart_identity import gate
     plan = load(EXT/'evidence/PERFORMANCE_REPAIR_PLAN.json')
-    assert plan['kind'] == 'same_trajectory_known_node_admission'
-    assert socket.gethostname().split('.')[0] == plan['validated_node']
-    assert int(os.environ['SLURM_NTASKS']) == 8
+    assert plan['kind'] == 'same_trajectory_restart_admission'
+    policy = resource_policy()
+    partition = os.environ['SLURM_JOB_PARTITION']
+    assert partition in policy['allowed_launches']
+    assert int(os.environ['SLURM_NTASKS']) == policy['allowed_launches'][partition]['ranks']
     assert sha(ROOT/'protected/athena') == OLD_EXE_SHA
     assert state['latest']['sha256'] == plan['checkpoint']['sha256']
     assert state['latest']['cycle'] == plan['checkpoint']['cycle']
@@ -76,16 +78,19 @@ def admit(state, run):
     remaining = 2500.-state['latest']['time']
     available_wall = int(os.environ['ST8X_WALL_SECONDS'])-(time.time()-float(os.environ['ST8X_START_EPOCH']))-240
     endpoint = state['complete']
-    passed = endpoint or (advanced >= float(plan['pilot_M'])-1e-7 and
-        rate <= float(plan['maximum_seconds_per_M']) and
-        remaining*rate*1.05+120 < available_wall)
+    # Direct user approval makes this speed measurement informational. Native
+    # particle/grid identity and run_segment's numerical checks remain mandatory.
+    passed = endpoint or advanced > 1e-8
     record = dict(utc=now(), job=job(), source_checkpoint=plan['checkpoint'],
         checkpoint=state['latest'], host=socket.gethostname(), identity=identity,
         native_segment=state['segments'][-1], measured_workflow_seconds_per_M=rate,
         pilot_advanced_M=advanced, elapsed_seconds=elapsed,
         projected_remaining_native_hours=remaining*rate/3600,
         available_wall_seconds=available_wall, performance_passed=passed,
-        physical_settings_unchanged=True, original_anchors_untouched=True)
+        physical_settings_unchanged=True, original_anchors_untouched=True,
+        partition=partition, ranks=int(os.environ['SLURM_NTASKS']),
+        node_hour_limit=None, benchmark_only=True,
+        resource_policy=receipt(EXT/'evidence/RESOURCE_POLICY.json'))
     atomic(ROOT/'evidence'/('PERFORMANCE_PILOT_'+job()+'.json'), record)
     if not passed:
         stop('performance_repair_pilot_failed')

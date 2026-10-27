@@ -1,4 +1,4 @@
-"""Allocation-only storage, GPU and whole-session cost guards."""
+"""Allocation-only WORK/storage and GPU guards; record compute usage without a cap."""
 import shutil
 import time
 import csv
@@ -40,11 +40,12 @@ def cost_seconds():
 def admission():
     job()
     d = storage()
-    d.update(job=job(), utc=now(), conservative_reserved_node_seconds=cost_seconds())
+    policy = resource_policy()
+    d.update(job=job(), utc=now(), conservative_reserved_node_seconds=cost_seconds(),
+        node_hour_limit=policy['node_hour_limit'], resource_policy=receipt(EXT/'evidence/RESOURCE_POLICY.json'))
     assert d['own'] < d['limit']-d['checkpoint_reserve'], d
     assert d['whole'] < 1.7*TIB and d['forecast'] < 1.9*TIB, d
     assert d['filesystem_free'] > d['checkpoint_reserve'], d
-    assert d['conservative_reserved_node_seconds'] <= 50*3600, d
     atomic(ROOT/'evidence/jobs'/job()/'admission.json', d)
     return d
 
@@ -109,8 +110,8 @@ def watchdog():
                     stop('whole_AMD_storage_limit')
                 if disk['filesystem_free'] < disk['checkpoint_reserve']:
                     stop('filesystem_checkpoint_reserve')
-                if cost_seconds() > 50*3600:
-                    stop('session_cost_limit')
+                d['conservative_reserved_node_seconds'] = cost_seconds()
+                d['node_hour_limit'] = resource_policy()['node_hour_limit']
             except Exception as error:
                 d['storage_error'] = repr(error)
             next_disk = t+300

@@ -64,11 +64,16 @@ def receipt(path):
 
 def transport_profile():
     return {k: os.environ.get(k, '') for k in ['UCX_TLS', 'UCX_MEMTYPE_CACHE',
-        'UCX_LOG_LEVEL', 'OMPI_MCA_btl_vader_single_copy_mechanism']}
+        'UCX_LOG_LEVEL', 'UCX_NET_DEVICES', 'OMPI_MCA_btl_vader_single_copy_mechanism']}
+
+def resource_policy():
+    policy = load(EXT/'evidence/RESOURCE_POLICY.json')
+    assert policy['node_hour_limit'] is None, 'Direct user approval removes the compute cap'
+    return policy
 
 def native_launcher():
     return ['prun']
 
 def rank_capacity():
-    assert int(os.environ['SLURM_NTASKS']) == 8
+    assert int(os.environ['SLURM_NTASKS']) in [4, 8]
     return 128

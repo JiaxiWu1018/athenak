@@ -38,7 +38,7 @@ def main():
     inherited_environment_seconds = int(os.environ.get('ST8X_WALL_SECONDS', '7200'))
     ticket = next(x for x in load(EXT/'evidence/job_registry.json') if x['id'] == ident)
     requested = int(ticket['requested_seconds'])
-    assert 0 < requested <= 43200
+    assert 0 < requested <= 4*86400  # Site wall limit; the campaign has no compute cap.
     raw = subprocess.check_output(['scontrol', 'show', 'job', '-o', ident],
         text=True, timeout=15)
     allocated = scheduler_limit(raw, ident)

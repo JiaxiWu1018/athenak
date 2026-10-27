@@ -10,6 +10,7 @@ module load gnu12/12.2.0 openmpi4/4.1.8 cmake/3.25.2 prun/2.3 rocm/6.4.1
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 MPLBACKEND=Agg TZ=UTC
 export OMPI_MCA_btl_vader_single_copy_mechanism=none
 export UCX_TLS='^rocm_ipc' UCX_MEMTYPE_CACHE=n UCX_LOG_LEVEL=info
+unset UCX_NET_DEVICES  # Use ports present on the actual allocated node.
 export S10_CPU_ONLY=1
 if [ "$S10_ROLE" = production ]; then export S10_CPU_ONLY=0; fi
 record="$batch/evidence/allocations/$SLURM_JOB_ID"
@@ -31,6 +32,9 @@ END
 }
 trap finish EXIT
 { hostname; date -u; module list; hipcc --version; scontrol show job "$SLURM_JOB_ID"; mpirun --version; } > "$record/environment.txt" 2>&1
+if [ "$S10_ROLE" = production ]; then
+  rocm-smi --showproductname --showdriverversion --json > "$record/gpu_hardware.json"
+fi
 sha256sum "$record/workflow/"* > "$record/workflow.sha256"
 actual_wall_seconds=$(python3 "$record/workflow/allocation_budget.py")
 export ST8X_WALL_SECONDS="$actual_wall_seconds"

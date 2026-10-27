@@ -1,4 +1,4 @@
-"""Completion-dependent self-chaining under one case lock and shared hard budgets."""
+"""Completion-dependent self-chaining under one case lock and WORK storage guards."""
 import fcntl,shlex,sys
 from common import *
 def submit(role,after=''):
@@ -10,17 +10,15 @@ def submit(role,after=''):
             if any(x.get('after')==after for x in rows):return next(x for x in rows if x.get('after')==after)
         from performance_repair import reviewed_stop
         assert not (ROOT/'evidence/RESOURCE_STOP.json').exists() or (role=='production' and reviewed_stop())
-        seconds=dict(preflight=1200,production=5400,analysis=1800)[role]
+        policy=resource_policy()
+        seconds=dict(preflight=1200,production=policy['production_wall_seconds'],analysis=policy['analysis_wall_seconds'])[role]
         if role=='production':
-            state=load(ROOT/'runs/yc0500/state.json')
-            if not state['segments'] and abs(state['latest']['time']-1500)<1e-7:seconds=43200
             from performance_repair import pending
-            if pending():seconds=43200
-        assert PRIOR_REQUESTED_NODE_SECONDS+sum(x['requested_seconds'] for x in rows)+seconds<=50*3600,'Shared50nodeh request reservation exhausted'
         index=len(rows)+1;comment=f'st10u0:2500:{role}:{index:03d}';command=['sbatch','--parsable','--time='+str(seconds//60),'--comment='+comment,'--export=ALL,S10_ROLE='+role+',ST8X_WALL_SECONDS='+str(seconds)]
         if after:command+=['--dependency=afterok:'+after]
         command+=[str(EXT/'scripts'/(role+'.sbatch'))]
         ticket=dict(role=role,case=CASE['key'],target=2500.,nodes=1,requested_seconds=seconds,comment=comment,command=command,after=after,utc=now(),source_commit=load(EXT/'evidence/SOURCE_PIN.json')['commit'])
+        ticket['resource_policy']=receipt(EXT/'evidence/RESOURCE_POLICY.json')
         if role=='production' and pending():
             plan=load(EXT/'evidence/PERFORMANCE_REPAIR_PLAN.json')
             ticket['repair_of']=plan['stopped_job']
