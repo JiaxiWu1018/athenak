@@ -134,6 +134,13 @@ def run(c,initialize=False,target=300,wall_seconds=12600,suppress_segment_3d=Fal
                 qualified_onset_M=latest['ah_onset'],checkpoint_delay_M=latest['time']-latest['ah_onset'],
                 scope='Verified first clean checkpoint after the qualified-AH request; actual delay explicit'))
             if request.exists():request.unlink()
+        elif reason=='user_approved_work_policy_update':
+            assert resource_policy()['campaign_storage_GiB'] is None
+            transition=load(EXT/'evidence/WORK_POLICY_TRANSITION.json')
+            assert transition['reason']==reason and transition['old_job']!=job()
+            atomic(work/f'{job()}.cleared_work_policy_stop.json',dict(utc=now(),reason=reason,
+                checkpoint=latest,transition=transition,resource_policy=receipt(EXT/'evidence/RESOURCE_POLICY.json')))
+            if request.exists():request.unlink()
         elif reason=='switch_to_short_allocations':
             assert int(os.environ['ST8X_WALL_SECONDS'])<=1200
             atomic(work/f'{job()}.cleared_allocation_switch.json',dict(utc=now(),reason=reason,source_checkpoint=latest))

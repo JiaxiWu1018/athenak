@@ -19,13 +19,19 @@ def allocated_bytes(path):
     raise RuntimeError('Storage checks unavailable: '+repr(failures))
 
 def storage():
+    policy = resource_policy()
     extension = allocated_bytes(EXT)
     previous = allocated_bytes(PARENT)
     own = extension + previous + GIB
     whole = allocated_bytes('/work1/eliasmost/jiaxiwu')
-    return dict(own=own, extension_allocated_bytes=extension, previous_allocated_bytes=previous, Perseus_allowance_bytes=GIB, limit=350*GIB, checkpoint_reserve=48*GIB, whole=whole,
-        forecast=whole+max(0, 350*GIB-own), whole_storage_warning=whole >= 1.5*TIB,
-        filesystem_free=shutil.disk_usage(EXT).free)
+    reserve=48*GIB
+    free=shutil.disk_usage(EXT).free
+    cap=policy['campaign_storage_GiB']
+    limit=int(cap*GIB) if cap is not None else own+int(max(0,min(free-reserve,1.7*TIB-whole)))
+    forecast=whole+max(0,limit-own) if cap is not None else whole+reserve
+    return dict(own=own, extension_allocated_bytes=extension, previous_allocated_bytes=previous, Perseus_allowance_bytes=GIB, limit=limit, campaign_limit=None if cap is None else int(cap*GIB), checkpoint_reserve=reserve, whole=whole,
+        forecast=forecast, whole_storage_warning=whole >= 1.5*TIB,
+        filesystem_free=free)
 
 def cost_seconds():
     """Use a bounded receipt; absent terminal evidence reserves the full allocation."""
@@ -43,7 +49,8 @@ def admission():
     policy = resource_policy()
     d.update(job=job(), utc=now(), conservative_reserved_node_seconds=cost_seconds(),
         node_hour_limit=policy['node_hour_limit'], resource_policy=receipt(EXT/'evidence/RESOURCE_POLICY.json'))
-    assert d['own'] < d['limit']-d['checkpoint_reserve'], d
+    if d['campaign_limit'] is not None:
+        assert d['own'] < d['limit']-d['checkpoint_reserve'], d
     assert d['whole'] < 1.7*TIB and d['forecast'] < 1.9*TIB, d
     assert d['filesystem_free'] > d['checkpoint_reserve'], d
     atomic(ROOT/'evidence/jobs'/job()/'admission.json', d)
@@ -104,7 +111,7 @@ def watchdog():
                 previous = (t, disk['whole'])
                 d.update(disk)
                 last_disk = t
-                if disk['own'] >= disk['limit']-disk['checkpoint_reserve']:
+                if disk['campaign_limit'] is not None and disk['own'] >= disk['limit']-disk['checkpoint_reserve']:
                     stop('session_storage_checkpoint_reserve')
                 if disk['whole'] >= 1.7*TIB or max(disk['forecast'], disk.get('ten_minute_projected_whole', 0)) >= 1.9*TIB:
                     stop('whole_AMD_storage_limit')

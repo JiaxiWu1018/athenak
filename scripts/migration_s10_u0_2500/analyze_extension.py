@@ -62,7 +62,7 @@ def main():
     text += ['', 'These finite-window excursions do not establish asymptotic stability. Boundary effects, gauge dependence, inherited source coupling and absent convergence controls remain limitations.', '',
         f"Final checkpoint: `{cp['path']}`; SHA256 `{cp['sha256']}`.",
         f"Native delivery: `{out}`. Original700M/1500M anchors and accepted0–1500M products are preserved.",
-        f"Combined AMD-session storage plus reserved Perseus allowance: {disk['own']/GIB:.6f}GiB, against350GiB. Final allocated-node accounting and verified review-copy locations are recorded after this allocation terminates.", '',
+        f"Combined AMD-session storage plus reserved Perseus allowance: {disk['own']/GIB:.6f}GiB; whole-user WORK: {disk['whole']/TIB:.6f}TiB. The user authorized available WORK usage without a per-campaign ceiling. Whole-user and filesystem safeguards remain active. Final allocated-node accounting and verified review-copy locations are recorded after this allocation terminates.", '',
         'Products: mass_shells_to2500.png/.pdf; central_lapse_to2500.png/.pdf; REPORT_continuation.md/.pdf; shell/lapse CSV tables; numerical acceptance and source manifests.', '']
     report=out/'REPORT_continuation.md';report.write_text('\n'.join(text));record['report']=receipt(report)
     from pdf_report import render_pdf

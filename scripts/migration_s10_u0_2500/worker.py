@@ -13,6 +13,8 @@ def main():
             from continuation import prepare
             prepare()
         elif role=='production':
+            from work_policy_handoff import review as review_handoff
+            review_handoff(ticket)
             from continuation import main as evolve
             evolve()
         elif role=='analysis':
