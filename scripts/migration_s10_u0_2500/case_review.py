@@ -29,17 +29,18 @@ def review(c):
     assert max(abs(r['closure']) for r in mass)<1e-10
     assert all(abs(r['m_alive']/r['m_initial']+sum(r['n_'+k] for k in ['exit','sphere','lapse','horizon'])/2000000-1-r['closure'])<1e-12 for r in mass)
     radii=np.array([[r[f'r{q}'] for q in range(10,100,10)] for r in shell]);assert np.isfinite(radii).all() and (radii>0).all() and (np.diff(radii,axis=1)>=0).all()
-    if s['first_removal'] is not None:assert shell[-1]['time']<s['first_removal']
-    eligible=[v for v in snaps if s['first_removal'] is None or v['time']<s['first_removal']]
+    eligible=[v for v in snaps if v['n']>0]
+    assert len(shell)==len(np.unique([v['time'] for v in eligible]))
+    assert abs(shell[-1]['time']-eligible[-1]['time'])<1e-7
     checks=[]
     for snap in [eligible[0],eligible[len(eligible)//2],eligible[-1]]:
-        t,cycle,n,fields=read_pvtk(snap['file']);assert n==2000000
+        t,cycle,n,fields=read_pvtk(snap['file']);assert n==snap['n'] and 0<n<=2000000
         pos=np.column_stack([fields[k] for k in 'xyz']).astype(np.float64);rr=np.sort(np.linalg.norm(pos-pos.mean(axis=0),axis=1))
         row=min(shell,key=lambda v:abs(v['time']-t));assert abs(row['time']-t)<1e-7
         for q in range(10,100,10):
             rank=int(np.ceil(n*q/100))-1
             assert rr[max(0,rank-1)]-1e-10<=row[f'r{q}']<=rr[min(n-1,rank+1)]+1e-10,(t,q)
-        checks.append(dict(time=t,source=receipt(Path(snap['file'])),all_nine_equal_mass_COM_quantiles='within one independent particle rank'))
+        checks.append(dict(time=t,particle_count=n,source=receipt(Path(snap['file'])),all_nine_equal_mass_COM_quantiles='within one independent surviving-particle rank'))
     global_path=work/f"{c['id']}.z4c.user.hst";g=np.atleast_2d(np.loadtxt(global_path));assert g.shape[1]==11 and np.isfinite(g).all() and (g[:,10]>0).all() and (g[:,3:5]>=0).all()
     assert abs(g[-1,0]-endpoint)<1e-7
     global_norms=dict(source=receipt(global_path),definition='sqrt(integral constraint squared proper dV / proper unexcised volume); exterior dilution prevents a local-error interpretation',maximum_H_RMS=float(np.sqrt(g[:,3]/g[:,10]).max()),maximum_M_RMS=float(np.sqrt(g[:,4]/g[:,10]).max()))
@@ -70,6 +71,8 @@ def review(c):
       first_accepted_AH_M=good[0]['time'] if good else None,first_converged_AH_M=converged[0]['time'] if converged else None,
       first_removal_M=s['first_removal'],AH_endpoint_window=s['ah_endpoint_window'],removal_geometry=geometry,
       maximum_rest_mass_closure=max(abs(r['closure']) for r in mass),final_population=state['latest']['particle_count'],
+      shell_definition='COM-centred quantiles of instantaneous surviving rest mass; not fixed Lagrangian identities after removals',
+      shell_coverage=dict(first_M=shell[0]['time'],last_M=shell[-1]['time'],nonempty_snapshot_times=len(shell)),
       accepted_native_logs=logs,fallback_particle_steps=fallbacks,initial_constraint_admission=initial,
       final_native_fields=receipt(work/'FINAL_FIELDS_OK.json'),numerical_checks_passed=True,actual_visual_review=False,
       scope='Completed trajectory segment only. Accepted AH confirms black-hole formation; survival/coordinate motion does not prove stable migration. Rest-mass closure is bookkeeping, not ADM-energy conservation. Inherited source-time coupling unchanged; no new convergence claim.')

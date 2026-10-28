@@ -19,6 +19,7 @@ def main():
     prefix=EXT/'reference/control_0_1500';pm=load(prefix/'SOURCE_MANIFEST.json')
     for x in pm['copied']:assert receipt(x['path'])==x
     shell=joined(prefix/'shells.csv',red/'shells.csv');history=joined(prefix/'history.csv',red/'history.csv');write_csv(out/'shells_0_endpoint.csv',shell);write_csv(out/'lapse_history_0_endpoint.csv',history)
+    shutil.copyfile(red/'mass.csv',out/'mass_retention_1500_endpoint.csv')
     from origin_lapse import extract
     paths={}
     for folder in [BASE/'runs/yc0500/rst',DONOR/'runs/yc0500/rst',PARENT/'yc0500_control/runs/yc0500/rst',ROOT/'runs/yc0500/rst']:
@@ -35,7 +36,7 @@ def main():
     style();import matplotlib.pyplot as plt
     fig,ax=plt.subplots(figsize=(12,5),layout='constrained')
     for q,color in zip(range(10,100,10),plt.cm.viridis(np.linspace(.08,.92,9))):ax.plot([v['time'] for v in shell],[v[f'r{q}'] for v in shell],color=color,label=f'{q}%')
-    ax.axvline(1500,color='.4',ls=':',lw=1,label='1500M continuation');ax.set(yscale='log',xlim=(0,2500),xlabel='t / M_ref',ylabel='COM coordinate rest-mass shell radius [M]',title=f"Unperturbed corrected yc=0.500: actual endpoint {summary['endpoint']:g}M");ax.legend(ncol=5,fontsize=8);ax.grid(alpha=.18)
+    ax.axvline(1500,color='.4',ls=':',lw=1,label='1500M continuation');ax.set(yscale='log',xlim=(0,2500),xlabel='t / M_ref',ylabel='COM coordinate radius [M]\nQuantiles of surviving rest mass',title=f"Unperturbed corrected yc=0.500: actual endpoint {summary['endpoint']:g}M");ax.legend(ncol=5,fontsize=8);ax.grid(alpha=.18)
     for ext in ['png','pdf']:fig.savefig(out/('mass_shells_to2500.'+ext),dpi=200,bbox_inches='tight')
     plt.close(fig)
     fig,axes=plt.subplots(2,1,figsize=(12,7),layout='constrained',sharex=True)
@@ -51,8 +52,10 @@ def main():
     text=['# Unperturbed corrected yc=0.500 continuation', '',
         f"The accepted1500M trajectory reached {summary['endpoint']:.9g}M. Numerical particle, mass, stream and constraint checks passed; actual visual review is pending.", '',
         f"Final particles: {cp['particle_count']:,}; removal counts: {cp['removal_counts']}; maximum mass-ledger closure: {summary['max_closure']:.6g}.",
+        f"First recorded removal: {summary['first_removal']}M; native removal reasons: {summary['removals']}. Retained initial rest mass: {100*cp['rest_mass_alive']/cp['rest_mass_initial']:.9f}percent.",
         f"Qualified apparent-horizon onset: {summary['ah_first']}. Active finest spacing: {cp['finest_active_dx']:g}M.", '',
         f"At the last full-particle snapshot ({last['time']:.9g}M), r50={last['r50']:.9g}M and r90={last['r90']:.9g}M.",
+        'Shell curves use every nonempty full-particle snapshot, including after audited removals. Each curve encloses the stated fraction of the instantaneous surviving rest mass about its COM; after a removal it is not a fixed Lagrangian identity. ID/death-record, weight and mass-ledger checks remain required. The mass-retention table records the changing population.',
         f"At the final scientific checkpoint, coordinate-origin lapse={centers[-1]['central_lapse']:.12g}; dense native core-average lapse at {history[-1]['time']:.9g}M is {history[-1]['core_lapse']:.12g}.", '',
         'The core history is a coordinate-volume average inside r<0.75M. Origin lapse is trilinearly interpolated from8native3D cell centres; source hashes and weights are in CENTRAL_LAPSE_SOURCES.json.', '',
         '| Time window [M] | r50 peak-to-peak / median |', '| --- | --- |']

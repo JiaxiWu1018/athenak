@@ -54,7 +54,9 @@ def reduce_case(c,require_complete=True):
         mass=np.asarray(fields['prtcl_mass'],dtype=np.float64);m0=ledger[0]['m_initial'];weight=m0/n0
         assert n==0 or np.all(mass==np.float32(weight))
         snapshots.append(dict(file=str(file),time=t,cycle=cycle,n=n,bytes=file.stat().st_size))
-        if t>=first_removal or n==0:continue
+        # Quantiles describe the instantaneous surviving rest mass. An audited
+        # boundary exit does not invalidate the remaining full population.
+        if n==0:continue
         pos=np.column_stack([fields[a] for a in 'xyz']).astype(np.float64);com=np.average(pos,axis=0,weights=mass)
         rad=np.linalg.norm(pos-com,axis=1);order=np.argsort(rad)
         cumulative=np.cumsum(mass[order]);cumulative/=cumulative[-1]
@@ -66,7 +68,7 @@ def reduce_case(c,require_complete=True):
     shells=unique_rows(shells);write_csv(dest/'shells.csv',shells)
     np.savez_compressed(dest/'coordinate_rest_mass_profiles.npz',time=profile_times,
         edges=profile_edges,mass_per_bin=profiles,
-        definition='Full-population COM coordinate shells; rest mass per bin, not proper-volume energy density')
+        definition='Surviving-population COM coordinate shells; rest mass per bin, not proper-volume energy density')
     hist=np.atleast_2d(np.loadtxt(work/f"{c['id']}.user.hst"));assert hist.shape[1]==19
     histories=[]
     for row in hist:
@@ -92,15 +94,16 @@ def reduce_case(c,require_complete=True):
             for k,col in [('x',1),('y',2),('z',3),('ux',4),('uy',5),('uz',6),('prtcl_mass',7)]:
                 assert np.array_equal(fields[k][order][use],values[ids//100,col].astype(np.float32))
         cohort_index.append(dict(time=t,cycle=cycle,file=str(file),alive=int(mask.sum())))
-        if t<first_removal and shells[0]['time']<=t<=shells[-1]['time']:
+        if shells[0]['time']<=t<=shells[-1]['time']:
             center=np.array([np.interp(t,[v['time'] for v in shells],[v['com_'+axis] for v in shells]) for axis in 'xyz'])
             rr=np.linalg.norm(values[:,1:4]-center,axis=1)
             if prior is not None and t>prior[0]:
-                common=(mask==1)&prior[1];velocity=(rr[common]-prior[2][common])/(t-prior[0])
-                assert len(velocity)>0
-                flow.append(dict(time=(t+prior[0])/2,mean_coordinate_dr_dt=float(velocity.mean()),
-                    rms_coordinate_dr_dt=float(np.sqrt(np.mean(velocity**2))),outgoing_fraction=float(np.mean(velocity>0)),
-                    fixed_ids=int(common.sum()),delta_time=t-prior[0]))
+                common=(mask==1)&prior[1]
+                if common.any():
+                    velocity=(rr[common]-prior[2][common])/(t-prior[0])
+                    flow.append(dict(time=(t+prior[0])/2,mean_coordinate_dr_dt=float(velocity.mean()),
+                        rms_coordinate_dr_dt=float(np.sqrt(np.mean(velocity**2))),outgoing_fraction=float(np.mean(velocity>0)),
+                        fixed_ids=int(common.sum()),delta_time=t-prior[0]))
             prior=(t,mask.astype(bool),rr)
     write_csv(dest/'cohort_index.csv',cohort_index)
     if flow:write_csv(dest/'coordinate_radial_flow.csv',flow)
@@ -124,7 +127,8 @@ def reduce_case(c,require_complete=True):
                 summary['ah_endpoint_window'].update(start=tail[0]['time'],end=tail[-1]['time'],samples=len(tail))
     atomic(dest/'summary.json',summary);atomic(dest/'snapshots.json',snapshots)
     atomic(dest/'REDUCTION_OK.json',dict(utc=now(),job=job(),population_ids=True,removal_ids=True,
-             mass_ledger=True,cohort_vs_full_snapshots=True,shell_cutoff='first removal'))
+             mass_ledger=True,cohort_vs_full_snapshots=True,shell_cutoff='only empty population',
+             shell_definition='COM-centred quantiles of instantaneous surviving rest mass; audited IDs and death records retained'))
     return summary
 
 if __name__=='__main__':
