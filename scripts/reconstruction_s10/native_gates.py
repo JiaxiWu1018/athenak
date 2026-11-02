@@ -127,7 +127,7 @@ def main():
     run(exe,root,'bad_integrator',deck(integrator='rk4'),fail='invalid particle coupling configuration')
     run(exe,root,'bad_excision',deck().replace('excise_lapse=0','excise_lapse=.1'),fail='invalid particle coupling configuration')
     run(exe,root,'bad_solver',deck(limit=1),fail='particle solve failed')
-    run(exe,root,'bad_amr',deck().replace('refinement=static','refinement=adaptive'),fail='invalid particle coupling configuration')
+    run(exe,root,'bad_amr',deck().replace('refinement=static','refinement=adaptive\nnum_levels=2\nmax_nmb_per_rank=128'),fail='invalid particle coupling configuration')
     write_json(root/'GATES_OK.json',dict(rank=rank,tolerance=tolerance,restart=restart,legacy_unchanged=unchanged,exe_sha256=sha(exe)))
 
 if __name__=='__main__':main()

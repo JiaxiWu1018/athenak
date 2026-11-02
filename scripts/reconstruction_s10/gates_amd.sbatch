@@ -19,6 +19,7 @@ export PYTHONPATH=$repo/scripts/reconstruction_s10
 record=$root/evidence/gates_$SLURM_JOB_ID
 mkdir -p "$record"
 { hostname; date -u; module list 2>&1; } > "$record/environment.txt"
+python3 "$repo/scripts/reconstruction_s10/verify_inputs.py"
 python3 "$repo/scripts/reconstruction_s10/native_gates.py" --exe "$root/build_cpu/src/athena" --root "$root/tests/cpu_$SLURM_JOB_ID"
 # The first GPU gate uses one rank on the single-MI210 support node.
 python3 "$repo/scripts/reconstruction_s10/gpu_smoke.py" --exe "$root/build_hip/src/athena" --root "$root/tests/hip_$SLURM_JOB_ID"

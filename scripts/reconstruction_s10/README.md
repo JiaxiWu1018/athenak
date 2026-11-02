@@ -31,7 +31,7 @@ Small native regression fixtures use the supported internal legacy sampler only;
 scientific runs use exact archived external proper-profile samples.
 
 CPU and HIP compilation and manufactured second-order solver checks pass in AMD495009.
-Native regression validation and production are pending. This is experimental code,
+Native CPU/HIP regression, archived-executable comparison, restart, tolerance, guards, and five MPI seam-crossing fixtures pass in AMD495053. Scientific pilots and production are pending. This is experimental code,
 not a claim of validated ST accuracy. Authoritative campaign handoff, job records,
 limits and reports live in reconstruction_ST/10_rk3_predictor_20261102.
 All scientific computation runs inside Slurm. Max2 simulation nodes+1support;

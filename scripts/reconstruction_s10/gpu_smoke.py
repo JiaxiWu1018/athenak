@@ -11,4 +11,12 @@ run(Path(a.exe),root,'bad_solver',deck(limit=1),ranks=1,fail='particle solve fai
 cpu=root.parent/root.name.replace('hip_', 'cpu_')/'np1'
 comparison=compare_states(read_rst(final_rst(cpu)),read_rst(final_rst(work)))
 assert comparison['grid_max_abs']<1.e-9 and comparison['particle_max_abs']<1.e-9,comparison
-write_json(root/'GATES_OK.json',dict(cpu_gpu=comparison,exe_sha256=sha(a.exe)))
+
+# Compare new legacy mode against the immutable original HIP executable.
+old_exe=Path('/work1/eliasmost/jiaxiwu/st_reconstruction_s10_rk3_20261102/reference/session7/protected/athena')
+legacy_text=deck(coupling='legacy',integrator='rk4').replace('synchronized_constraints=true','synchronized_constraints=false')
+old=run(old_exe,root,'archived_legacy',legacy_text,ranks=1)
+new=run(Path(a.exe),root,'new_legacy',legacy_text,ranks=1)
+control=compare_states(read_rst(final_rst(old)),read_rst(final_rst(new)))
+assert control['grid_max_abs']<1.e-11 and control['particle_max_abs']<1.e-11,control
+write_json(root/'GATES_OK.json',dict(cpu_gpu=comparison,legacy_vs_original=control,exe_sha256=sha(a.exe)))

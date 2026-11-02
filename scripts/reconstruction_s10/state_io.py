@@ -42,7 +42,7 @@ def parse_input(text):
     return out
 
 
-def read_rst(path):
+def read_rst(path, validate=True):
     require_job()
     path = Path(path)
     with path.open('rb') as f:
@@ -81,6 +81,8 @@ def read_rst(path):
     grid = np.memmap(path, mode='r', dtype='<f8', offset=grid_offset, shape=shape)
     particles = np.memmap(path, mode='r', dtype='<f8', offset=particle_offset,
                           shape=(10, count))
+    if not validate:
+        return dict(path=str(path), time=t, dt=dt, cycle=cycle, count=count)
     assert np.all(np.isfinite(particles))
     tags = particles[9].astype(np.int64)
     assert np.array_equal(tags, particles[9]) and len(np.unique(tags)) == count
@@ -109,4 +111,4 @@ def compare_states(a, b):
 def final_rst(work):
     files = list(Path(work).glob('rst/*.rst'))
     assert files, str(work)
-    return max(files, key=lambda p: read_rst(p)['time'])
+    return max(files, key=lambda p: read_rst(p, validate=False)['time'])
