@@ -57,11 +57,11 @@ def resource_snapshot():
         out=subprocess.check_output(['sacct','-X','-n','-P','-j',','.join(sorted(ids)),
             '--format=JobIDRaw,ElapsedRaw,AllocNodes'],text=True,timeout=30)
         rows=[line.split('|') for line in out.splitlines() if line.strip()]
-        result['node_hours']=sum(int(r[1])*int(r[2]) for r in rows)/3600
+        result['node_hours']=(sum(int(r[1])*int(r[2]) for r in rows)+sum(j.get('elapsed_seconds',0)*j.get('nodes',1) for j in jobs if j['host']!='AMD'))/3600
     except Exception as exc:result['accounting_error']=repr(exc)
     result['warning']=result.get('whole_user_bytes',0)>=1.5*2**40
     result['stop']=(result.get('whole_user_bytes',0)>=1.7*2**40 or
-                    result.get('campaign_bytes',0)>=300*2**30 or result.get('node_hours',0)>=39.5)
+                    result.get('campaign_bytes',0)>=298*2**30 or result.get('node_hours',0)>=39.5)
     return result
 
 
