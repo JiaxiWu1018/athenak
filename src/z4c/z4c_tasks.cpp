@@ -22,6 +22,7 @@
 #include "z4c/fastflow.hpp"
 #include "z4c/horizon_dump.hpp"
 #include "z4c/z4c.hpp"
+#include "particles/particles.hpp"
 #include "tasklist/numerical_relativity.hpp"
 #include "z4c/cce/cce.hpp"
 
@@ -239,6 +240,11 @@ TaskStatus Z4c::UpdateExcisionMasks(Driver *pdrive, int stage) {
 //! \brief
 
 TaskStatus Z4c::ADMConstraints_(Driver *pdrive, int stage) {
+  // Predictor sources describe internal stages, not the committed endpoint.
+  auto *part = pmy_pack->ppart;
+  if (part != nullptr && part->rk3_predictor && part->rk_stage_active) {
+    return TaskStatus::complete;
+  }
   auto &indcs = pmy_pack->pmesh->mb_indcs;
   if (stage == pdrive->nexp_stages) {
     switch (indcs.ng) {

@@ -33,6 +33,7 @@
 #include "globals.hpp"
 #include "mesh/mesh.hpp"
 #include "particles.hpp"
+#include "rk_midpoint.hpp"
 #include "boris_utils.hpp"
 #include "lagrange_interp.hpp"
 #include "calc_tetrad.hpp"
@@ -42,6 +43,10 @@
 #include "coordinates/cell_locations.hpp"
 #include "coordinates/coordinates.hpp"
 #include "eos/primitive-solver/geom_math.hpp"
+
+#if MPI_PARALLEL_ENABLED
+#include <mpi.h>
+#endif
 
 namespace particles {
 
@@ -1074,5 +1079,96 @@ void Particles::GRBorisRetry() {
   });
   return;
 }
+
+
+// The experimental coupling evaluates both Euler and midpoint G against one live
+// stage geometry. Passing that geometry as both time arguments prevents old/new
+// averaging; the particle midpoint still moves inside every implicit iteration.
+template <int NGHOST>
+void Particles::RKParticleSolve(bool predictor) {
+  auto &indcs = pmy_pack->pmesh->mb_indcs;
+  auto size = pmy_pack->pmb->mb_size;
+  auto pi = prtcl_idata;
+  auto pr = prtcl_rdata;
+  auto prediction = rk_prediction;
+  auto result = predictor ? rk_prediction : rk_endpoint;
+  auto metric = pmy_pack->padm->u_adm;
+  auto geometry = pmy_pack->pz4c->u0;
+  const int gids = pmy_pack->gids;
+  const Real dt = pmy_pack->pmesh->dt;
+  const Real tolerance = midpoint_tolerance;
+  const int max_iterations = midpoint_max_iterations;
+  int failed = 0, most_iterations = 0;
+  Real worst_residual = 0.0;
+  Kokkos::parallel_reduce("rk_particle_solve",
+    Kokkos::RangePolicy<>(DevExeSpace(), 0, nprtcl_thispack),
+    KOKKOS_LAMBDA(int p, int &bad, int &niter_max, Real &res_max) {
+      const int mb = pi(PGID,p)-gids;
+      const auto sz = size.d_view(mb);
+      const Real grid[9] = {sz.x1min, sz.x1max, sz.dx1,
+                           sz.x2min, sz.x2max, sz.dx2,
+                           sz.x3min, sz.x3max, sz.dx3};
+      const Real dx[3] = {sz.dx1, sz.dx2, sz.dx3};
+      const int nc[3] = {indcs.nx1, indcs.nx2, indcs.nx3};
+      Real x0[3], u0[3], x[3], u[3];
+      for (int a = 0; a < 3; ++a) {
+        x0[a] = pr(IPX+2*a,p);
+        u0[a] = pr(IPVX+2*a,p);
+        x[a] = prediction(IPX+2*a,p);
+        u[a] = prediction(IPVX+2*a,p);
+      }
+      GeodesicPush<NGHOST, false> f(x0, u0, mb, grid, nc, dt,
+                                   metric, metric, true, geometry, geometry);
+      int iterations = 0;
+      Real residual = 0.0;
+      bool ok;
+      if (predictor) {
+        ok = f(x0, u0, x, u, true);
+      } else {
+        ok = RKMidpointSolve(f, x0, u0, dx, x, u, tolerance, max_iterations,
+                             iterations, residual);
+      }
+      for (int a = 0; a < 3; ++a) {
+        if (!std::isfinite(x[a]) || !std::isfinite(u[a]) ||
+            fabs(x[a]-x0[a]) > dx[a]) {ok = false;}
+      }
+      if (!ok) {
+        ++bad;
+      } else {
+        for (int a = 0; a < 3; ++a) {
+          result(IPX+2*a,p) = x[a];
+          result(IPVX+2*a,p) = u[a];
+        }
+      }
+      niter_max = (iterations > niter_max) ? iterations : niter_max;
+      res_max = fmax(res_max, residual);
+    }, Kokkos::Sum<int>(failed), Kokkos::Max<int>(most_iterations),
+       Kokkos::Max<Real>(worst_residual));
+#if MPI_PARALLEL_ENABLED
+  MPI_Allreduce(MPI_IN_PLACE, &failed, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &most_iterations, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &worst_residual, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+#endif
+  most_iterations = std::max(0, most_iterations);
+  worst_residual = fmax(0.0, worst_residual);
+  if (global_variable::my_rank == 0) {
+    std::cout << "[rk3-particles] cycle=" << pmy_pack->pmesh->ncycle
+              << " stage=" << (predictor ? 1 : 3) << " dt=" << dt
+              << " max_iter=" << most_iterations << " max_residual=" << worst_residual
+              << " failed=" << failed << std::endl;
+  }
+  if (failed != 0) {
+    std::cerr << "### FATAL ERROR rk3_predictor particle solve failed; no fallback "
+              << "or endpoint commit performed." << std::endl;
+#if MPI_PARALLEL_ENABLED
+    MPI_Abort(MPI_COMM_WORLD, 1);
+#endif
+    std::exit(EXIT_FAILURE);
+  }
+}
+
+template void Particles::RKParticleSolve<2>(bool predictor);
+template void Particles::RKParticleSolve<3>(bool predictor);
+template void Particles::RKParticleSolve<4>(bool predictor);
 
 } // namespace particles

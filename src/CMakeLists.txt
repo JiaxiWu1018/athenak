@@ -122,6 +122,7 @@ add_executable(
         particles/particles_amr.cpp
         particles/particles_pushers.cpp
         particles/particles_tasks.cpp
+        particles/rk3_predictor.cpp
         particles/particles_newdt.cpp
         particles/particles_debug.cpp
         particles/particles_destroy.cpp

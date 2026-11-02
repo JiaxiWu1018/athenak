@@ -19,6 +19,8 @@
 #include "mesh/mesh.hpp"
 #include "bvals/bvals.hpp"
 #include "particles.hpp"
+#include "driver/driver.hpp"
+#include "z4c/z4c.hpp"
 
 namespace particles {
 //----------------------------------------------------------------------------------------
@@ -28,6 +30,9 @@ namespace particles {
 
 void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> tl) {
   TaskID none(0);
+  if (rk3_predictor) {
+    tl["before_stagen"]->AddTask(&Particles::RKParticleStage, this, none);
+  }
 
   // Particle integration runs in the "after_timeintegrator" task list, which executes
   // once per cycle with the full dt (after the fluid/Z4c stages). The full-dt Boris/GR
@@ -59,6 +64,9 @@ void Particles::AssembleTasks(std::map<std::string, std::shared_ptr<TaskList>> t
   // consumes this frozen Tmunu during the following cycle's RK stages.
   if (feedback) {
     id.tmunu = atl->AddTask(&Particles::SetPrtclTmunu, this, id.energy);
+    if (synchronized_constraints) {
+      atl->AddTask(&Particles::RefreshEndpointConstraints, this, id.tmunu);
+    }
   }
 
   return;
@@ -152,6 +160,10 @@ TaskStatus Particles::EnergyCalculation(Driver *pdrive, int stage) {
       std::exit(EXIT_FAILURE);
   }
   return TaskStatus::complete;
+}
+
+TaskStatus Particles::RefreshEndpointConstraints(Driver *pdriver, int stage) {
+  return pmy_pack->pz4c->ADMConstraints_(pdriver, pdriver->nexp_stages);
 }
 
 } // namespace particles

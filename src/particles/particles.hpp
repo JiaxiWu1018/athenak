@@ -231,6 +231,20 @@ class Particles {
   DvceArray1D<Real> tmunu_psums;
   DvceArray1D<Real> tmunu_csums;
 
+  // Opt-in fixed-mesh dust coupling. Scratch stages never commit particle ownership.
+  bool rk3_predictor = false;
+  bool rk_stage_active = false;
+  bool synchronized_constraints = false;
+  Real midpoint_tolerance = 1.e-11;
+  int midpoint_max_iterations = 100;
+  DvceArray2D<Real> rk_prediction, rk_endpoint, rk_scratch_r;
+  DvceArray2D<int> rk_scratch_i;
+  TaskStatus RKParticleStage(Driver *pdriver, int stage);
+  TaskStatus RefreshEndpointConstraints(Driver *pdriver, int stage);
+  void RKStageDeposit(Driver *pdriver, int stage);
+  void RKCheckDomain();
+  template <int NGHOST> void RKParticleSolve(bool predictor);
+
   // snapshots of the field/metric at the previous step, used by the GR pusher to evaluate
   // the implicit geodesic substep at the time midpoint. Allocated only for gr_boris. For
   // a static background (all Stage-2 tests) these equal the current arrays; they

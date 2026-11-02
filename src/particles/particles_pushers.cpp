@@ -17,6 +17,13 @@ namespace particles {
 //  \brief
 
 TaskStatus Particles::Push(Driver *pdriver, int stage) {
+  if (rk3_predictor) {
+    // Only positions/momenta change; IDs and the step-n owner survive until NewGID.
+    Kokkos::deep_copy(prtcl_rdata, rk_endpoint);
+    rk_stage_active = false;
+    RKCheckDomain();
+    return TaskStatus::complete;
+  }
   bool &multi_d = pmy_pack->pmesh->multi_d;
   bool &three_d = pmy_pack->pmesh->three_d;
   auto &pr = prtcl_rdata;

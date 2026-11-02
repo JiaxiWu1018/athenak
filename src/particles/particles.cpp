@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <cmath>
 
 #include "athena.hpp"
 #include "globals.hpp"
@@ -231,6 +232,29 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
                 << "' not recognized; use 'conservative' or 'native'." << std::endl;
       std::exit(EXIT_FAILURE);
     }
+  }
+
+  std::string coupling = pin->GetOrAddString("particles", "coupling", "legacy");
+  rk3_predictor = coupling == "rk3_predictor";
+  synchronized_constraints = pin->GetOrAddBoolean(
+      "particles", "synchronized_constraints", rk3_predictor);
+  midpoint_tolerance = pin->GetOrAddReal("particles", "midpoint_tolerance", 1.e-11);
+  midpoint_max_iterations = pin->GetOrAddInteger(
+      "particles", "midpoint_max_iterations", 100);
+  if ((coupling != "legacy" && !rk3_predictor) ||
+      (synchronized_constraints && (!feedback || pmy_pack->pz4c == nullptr)) ||
+      (rk3_predictor &&
+       (pin->GetString("time", "integrator") != "rk3" ||
+        particle_type != ParticleType::dust || pusher != ParticlesPusher::gr_boris ||
+        !feedback || pmy_pack->pz4c == nullptr || pmy_pack->pmhd != nullptr ||
+        pmy_pack->phydro != nullptr || pmy_pack->pmesh->adaptive || excise_any ||
+        !synchronized_constraints || !(midpoint_tolerance > 0.0) ||
+        !std::isfinite(midpoint_tolerance) || midpoint_max_iterations < 1))) {
+    std::cerr << "### FATAL ERROR invalid particle coupling configuration: "
+              << "rk3_predictor requires RK3, fixed-mesh dust/gr_boris feedback, "
+              << "no fluid/excision, synchronized constraints, and positive finite "
+              << "midpoint tolerance/iteration limit." << std::endl;
+    std::exit(EXIT_FAILURE);
   }
 
   // Dynamic AMR relabels and redistributes particles for both kinematic and feedback
