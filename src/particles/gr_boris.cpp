@@ -1099,6 +1099,8 @@ void Particles::RKParticleSolve(bool predictor) {
   const Real tolerance = midpoint_tolerance;
   const int max_iterations = midpoint_max_iterations;
   int failed = 0, most_iterations = 0;
+  DvceArray1D<int> failure_samples("rk_failure_samples", 1);
+  Kokkos::deep_copy(failure_samples, 0);
   Real worst_residual = 0.0;
   Kokkos::parallel_reduce("rk_particle_solve",
     Kokkos::RangePolicy<>(DevExeSpace(), 0, nprtcl_thispack),
@@ -1134,6 +1136,28 @@ void Particles::RKParticleSolve(bool predictor) {
       }
       if (!ok) {
         ++bad;
+        // Bounded failure evidence: compare consecutive iterates and their stencils.
+        // This diagnostic does not alter acceptance, tolerance, or successful states.
+        if (Kokkos::atomic_fetch_add(&failure_samples(0), 1) < 4) {
+          Real next_x[3], next_u[3], mid[3], next_mid[3];
+          const bool next_ok = f(x, u, next_x, next_u, false);
+          int ids[4] = {mb, 0, 0, 0}, next_ids[4] = {mb, 0, 0, 0};
+          for (int a = 0; a < 3; ++a) {
+            mid[a] = 0.5*(x0[a]+x[a]);
+            next_mid[a] = 0.5*(x0[a]+next_x[a]);
+          }
+          SetInterpIndices(mid, grid, nc, ids);
+          SetInterpIndices(next_mid, grid, nc, next_ids);
+          printf("[rk3-failure] tag=%d gid=%d iter=%d residual=%.17g next_ok=%d "
+                 "stencil=(%d,%d,%d)->(%d,%d,%d)\n",
+                 pi(PTAG,p), pi(PGID,p), iterations, residual, next_ok,
+                 ids[1],ids[2],ids[3],next_ids[1],next_ids[2],next_ids[3]);
+          for (int a = 0; a < 3; ++a) {
+            printf("[rk3-failure-axis] tag=%d axis=%d x0=%.17g u0=%.17g "
+                   "x=%.17g u=%.17g next_x=%.17g next_u=%.17g midpoint=%.17g\n",
+                   pi(PTAG,p),a,x0[a],u0[a],x[a],u[a],next_x[a],next_u[a],mid[a]);
+          }
+        }
       } else {
         for (int a = 0; a < 3; ++a) {
           result(IPX+2*a,p) = x[a];
