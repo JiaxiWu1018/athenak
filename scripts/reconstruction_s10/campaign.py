@@ -70,10 +70,13 @@ class Watchdog:
         self.work=work;self.done=threading.Event();self.proc=None;self.stopped=False
         self.thread=threading.Thread(target=self.loop,daemon=True)
     def loop(self):
+        next_storage=0.0
         while not self.done.is_set():
             try:
-                snap=resource_snapshot()
-                with (self.work/'resources.jsonl').open('a') as f:f.write(json.dumps(snap)+'\n')
+                snap={'stop':False}
+                if time.monotonic()>=next_storage:
+                    snap=resource_snapshot();next_storage=time.monotonic()+300
+                    with (self.work/'resources.jsonl').open('a') as f:f.write(json.dumps(snap)+'\n')
                 try:
                     out=subprocess.check_output(['rocm-smi','--showmeminfo','vram','--json'],text=True,timeout=20,stderr=subprocess.STDOUT)
                     with (self.work/'gpu_memory.jsonl').open('a') as f:f.write(json.dumps({'time':time.time(),'output':out})+'\n')
@@ -86,7 +89,7 @@ class Watchdog:
                     return
             except Exception as exc:
                 with (self.work/'resources.jsonl').open('a') as f:f.write(json.dumps({'watchdog_error':repr(exc)})+'\n')
-            self.done.wait(300)
+            self.done.wait(30)
 
 
 def sample_array(path):
