@@ -34,6 +34,6 @@ p=work/'input.athinput';p.write_text(input_text('predictor_1m_h020',2))
 cmd=['mpirun','-np','1',str(work/'athena.diagnostic'),'--kokkos-map-device-id-by=mpi_rank','-i',str(p),'-d',str(work)]
 with (work/'run.log').open('w') as f:code=subprocess.run(cmd,stdout=f,stderr=subprocess.STDOUT,timeout=600).returncode
 log=(work/'run.log').read_text()
-write_json(work/'DIAGNOSIS.json',dict(command=cmd,exit_code=code,lines=[l for l in log.splitlines() if 'rk3-failure' in l]))
+write_json(work/'DIAGNOSIS.json',dict(command=cmd,exit_code=code,lines=[l for l in log.splitlines() if 'rk3-failure' in l or 'rk3-branch-probe' in l]))
 assert '[rk3-failure]' in log,(code,log[-3000:])
 PY

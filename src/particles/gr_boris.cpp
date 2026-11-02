@@ -94,16 +94,18 @@ struct GeodesicPush {
   const int mb;
   const Real dt;
   const bool use_z4c;
+  const int *diagnostic_stencil;
 
   KOKKOS_INLINE_FUNCTION
   GeodesicPush(const Real x_[3], const Real u_[3], const int mb_, const Real mb_par_[9],
                const int ncell_[3], const Real dt_,
                const DvceArray5D<Real>& adm_old_, const DvceArray5D<Real>& adm_new_,
                const bool use_z4c_,
-               const DvceArray5D<Real>& z4c_old_, const DvceArray5D<Real>& z4c_new_)
+               const DvceArray5D<Real>& z4c_old_, const DvceArray5D<Real>& z4c_new_,
+               const int *diagnostic_stencil_ = nullptr)
     : x_old(x_), u_old(u_), mb_par(mb_par_), ncell(ncell_),
       adm_old(adm_old_), adm_new(adm_new_), z4c_old(z4c_old_), z4c_new(z4c_new_),
-      mb(mb_), dt(dt_), use_z4c(use_z4c_) {}
+      mb(mb_), dt(dt_), use_z4c(use_z4c_), diagnostic_stencil(diagnostic_stencil_) {}
 
   //! The only place the interpolation operator enters. The discarded branch is not
   //! instantiated, so <NG,false> carries no trilinear code and generates exactly what the
@@ -136,7 +138,11 @@ struct GeodesicPush {
       u_mid[i] = 0.5 * (uin[i] + u_old[i]);   // u_mid = u_old for the Euler step
     }
     int interp_indcs[4] = {mb, -1, -1, -1};
-    SetInterpIndices(x_mid, mb_par, ncell, interp_indcs);
+    if (diagnostic_stencil != nullptr) {
+      for (int a = 1; a < 4; ++a) {interp_indcs[a] = diagnostic_stencil[a];}
+    } else {
+      SetInterpIndices(x_mid, mb_par, ncell, interp_indcs);
+    }
     Real Lx[8] = {0.0}, Ly[8] = {0.0}, Lz[8] = {0.0};
     Real dLx[8] = {0.0}, dLy[8] = {0.0}, dLz[8] = {0.0};
     if constexpr (TRI) {
@@ -1139,7 +1145,8 @@ void Particles::RKParticleSolve(bool predictor) {
         // Bounded failure evidence: compare consecutive iterates and their stencils.
         // This diagnostic does not alter acceptance, tolerance, or successful states.
         if (Kokkos::atomic_fetch_add(&failure_samples(0), 1) < 4) {
-          Real next_x[3], next_u[3], mid[3], next_mid[3];
+          Real next_x[3] = {x0[0],x0[1],x0[2]};
+          Real next_u[3] = {u0[0],u0[1],u0[2]}, mid[3], next_mid[3];
           const bool next_ok = f(x, u, next_x, next_u, false);
           int ids[4] = {mb, 0, 0, 0}, next_ids[4] = {mb, 0, 0, 0};
           for (int a = 0; a < 3; ++a) {
@@ -1156,6 +1163,35 @@ void Particles::RKParticleSolve(bool predictor) {
             printf("[rk3-failure-axis] tag=%d axis=%d x0=%.17g u0=%.17g "
                    "x=%.17g u=%.17g next_x=%.17g next_u=%.17g midpoint=%.17g\n",
                    pi(PTAG,p),a,x0[a],u0[a],x[a],u[a],next_x[a],next_u[a],mid[a]);
+          }
+          // Failure-only probes: solve each neighboring polynomial, then evaluate
+          // its root with the ORIGINAL moving-stencil operator. Never commit probes.
+          if (next_ok && iterations == max_iterations) {
+            for (int branch = 0; branch < 2; ++branch) {
+              const int *fixed_ids = (branch == 0) ? ids : next_ids;
+              GeodesicPush<NGHOST, false> fixed(x0,u0,mb,grid,nc,dt,
+                  metric,metric,true,geometry,geometry,fixed_ids);
+              Real bx[3], bu[3], fx[3], fu[3], bm[3];
+              for (int a = 0; a < 3; ++a) {bx[a]=x[a]; bu[a]=u[a];}
+              int bi=0; Real br=0.0;
+              bool solved=RKMidpointSolve(fixed,x0,u0,dx,bx,bu,tolerance,
+                                         max_iterations,bi,br);
+              bool original_ok=f(bx,bu,fx,fu,false);
+              Real original_residual=0.0;
+              for (int a = 0; a < 3; ++a) {
+                bm[a]=0.5*(x0[a]+bx[a]);
+                original_residual=fmax(original_residual,fabs(fx[a]-bx[a])/dx[a]);
+                original_residual=fmax(original_residual,
+                    fabs(fu[a]-bu[a])/fmax(1.0,fabs(u0[a])));
+              }
+              int actual[4]={mb,0,0,0}; SetInterpIndices(bm,grid,nc,actual);
+              printf("[rk3-branch-probe] tag=%d branch=%d solved=%d residual=%.17g "
+                     "fixed=(%d,%d,%d) actual=(%d,%d,%d) original_ok=%d "
+                     "original_residual=%.17g midpoint=(%.17g,%.17g,%.17g)\n",
+                     pi(PTAG,p),branch,solved,br,fixed_ids[1],fixed_ids[2],fixed_ids[3],
+                     actual[1],actual[2],actual[3],original_ok,original_residual,
+                     bm[0],bm[1],bm[2]);
+            }
           }
         }
       } else {
