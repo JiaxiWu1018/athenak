@@ -1191,6 +1191,12 @@ void Particles::RKParticleSolve(bool predictor) {
                      pi(PTAG,p),branch,solved,br,fixed_ids[1],fixed_ids[2],fixed_ids[3],
                      actual[1],actual[2],actual[3],original_ok,original_residual,
                      bm[0],bm[1],bm[2]);
+              // Momentum changes precede position changes in Picard iteration, so
+              // adjacent iterates can still share one stencil. Follow the first
+              // polynomial root to its actual stencil for the second probe.
+              if (branch == 0) {
+                for (int a = 1; a < 4; ++a) {next_ids[a] = actual[a];}
+              }
             }
           }
         }
