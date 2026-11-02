@@ -40,7 +40,7 @@ def main():
     axes[0].set_title('Particle state: rest-mass weighted RMS')
     axes[1].set_title('22 nonzero grid fields within r < 10M')
     axes[0].legend(frameon=False,loc='center right')
-    axes[1].legend(handles=[Line2D([],[],marker='o',ls='',color='#0072B2',label='Individual field'),Line2D([],[],color='black',label='Median across fields')],frameon=False,loc='center right')
+    axes[1].legend(handles=[Line2D([],[],marker='o',ls='',color='#0072B2',label='Individual field'),Line2D([],[],color='black',label='Median across fields')],frameon=False,loc='upper right',bbox_to_anchor=(1,.89))
     for ax in axes:
         ax.axhline(1,color='.4',ls=':',lw=1);ax.axhline(2,color='.4',ls='--',lw=1)
         ax.set_ylim(.8,2.15);ax.set_xlim(10,110);ax.set_xticks(times);ax.set_xlabel('Matched checkpoint time [M]')
@@ -73,20 +73,20 @@ def main():
         for count in rec['counts'].values():assert count['summaries_consistent']
         totals[rec['case']]=totals.get(rec['case'],0)+rec['counts']['euler_fallback']['parsed_events']
     lines=['# Session10 interim legacy-control results','',
-        'The legacy particle trajectories show temporal self-convergence close to first order (p=1.03–1.08) for the exact1M seed1 realization. This is an empirical result at nominal h=.2/.1/.05M, not a predictor result or a proof of asymptotic order. The four predictor500M runs remain outstanding.','',
+        'The legacy particle trajectories show temporal self-convergence close to first order (p=1.03–1.08) for the exact 1M seed1 realization. This is an empirical result at nominal h=.2/.1/.05M, not a predictor result or a proof of asymptotic order. The four predictor 500M runs remain outstanding.','',
         '| Time [M] | Position p | Momentum p | Energy p | Core grid p: min / median / max |','|---|---|---|---|---|']
     for s in summary:lines.append(f"| {s['time']} | {s['position']:.4f} | {s['covariant_momentum']:.4f} | {s['energy']:.4f} | {s['core_min']:.3f} / {s['core_median']:.3f} / {s['core_max']:.3f} |")
     lines+=['','![Temporal order](legacy_temporal_order.png)','',
-        'Order is computed from matched double-precision checkpoint differences at20/50/100M. Grid norms weight active-cell coordinate volume; particle vector norms weight rest mass and match original IDs. The core spread describes22 different nonzero fields, not statistical uncertainty; three identically zero B fields have undefined order and are excluded. All plotted differences passed the roundoff-floor check. Global and r<16M per-field values remain in the source CSV.','',
+        'Order is computed from matched double-precision checkpoint differences at 20/50/100M. Grid norms weight active-cell coordinate volume; particle vector norms weight rest mass and match original IDs. The core spread describes 22 different nonzero fields, not statistical uncertainty; three identically zero B fields have undefined order and are excluded. All plotted differences passed the roundoff-floor check. Global and r<16M per-field values remain in the source CSV.','',
         'Restart files can save a tiny final alignment timestep. Native timestep growth is capped at twice the preceding step, producing short startup sequences after restart. These are nominal maximum-step refinements, not exactly scaled uniform time grids.','',
         '| Control | Recorded forward-Euler fallback events |','|---|---|']
     for case,count in totals.items():lines.append(f'| {case} | {count} |')
-    lines+=['','Counts use native per-cycle summaries, cross-checked against rank cumulative counters. They count events, not unique particles. All completed RK4 controls retained all1M particles and original masses with finite checkpoints and histories; no rejected updates were recorded. Fallback counts alone do not establish what causes the measured order.','',
+    lines+=['','Counts use native per-cycle summaries, cross-checked against rank cumulative counters. They count events, not unique particles. All completed RK4 controls retained all 1M particles and original masses with finite checkpoints and histories; no rejected updates were recorded. Fallback counts alone do not establish what causes the measured order.','',
         '![Constraints](legacy_constraint_controls.png)','',
-        'The three new legacy-control curves use synchronized metric/particle endpoint constraints. The archived1M curve uses lagged particle sources. Therefore their offsets include diagnostic timing changes. Constraint RMS evolution and temporal self-convergence are different measurements; these figures do not measure particle-number scaling or spatial convergence.','',
-        'Frozen-source RK3 at h=.2M failed at18.4M after nonfinite outer lapse and global constraint data appeared in the18M history. Its initial particle sample matches exactly. Its recorded fallback count may omit final aborted MPI output. It has no valid20M endpoint, and is excluded from successful-control plots. The cause of instability remains unresolved.','',
+        'The three new legacy-control curves use synchronized metric/particle endpoint constraints. The archived 1M curve uses lagged particle sources. Therefore their offsets include diagnostic timing changes. Constraint RMS evolution and temporal self-convergence are different measurements; these figures do not measure particle-number scaling or spatial convergence.','',
+        'Frozen-source RK3 at h=.2M failed at 18.4M after nonfinite outer lapse and global constraint data appeared in the 18M history. Its initial particle sample matches exactly. Its recorded fallback count may omit final aborted MPI output. It has no valid 20M endpoint, and is excluded from successful-control plots. The cause of instability remains unresolved.','',
         'The predictor pilots still fail the strict implicit solve at a stencil boundary. A choice between fixing the predicted-midpoint stencil and redesigning continuous-force interpolation remains pending. No predictor improvement or order claim is supported yet.','',
-        f'Sources: `{data}`, `{audit_path}`; analysis job495334, audit495421. Figure generation job'+os.environ['SLURM_JOB_ID']+'. See SOURCES.json for hashes. All raw data remain on AMD; no deletion authorized.']
+        f'Sources: `{data}`, `{audit_path}`; analysis job 495334, audit 495421. Figure generation job'+os.environ['SLURM_JOB_ID']+'. See SOURCES.json for hashes. All raw data remain on AMD; no deletion authorized.']
     (out/'REPORT.md').write_text('\n'.join(lines)+'\n')
     write_json(out/'SUMMARY.json',dict(orders=summary,fallback_events=totals,resources=resource_snapshot()))
     write_json(out/'SOURCES.json',dict(script_sha256=sha(__file__),files=[dict(path=str(p),sha256=sha(p)) for p in sorted(set(sources))],outputs=[dict(path=p.name,sha256=sha(p),bytes=p.stat().st_size) for p in sorted(out.iterdir())]))
