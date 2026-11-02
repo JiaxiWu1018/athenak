@@ -25,15 +25,18 @@ for label,coupling,integrator in [('predictor','rk3_predictor','rk3'),('legacy',
 CASES['frozen_rk3_1m_h020']=dict(n=1000000,dt=.2,integrator='rk3',coupling='legacy',end=100)
 
 
-def input_text(case,target):
+def input_text(case,target,output_dir=None):
     cfg=CASES[case]
+    if output_dir is None:
+        output_dir=ROOT/'initial_dumps'/('job_'+os.environ['SLURM_JOB_ID'])
+        output_dir.mkdir(parents=True,exist_ok=True)
     params=parse_input((Path(__file__).parent/'baseline.athinput').read_text())
     params={k:v for k,v in params.items() if not k.startswith('output')}
     params['comment']={'problem':'ST Session10 stage-consistent RK3 predictor experiment','note':'Exact Session7 seed1 samples; all endpoint constraints synchronized'}
     params['job']['basename']=case
     params['time'].update(integrator=cfg['integrator'],cfl_number=str(2*cfg['dt']),tlim=str(target),ndiag='10')
     params['particles'].update(coupling=cfg['coupling'],synchronized_constraints='true',midpoint_tolerance='1e-11',midpoint_max_iterations='100')
-    params['problem'].update(cluster_n=str(cfg['n']),cluster_sample_file=str(ROOT/f"reference/session7/samples/mc_{cfg['n']//1000000}m_s1.bin"))
+    params['problem'].update(cluster_n=str(cfg['n']),cluster_sample_file=str(ROOT/f"reference/session7/samples/mc_{cfg['n']//1000000}m_s1.bin"),cluster_t0_dump=str(Path(output_dir)/'initial_particles.bin'))
     params['output1']={'file_type':'hst','dt':'2.0','data_format':'%23.15e'}
     params['output2']={'file_type':'rst','dt':'100.0'}
     # Sparse particles preserve independent census/trajectory evidence without movies.
@@ -130,7 +133,7 @@ def run_segment(case,target):
     assert target>(previous['target'] if previous else 0) and target<=cfg['end']
     work=base/f'to_{target:03d}_job{os.environ["SLURM_JOB_ID"]}';work.mkdir(exist_ok=False)
     snap=resource_snapshot();write_json(work/'resource_admission.json',snap);assert not snap['stop'],snap
-    input_path=work/'input.athinput';input_path.write_text(input_text(case,target))
+    input_path=work/'input.athinput';input_path.write_text(input_text(case,target,work))
     sample_path=ROOT/f"reference/session7/samples/mc_{cfg['n']//1000000}m_s1.bin"
     exe=ROOT/'protected/athena.rk3'
     expected=json.loads((ROOT/'evidence/INPUTS_OK.json').read_text())
