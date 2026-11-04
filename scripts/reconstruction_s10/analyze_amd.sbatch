@@ -19,4 +19,5 @@ fi
 python3 "$scripts/analyze.py" --temporal --dest "$out/reduced"
 if [[ ${1:-interim} == final ]]; then
   python3 "$scripts/plot.py" --data "$out/reduced" --out "$out/figures"
+  python3 "$scripts/final_report.py" --data "$out/reduced" --out "$out"
 fi
