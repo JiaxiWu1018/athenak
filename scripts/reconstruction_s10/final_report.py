@@ -12,6 +12,10 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument('--data',type=Path,required=True);ap.add_argument('--out',type=Path,required=True)
     a=ap.parse_args();assert PRIMARY_SCHEME=='fixed_fast_v1'
     sources=[];runs=[]
+    tolerance_paths=sorted((ROOT/"evidence").glob("OPTIMIZATION_TOLERANCE_*.json"))
+    tolerance_checks=[json.loads(p.read_text()) for p in tolerance_paths]
+    assert any(r["passed"] for r in tolerance_checks), "No passed full-count tolerance sensitivity gate"
+    sources.extend(tolerance_paths)
     for n in (1,2,4,8):
         case=f'{PRIMARY_SCHEME}_{n}m_h{PRIMARY_H_LABEL}'
         records=completed(case);assert records and records[-1]['target']==500
@@ -66,7 +70,7 @@ def main():
         '![Particle-number scaling](figures/particle_number_scaling.png)','',
         '## Fallback alternatives and provenance','',
         'The primary trajectories contain no accepted fallback steps. Preserved legacy RK4 controls allow the original Euler/geometry fallback behavior; audited Euler event totals are 135/33/5 for h=.2/.1/.05M. The failed frozen-source RK3 h=.2M control recorded 233484 Euler events before abort. These are events, not unique particles, and the aborted log may omit final events. Fallback counts alone do not establish the cause of first-order convergence. A new predictor-with-Euler-fallback variant was not mixed into the primary data.','',
-        'The performance optimization reuses inverse-metric derivative results only when both field views are identical, guarded in native code. Native CPU/GPU/MPI/restart/crossing gates and a full 1M-particle 20M state comparison qualify it; see source manifests and equivalence evidence. All raw runs, failed attempts, checkpoints and reproduction inputs remain under the AMD campaign root. No historical campaign was overwritten and no four legacy 500M reruns were performed.','',
+        'The performance optimization reuses inverse-metric derivative results only when both field views are identical, guarded in native code. Native CPU/GPU/MPI/restart/crossing gates passed. The first full 1M-particle 20M comparison exceeded its 2e-12 absolute threshold (maximum particle difference 6.49e-11); that failed gate is retained. A separately recorded test with solver tolerance tightened from 1e-11 to 1e-13 is required to establish agreement within the original threshold and bound nominal differences below 10% of measured solver-tolerance sensitivity (or 2e-12). This is numerical equivalence relative to solver error, not bitwise identity; see OPTIMIZATION_TOLERANCE evidence. All raw runs, failed attempts, checkpoints and reproduction inputs remain under the AMD campaign root. No historical campaign was overwritten and no four legacy 500M reruns were performed.','',
         f'Allocated report snapshot: {resources.get("campaign_bytes",0):,} campaign bytes ({resources.get("campaign_bytes",0)/2**30:.2f} GiB), {resources.get("node_hours",0):.3f} allocated node-hours. All data retained; no cleanup authorized.','',
         f'Raw-data root: `{ROOT}`. Exact file hashes and completed segment records are in FINAL_SOURCES.json. Figure-source manifests are beside each PNG/PDF. Storage and allocated node-hour snapshot are in FINAL_SUMMARY.json. Data are retained; no cleanup is authorized.','']
     for name in ('FIXED_V1_OK.json','FIXED_FAST_V1_OK.json','FIXED_FAST_V1_SOURCE.json'):

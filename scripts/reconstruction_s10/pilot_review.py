@@ -33,6 +33,8 @@ production=sum(seconds[n]*(500-(20 if n in records else 0)) for n in seconds)/36
 short_new=100*s1*(2+4)/3600
 short_legacy=0 if PRIMARY_SCHEME!='predictor' else 100*s1*(1+2+4+1)/3600
 snapshot=resource_snapshot()
+assert all(k in snapshot for k in ("node_hours","campaign_bytes","whole_user_bytes")), snapshot
+assert not snapshot["stop"], snapshot
 remaining=production+short_new+short_legacy
 forecast=snapshot.get('node_hours',0)+1.2*remaining+1.0
 # At most ~55 double-precision 2.4GB checkpoints plus sparse particle outputs,
