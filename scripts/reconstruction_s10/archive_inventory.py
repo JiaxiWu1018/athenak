@@ -31,13 +31,13 @@ def main():
     assert len(segments)==29
     # Small, immutable reductions, review packet, native source and reproduction helpers.
     selected=[ROOT/'analysis/review_499543',ROOT/'analysis/job_495334/reduced',
-              ROOT/'src/athenak/src',ROOT/'src/athenak/cmake',ROOT/'src/athenak/scripts/reconstruction_s10']
+              ROOT/'src/athenak/src',ROOT/'src/athenak/kokkos',ROOT/'src/athenak/scripts/reconstruction_s10']
     selected += [ROOT/f'reference/session7/reduced/mc_{n}m_s1' for n in (1,2,4,8)]
     for directory in selected:
         assert directory.is_dir(),directory
         for path in sorted(directory.rglob('*')):
-            if path.is_file() and '__pycache__' not in path.parts:add(path)
-    for name in ('CMakeLists.txt','.gitmodules','LICENSE'):
+            if path.is_file() and '__pycache__' not in path.parts and '.git' not in path.parts:add(path)
+    for name in ('CMakeLists.txt','config.hpp.in','.gitmodules','LICENSE'):
         add(ROOT/'src/athenak'/name)
     for name in ('athena.rk3','athena.fixed_v1','athena.fixed_fast_v1'):add(ROOT/'protected'/name)
     for name in ('FIXED_V1_OK.json','FIXED_FAST_V1_OK.json','FIXED_FAST_V1_SOURCE.json',
