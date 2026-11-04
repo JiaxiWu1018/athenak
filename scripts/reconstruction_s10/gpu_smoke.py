@@ -1,4 +1,5 @@
 import argparse
+import os
 from pathlib import Path
 from native_gates import deck, run
 from state_io import require_job, read_rst, final_rst, compare_states, write_json, sha
@@ -19,4 +20,11 @@ old=run(old_exe,root,'archived_legacy',legacy_text,ranks=1)
 new=run(Path(a.exe),root,'new_legacy',legacy_text,ranks=1)
 control=compare_states(read_rst(final_rst(old)),read_rst(final_rst(new)))
 assert control['grid_max_abs']<1.e-11 and control['particle_max_abs']<1.e-11,control
-write_json(root/'GATES_OK.json',dict(cpu_gpu=comparison,legacy_vs_original=control,exe_sha256=sha(a.exe)))
+reference=None
+if os.environ.get('ST10_REFERENCE_EXE'):
+    reference_exe=Path(os.environ['ST10_REFERENCE_EXE'])
+    prior=run(reference_exe,root,'strict_fixed_reference',deck(),ranks=1)
+    reference=compare_states(read_rst(final_rst(prior)),read_rst(final_rst(work)))
+    assert reference['grid_max_abs']<2.e-12 and reference['particle_max_abs']<2.e-12,reference
+    reference['exe_sha256']=sha(reference_exe)
+write_json(root/'GATES_OK.json',dict(cpu_gpu=comparison,legacy_vs_original=control,strict_reference=reference,exe_sha256=sha(a.exe)))

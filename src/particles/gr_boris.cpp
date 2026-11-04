@@ -86,7 +86,9 @@ namespace particles {
 //! three orders of magnitude slower than this one -- even on substeps that never took
 //! the fallback. Each kernel must instantiate exactly one operator.
 
-template <int NG, bool TRI>
+// SAME_STAGE may reuse inverse-metric derivatives only for identical Kokkos views.
+// All old/new averaging expressions and all legacy instantiations remain unchanged.
+template <int NG, bool TRI, bool SAME_STAGE = false>
 struct GeodesicPush {
   const Real *x_old, *u_old, *mb_par;
   const int *ncell;
@@ -105,7 +107,13 @@ struct GeodesicPush {
                const int *fixed_stencil_ = nullptr)
     : x_old(x_), u_old(u_), mb_par(mb_par_), ncell(ncell_),
       adm_old(adm_old_), adm_new(adm_new_), z4c_old(z4c_old_), z4c_new(z4c_new_),
-      mb(mb_), dt(dt_), use_z4c(use_z4c_), fixed_stencil(fixed_stencil_) {}
+      mb(mb_), dt(dt_), use_z4c(use_z4c_), fixed_stencil(fixed_stencil_) {
+    if constexpr (SAME_STAGE) {
+      if (!(adm_old_ == adm_new_) || !(z4c_old_ == z4c_new_)) {
+        Kokkos::abort("Same-stage geodesic evaluation requires identical field views");
+      }
+    }
+  }
 
   //! The only place the interpolation operator enters. The discarded branch is not
   //! instantiated, so <NG,false> carries no trilinear code and generates exactly what the
@@ -290,12 +298,21 @@ struct GeodesicPush {
            interp_indcs, Lx, dLy, Lz, dg3u_old[1]);
     Interp(adm_old, adm::ADM::I_ADM_GXX,
            interp_indcs, Lx, Ly, dLz, dg3u_old[2]);
-    Interp(adm_new, adm::ADM::I_ADM_GXX,
-           interp_indcs, dLx, Ly, Lz, dg3u_new[0]);
-    Interp(adm_new, adm::ADM::I_ADM_GXX,
-           interp_indcs, Lx, dLy, Lz, dg3u_new[1]);
-    Interp(adm_new, adm::ADM::I_ADM_GXX,
-           interp_indcs, Lx, Ly, dLz, dg3u_new[2]);
+    if constexpr (SAME_STAGE) {
+      // Both arguments are the exact same immutable stage view (guarded above).
+      // These deterministic interpolations have identical nodes and weights, so
+      // reuse their results without changing the averaging expressions below.
+      for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 6; ++j) {dg3u_new[i][j] = dg3u_old[i][j];}
+      }
+    } else {
+      Interp(adm_new, adm::ADM::I_ADM_GXX,
+             interp_indcs, dLx, Ly, Lz, dg3u_new[0]);
+      Interp(adm_new, adm::ADM::I_ADM_GXX,
+             interp_indcs, Lx, dLy, Lz, dg3u_new[1]);
+      Interp(adm_new, adm::ADM::I_ADM_GXX,
+             interp_indcs, Lx, Ly, dLz, dg3u_new[2]);
+    }
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 6; ++j) {
         dg3u[i][j] = 0.5 * (dg3u_old[i][j] + dg3u_new[i][j]);
@@ -1141,7 +1158,7 @@ void Particles::RKParticleSolve(bool predictor) {
         if (initial_ok) {SetInterpIndices(predicted_mid, grid, nc, fixed_ids);}
       }
       const int *nodes = (!predictor && fixed_nodes && initial_ok) ? fixed_ids : nullptr;
-      GeodesicPush<NGHOST, false> f(x0, u0, mb, grid, nc, dt,
+      GeodesicPush<NGHOST, false, true> f(x0, u0, mb, grid, nc, dt,
                                    metric, metric, true, geometry, geometry, nodes);
       int iterations = 0;
       Real residual = 0.0;

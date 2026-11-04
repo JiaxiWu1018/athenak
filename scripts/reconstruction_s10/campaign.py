@@ -27,6 +27,15 @@ CASES['frozen_rk3_1m_h020']=dict(n=1000000,dt=.2,integrator='rk3',coupling='lega
 for old,cfg in list(CASES.items()):
     if old.startswith('predictor_'):
         CASES[old.replace('predictor_', 'fixed_v1_')]=dict(cfg,revision='fixed_v1',stencil='predicted_fixed')
+# Same strict fixed-node scheme with guarded reuse of identical-stage derivatives.
+# h=.2 is retained only as the failed stability experiment; long-run candidates use h=.1.
+for n in (1,2,4,8):
+    CASES[f'fixed_fast_v1_{n}m_h010']=dict(n=n*1000000,dt=.1,integrator='rk3',
+        coupling='rk3_predictor',end=500,revision='fixed_fast_v1',stencil='predicted_fixed')
+for label,dt in (('h005',.05),('h0025',.025)):
+    CASES[f'fixed_fast_v1_1m_{label}']=dict(n=1000000,dt=dt,integrator='rk3',
+        coupling='rk3_predictor',end=100,revision='fixed_fast_v1',stencil='predicted_fixed')
+
 
 
 
@@ -142,8 +151,9 @@ def run_segment(case,target):
     input_path=work/'input.athinput';input_path.write_text(input_text(case,target,work))
     sample_path=ROOT/f"reference/session7/samples/mc_{cfg['n']//1000000}m_s1.bin"
     revision=cfg.get('revision')
-    exe=ROOT/('protected/athena.fixed_v1' if revision=='fixed_v1' else 'protected/athena.rk3')
-    expected=json.loads((ROOT/('evidence/FIXED_V1_OK.json' if revision=='fixed_v1' else 'evidence/INPUTS_OK.json')).read_text())
+    assert revision in (None,'fixed_v1','fixed_fast_v1')
+    exe=ROOT/('protected/athena.'+revision if revision else 'protected/athena.rk3')
+    expected=json.loads((ROOT/('evidence/'+revision.upper()+'_OK.json' if revision else 'evidence/INPUTS_OK.json')).read_text())
     if revision:assert expected['passed'] and expected['stencil']=='predicted_fixed'
     assert sha(exe)==expected['hip_sha256']
     sample_hash=sha(sample_path)
