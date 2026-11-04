@@ -2,9 +2,19 @@
 import argparse
 import json
 from pathlib import Path
-from campaign import ROOT, resource_snapshot
+from campaign import ROOT, CASES, resource_snapshot
 from analyze import PRIMARY_SCHEME, PRIMARY_H_LABEL, BASE_H, completed, read_csv, window_average
 from state_io import require_job, sha, write_json
+
+
+def segment_sources(record):
+    work=Path(record['work'])
+    launch=json.loads((work/'LAUNCH.json').read_text())
+    expected=json.loads((ROOT/'evidence/FIXED_FAST_V1_OK.json').read_text())
+    assert expected['passed'] and launch['exe_sha256']==expected['hip_sha256']
+    assert launch['configuration']==CASES[record['case']]
+    assert sha(work/'input.athinput')==launch['input_sha256']
+    return [work/name for name in ('COMPLETE.json','LAUNCH.json','input.athinput','OUTPUT_MANIFEST.json')]
 
 
 def main():
@@ -23,11 +33,18 @@ def main():
             assert r['checkpoint']['finite'] and r['checkpoint']['original_ids_masses']
             assert r['checkpoint']['count']==n*1000000 and r['checkpoint']['removals']==0
             assert r['solver']['failures']==0 and r['solver']['max_residual']<=1.01e-11
-            sources.append(Path(r['work'])/'COMPLETE.json')
+            sources.extend(segment_sources(r))
         assert records[0]['initial']['exact_sample_match']
         runs.append(dict(particles=n*1000000,case=case,endpoint=500,segments=records))
     for label in ('010','005','0025'):
-        assert any(r['target']==100 for r in completed(f'{PRIMARY_SCHEME}_1m_h{label}'))
+        records=completed(f'{PRIMARY_SCHEME}_1m_h{label}')
+        assert any(r['target']==100 for r in records)
+        assert records[0]['initial']['exact_sample_match']
+        for r in records:
+            assert r['checkpoint']['finite'] and r['checkpoint']['original_ids_masses']
+            assert r['checkpoint']['count']==1000000 and r['checkpoint']['removals']==0
+            assert r['solver']['failures']==0 and r['solver']['max_residual']<=1.01e-11
+            sources.extend(segment_sources(r))
     order_path=a.data/'temporal_order.csv';window_path=a.data/'constraint_windows.csv'
     orders=read_csv(order_path);windows=read_csv(window_path);sources.extend([order_path,window_path,a.data/'TEMPORAL_SOURCES.json',a.data/'ANALYSIS.json'])
     particle_orders={}

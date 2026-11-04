@@ -141,6 +141,9 @@ def temporal(dest):
         for t in (20,50,100):
             records=[next((r for r in completed(case) if r['target']==t),None) for case in cases]
             if any(r is None for r in records):continue
+            for r in records:
+                checkpoint=r['checkpoint']
+                assert sha(checkpoint['path'])==checkpoint['sha256'], checkpoint['path']
             states=[read_rst(r['checkpoint']['path']) for r in records]
             # All members must have the same leaf grid, original IDs and masses.
             for row in differences(states):rows.append(dict(scheme=scheme,time=t,nominal_h=BASE_H if scheme==PRIMARY_SCHEME else .2,**row))
