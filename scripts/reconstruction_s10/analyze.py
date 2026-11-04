@@ -10,7 +10,9 @@ from campaign import ROOT, CASES
 from state_io import require_job, read_rst, interior, write_json, sha
 
 PRIMARY_SCHEME=os.environ.get('ST10_SCHEME','predictor')
-assert PRIMARY_SCHEME in ('predictor','fixed_v1')
+assert PRIMARY_SCHEME in ('predictor','fixed_v1','fixed_fast_v1')
+BASE_H=.1 if PRIMARY_SCHEME=='fixed_fast_v1' else .2
+PRIMARY_H_LABEL='010' if PRIMARY_SCHEME=='fixed_fast_v1' else '020'
 
 FIELDS=['chi','gxx','gxy','gxz','gyy','gyz','gzz','Khat','Axx','Axy','Axz','Ayy','Ayz','Azz',
         'Gamma_x','Gamma_y','Gamma_z','Theta','alpha','beta_x','beta_y','beta_z','B_x','B_y','B_z']
@@ -128,24 +130,25 @@ def order_row(kind,field,region,d1,d2,scale):
 def temporal(dest):
     rows=[];sources=[];cached_legacy=None
     for scheme in ('legacy',PRIMARY_SCHEME):
-        if scheme=='legacy' and PRIMARY_SCHEME=='fixed_v1':
+        if scheme=='legacy' and PRIMARY_SCHEME!='predictor':
             cache=ROOT/'analysis/job_495334/reduced'
             cached_legacy=[dict(path=str(cache/name),sha256=sha(cache/name)) for name in ('temporal_order.csv','TEMPORAL_SOURCES.json')]
-            rows.extend(read_csv(cache/'temporal_order.csv'))
+            rows.extend(dict(row,nominal_h=.2) for row in read_csv(cache/'temporal_order.csv'))
             sources.extend(json.loads((cache/'TEMPORAL_SOURCES.json').read_text())['sources'])
             continue
-        cases=[f'{scheme}_1m_h{h:03d}' for h in (20,10,5)]
+        labels=('010','005','0025') if scheme=='fixed_fast_v1' else ('020','010','005')
+        cases=[f'{scheme}_1m_h{label}' for label in labels]
         for t in (20,50,100):
             records=[next((r for r in completed(case) if r['target']==t),None) for case in cases]
             if any(r is None for r in records):continue
             states=[read_rst(r['checkpoint']['path']) for r in records]
             # All members must have the same leaf grid, original IDs and masses.
-            for row in differences(states):rows.append(dict(scheme=scheme,time=t,**row))
+            for row in differences(states):rows.append(dict(scheme=scheme,time=t,nominal_h=BASE_H if scheme==PRIMARY_SCHEME else .2,**row))
             sources.extend(r['checkpoint'] for r in records)
             del states
     if rows:write_csv(dest/'temporal_order.csv',rows)
     write_json(dest/'TEMPORAL_SOURCES.json',dict(sources=sources,cached_legacy=cached_legacy,
-        formula='p = log2(||Q_h-Q_h/2|| / ||Q_h/2-Q_h/4||), h=.2M',
+        formula='p = log2(||Q_h-Q_h/2|| / ||Q_h/2-Q_h/4||)); see nominal_h column. Legacy h=.2; fixed_fast_v1 h=.1.',
         grid_norm='coordinate-volume weighted RMS, active cells only, double precision',
         particle_norm='rest-mass weighted vector RMS, matched original particle IDs, double precision',
         caveat='Nominal maximum timesteps with restart growth transients; legacy Euler fallbacks remain separately labeled. Measured self-convergence of one realization; a constraint noise floor or non-smooth deposition may prevent asymptotic order.'))
@@ -164,7 +167,7 @@ def window_average(rows,key,lo,hi):
 def comparison(dest):
     rows=[];scaling=[]
     for n in (1,2,4,8):
-        case=f'{PRIMARY_SCHEME}_{n}m_h020'
+        case=f'{PRIMARY_SCHEME}_{n}m_h{PRIMARY_H_LABEL}'
         for region,name in [('r10','health.csv'),('r16','health.csv'),('global','global_constraints.csv')]:
             newpath=dest/case/name
             if not newpath.exists():continue

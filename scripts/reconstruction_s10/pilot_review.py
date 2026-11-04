@@ -5,10 +5,10 @@ import re
 import numpy as np
 from pathlib import Path
 from campaign import ROOT, resource_snapshot
-from analyze import completed, PRIMARY_SCHEME
+from analyze import completed, PRIMARY_SCHEME, PRIMARY_H_LABEL
 from state_io import require_job, write_json, sha
 require_job()
-records={n:next(r for r in completed(f'{PRIMARY_SCHEME}_{n}m_h020') if r['target']==20) for n in (1,8)}
+records={n:next(r for r in completed(f'{PRIMARY_SCHEME}_{n}m_h{PRIMARY_H_LABEL}') if r['target']==20) for n in (1,8)}
 assert all(r['initial']['exact_sample_match'] and r['checkpoint']['original_ids_masses'] and r['checkpoint']['removals']==0 for r in records.values())
 assert all(r['solver']['failures']==0 and r['solver']['max_residual']<=1.01e-11 for r in records.values())
 # Use elapsed-cycle timing after warmup; retain whole-process costs separately.
@@ -31,7 +31,7 @@ production=sum(seconds[n]*(500-(20 if n in records else 0)) for n in seconds)/36
 # New h=.1/.05: 2x/4x steps. Legacy costs initially bounded by measured new cost;
 # a separate legacy pilot can replace that upper model if the forecast needs refinement.
 short_new=100*s1*(2+4)/3600
-short_legacy=0 if PRIMARY_SCHEME=='fixed_v1' else 100*s1*(1+2+4+1)/3600
+short_legacy=0 if PRIMARY_SCHEME!='predictor' else 100*s1*(1+2+4+1)/3600
 snapshot=resource_snapshot()
 remaining=production+short_new+short_legacy
 forecast=snapshot.get('node_hours',0)+1.2*remaining+1.0
