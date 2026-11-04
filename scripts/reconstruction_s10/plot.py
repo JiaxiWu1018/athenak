@@ -46,7 +46,9 @@ def constraint_figures(data,out):
                 assert t1[-1]>=500-1e-8
                 ax.semilogy(t0,v0,color=COLORS[n],ls='--',lw=1.15,alpha=.8)
                 ax.semilogy(t1,v1,color=COLORS[n],lw=1.4)
-                valid=(t1>=t0[0])&(t1<=t0[-1]);tt=t1[valid]
+                # Stored nominal500M endpoints differ by about2e-11M from roundoff.
+                # Match the1e-8M coverage tolerance used by the window reductions.
+                valid=(t1>=t0[0]-1e-8)&(t1<=t0[-1]+1e-8);tt=t1[valid]
                 rx.plot(tt,v1[valid]/np.interp(tt,t0,v0),color=COLORS[n],lw=1.4)
                 sources.extend((old,new))
             ax.set_title(('Hamiltonian' if metric=='H' else 'Momentum')+' · '+label)
