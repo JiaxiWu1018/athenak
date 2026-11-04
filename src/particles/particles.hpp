@@ -235,6 +235,7 @@ class Particles {
   bool rk3_predictor = false;
   bool rk_stage_active = false;
   bool synchronized_constraints = false;
+  bool midpoint_fixed_stencil = false;  // opt-in nodes from Euler-predicted midpoint
   Real midpoint_tolerance = 1.e-11;
   int midpoint_max_iterations = 100;
   DvceArray2D<Real> rk_prediction, rk_endpoint, rk_scratch_r;

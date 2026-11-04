@@ -52,6 +52,7 @@ coupling={coupling}
 synchronized_constraints=true
 midpoint_tolerance={tol}
 midpoint_max_iterations={limit}
+midpoint_stencil={os.environ.get("ST10_MIDPOINT_STENCIL", "moving") if coupling == "rk3_predictor" else "moving"}
 <fastflow>
 num_horizons=0
 <problem>
@@ -124,6 +125,7 @@ def main():
     default=run(exe,root,'legacy_default',deck(coupling='legacy',integrator='rk4').replace('coupling=legacy\n','').replace('synchronized_constraints=true','synchronized_constraints=false'))
     unchanged=compare_states(read_rst(final_rst(legacy)),read_rst(final_rst(default)))
     assert unchanged['grid_max_abs']==0 and unchanged['particle_max_abs']==0,unchanged
+    run(exe,root,'bad_stencil',deck().replace('midpoint_stencil='+os.environ.get('ST10_MIDPOINT_STENCIL','moving'),'midpoint_stencil=invalid'),fail='invalid particle coupling configuration')
     run(exe,root,'bad_integrator',deck(integrator='rk4'),fail='invalid particle coupling configuration')
     run(exe,root,'bad_excision',deck().replace('excise_lapse=0','excise_lapse=.1'),fail='invalid particle coupling configuration')
     run(exe,root,'bad_solver',deck(limit=1),fail='particle solve failed')

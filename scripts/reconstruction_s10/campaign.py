@@ -23,6 +23,11 @@ for label,coupling,integrator in [('predictor','rk3_predictor','rk3'),('legacy',
     for dt in (.2,.1,.05):
         CASES.setdefault(f'{label}_1m_h{round(dt*100):03d}',dict(n=1000000,dt=dt,integrator=integrator,coupling=coupling,end=100))
 CASES['frozen_rk3_1m_h020']=dict(n=1000000,dt=.2,integrator='rk3',coupling='legacy',end=100)
+# Versioned strict fixed-node cases never resume original moving-stencil trajectories.
+for old,cfg in list(CASES.items()):
+    if old.startswith('predictor_'):
+        CASES[old.replace('predictor_', 'fixed_v1_')]=dict(cfg,revision='fixed_v1',stencil='predicted_fixed')
+
 
 
 def input_text(case,target,output_dir=None):
@@ -36,6 +41,7 @@ def input_text(case,target,output_dir=None):
     params['job']['basename']=case
     params['time'].update(integrator=cfg['integrator'],cfl_number=str(2*cfg['dt']),tlim=str(target),ndiag='10')
     params['particles'].update(coupling=cfg['coupling'],synchronized_constraints='true',midpoint_tolerance='1e-11',midpoint_max_iterations='100')
+    if 'stencil' in cfg:params['particles']['midpoint_stencil']=cfg['stencil']
     params['problem'].update(cluster_n=str(cfg['n']),cluster_sample_file=str(ROOT/f"reference/session7/samples/mc_{cfg['n']//1000000}m_s1.bin"),cluster_t0_dump=str(Path(output_dir)/'initial_particles.bin'))
     params['output1']={'file_type':'hst','dt':'2.0','data_format':'%23.15e'}
     params['output2']={'file_type':'rst','dt':'100.0'}
@@ -135,8 +141,10 @@ def run_segment(case,target):
     snap=resource_snapshot();write_json(work/'resource_admission.json',snap);assert not snap['stop'],snap
     input_path=work/'input.athinput';input_path.write_text(input_text(case,target,work))
     sample_path=ROOT/f"reference/session7/samples/mc_{cfg['n']//1000000}m_s1.bin"
-    exe=ROOT/'protected/athena.rk3'
-    expected=json.loads((ROOT/'evidence/INPUTS_OK.json').read_text())
+    revision=cfg.get('revision')
+    exe=ROOT/('protected/athena.fixed_v1' if revision=='fixed_v1' else 'protected/athena.rk3')
+    expected=json.loads((ROOT/('evidence/FIXED_V1_OK.json' if revision=='fixed_v1' else 'evidence/INPUTS_OK.json')).read_text())
+    if revision:assert expected['passed'] and expected['stencil']=='predicted_fixed'
     assert sha(exe)==expected['hip_sha256']
     sample_hash=sha(sample_path)
     manifest=json.loads((ROOT/'evidence/TRANSFER_MANIFEST.json').read_text())
@@ -145,13 +153,15 @@ def run_segment(case,target):
     sample=sample_array(sample_path);assert len(sample)==cfg['n']
     cmd=['prun',str(exe),'--kokkos-map-device-id-by=mpi_rank','-i',str(input_path),'-d',str(work),'-t','10:00:00']
     if previous:
+        old_launch=json.loads((Path(previous['work'])/'LAUNCH.json').read_text())
+        assert old_launch['exe_sha256']==sha(exe) and old_launch['configuration']==cfg
         checkpoint=Path(previous['checkpoint']['path'])
         assert sha(checkpoint)==previous['checkpoint']['sha256']
         cmd+=['-r',str(checkpoint)]
     launch=dict(case=case,configuration=cfg,target=target,start=previous['target'] if previous else 0,
         host=socket.gethostname(),job_id=os.environ['SLURM_JOB_ID'],command=cmd,
         sample_sha256=sha(sample_path),input_sha256=sha(input_path),exe_sha256=sha(exe),
-        source=expected,workflow_commit=(ROOT/'evidence/WORKFLOW_COMMIT.txt').read_text().strip(),workflow_sha256=sha(Path(__file__)),previous=previous['checkpoint'] if previous else None)
+        source=expected,workflow_commit=expected.get('source_commit',(ROOT/'evidence/WORKFLOW_COMMIT.txt').read_text().strip()),workflow_sha256=sha(Path(__file__)),previous=previous['checkpoint'] if previous else None)
     write_json(work/'LAUNCH.json',launch)
     watchdog=Watchdog(work);watchdog.thread.start();started=time.monotonic()
     try:
@@ -173,6 +183,8 @@ def run_segment(case,target):
         assert matches and all(int(b)==0 and float(r)<=1.01e-11 for _,r,b in matches)
         solver=dict(steps=len(matches),max_iterations=max(int(i) for i,_,_ in matches),
                     max_residual=max(float(r) for _,r,_ in matches),failures=0)
+    for hp in work.glob('*.hst'):
+        assert np.all(np.isfinite(np.loadtxt(hp))),str(hp)
     initial=validate_initial(work,sample) if previous is None else None
     checkpoint=validate_endpoint(final_rst(work),sample,target)
     # Hash every immutable output after the native process exits.

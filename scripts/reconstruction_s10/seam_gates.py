@@ -1,5 +1,6 @@
 """Evolving one-particle stage-crossing fixtures, including empty MPI ranks."""
 import argparse
+import os
 from pathlib import Path
 import subprocess
 import re
@@ -12,6 +13,7 @@ a=ap.parse_args();root=Path(a.root);root.mkdir(parents=True,exist_ok=False)
 repo=Path(__file__).resolve().parents[2]
 base=(repo/'tst/inputs/part_tmunu_smr_pytest.athinput').read_text()
 base=base.replace('pusher = drift','pusher = gr_boris\ncoupling = rk3_predictor\nmidpoint_tolerance=1e-11\nmidpoint_max_iterations=100')
+base=base.replace('midpoint_max_iterations=100','midpoint_max_iterations=100\nmidpoint_stencil='+os.environ.get('ST10_MIDPOINT_STENCIL','moving'))
 base=base.replace('integrator = rk2','integrator = rk3').replace('nlim = 0','nlim = 100000')
 base=base.replace('tlim = 1.0','tlim = .05').replace('cfl_number = 0.25','cfl_number = .2')
 base=base.replace('pmass = 1.0','pmass = 1e-8')

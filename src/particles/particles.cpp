@@ -238,10 +238,15 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
   rk3_predictor = coupling == "rk3_predictor";
   synchronized_constraints = pin->GetOrAddBoolean(
       "particles", "synchronized_constraints", rk3_predictor);
+  const std::string stencil = pin->GetOrAddString(
+      "particles", "midpoint_stencil", "moving");
+  midpoint_fixed_stencil = stencil == "predicted_fixed";
   midpoint_tolerance = pin->GetOrAddReal("particles", "midpoint_tolerance", 1.e-11);
   midpoint_max_iterations = pin->GetOrAddInteger(
       "particles", "midpoint_max_iterations", 100);
-  if ((coupling != "legacy" && !rk3_predictor) ||
+  if ((stencil != "moving" && !midpoint_fixed_stencil) ||
+      (midpoint_fixed_stencil && !rk3_predictor) ||
+      (coupling != "legacy" && !rk3_predictor) ||
       (synchronized_constraints && (!feedback || pmy_pack->pz4c == nullptr)) ||
       (rk3_predictor &&
        (pin->GetString("time", "integrator") != "rk3" ||
@@ -253,7 +258,8 @@ Particles::Particles(MeshBlockPack *ppack, ParameterInput *pin) :
     std::cerr << "### FATAL ERROR invalid particle coupling configuration: "
               << "rk3_predictor requires RK3, fixed-mesh dust/gr_boris feedback, "
               << "no fluid/excision, synchronized constraints, and positive finite "
-              << "midpoint tolerance/iteration limit." << std::endl;
+              << "midpoint tolerance/iteration limit; midpoint_stencil must be moving "
+              << "or predicted_fixed (RK3 predictor only)." << std::endl;
     std::exit(EXIT_FAILURE);
   }
 
