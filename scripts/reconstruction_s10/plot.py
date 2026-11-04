@@ -7,9 +7,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from campaign import ROOT
-from analyze import read_csv
+from analyze import read_csv, PRIMARY_SCHEME
 from state_io import require_job, write_json, sha
 
+NEW_LABEL='RK3 predictor, fixed nodes, no fallback' if PRIMARY_SCHEME=='fixed_v1' else 'RK3 predictor'
 COLORS={1:'#0072B2',2:'#D55E00',4:'#009E73',8:'#7B3294'}
 CAVEAT='Archived RK4 constraints use lagged particle sources; predictor constraints use synchronized endpoints.'
 plt.rcParams.update({'font.size':11,'axes.titlesize':12,'axes.labelsize':11,'legend.fontsize':10,
@@ -40,7 +41,7 @@ def constraint_figures(data,out):
             key=f'{metric}_rms'+('' if region=='global' else '_'+region)
             for n in (1,2,4,8):
                 old=ROOT/f'reference/session7/reduced/mc_{n}m_s1'/name
-                new=data/f'predictor_{n}m_h020'/name
+                new=data/f'{PRIMARY_SCHEME}_{n}m_h020'/name
                 t0,v0=arrays(old,key);t1,v1=arrays(new,key)
                 assert t1[-1]>=500-1e-8
                 ax.semilogy(t0,v0,color=COLORS[n],ls='--',lw=1.15,alpha=.8)
@@ -54,11 +55,11 @@ def constraint_figures(data,out):
             rx.set_ylabel('New / archived RMS');rx.axhline(1,color='.4',lw=1,ls=':');rx.grid(alpha=.18);rx.set_xlim(0,500)
             if row==1:ax.set_xlabel('Time [M]');rx.set_xlabel('Time [M]')
     handles=[Line2D([],[],color=COLORS[n],label=f'{n}M particles') for n in COLORS]
-    handles.extend([Line2D([],[],color='.25',ls='-',label='RK3 predictor'),Line2D([],[],color='.25',ls='--',label='Archived RK4')])
-    fig.legend(handles=handles,loc='upper center',ncol=6,bbox_to_anchor=(.5,.98),frameon=False)
+    handles.extend([Line2D([],[],color='.25',ls='-',label=NEW_LABEL),Line2D([],[],color='.25',ls='--',label='Archived RK4')])
+    fig.legend(handles=handles,loc='upper center',ncol=3,bbox_to_anchor=(.5,.98),frameon=False)
     fig.suptitle('ST yc = 0.819 · constraint evolution at fixed grid spacing 0.5M',y=1.02)
-    fig.text(.5,.01,CAVEAT,ha='center',fontsize=10)
-    fig.tight_layout(rect=(0,.035,1,.93));save(fig,out,'constraint_evolution',sources)
+    fig.text(.5,.01,CAVEAT,ha='center',fontsize=9)
+    fig.tight_layout(rect=(0,.035,1,.88));save(fig,out,'constraint_evolution',sources)
     ratio.legend(handles=handles[:4],loc='upper center',ncol=4,bbox_to_anchor=(.5,.98),frameon=False)
     ratio.suptitle('ST yc = 0.819 · constraint ratios relative to the archived scheme',y=1.02)
     ratio.text(.5,.01,CAVEAT,ha='center',fontsize=10)
@@ -92,24 +93,24 @@ def temporal_figures(data,out):
              ('particles','position','all','Particle positions'),('particles','covariant_momentum','all','Particle momenta')]
     fig,axes=plt.subplots(2,2,figsize=(10,7),sharex=True)
     for ax,(kind,field,region,title) in zip(axes.flat,choices):
-        for scheme,color,marker in [('legacy','#D55E00','s'),('predictor','#0072B2','o')]:
+        for scheme,color,marker in [('legacy','#D55E00','s'),(PRIMARY_SCHEME,'#0072B2','o')]:
             subset=[r for r in rows if (r['scheme'],r['kind'],r['field'],r['region'])==(scheme,kind,field,region) and r['observed_p']]
             assert len(subset)==3,(scheme,field)
-            ax.plot([float(r['time']) for r in subset],[float(r['observed_p']) for r in subset],marker+'-',color=color,label='Legacy RK4' if scheme=='legacy' else 'RK3 predictor')
+            ax.plot([float(r['time']) for r in subset],[float(r['observed_p']) for r in subset],marker+'-',color=color,label='Legacy RK4 (fallback allowed)' if scheme=='legacy' else NEW_LABEL)
         ax.axhline(1,color='.45',ls=':',lw=1);ax.axhline(2,color='.45',ls='--',lw=1)
         ax.set_title(title);ax.set_ylabel('Observed temporal order p');ax.grid(alpha=.15);ax.set_xticks([20,50,100]);ax.legend(frameon=False)
     for ax in axes[-1]:ax.set_xlabel('Matched endpoint [M]')
     fig.suptitle('Temporal self-convergence · N = 1 million · h = 0.2, 0.1, 0.05M',y=1.01)
-    fig.text(.5,.01,'p = log₂(‖Qₕ − Qₕ/₂‖ / ‖Qₕ/₂ − Qₕ/₄‖). Double-precision fields and matched particle IDs.\nGrid norms use coordinate volume inside r < 10M; particle norms use rest-mass weights.',ha='center',fontsize=9)
+    fig.text(.5,.01,'p = log₂(‖Qₕ − Qₕ/₂‖ / ‖Qₕ/₂ − Qₕ/₄‖). Double-precision fields and matched particle IDs.\nNominal maximum timesteps include restart transients; legacy runs allow Euler fallback.',ha='center',fontsize=9)
     fig.tight_layout(rect=(0,.07,1,.98));save(fig,out,'temporal_order',[source])
     # Differences as a function of h make a reported p inspectable, with reference slopes.
     fig,axes=plt.subplots(2,2,figsize=(10,7))
     for ax,(kind,field,region,title) in zip(axes.flat,choices):
-        for scheme,color,marker in [('legacy','#D55E00','s'),('predictor','#0072B2','o')]:
+        for scheme,color,marker in [('legacy','#D55E00','s'),(PRIMARY_SCHEME,'#0072B2','o')]:
             r=next(r for r in rows if (r['scheme'],r['kind'],r['field'],r['region'],float(r['time']))==(scheme,kind,field,region,100.))
             x=np.array([.1,.2]);y=np.array([float(r['diff_h2_h4']),float(r['diff_h_h2'])])
-            ax.loglog(x,y,marker+'-',color=color,label='Legacy RK4' if scheme=='legacy' else 'RK3 predictor')
-            if scheme=='predictor':
+            ax.loglog(x,y,marker+'-',color=color,label='Legacy RK4 (fallback allowed)' if scheme=='legacy' else NEW_LABEL)
+            if scheme==PRIMARY_SCHEME:
                 for p,style in [(1,':'),(2,'--')]:ax.loglog(x,y[0]*(x/x[0])**p,style,color='.5',label=f'Order {p} reference')
         ax.set_title(title);ax.set_xlabel('Coarser time step h [M]');ax.set_ylabel('RMS difference ‖Qₕ − Qₕ/₂‖');ax.grid(alpha=.15)
         ax.set_xticks([.1,.2]);ax.set_xticklabels(['0.1','0.2']);ax.legend(frameon=False,fontsize=9)
@@ -118,13 +119,13 @@ def temporal_figures(data,out):
 
 def controls(data,out):
     sources=[];fig,axes=plt.subplots(1,2,figsize=(12,4.5),sharex=True)
-    for case,label,color,style in [('legacy_1m_h020','Legacy RK4','#D55E00','--'),('frozen_rk3_1m_h020','Frozen-source RK3','#7B3294',':'),('predictor_1m_h020','RK3 predictor','#0072B2','-')]:
+    for case,label,color,style in [('legacy_1m_h020','Legacy RK4 (fallback allowed)','#D55E00','--'),(f'{PRIMARY_SCHEME}_1m_h020',NEW_LABEL,'#0072B2','-')]:
         path=data/case/'health.csv';sources.append(path)
         for ax,metric in zip(axes,('H','M')):
             t,v=arrays(path,f'{metric}_rms_r10',100);ax.semilogy(t,v,style,color=color,label=label)
             ax.set_title(('Hamiltonian' if metric=='H' else 'Momentum')+' · r < 10M');ax.set_xlabel('Time [M]');ax.set_ylabel(r'Constraint RMS [$M^{-2}$]');ax.grid(alpha=.2);ax.legend(frameon=False)
     fig.suptitle('Integrator/coupling controls · N = 1 million · h = 0.2M',y=1.02)
-    fig.text(.5,.01,'All three short controls evaluate synchronized endpoint constraints.',ha='center',fontsize=10)
+    fig.text(.5,.01,'Synchronized endpoint constraints. Frozen-source RK3 failed at 18.4M; no valid 20M endpoint.',ha='center',fontsize=10)
     fig.tight_layout(rect=(0,.04,1,.98));save(fig,out,'short_controls',sources)
 
 

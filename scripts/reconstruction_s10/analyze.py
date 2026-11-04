@@ -4,9 +4,13 @@ import csv
 import json
 from pathlib import Path
 import math
+import os
 import numpy as np
 from campaign import ROOT, CASES
 from state_io import require_job, read_rst, interior, write_json, sha
+
+PRIMARY_SCHEME=os.environ.get('ST10_SCHEME','predictor')
+assert PRIMARY_SCHEME in ('predictor','fixed_v1')
 
 FIELDS=['chi','gxx','gxy','gxz','gyy','gyz','gzz','Khat','Axx','Axy','Axz','Ayy','Ayz','Azz',
         'Gamma_x','Gamma_y','Gamma_z','Theta','alpha','beta_x','beta_y','beta_z','B_x','B_y','B_z']
@@ -122,8 +126,14 @@ def order_row(kind,field,region,d1,d2,scale):
 
 
 def temporal(dest):
-    rows=[];sources=[]
-    for scheme in ('legacy','predictor'):
+    rows=[];sources=[];cached_legacy=None
+    for scheme in ('legacy',PRIMARY_SCHEME):
+        if scheme=='legacy' and PRIMARY_SCHEME=='fixed_v1':
+            cache=ROOT/'analysis/job_495334/reduced'
+            cached_legacy=[dict(path=str(cache/name),sha256=sha(cache/name)) for name in ('temporal_order.csv','TEMPORAL_SOURCES.json')]
+            rows.extend(read_csv(cache/'temporal_order.csv'))
+            sources.extend(json.loads((cache/'TEMPORAL_SOURCES.json').read_text())['sources'])
+            continue
         cases=[f'{scheme}_1m_h{h:03d}' for h in (20,10,5)]
         for t in (20,50,100):
             records=[next((r for r in completed(case) if r['target']==t),None) for case in cases]
@@ -134,11 +144,11 @@ def temporal(dest):
             sources.extend(r['checkpoint'] for r in records)
             del states
     if rows:write_csv(dest/'temporal_order.csv',rows)
-    write_json(dest/'TEMPORAL_SOURCES.json',dict(sources=sources,
+    write_json(dest/'TEMPORAL_SOURCES.json',dict(sources=sources,cached_legacy=cached_legacy,
         formula='p = log2(||Q_h-Q_h/2|| / ||Q_h/2-Q_h/4||), h=.2M',
         grid_norm='coordinate-volume weighted RMS, active cells only, double precision',
         particle_norm='rest-mass weighted vector RMS, matched original particle IDs, double precision',
-        caveat='Measured self-convergence of one realization; a constraint noise floor or non-smooth deposition may prevent asymptotic order.'))
+        caveat='Nominal maximum timesteps with restart growth transients; legacy Euler fallbacks remain separately labeled. Measured self-convergence of one realization; a constraint noise floor or non-smooth deposition may prevent asymptotic order.'))
     return rows
 
 
@@ -154,7 +164,7 @@ def window_average(rows,key,lo,hi):
 def comparison(dest):
     rows=[];scaling=[]
     for n in (1,2,4,8):
-        case=f'predictor_{n}m_h020'
+        case=f'{PRIMARY_SCHEME}_{n}m_h020'
         for region,name in [('r10','health.csv'),('r16','health.csv'),('global','global_constraints.csv')]:
             newpath=dest/case/name
             if not newpath.exists():continue
@@ -164,7 +174,7 @@ def comparison(dest):
                 for lo,hi in ((0,20),(20,100),(100,300),(300,500)):
                     oldmean=window_average(old,key,lo,hi);newmean=window_average(new,key,lo,hi)
                     if oldmean is None or newmean is None:continue
-                    rows.append(dict(N=n*1000000,region=region,constraint=metric,start=lo,end=hi,
+                    rows.append(dict(scheme=PRIMARY_SCHEME,N=n*1000000,region=region,constraint=metric,start=lo,end=hi,
                         archived_mean=oldmean,predictor_mean=newmean,ratio_new_old=newmean/oldmean))
     if rows:write_csv(dest/'constraint_windows.csv',rows)
     for region in ('r10','r16','global'):
@@ -172,7 +182,7 @@ def comparison(dest):
             for lo,hi in ((0,20),(20,100),(100,300),(300,500)):
                 group=sorted([r for r in rows if (r['region'],r['constraint'],r['start'],r['end'])==(region,metric,lo,hi)],key=lambda r:r['N'])
                 if len(group)!=4:continue
-                for scheme,key in [('archived','archived_mean'),('predictor','predictor_mean')]:
+                for scheme,key in [('archived','archived_mean'),(PRIMARY_SCHEME,'predictor_mean')]:
                     alpha=-float(np.polyfit(np.log([r['N'] for r in group]),np.log([r[key] for r in group]),1)[0])
                     scaling.append(dict(scheme=scheme,region=region,constraint=metric,start=lo,end=hi,alpha_N=alpha,
                         interpretation='Particle-number scaling for one nested seed; not temporal order'))

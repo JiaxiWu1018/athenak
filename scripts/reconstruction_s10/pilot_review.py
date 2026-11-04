@@ -5,10 +5,10 @@ import re
 import numpy as np
 from pathlib import Path
 from campaign import ROOT, resource_snapshot
-from analyze import completed
+from analyze import completed, PRIMARY_SCHEME
 from state_io import require_job, write_json, sha
 require_job()
-records={n:next(r for r in completed(f'predictor_{n}m_h020') if r['target']==20) for n in (1,8)}
+records={n:next(r for r in completed(f'{PRIMARY_SCHEME}_{n}m_h020') if r['target']==20) for n in (1,8)}
 assert all(r['initial']['exact_sample_match'] and r['checkpoint']['original_ids_masses'] and r['checkpoint']['removals']==0 for r in records.values())
 assert all(r['solver']['failures']==0 and r['solver']['max_residual']<=1.01e-11 for r in records.values())
 # Use elapsed-cycle timing after warmup; retain whole-process costs separately.
@@ -31,17 +31,17 @@ production=sum(seconds[n]*(500-(20 if n in records else 0)) for n in seconds)/36
 # New h=.1/.05: 2x/4x steps. Legacy costs initially bounded by measured new cost;
 # a separate legacy pilot can replace that upper model if the forecast needs refinement.
 short_new=100*s1*(2+4)/3600
-short_legacy=100*s1*(1+2+4+1)/3600
+short_legacy=0 if PRIMARY_SCHEME=='fixed_v1' else 100*s1*(1+2+4+1)/3600
 snapshot=resource_snapshot()
 remaining=production+short_new+short_legacy
 forecast=snapshot.get('node_hours',0)+1.2*remaining+1.0
 # At most ~55 double-precision 2.4GB checkpoints plus sparse particle outputs,
 # retained gates/builds/samples, and a 35GiB analysis/output reserve.
 storage=snapshot.get('campaign_bytes',0)+180*2**30
-result=dict(pilots=records,timing=measured,seconds_per_M_model=seconds,remaining_nominal_node_hours=remaining,
+result=dict(scheme=PRIMARY_SCHEME,pilots=records,timing=measured,seconds_per_M_model=seconds,remaining_nominal_node_hours=remaining,
     forecast_node_hours_with_20pct_and_support=forecast,forecast_bytes=storage,
     current_resources=snapshot,under_review_limits=bool(forecast<40 and storage<300*2**30),
-    assumptions='Linear particle-count runtime, proportional step-count controls,20% runtime reserve +1 support nodeh; 180GiB incremental storage reserve.',
+    assumptions='Linear particle-count runtime, proportional step-count controls,20% runtime reserve +1 support nodeh; 180GiB incremental storage reserve. Completed legacy controls are reused for fixed_v1.',
     script_sha256=sha(__file__))
 write_json(ROOT/f'evidence/PILOT_REVIEW_{os.environ["SLURM_JOB_ID"]}.json',result)
 print(json.dumps(result,indent=2))
