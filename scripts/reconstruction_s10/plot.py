@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from matplotlib.ticker import NullFormatter
 from campaign import ROOT
 from analyze import read_csv, PRIMARY_SCHEME, BASE_H, PRIMARY_H_LABEL
 from state_io import require_job, write_json, sha
@@ -60,12 +61,12 @@ def constraint_figures(data,out):
     handles.extend([Line2D([],[],color='.25',ls='-',label=NEW_LABEL),Line2D([],[],color='.25',ls='--',label='Archived RK4')])
     fig.legend(handles=handles,loc='upper center',ncol=3,bbox_to_anchor=(.5,.98),frameon=False)
     fig.suptitle('ST yc = 0.819 · constraint evolution at fixed grid spacing 0.5M',y=1.02)
-    fig.text(.5,.01,CAVEAT,ha='center',fontsize=9)
-    fig.tight_layout(rect=(0,.035,1,.88));save(fig,out,'constraint_evolution',sources)
+    fig.text(.5,.01,'Core: coordinate-volume RMS. Full domain: proper-volume RMS.\n'+CAVEAT,ha='center',fontsize=9)
+    fig.tight_layout(rect=(0,.065,1,.88));save(fig,out,'constraint_evolution',sources)
     ratio.legend(handles=handles[:4],loc='upper center',ncol=4,bbox_to_anchor=(.5,.98),frameon=False)
     ratio.suptitle('ST yc = 0.819 · constraint ratios relative to the archived scheme',y=1.02)
-    ratio.text(.5,.01,CAVEAT,ha='center',fontsize=10)
-    ratio.tight_layout(rect=(0,.035,1,.93));save(ratio,out,'constraint_ratios',sources)
+    ratio.text(.5,.01,'Core: coordinate-volume RMS. Full domain: proper-volume RMS.\n'+CAVEAT,ha='center',fontsize=9)
+    ratio.tight_layout(rect=(0,.065,1,.93));save(ratio,out,'constraint_ratios',sources)
 
 
 def particle_scaling(data,out):
@@ -82,7 +83,7 @@ def particle_scaling(data,out):
                 ax.loglog(n,v,style,color=color,label=f'{scheme}: α = {alpha:.2f}')
                 if scheme=='Predictor':ax.loglog(n,v[0]*n**(-.5),':',color='.4',label=r'$N^{-1/2}$ reference')
             ax.set_title(f'{metric} RMS · {lo}–{hi}M');ax.set_ylabel(r'Time-mean RMS [$M^{-2}$]');ax.grid(alpha=.18)
-            ax.set_xticks([1,2,4,8]);ax.set_xticklabels(['1','2','4','8']);ax.legend(frameon=False,fontsize=9)
+            ax.set_xticks([1,2,4,8]);ax.set_xticklabels(['1','2','4','8']);ax.xaxis.set_minor_formatter(NullFormatter());ax.legend(frameon=False,fontsize=9)
             if row==1:ax.set_xlabel('Particle count [million]')
     fig.suptitle('Particle-number scaling inside r < 10M · RMS ∝ N⁻ᵅ',y=1.01)
     fig.text(.5,.01,'One nested seed at fixed mesh and time step. Particle-number scaling is not temporal order.\n'+CAVEAT,ha='center',fontsize=9)
@@ -91,7 +92,7 @@ def particle_scaling(data,out):
 
 def temporal_figures(data,out):
     source=data/'temporal_order.csv';rows=read_csv(source)
-    choices=[('grid','chi','r10','Conformal factor χ'),('grid','alpha','r10','Lapse α'),
+    choices=[('grid','chi','r10','Conformal factor χ · r < 10M'),('grid','alpha','r10','Lapse α · r < 10M'),
              ('particles','position','all','Particle positions'),('particles','covariant_momentum','all','Particle momenta')]
     fig,axes=plt.subplots(2,2,figsize=(10,7),sharex=True)
     for ax,(kind,field,region,title) in zip(axes.flat,choices):
@@ -100,11 +101,13 @@ def temporal_figures(data,out):
             assert len(subset)==3,(scheme,field)
             ax.plot([float(r['time']) for r in subset],[float(r['observed_p']) for r in subset],marker+'-',color=color,label='Legacy RK4 (fallback allowed)' if scheme=='legacy' else NEW_LABEL)
         ax.axhline(1,color='.45',ls=':',lw=1);ax.axhline(2,color='.45',ls='--',lw=1)
-        ax.set_title(title);ax.set_ylabel('Observed temporal order p');ax.grid(alpha=.15);ax.set_xticks([20,50,100]);ax.legend(frameon=False)
+        ax.set_title(title);ax.set_ylabel('Observed temporal order p');ax.grid(alpha=.15);ax.set_xticks([20,50,100])
+    handles,labels=axes[0,0].get_legend_handles_labels()
+    fig.legend(handles,labels,loc='upper center',bbox_to_anchor=(.5,.98),ncol=2,frameon=False,fontsize=9)
     for ax in axes[-1]:ax.set_xlabel('Matched endpoint [M]')
     fig.suptitle(f'Temporal self-convergence · 1M particles · legacy h=.2/.1/.05; new h={BASE_H:g}/{BASE_H/2:g}/{BASE_H/4:g}M',y=1.01)
     fig.text(.5,.01,'p = log₂(‖Qₕ − Qₕ/₂‖ / ‖Qₕ/₂ − Qₕ/₄‖). Double-precision fields and matched particle IDs.\nNominal maximum timesteps include restart transients; legacy runs allow Euler fallback.',ha='center',fontsize=9)
-    fig.tight_layout(rect=(0,.07,1,.98));save(fig,out,'temporal_order',[source])
+    fig.tight_layout(rect=(0,.07,1,.90));save(fig,out,'temporal_order',[source])
     # Differences as a function of h make a reported p inspectable, with reference slopes.
     fig,axes=plt.subplots(2,2,figsize=(10,7))
     for ax,(kind,field,region,title) in zip(axes.flat,choices):
@@ -115,8 +118,12 @@ def temporal_figures(data,out):
             if scheme==PRIMARY_SCHEME:
                 for p,style in [(1,':'),(2,'--')]:ax.loglog(x,y[0]*(x/x[0])**p,style,color='.5',label=f'Order {p} reference')
         ax.set_title(title);ax.set_xlabel('Coarser time step h [M]');ax.set_ylabel('RMS difference ‖Qₕ − Qₕ/₂‖');ax.grid(alpha=.15)
-        ticks=sorted(set([.1,.2,BASE_H/2,BASE_H]));ax.set_xticks(ticks);ax.set_xticklabels([f'{v:g}' for v in ticks]);ax.legend(frameon=False,fontsize=9)
-    fig.suptitle('Matched solution differences at 100M',y=1.01);fig.tight_layout();save(fig,out,'temporal_differences',[source])
+        ticks=sorted(set([.1,.2,BASE_H/2,BASE_H]));ax.set_xticks(ticks);ax.set_xticklabels([f'{v:g}' for v in ticks]);ax.xaxis.set_minor_formatter(NullFormatter())
+    handles,labels=axes[0,0].get_legend_handles_labels()
+    fig.legend(handles,labels,loc='upper center',bbox_to_anchor=(.5,.98),ncol=2,frameon=False,fontsize=9)
+    fig.suptitle('Matched solution differences at 100M · 1M particles',y=1.02)
+    fig.text(.5,.01,'Grid: coordinate-volume RMS inside r < 10M. Particles: rest-mass-weighted vector RMS.\nNominal maximum timesteps include restart transients; reference lines indicate slopes, not exact errors.',ha='center',fontsize=9)
+    fig.tight_layout(rect=(0,.08,1,.89));save(fig,out,'temporal_differences',[source])
 
 
 def controls(data,out):
