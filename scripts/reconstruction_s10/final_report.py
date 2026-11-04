@@ -50,7 +50,7 @@ def main():
         '![Temporal order](figures/temporal_order.png)','',
         '![Matched solution differences](figures/temporal_differences.png)','',
         '## Constraint comparison','',
-        'The following ratios compare time-mean RMS inside coordinate r<10M. Values below 1 indicate smaller constraint RMS in the new run. The archived 500M runs use h=.2M and lagged particle sources; the new runs use h=.1M and synchronized endpoint diagnostics. Thus long-run ratios include timestep and diagnostic-timing differences, as well as the coupling/stencil change.','',
+        'The following ratios compare time-mean RMS inside coordinate r<10M. Values below 1 indicate smaller constraint RMS in the new run. The archived comparison tables extend to1000M; this report and its figures use their0–500M interval. The archived scheme uses h=.2M and lagged particle sources; the new runs use h=.1M and synchronized endpoint diagnostics. Thus long-run ratios include timestep and diagnostic-timing differences, as well as the coupling/stencil change.','',
         '| Particles [million] | Window [M] | Hamiltonian new/archived | Momentum new/archived |',
         '|---:|---:|---:|---:|']
     for n in (1,2,4,8):
