@@ -45,3 +45,5 @@ result=dict(scheme=PRIMARY_SCHEME,pilots=records,timing=measured,seconds_per_M_m
     script_sha256=sha(__file__))
 write_json(ROOT/f'evidence/PILOT_REVIEW_{os.environ["SLURM_JOB_ID"]}.json',result)
 print(json.dumps(result,indent=2))
+
+assert result["under_review_limits"], "Projected campaign exceeds resource review thresholds; do not release long runs"
