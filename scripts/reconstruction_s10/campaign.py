@@ -49,7 +49,7 @@ def input_text(case,target,output_dir=None):
     params['comment']={'problem':'ST Session10 stage-consistent RK3 predictor experiment','note':'Exact Session7 seed1 samples; all endpoint constraints synchronized'}
     params['job']['basename']=case
     params['time'].update(integrator=cfg['integrator'],cfl_number=str(2*cfg['dt']),tlim=str(target),ndiag='10')
-    params['particles'].update(coupling=cfg['coupling'],synchronized_constraints='true',midpoint_tolerance='1e-11',midpoint_max_iterations='100')
+    params['particles'].update(coupling=cfg['coupling'],synchronized_constraints='true',midpoint_tolerance=str(cfg.get('tolerance',1e-11)),midpoint_max_iterations='100')
     if 'stencil' in cfg:params['particles']['midpoint_stencil']=cfg['stencil']
     params['problem'].update(cluster_n=str(cfg['n']),cluster_sample_file=str(ROOT/f"reference/session7/samples/mc_{cfg['n']//1000000}m_s1.bin"),cluster_t0_dump=str(Path(output_dir)/'initial_particles.bin'))
     params['output1']={'file_type':'hst','dt':'2.0','data_format':'%23.15e'}
@@ -190,7 +190,7 @@ def run_segment(case,target):
     solver={}
     if cfg['coupling']=='rk3_predictor':
         matches=re.findall(r'\[rk3-particles\].*stage=3.*max_iter=(\d+).*max_residual=(\S+).*failed=(\d+)',log)
-        assert matches and all(int(b)==0 and float(r)<=1.01e-11 for _,r,b in matches)
+        assert matches and all(int(b)==0 and float(r)<=1.01*cfg.get('tolerance',1e-11) for _,r,b in matches)
         solver=dict(steps=len(matches),max_iterations=max(int(i) for i,_,_ in matches),
                     max_residual=max(float(r) for _,r,_ in matches),failures=0)
     for hp in work.glob('*.hst'):
